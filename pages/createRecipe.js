@@ -179,6 +179,7 @@ export default function Home() {
                                                     <option value="c">Cups</option>
                                                     <option value="tbs">Tablespoon</option>
                                                     <option value="tsp">Teaspoon</option>
+                                                    <option value="L">Litres</option>
 
                                                 </Form.Select>
                                             </Form.Group>
@@ -309,7 +310,7 @@ export default function Home() {
                             <Col>
                                 {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
                                 <Card style={{ maxWidth: '20em', color: "black", right: "0px", float: "right" }}>
-                                    <img src={imageData} style={{ maxmaxWidth: "20em", maxHeight: "20em" }} />
+                                    <img src={imageData} style={{ maxWidth: "20em", maxHeight: "20em" }} />
                                 </Card>
 
                             </Col>
