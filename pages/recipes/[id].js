@@ -123,9 +123,9 @@ export default function Home() {
                         RECIPEID = {id}
                         <Container>
                             <h1>General</h1>
-                            <Row style={{paddingBottom: "1vh", "alignItems": "center"}}>
+                            <Row style={{paddingBottom: "1vw", "alignItems": "center"}}>
                                 <Col>
-                                    <Card style={{ width: '40vh', color: "black" }}>
+                                    <Card style={{ width: '40vw', color: "black" }}>
                                         {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                         <Card.Body>
                                             {/* <Card.Title>Add ingredient</Card.Title> */}
@@ -146,12 +146,12 @@ export default function Home() {
                                 </Col>
                             </Row>
                             <h1>Ingredients</h1>
-                            <Row style={{paddingBottom: "1vh"}}>
+                            <Row style={{paddingBottom: "1vw"}}>
 
                                 
                                 <Col>
 
-                                    <Card style={{ width: '40vh', color: "black"}}>
+                                    <Card style={{ width: '40vw', color: "black"}}>
                                         {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                         <Card.Body>
                                             <Card.Title>Ingred Summary</Card.Title>
@@ -176,11 +176,11 @@ export default function Home() {
 
                                 </Col>
                             </Row>
-                            <Row style={{paddingBottom: "1vh"}}>
+                            <Row style={{paddingBottom: "1vw"}}>
                                 <h1>Instructions</h1>
                                 
                                 <Col>
-                                    <Card style={{ width: '40vh', color: "black"}}>
+                                    <Card style={{ width: '40vw', color: "black"}}>
                                         {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                         <Card.Body>
                                             <Card.Title>Instructions Summary</Card.Title>
@@ -205,12 +205,12 @@ export default function Home() {
                                     </Card>
                                 </Col>
                             </Row>
-                            <Row style={{paddingBottom: "1vh"}}>
+                            <Row style={{paddingBottom: "1vw"}}>
                                 
                                 <Col>
                                     {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
-                                    <Card style={{ width: '40vh', color: "black" }}>
-                                        <img src={imageData} style={{ maxWidth: "40vh", maxHeight: "40vh" }} />
+                                    <Card style={{ width: '40vw', color: "black" }}>
+                                        <img src={imageData} style={{ maxWidth: "40vw", maxHeight: "40vw" }} />
                                     </Card>
 
                                 </Col>
