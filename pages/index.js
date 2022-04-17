@@ -8,7 +8,7 @@ import { Toolbar } from './Toolbar'
 import { useEffect } from 'react'
 
 import Router from 'next/router'
-
+import Button from 'react-bootstrap/Button';
 
 
 export default function Home() {
@@ -20,7 +20,9 @@ export default function Home() {
     }  
 });
   
-
+const redirect = async function(page) {
+  Router.push(page)
+};
 
   return (
     <div>
@@ -44,7 +46,7 @@ export default function Home() {
       {/* <DataTable></DataTable> */}
         {/* <StackedBarchart></StackedBarchart> */}
         
-        
+        <Button onClick={()=>redirect("/recipes")}>Recipes</Button>
         
         {/* <GoogleChart></GoogleChart>
         <Barchart></Barchart> */}
