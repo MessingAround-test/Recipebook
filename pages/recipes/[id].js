@@ -35,6 +35,29 @@ export default function Home() {
         setUserData(data.res)
     }
 
+    const deleteRecipe = async function (e) {
+
+        var data = await (await fetch("/api/Recipe/" +  String(await router.query.id) + "?EDGEtoken=" + localStorage.getItem('Token'), {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+            })
+        })).json()
+        console.log(data)
+        if (data.success === false || data.success === undefined) {
+            if (data.message !== undefined) {
+                alert(data.message)
+            } else {
+                alert("failed, unexpected error")
+            }
+
+        } else {
+            redirect("/recipes")
+        }
+    }
+
     async function getRecipeDetails() {
         var data = await (await fetch("/api/Recipe/" + String(await router.query.id) + "?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
@@ -44,6 +67,9 @@ export default function Home() {
         setImageData(data.res.image)
         setRecipeName(data.res.name)
     }
+
+
+
 
 
 
@@ -210,12 +236,18 @@ export default function Home() {
                                 <Col >
                                     {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
                                     <Card style={{ maxWidth: '80vw', color: "black", "backgroundColor": "rgba(76, 175, 80, 0.0)" }}>
-                                        <img src={imageData} style={{ maxWidth: "30vw", maxHeight: "30vw" }} />
+                                        <img src={imageData} style={{  display: "block",maxWidth:"20vw",maxHeight:"20vw",width: "auto",height: "auto" }} />
                                     </Card>
 
                                 </Col>
                             </Row>
-                            
+                            <Row>
+                                <Col>
+                                <Button variant="danger" onClick={()=>deleteRecipe()}>
+                                    Delete Recipe
+                                </Button>
+                                </Col>
+                            </Row>
 
                         </Container>
 

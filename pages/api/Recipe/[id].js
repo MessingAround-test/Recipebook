@@ -33,7 +33,20 @@ export default async function handler(req, res) {
         }
       
       
-      } else {
+      } else if (req.method === "DELETE") {
+        await dbConnect()
+
+        console.log(decoded)
+        var db_id = decoded.id
+        var userData = await User.findOne({ id: db_id });
+        if (userData === {}) {
+          res.status(400).json({ res: "user not found, please relog" })
+        } else {
+
+          var RecipeData = await Recipe.deleteOne({_id: recipe_id})
+          res.status(200).json({ success: true, data: RecipeData, message: "Success"})
+        }
+      }else {
         res.status(400).json({ success: false, data: [], message: "Not supported request"})
       }
     }
