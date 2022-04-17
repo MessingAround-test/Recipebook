@@ -4,6 +4,9 @@ import {compare} from "bcrypt"
 import { sign} from "jsonwebtoken"
 import {secret} from "../../lib/dbsecret"
 
+
+
+
 export default async function handler (req, res) {
     if (req.method === "POST"){
         await dbConnect()
