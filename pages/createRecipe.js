@@ -131,7 +131,7 @@ export default function Home() {
                     <h1>General</h1>
                         <Row>
                             <Col>
-                            <Card style={{ width: '20vw', color: "black" }}>
+                            <Card style={{ maxWidth: '20em', color: "black" }}>
                                     {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                     <Card.Body>
                                         {/* <Card.Title>Add ingredient</Card.Title> */}
@@ -156,7 +156,7 @@ export default function Home() {
 
                             <Col>
 
-                                <Card style={{ width: '20vw', color: "black" }}>
+                                <Card style={{ maxWidth: '20em', color: "black" }}>
                                     {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                     <Card.Body>
                                         {/* <Card.Title>Add ingredient</Card.Title> */}
@@ -206,7 +206,7 @@ export default function Home() {
                             </Col>
                             <Col>
 
-                                <Card style={{ width: '20vw', color: "black", right: "0px", float: "right" }}>
+                                <Card style={{ maxWidth: '20em', color: "black", right: "0px", float: "right" }}>
                                     {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                     <Card.Body>
                                         <Card.Title>Ingred Summary</Card.Title>
@@ -237,7 +237,7 @@ export default function Home() {
                             <h1>Instructions</h1>
                             <Col>
 
-                                <Card style={{ width: '20vw', color: "black" }}>
+                                <Card style={{ maxWidth: '20em', color: "black" }}>
                                     {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                     <Card.Body>
                                         {/* <Card.Title>Add ingredient</Card.Title> */}
@@ -273,7 +273,7 @@ export default function Home() {
 
                             </Col>
                             <Col>
-                                <Card style={{ width: '20vw', color: "black", right: "0px", float: "right" }}>
+                                <Card style={{ maxWidth: '20em', color: "black", right: "0px", float: "right" }}>
                                     {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                     <Card.Body>
                                         <Card.Title>Instructions Summary</Card.Title>
@@ -308,8 +308,8 @@ export default function Home() {
                             </Col>
                             <Col>
                                 {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
-                                <Card style={{ width: '20vw', color: "black", right: "0px", float: "right" }}>
-                                    <img src={imageData} style={{ maxWidth: "20vw", maxHeight: "20vw" }} />
+                                <Card style={{ maxWidth: '20em', color: "black", right: "0px", float: "right" }}>
+                                    <img src={imageData} style={{ maxmaxWidth: "20em", maxHeight: "20em" }} />
                                 </Card>
 
                             </Col>
