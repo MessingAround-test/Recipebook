@@ -125,7 +125,7 @@ export default function Home() {
                             <h1>General</h1>
                             <Row style={{paddingBottom: "1vw", "alignItems": "center"}}>
                                 <Col>
-                                    <Card style={{ width: '40vw', color: "black" }}>
+                                    <Card style={{ maxWidth: '80vw', color: "black" }}>
                                         {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                         <Card.Body>
                                             {/* <Card.Title>Add ingredient</Card.Title> */}
@@ -151,7 +151,7 @@ export default function Home() {
                                 
                                 <Col>
 
-                                    <Card style={{ width: '40vw', color: "black"}}>
+                                    <Card style={{ maxWidth: '80vw', color: "black"}}>
                                         {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                         <Card.Body>
                                             <Card.Title>Ingred Summary</Card.Title>
@@ -180,7 +180,7 @@ export default function Home() {
                                 <h1>Instructions</h1>
                                 
                                 <Col>
-                                    <Card style={{ width: '40vw', color: "black"}}>
+                                    <Card style={{ maxWidth: '80vw', color: "black"}}>
                                         {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                         <Card.Body>
                                             <Card.Title>Instructions Summary</Card.Title>
@@ -205,12 +205,12 @@ export default function Home() {
                                     </Card>
                                 </Col>
                             </Row>
-                            <Row style={{paddingBottom: "1vw"}}>
+                            <Row style={{paddingBottom: "1vw", display: "block"}}>
                                 
                                 <Col>
                                     {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
-                                    <Card style={{ width: '40vw', color: "black" }}>
-                                        <img src={imageData} style={{ maxWidth: "40vw", maxHeight: "40vw" }} />
+                                    <Card style={{ maxWidth: '80vw', color: "black", "backgroundColor": "rgba(76, 175, 80, 0.0)" }}>
+                                        <img src={imageData} style={{ maxWidth: "30vw", maxHeight: "30vw" }} />
                                     </Card>
 
                                 </Col>
