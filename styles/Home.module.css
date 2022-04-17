@@ -5,7 +5,13 @@
 }
 
 
+.cardGroup{
+  display: -webkit-flex;
+  display: flex;
+  flex-wrap: wrap;
+  
 
+}
 
 .main {
   border-radius: 0rem 0rem 1rem 1rem;

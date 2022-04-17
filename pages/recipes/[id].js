@@ -205,9 +205,9 @@ export default function Home() {
                                     </Card>
                                 </Col>
                             </Row>
-                            <Row style={{paddingBottom: "1vw", display: "block"}}>
+                            <Row style={{paddingBottom: "1vw", display: "flex"}}>
                                 
-                                <Col>
+                                <Col >
                                     {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
                                     <Card style={{ maxWidth: '80vw', color: "black", "backgroundColor": "rgba(76, 175, 80, 0.0)" }}>
                                         <img src={imageData} style={{ maxWidth: "30vw", maxHeight: "30vw" }} />

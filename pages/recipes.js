@@ -67,18 +67,24 @@ export default function Home() {
 
 
 
-
+                
                 <main className={styles.main}>
+                <div className={styles.cardGroup}>
                     {recipes.map((recipe) => {
                         return (
-                            <Card style={{ maxWidth: '30em', color: "black"}} onClick={()=>(redirect("/recipes/" + recipe._id))}>
-                                <Card.Body>
+                            <div className="p-2">
+                            <Card style={{ maxWidth: '30em', minWidth:"30em", maxHeight: "30em", minHeight: "30em", color: "black"}} onClick={()=>(redirect("/recipes/" + recipe._id))}>
+                                <Card.Body style={{overflow: "hidden"}}>
                                     <Card.Title>{String(recipe.name)}</Card.Title>
                                     <Card.Img variant="top" src={recipe.image} />
                                 </Card.Body>
 
-                            </Card>)
+                            </Card>
+                            </div>
+                            )
+
                     })}
+                    </div>
                     {/* <Button onClick={() => console.log(recipes)}> show Recipes</Button> */}
                 </main>
 
