@@ -72,7 +72,7 @@ export default function Home() {
                 <div className={styles.cardGroup}>
                     {recipes.map((recipe) => {
                         return (
-                            
+                            <div style={{padding:"0.5vh"}}>
                             <Card style={{ maxWidth: '15rem', minWidth:"15rem", maxHeight: "15rem", minHeight: "15rem", color: "black"}} onClick={()=>(redirect("/recipes/" + recipe._id))}>
                                 <Card.Body style={{overflow: "hidden"}}>
                                     <Card.Title>{String(recipe.name)}</Card.Title>
@@ -80,7 +80,7 @@ export default function Home() {
                                 </Card.Body>
 
                             </Card>
-                            
+                            </div>
                             )
 
                     })}
