@@ -73,7 +73,7 @@ export default function Home() {
                     {recipes.map((recipe) => {
                         return (
                             
-                            <Card style={{ maxWidth: '30vw', minWidth:"30vw", maxHeight: "30vw", minHeight: "30vw", color: "black"}} onClick={()=>(redirect("/recipes/" + recipe._id))}>
+                            <Card style={{ maxWidth: '15rem', minWidth:"15rem", maxHeight: "15rem", minHeight: "15rem", color: "black"}} onClick={()=>(redirect("/recipes/" + recipe._id))}>
                                 <Card.Body style={{overflow: "hidden"}}>
                                     <Card.Title>{String(recipe.name)}</Card.Title>
                                     <Card.Img variant="top" src={recipe.image} />
