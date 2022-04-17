@@ -79,7 +79,7 @@ export default function Home() {
 
                             </Card>)
                     })}
-                    <Button onClick={() => console.log(recipes)}> show Recipes</Button>
+                    {/* <Button onClick={() => console.log(recipes)}> show Recipes</Button> */}
                 </main>
 
                 <footer className={styles.footer}>
