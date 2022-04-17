@@ -22,6 +22,7 @@ export default function Home() {
     const [instructions, setInstructions] = useState([])
     
     const [imageData, setImageData] = useState()
+    const [recipeName, setRecipeName] = useState("")
 
     const onSubmitRecipe = async function (e) {
 
@@ -37,7 +38,8 @@ export default function Home() {
             body: JSON.stringify({
                 "ingreds": ingreds,
                 "instructions": instructions,
-                "image": imageData
+                "image": imageData,
+                "name": recipeName
             })
         })).json()
         console.log(data)
@@ -126,6 +128,29 @@ export default function Home() {
                 <main className={styles.main}>
 
                     <Container>
+                    <h1>General</h1>
+                        <Row>
+                            <Col>
+                            <Card style={{ width: '40vh', color: "black" }}>
+                                    {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
+                                    <Card.Body>
+                                        {/* <Card.Title>Add ingredient</Card.Title> */}
+
+                                        <Form>
+
+                                            <Form.Group className="mb-3" id="formBasicEmail">
+                                                <Form.Label>Recipe Name</Form.Label>
+                                                <Form.Control name="recipeName" id="recipeName" type="text" placeholder="Enter Recipe Name" onChange={(e)=>setRecipeName(e.target.value)}/>
+                                            </Form.Group>
+
+                                        </Form>
+
+
+
+                                    </Card.Body>
+                                </Card>
+                            </Col>
+                        </Row>
                         <h1>Ingredients</h1>
                         <Row>
 
@@ -296,8 +321,7 @@ export default function Home() {
                         </Row>
 
                     </Container>
-
-
+                    <Button onClick={()=>console.log(recipeName)}>recipe name</Button>
                 </main>
 
                 <footer className={styles.footer}>

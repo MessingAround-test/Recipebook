@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Router from 'next/router'
+import Card from 'react-bootstrap/Card'
 
 
 
@@ -28,7 +29,7 @@ export default function Home() {
         setRecipes(data.res)
     }
 
-    
+
 
     useEffect(() => {
         if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
@@ -42,7 +43,9 @@ export default function Home() {
     }, []) // <-- empty dependency array
 
 
-
+    const redirect = async function(page) {
+        Router.push(page)
+    };
 
 
 
@@ -66,8 +69,17 @@ export default function Home() {
 
 
                 <main className={styles.main}>
-                    
-                    <Button onClick={() =>console.log(recipes)}> show Recipes</Button>
+                    {recipes.map((recipe) => {
+                        return (
+                            <Card style={{ width: '40vh', color: "black" }} onClick={()=>(redirect("/recipes/" + recipe._id))}>
+                                <Card.Body>
+                                    <Card.Title>{String(recipe.name)}</Card.Title>
+                                    <Card.Img variant="top" src={recipe.image} />
+                                </Card.Body>
+
+                            </Card>)
+                    })}
+                    <Button onClick={() => console.log(recipes)}> show Recipes</Button>
                 </main>
 
                 <footer className={styles.footer}>

@@ -23,6 +23,7 @@ const RecipeSchema = new mongoose.Schema(
     {
         creator_username: { type: String, index: true, required: true },
         creator_email: { type: String, required: true },
+        name: {type: String, required: true},
         ingredients : [ingredsSchema],
         instructions: [instructionsSchema],
         image: {type: String}

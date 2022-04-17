@@ -38,7 +38,8 @@ export default async function handler(req, res) {
           creator_email: "BRYN",
           ingredients : req.body.ingreds,
           instructions: req.body.instructions,
-          image: req.body.image
+          image: req.body.image,
+          name: req.body.name
       });
       console.log(await response);
 
