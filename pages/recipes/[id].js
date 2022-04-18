@@ -26,6 +26,7 @@ export default function Home() {
     const [instructions, setInstructions] = useState([])
     const [imageData, setImageData] = useState()
     const [recipeName, setRecipeName] = useState("")
+    
 
 
 
@@ -33,6 +34,22 @@ export default function Home() {
         var data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
         setUserData(data.res)
+    }
+
+    async function getIngredDetails_WW() {
+        const newItems = [...ingreds];
+        for (var ingredients in newItems) {
+            var data = await (await fetch("/api/Ingredients?" +"ingredient=" + newItems[ingredients].Name+  "&measurement=" + newItems[ingredients].AmountType + "&EDGEtoken=" + localStorage.getItem('Token'))).json()
+            console.log(data)
+            if (data.success === true){
+                // setIngreds()
+                newItems[ingredients].price = data.data.price;
+                newItems[ingredients].price_measure = data.data.measure;
+                newItems[ingredients].WW_Name = data.data.WW_Name;
+            }
+            // console.log(ingreds[ingredients])
+        }
+        setIngreds(newItems)
     }
 
     const deleteRecipe = async function (e) {
@@ -68,9 +85,19 @@ export default function Home() {
         setRecipeName(data.res.name)
     }
 
+    // TJOS ISNT WORKING AGAGAG
+    const getAproxTotalRecipeCost = () =>{
+        var total = 0
+        for (var ingredient in ingreds){
+            var current = ingreds[ingredient]
+            if (current.price !== undefined){
+                total= total+ parseInt(current.price)
+            }
+        }
+        return(<h1>HI {total}</h1>)
 
-
-
+    }
+    
 
 
     useEffect(() => {
@@ -190,11 +217,27 @@ export default function Home() {
                                                                 <Col>
                                                                     <li>{ingred.Amount} {ingred.AmountType} {ingred.Name}</li>
                                                                 </Col>
-                                                                
+                                                                <Col>
+                                                                ${ingred.price} / {ingred.price_measure } 
+                                                                </Col>
+                                                                <Col>{ingred.WW_Name}</Col>
+                                                                <Col>
+                                                                Total: $
+                                                                {ingred.price_measure === "1KG" && ingred.AmountType === "g"?<>{(ingred.price*ingred.Amount/1000).toFixed(2)}</>:<></>}
+                                                                {ingred.price_measure === "1EA" && ingred.AmountType === "x"?<>{(ingred.price*ingred.Amount).toFixed(2)}</>:<></>}
+                                                                {ingred.price_measure === "1KG" && ingred.AmountType === "c"?<>{((ingred.price*220*ingred.Amount)/1000).toFixed(2)}</>:<></>}
+                                                                </Col>
                                                             </Row>
                                                         </div>
                                                     )
                                                 })}
+                                                <Row>
+                                                <Col></Col>
+                                                <Col></Col>
+                                                <Col></Col>
+                                                <Col>Approx Total Cost: ${getAproxTotalRecipeCost}</Col>
+                                                
+                                                </Row>
                                             </Container>
 
                                         </Card.Body>
@@ -250,7 +293,7 @@ export default function Home() {
                             </Row>
 
                         </Container>
-
+                        <Button onClick={()=>getIngredDetails_WW()}>Get WW Data</Button>
                     </main>
 
                     <footer className={styles.footer}>

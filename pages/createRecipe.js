@@ -20,7 +20,7 @@ import { RiDeleteBin7Line } from 'react-icons/ri';
 export default function Home() {
     const [ingreds, setIngreds] = useState([])
     const [instructions, setInstructions] = useState([])
-    
+
     const [imageData, setImageData] = useState()
     const [recipeName, setRecipeName] = useState("")
 
@@ -50,8 +50,15 @@ export default function Home() {
                 alert("failed, unexpected error")
             }
 
+        } else {
+            redirect("/recipes")
         }
     }
+
+    const redirect = async function (page) {
+        Router.push(page)
+    };
+
 
     const onSubmitIngred = async function (e) {
         e.preventDefault();
@@ -92,7 +99,7 @@ export default function Home() {
     }, []) // <-- empty dependency array
 
 
-    const getBase64 = function(file, cb) {
+    const getBase64 = function (file, cb) {
         let reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = function () {
@@ -128,10 +135,10 @@ export default function Home() {
                 <main className={styles.main}>
 
                     <Container>
-                    <h1>General</h1>
+                        <h1>General</h1>
                         <Row>
                             <Col>
-                            <Card style={{ maxWidth: '20em', color: "black" }}>
+                                <Card style={{ maxWidth: '20em', color: "black" }}>
                                     {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                     <Card.Body>
                                         {/* <Card.Title>Add ingredient</Card.Title> */}
@@ -140,7 +147,8 @@ export default function Home() {
 
                                             <Form.Group className="mb-3" id="formBasicEmail">
                                                 <Form.Label>Recipe Name</Form.Label>
-                                                <Form.Control name="recipeName" id="recipeName" type="text" placeholder="Enter Recipe Name" onChange={(e)=>setRecipeName(e.target.value)}/>
+                                                <Form.Control name="recipeName" id="recipeName" type="text" placeholder="Enter Recipe Name" onChange={(e) => setRecipeName(e.target.value)} />
+
                                             </Form.Group>
 
                                         </Form>
@@ -164,15 +172,15 @@ export default function Home() {
                                         <Form onSubmit={(e) => onSubmitIngred(e)}>
                                             <Form.Group className="mb-3" id="formBasicEmail">
                                                 <Form.Label>Name</Form.Label>
-                                                <Form.Control name="ingredName" id="ingredName" type="text" placeholder="Enter ingredient Name" />
+                                                <Form.Control name="ingredName" id="ingredName" type="text" placeholder="Enter ingredient Name" required/>
 
                                             </Form.Group>
 
                                             <Form.Group className="mb-3" id="formBasicEmail">
                                                 <Form.Label>Measure</Form.Label>
-                                                <Form.Control name="ingredAmount" id="ingredAmount" type="text" placeholder="Enter Amount" />
-
-                                                <Form.Select aria-label="Default select example" name="ingredAmountType" id="ingredAmountType">
+                                                <Form.Control name="ingredAmount" id="ingredAmount" type="text" placeholder="Enter Amount" required/>
+                                                
+                                                <Form.Select aria-label="Default select example" name="ingredAmountType" id="ingredAmountType" required>
 
                                                     <option value="x">Amount (xN)</option>
                                                     <option value="g">Grams</option>
@@ -247,7 +255,7 @@ export default function Home() {
 
                                             <Form.Group className="mb-3" id="formBasicEmail">
                                                 <Form.Label>Instruction Step</Form.Label>
-                                                <Form.Control name="instructText" id="instructText" type="text" placeholder="Enter Instruction" />
+                                                <Form.Control name="instructText" id="instructText" type="text" placeholder="Enter Instruction" required/>
                                             </Form.Group>
 
 
@@ -304,8 +312,8 @@ export default function Home() {
                         <Row>
                             <Col>
                                 <h1>Add Image</h1>
-                                <input accept="image/*" type="file" onChange={(e) => { getBase64(e.target.files[0], (data)=>setImageData(data)) }} />
-                                <Button onClick={()=>console.log(imageData)}></Button>
+                                <input accept="image/*" type="file" onChange={(e) => { getBase64(e.target.files[0], (data) => setImageData(data)) }} />
+                                
                             </Col>
                             <Col>
                                 {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}

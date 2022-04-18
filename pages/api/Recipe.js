@@ -31,11 +31,13 @@ export default async function handler(req, res) {
         // console.log(req.body)
         try {
         await dbConnect()
+        var db_id = decoded.id
+        var userData = await User.findOne({ id: db_id });
         console.log(req.query)
         console.log(req.body)
         const response = Recipe.create({
-          creator_username: "BRYN",
-          creator_email: "BRYN",
+          creator_username: userData.username,
+          creator_email: userData.email,
           ingredients : req.body.ingreds,
           instructions: req.body.instructions,
           image: req.body.image,
