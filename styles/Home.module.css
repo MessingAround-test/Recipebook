@@ -1,9 +1,12 @@
 .container {
   padding: 0rem 1vw;
-  background-color:  	 	#008080;
+  background-color:  	 	#394955;
+  /* background-color:steelblue;
+  opacity: 0.8; */
+  
+    
   
 }
-
 
 .cardGroup{
   display: -webkit-flex;
@@ -22,7 +25,7 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: #394955;
+  /* background-color: #394955; */
   color: white
   
 }
@@ -115,6 +118,7 @@
   border-radius: 10px;
   transition: color 0.15s ease, border-color 0.15s ease;
   max-width: 300px;
+  
 }
 
 .card:hover,
@@ -145,4 +149,8 @@
     width: 100%;
     flex-direction: column;
   }
+}
+
+.td{
+  padding: 0.5rem;
 }
