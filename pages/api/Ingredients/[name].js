@@ -9,6 +9,7 @@ import axios from 'axios';
 export default async function handler(req, res) {
     console.log(req.query)
     var ingredient_name = req.query.name
+    var supplier = req.query.supplier
     console.log(ingredient_name)
     if (req.method === "GET") {
         if (ingredient_name === "") {
@@ -16,15 +17,23 @@ export default async function handler(req, res) {
             res.status(200).send({ res: IngredData })
         } else {
             // let IngredData = []
-            let IngredData = await Ingredients.find({ search_term: ingredient_name }).exec()
+            let search_query = { search_term: ingredient_name }
+            if (supplier !== undefined){
+                search_query["source"] = supplier
+            }
+            let IngredData = await Ingredients.find(search_query).exec()
 
-            IngredData.concat(await Ingredients.find({ $text: { $search: ingredient_name } }, { score: { $meta: "textScore" } }).exec())
+            // IngredData.concat(await Ingredients.find({ $text: { $search: ingredient_name } }, { score: { $meta: "textScore" } }).exec())
             // If we havent already extracted it, then we want to extract it from the source systems
             console.log("MADE IT")
             console.log(IngredData)
             if (IngredData.length == 0) {
                 let allIngredData = []
                 let companies = ["WW", "Coles", "IGA", "PanettaGG"]
+                if (supplier !== undefined){
+                    companies= [supplier]
+                }
+                
                 for (let supplierIndex in companies) {
                     let supplier = companies[supplierIndex]
                     console.log(`http://localhost:8080/api/Ingredients/${supplier}/${ingredient_name}?EDGEtoken=${req.query.EDGEtoken}`)
