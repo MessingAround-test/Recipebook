@@ -1,0 +1,32 @@
+# version: "3"
+# services:
+
+
+
+version: '3.7'
+
+services:
+
+  db:
+    image: mongo
+    container_name: mongo_bryn_website
+    volumes:
+      - mongodata:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - mern-network
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+      
+
+networks:
+  mern-network:
+    driver: bridge
+
+volumes:
+  mongodata:
+    driver: local
+
+

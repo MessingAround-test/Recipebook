@@ -48,3 +48,10 @@ pm2 ps
 mongod -u user -p password
 
 https://app.woolworthsonline.com.au/apis/v2/swagger-ui/index.html
+
+
+!STARTUP Instructions!
+
+1.  Startup the DB docker-compose up
+
+2.  Startup the web app cd chart_test npm run dev
