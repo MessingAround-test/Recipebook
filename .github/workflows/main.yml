@@ -6,7 +6,7 @@ name: Next.js CD
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
-    branches: [ deploy ]
+    branches: [ master ]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -25,8 +25,8 @@ jobs:
         key: ${{ secrets.PRIVATE_KEY }}
         port: 22
         script: |
-          cd ~/RecipeBook/
-          git pull origin deploy
+          cd ~/Recipebook/
+          git pull origin master
           git status
           npm install
           pm2 restart npm run dev
