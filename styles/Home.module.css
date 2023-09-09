@@ -1,12 +1,11 @@
 .container {
   padding: 0rem 1vw;
   background-color:  	 	#394955;
-  width: auto;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: scroll;
   /* background-color:steelblue;
   opacity: 0.8; */
-  
-    
-  
 }
 
 .cardGroup{
@@ -20,6 +19,7 @@
 .main {
   border-radius: 0rem 0rem 1rem 1rem;
   min-height: 100vh;
+  
   padding: 2rem 2rem;
   flex: 1;
   /* display: flex; */
@@ -153,8 +153,6 @@
 }
 
 .tr {
-  max-width: 100vw;
-  min-width: 100vw;
 }
 
 .td{
