@@ -179,7 +179,7 @@ export default function Home() {
                         </Button>
                     </Form>
                     <br></br>
-                    <Table>
+                    <Table style={{borderRadius: '5px', overflow: 'hidden'}}>
                         {Headers.map((key) => {
                             return (
                                 <>

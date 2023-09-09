@@ -157,11 +157,12 @@
 
 .td{
   padding: 0.5rem;
-  
+  background-color: white;
 }
 
 
 .th{
   padding: 0.5rem;
-  background-color: grey;
+  background-color: #1C2640;
+  color: white
 }

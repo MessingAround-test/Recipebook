@@ -32,7 +32,7 @@ export function Toolbar(props) {
 
 
     return (
-        <div>
+        <div className={styles.Container}>
 
             <Navbar expand="lg" variant='dark' style={{ "borderRadius": "0rem 0rem 0rem 0rem" }} className={styles.stickynav}>
                 <Container>
