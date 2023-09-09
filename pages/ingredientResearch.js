@@ -2,7 +2,7 @@ import Head from 'next/head'
 import Image from 'next/image'
 import styles from '../styles/Home.module.css'
 
-
+import Table from 'react-bootstrap/Table';
 
 import { Toolbar } from './Toolbar'
 import { useEffect, useState } from 'react'
@@ -178,11 +178,12 @@ export default function Home() {
                             Delete all
                         </Button>
                     </Form>
-                    <table>
+                    <br></br>
+                    <Table>
                         {Headers.map((key) => {
                             return (
                                 <>
-                                    <th className={styles.td}>
+                                    <th className={styles.th}>
                                         {key}
                                     </th>
                                 </>
@@ -193,14 +194,16 @@ export default function Home() {
                                 return (
                                     <>
                                         <td className={styles.td}>
+                                            <a>
                                             {ingredient[key]}
+                                            </a>
                                         </td>
                                     </>
                                 )
                             })
                             return (
                                 <>
-                                <tr style={{ padding: "0.5vh" }}>
+                                <tr className={styles.tr} style={{ padding: "0.5vh" } }>
                                     {res}
                                 </tr>
                                 </>
@@ -208,7 +211,7 @@ export default function Home() {
 
                         })}
 
-                    </table>
+                    </Table>
                 </main>
 
                 <footer className={styles.footer}>

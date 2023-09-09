@@ -1,6 +1,7 @@
 .container {
   padding: 0rem 1vw;
   background-color:  	 	#394955;
+  width: auto;
   /* background-color:steelblue;
   opacity: 0.8; */
   
@@ -151,6 +152,18 @@
   }
 }
 
+.tr {
+  max-width: 100vw;
+  min-width: 100vw;
+}
+
 .td{
   padding: 0.5rem;
+  
+}
+
+
+.th{
+  padding: 0.5rem;
+  background-color: grey;
 }
