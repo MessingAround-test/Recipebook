@@ -5,8 +5,7 @@ import dbConnect from '../../../../lib/dbConnect'
 import User from '../../../../models/User'
 import Ingredients from '../../../../models/Ingredients'
 import axios from 'axios';
-
-
+import {convertMetricReading} from '../../../../lib/conversion'
 
 
 export default async function handler(req, res) {
@@ -14,12 +13,12 @@ export default async function handler(req, res) {
 
 
     console.log(req.query)
-    var ingredient_name = req.query.name
+    var search_term = req.query.name
 
     verify(req.query.EDGEtoken, secret, async function (err, decoded) {
         try {
             if (err) {
-                res.status(400).json({ res: "error: " + String(err) })
+                return res.status(400).json({ res: "error: " + String(err) })
             } else {
                 if (req.method === "GET") {
 
@@ -29,15 +28,15 @@ export default async function handler(req, res) {
                     var db_id = decoded.id
                     var userData = await User.findOne({ id: db_id });
                     if (userData === {}) {
-                        res.status(400).json({ res: "user not found, please relog" })
+                        return res.status(400).json({ res: "user not found, please relog" })
                     } else {
                         let newIngredData = await axios({
                             method: 'get',
-                            url: `https://www.igashop.com.au/api/storefront/stores/52511/search?misspelling=true&q=${ingredient_name}&skip=0&sort=&take=20`
+                            url: `https://www.igashop.com.au/api/storefront/stores/52511/search?misspelling=true&q=${search_term}&skip=0&sort=&take=20`
                         })
                         var filteredDataArray = []
                         let source = "IGA"
-                        console.log(newIngredData)
+                        // console.log(newIngredData)
                         // filteredDataArray = newIngredData
                         for (var ingredData in newIngredData.data.items) {
                             try {
@@ -45,30 +44,53 @@ export default async function handler(req, res) {
                                     continue
                                 }
                                 let filteredData = newIngredData.data.items[ingredData]
-                                console.log(filteredData)
-
-
+                                // console.log(filteredData)
+                                
+                                let internal_id = filteredData.sku
+                                let quantity_type = filteredData.unitOfPrice.type.size
+                                let name = filteredData.name
+                                let price = filteredData.price.replace("$", "").replace("avg/ea", "")
+                                let quantity = filteredData.unitOfPrice.size
+                                // If quantity type is not defined or null then extract from the name
+                                if (!(quantity_type)){
+                                    
+                                    let metricConversion = convertMetricReading(name)
+                                    console.log(metricConversion)
+                                    quantity = metricConversion.quantity
+                                    quantity_type = metricConversion.quantity_type
+                                } else {
+                                    // If we get a quantity_type, we need it converted to our format
+                                    let metricConversion = convertMetricReading(quantity_type)
+                                    quantity_type = metricConversion.quantity_type
+                                    console.log(metricConversion)
+                                    // If the quantity returned is not 1, then multiply it by the quantity
+                                    if (metricConversion.quantity !== 1){
+                                        quantity = quantity * metricConversion.quantity
+                                    }
+                                }
+                                
                                 var filteredObj = {
-                                    "id": source + "-" + filteredData.name + "-" + filteredData.sku,
-                                    "name": filteredData.name,
-                                    "price": filteredData.price.replace("$", ""),
-                                    "quantity_type": filteredData.unitOfPrice.type.size,
-                                    "quantity": filteredData.unitOfPrice.size,
-                                    "search_term": ingredient_name,
+                                    "id": source + "-" + name + "-" +internal_id ,
+                                    "name": name,
+                                    "price": price ,
+                                    "quantity_type": quantity_type,
+                                    "quantity": quantity,
+                                    "search_term": search_term,
                                     "source": source,
                                     // "extraData": filteredData
 
                                 }
+                                console.log(filteredObj)
                                 const response = Ingredients.create({
-                                    "id": source + "-" + filteredData.name + "-" + filteredData.sku,
-                                    "name": filteredData.name,
-                                    "price": filteredData.price.replace("$", ""),
-                                    "quantity_type": filteredData.unitOfPrice.type.size,
-                                    "quantity": filteredData.unitOfPrice.size,
-                                    "search_term": ingredient_name,
+                                    "id": source + "-" + name + "-" +internal_id ,
+                                    "name": name,
+                                    "price": price ,
+                                    "quantity_type": quantity_type,
+                                    "quantity": quantity,
+                                    "search_term": search_term,
                                     "source": source,
                                 });
-                                console.log(await response);
+                                // console.log(await response);
 
                                 filteredDataArray.push(filteredObj)
                             } catch (e){
@@ -79,7 +101,7 @@ export default async function handler(req, res) {
 
 
 
-                        res.status(200).send({ res: filteredDataArray, success: true })
+                        return res.status(200).send({ res: filteredDataArray, success: true })
 
 
                     }
@@ -92,15 +114,15 @@ export default async function handler(req, res) {
                     // var db_id = decoded.id
                     // var userData = await User.findOne({ id: db_id });
                     // if (userData === {}) {
-                    //     res.status(400).json({ res: "user not found, please relog" })
+                    //     return res.status(400).json({ res: "user not found, please relog" })
                     // } else {
 
                     //     var RecipeData = await Recipe.deleteOne({ _id: recipe_id })
-                    //     res.status(200).json({ success: true, data: RecipeData, message: "Success" })
+                    //     return res.status(200).json({ success: true, data: RecipeData, message: "Success" })
                     // }
-                    res.status(400).json({ success: false, data: [], message: "Not supported request" })
+                    return res.status(400).json({ success: false, data: [], message: "Not supported request" })
                 } else {
-                    res.status(400).json({ success: false, data: [], message: "Not supported request" })
+                    return res.status(400).json({ success: false, data: [], message: "Not supported request" })
                 }
             }
         } catch (e) {

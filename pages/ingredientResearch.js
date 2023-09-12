@@ -10,7 +10,7 @@ import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Router from 'next/router'
 import Card from 'react-bootstrap/Card'
-
+import {IngredientList} from "../components/IngredientList"
 
 
 export default function Home() {
@@ -55,10 +55,16 @@ export default function Home() {
         let supplierName = e.target.supplierName.value
 
 
-        var data = await (await fetch(`/api/Ingredients/${IngredQuery}?supplier=${supplierName}&EDGEtoken=` + localStorage.getItem('Token'))).json()
+        let data = await (await fetch(`/api/Ingredients/${IngredQuery}?supplier=${supplierName}&EDGEtoken=` + localStorage.getItem('Token'))).json()
         console.log(data)
+        if (data.loadedSource === true){
+            data = await (await fetch(`/api/Ingredients/${IngredQuery}?supplier=${supplierName}&EDGEtoken=` + localStorage.getItem('Token'))).json()
+            console.log(data)
+        } 
+
         setAllIngreds([...allIngreds.concat(data.res)])
-        console.log(data)
+        
+        console.log(allIngreds)
         // setRecipes(data.res)
     }
 
@@ -114,26 +120,6 @@ export default function Home() {
         }
 
         getUserDetails();
-        getAllIngredients()
-        setHeaders([
-            // "_id",
-            // "id",
-            "name",
-            "source",
-            "price",
-            "quantity",
-            "quantity_type",
-            "search_term",
-            // "created_at",
-            // "updated_at",
-            // "__v"
-        ])
-
-        setSuppliers([
-            "","WW", "IGA", "Panetta", "Coles"
-        ])
-        // getRecipeDetails();
-        // console.log(await data)
     }, []) // <-- empty dependency array
 
 
@@ -155,63 +141,8 @@ export default function Home() {
                     <link rel="icon" href="/favicon.ico" />
                 </Head>
                 <main className={styles.main}>
-                    <Form onSubmit={(e) => getIngredient(e)}>
-                        <Form.Group className="mb-3" id="formBasicEmail">
-                            <Form.Label>Name</Form.Label>
-                            <Form.Control name="ingredName" id="ingredName" type="text" placeholder="Enter ingredient Name" onChange={(e)=>updateFilteredIngreds(e)} required />
-                            <Form.Label>Supplier</Form.Label>
-                            <Form.Select name="supplierName" id="supplierName" type="text" placeholder="Enter ingredient Name" onChange={(e)=>updateFilteredIngreds(e)}>
-                                {
-                                    Suppliers.map((supplier)=>{
-                                        return <option value={supplier}>{supplier}</option>
-                                    })
-                                }
-                            </Form.Select>
-                            
-                        </Form.Group>
-
-
-                        <Button variant="primary" type="submit">
-                            Submit
-                        </Button>
-                        <Button variant="danger" onClick={(e)=>deleteAllIngredients()}>
-                            Delete all
-                        </Button>
-                    </Form>
-                    <br></br>
-                    <Table style={{borderRadius: '5px', overflow: 'hidden'}}>
-                        {Headers.map((key) => {
-                            return (
-                                <>
-                                    <th className={styles.th}>
-                                        {key}
-                                    </th>
-                                </>
-                            )
-                        })}
-                        {filteredIngreds.map((ingredient) => {
-                            let res = Headers.map((key) => {
-                                return (
-                                    <>
-                                        <td className={styles.td}>
-                                            <a>
-                                            {ingredient[key]}
-                                            </a>
-                                        </td>
-                                    </>
-                                )
-                            })
-                            return (
-                                <>
-                                <tr className={styles.tr} style={{ padding: "0.5vh" } }>
-                                    {res}
-                                </tr>
-                                </>
-                            )
-
-                        })}
-
-                    </Table>
+                    {/* style={{width: "50%", "left": "50%", "right": "50%"}} */}
+                    <IngredientList></IngredientList>
                 </main>
 
                 <footer className={styles.footer}>

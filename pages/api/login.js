@@ -5,7 +5,15 @@ import { sign} from "jsonwebtoken"
 import {secret} from "../../lib/dbsecret"
 
 
-
+/**
+ * @swagger
+ * /api/login:
+ *   post:
+ *     description: Returns Token from Login
+ *     responses:
+ *       200:
+ *         description: hello world
+ */
 
 export default async function handler (req, res) {
     if (req.method === "POST"){

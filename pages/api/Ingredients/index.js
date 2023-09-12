@@ -8,6 +8,11 @@ import axios from 'axios';
 
 export default async function handler(req, res) {
     if (req.method === "GET") {
+        var ingredient_name = req.query.name
+        console.log('WE CAME HERE')
+        console.log(ingredient_name)
+        
+
         let IngredData = await Ingredients.find({}).exec()
         res.status(200).send({ res: IngredData })
     } else if (req.method === "DELETE") {
@@ -28,6 +33,7 @@ export default async function handler(req, res) {
         // res.status(400).json({ success: false, data: [], message: "Not supported request" })
     } else {
         res.status(400).json({ success: false, data: [], message: "Not supported request" })
+        
     }
 }
 

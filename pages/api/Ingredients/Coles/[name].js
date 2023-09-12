@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     verify(req.query.EDGEtoken, secret, async function (err, decoded) {
         try {
             if (err) {
-                res.status(400).json({ res: "error: " + String(err) })
+                return res.status(400).json({ res: "error: " + String(err) })
             } else {
                 if (req.method === "GET") {
 
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
                     var db_id = decoded.id
                     var userData = await User.findOne({ id: db_id });
                     if (userData === {}) {
-                        res.status(400).json({ res: "user not found, please relog" })
+                        return res.status(400).json({ res: "user not found, please relog" })
                     } else {
                         let newIngredData = await axios({
                             method: 'get',
@@ -102,7 +102,7 @@ export default async function handler(req, res) {
                         //     filteredDataArray.push(filteredObj)
                         //     // console.log(filteredData)
                         // }
-                        res.status(200).send({ res: filteredDataArray, success: true})
+                        return res.status(200).send({ res: filteredDataArray, success: true})
 
 
                     }
@@ -115,15 +115,15 @@ export default async function handler(req, res) {
                     // var db_id = decoded.id
                     // var userData = await User.findOne({ id: db_id });
                     // if (userData === {}) {
-                    //     res.status(400).json({ res: "user not found, please relog" })
+                    //     return res.status(400).json({ res: "user not found, please relog" })
                     // } else {
 
                     //     var RecipeData = await Recipe.deleteOne({ _id: recipe_id })
-                    //     res.status(200).json({ success: true, data: RecipeData, message: "Success" })
+                    //     return res.status(200).json({ success: true, data: RecipeData, message: "Success" })
                     // }
-                    res.status(400).json({ success: false, data: [], message: "Not supported request" })
+                    return res.status(400).json({ success: false, data: [], message: "Not supported request" })
                 } else {
-                    res.status(400).json({ success: false, data: [], message: "Not supported request" })
+                    return res.status(400).json({ success: false, data: [], message: "Not supported request" })
                 }
             }
         } catch (e) {
