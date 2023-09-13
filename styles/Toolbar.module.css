@@ -32,7 +32,11 @@
     animation: gradient 60s ease infinite;
 
   }
-   
+
+  .logo {
+    border-radius: 5%;
+    float: left;
+  }
   
 @keyframes gradient {
   0% {
