@@ -159,7 +159,7 @@ export default function Home() {
                         <link rel="icon" href="/avo.ico" />
                     </Head>
                     <main className={styles.main}>
-                        <Button onClick={() => getIngredDetails()} className={styles.right}>Get WW Data</Button>
+                        
                         <div>
                             <Container className={styles.centered}>
                                 <h1 className={styles.centered}>{recipeName}</h1>
@@ -227,13 +227,13 @@ export default function Home() {
 
                                     </Col>
                                 </Row>
-                                <Row>
-                                    <Col>
+                                <Button onClick={() => getIngredDetails()}>Get WW Data</Button>
+                                <br></br>
                                         <Button variant="danger" onClick={() => deleteRecipe()}>
                                             Delete Recipe
                                         </Button>
-                                    </Col>
-                                </Row>
+                                      
+                                
                                 <p>RECIPEID = {id}</p>
                             </Container>
                         </div>
