@@ -3,9 +3,28 @@
   background-color:  	 	#394955;
   width: 100%;
   max-width: 100%;
-  overflow-x: scroll;
+  overflow-x: scroll; 
+
   /* background-color:steelblue;
   opacity: 0.8; */
+}
+
+.curvedEdge {
+  border-radius :20px;
+}
+
+.right {
+  float: right
+}
+
+.bordered {
+  border-color: black;
+  border-width: 0.25rem;
+  border-style: solid;
+}
+
+.centered {
+  text-align: center;
 }
 
 .cardGroup{

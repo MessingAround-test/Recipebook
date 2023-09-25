@@ -182,7 +182,7 @@ export default function Home() {
                                                 
                                                 <Form.Select aria-label="Default select example" name="ingredAmountType" id="ingredAmountType" required>
 
-                                                    <option value="x">Amount (xN)</option>
+                                                    <option value="each">Amount (xN)</option>
                                                     <option value="g">Grams</option>
                                                     <option value="c">Cups</option>
                                                     <option value="tbs">Tablespoon</option>

@@ -5,11 +5,22 @@ import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
 import Ingredients from '../../../models/Ingredients'
 import axios from 'axios';
+import { filter } from '../../../lib/filtering'
+
 
 export default async function handler(req, res) {
     //console.log(req.query)
-    var search_term = req.query.name
-    var supplier = req.query.supplier
+    let search_term = req.query.name
+    let supplier = req.query.supplier
+
+    let filterDetails = {
+        "search_term": search_term,
+        "supplier": supplier,
+        "optionSort": req.query.sort,
+        "returnN": req.query.returnN, 
+        "quantity_type": req.query.qType,
+    }
+
     //console.log(search_term)
     if (req.method === "GET") {
         if (search_term === "") {
@@ -60,29 +71,31 @@ export default async function handler(req, res) {
                 // allIngredData = await Ingredients.find(search_query).exec()
                 return res.status(200).send({ res: allIngredData, "loadedSource": false })
             } else {
-                return res.status(200).send({ res: IngredData, "loadedSource": false })
+                console.log("yes maam we made it")
+                IngredData = filter(IngredData, filterDetails)
+                return res.status(200).send({ success: true, res: IngredData, "loadedSource": false })
             }
         }
     } else if (req.method === "DELETE") {
-        var search_term = req.query.name
+        let search_term = req.query.name
         if (search_term === "") {
             let IngredData = await Ingredients.deleteMany({}).exec()
             return res.status(200).json({ success: true, data: IngredData, message: "Success" })
         } else {
-            let IngredData = await Ingredients.deleteMany({"search_term": search_term}).exec()
+            let IngredData = await Ingredients.deleteMany({ "search_term": search_term }).exec()
             return res.status(200).json({ success: true, data: IngredData, message: "Success" })
         }
 
         // await dbConnect()
 
         // //console.log(decoded)
-        // var db_id = decoded.id
-        // var userData = await User.findOne({ id: db_id });
+        // let db_id = decoded.id
+        // let userData = await User.findOne({ id: db_id });
         // if (userData === {}) {
         //     return res.status(400).json({ res: "user not found, please relog" })
         // } else {
 
-        //     var RecipeData = await Recipe.deleteOne({ _id: recipe_id })
+        //     let RecipeData = await Recipe.deleteOne({ _id: recipe_id })
         //     return res.status(200).json({ success: true, data: RecipeData, message: "Success" })
         // }
         // return res.status(400).json({ success: false, data: [], message: "Not supported request" })
