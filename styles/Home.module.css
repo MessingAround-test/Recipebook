@@ -4,6 +4,7 @@
   width: 100%;
   max-width: 100%;
   overflow-x: scroll; 
+  font-size: 3.2vw;
 
   /* background-color:steelblue;
   opacity: 0.8; */
@@ -36,7 +37,7 @@
 .main {
   border-radius: 0rem 0rem 1rem 1rem;
   min-height: 100vh;
-  
+  font-size: 3.2vw;
   padding: 2rem 2rem;
   flex: 1;
   /* display: flex; */
@@ -175,11 +176,13 @@
 .td{
   padding: 0.5rem;
   background-color: white;
+  font-size: 2vw;
 }
 
 
 .th{
   padding: 0.5rem;
   background-color: #1C2640;
-  color: white
+  color: white;
+  font-size: 2vw;
 }

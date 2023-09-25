@@ -166,7 +166,7 @@ export default function Home() {
                                 <h2>Ingredients</h2>
                                 <Row>
                                     <Col>
-                                        <div style={{ maxWidth: '80vw', minWidth: '500px', color: "white" }}>
+                                        <div style={{ color: "white" }}>
                                             <Container>
                                                 {ingreds.map((ingred) => {
                                                     return (

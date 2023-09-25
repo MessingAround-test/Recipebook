@@ -128,7 +128,7 @@ export function IngredientList(props) {
 
     return (
         <div>
-            <div  >
+            <div >
                 <Form onSubmit={(e) => getIngredient(e)}>
                     <Form.Group className="mb-3" id="formBasicEmail">
                         <Form.Label>Name</Form.Label>
@@ -154,7 +154,7 @@ export function IngredientList(props) {
                 </Form>
             </div>
             <br></br>
-            <Table style={{ borderRadius: '5px', overflow: 'hidden' }}>
+            <Table style={{ borderRadius: '5px', overflow: 'hidden', maxWidth: "100vw"}}>
                 {Headers.map((key) => {
                     return (
                         <>
