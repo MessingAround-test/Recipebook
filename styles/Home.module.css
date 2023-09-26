@@ -37,7 +37,7 @@
 .main {
   border-radius: 0rem 0rem 1rem 1rem;
   min-height: 100vh;
-  font-size: 3.2vw;
+  font-size: 2cqw;
   padding: 2rem 2rem;
   flex: 1;
   /* display: flex; */
@@ -176,7 +176,7 @@
 .td{
   padding: 0.5rem;
   background-color: white;
-  font-size: 2vw;
+  font-size: 2cqw;
 }
 
 
@@ -184,5 +184,5 @@
   padding: 0.5rem;
   background-color: #1C2640;
   color: white;
-  font-size: 2vw;
+  font-size: 2cqw;
 }

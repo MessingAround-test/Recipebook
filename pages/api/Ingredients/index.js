@@ -50,7 +50,8 @@ export default async function handler(req, res) {
                 }
                 // Re-search at the end and get results
                 // allIngredData = await Ingredients.find(search_query).exec()
-                return res.status(200).send({ success: true, res: allIngredData, "loadedSource": true })
+                let IngredData = filter(allIngredData, filterDetails)
+                return res.status(200).send({ success: true, res: IngredData, "loadedSource": true })
             } else {
                 console.log("yes maam we made it")
                 IngredData = filter(IngredData, filterDetails)

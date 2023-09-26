@@ -24,7 +24,7 @@ export default function Home() {
     const [instructions, setInstructions] = useState([])
     const [imageData, setImageData] = useState()
     const [recipeName, setRecipeName] = useState("")
-
+    const [ingredientData, setIngredientData] = useState([])
 
 
 
@@ -34,8 +34,8 @@ export default function Home() {
         setUserData(data.res)
     }
 
-    async function getIngredDetails() {
-        const newItems = [...ingreds];
+    async function getIngredDetails(ingredients) {
+        const newItems = [...ingredients];
         for (var ingredients in newItems) {
             var data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&returnN=1&EDGEtoken=${localStorage.getItem('Token')}`)).json()
             console.log(data)
@@ -76,10 +76,12 @@ export default function Home() {
         var data = await (await fetch("/api/Recipe/" + String(await router.query.id) + "?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
         setRecipe(data.res)
-        setIngreds(data.res.ingredients)
+        // setIngreds(data.res.ingredients)
         setInstructions(data.res.instructions)
         setImageData(data.res.image)
         setRecipeName(data.res.name)
+        
+        getIngredDetails(data.res.ingredients)
     }
 
     // TJOS ISNT WORKING AGAGAG
@@ -105,9 +107,9 @@ export default function Home() {
         
         // getUserDetails();
         getRecipeDetails()
+        
         // console.log(await data)
     
-        // getIngredDetails()
 
         // console.log(await data)
     }, [router.isReady]) // <-- empty dependency array
@@ -227,7 +229,7 @@ export default function Home() {
 
                                     </Col>
                                 </Row>
-                                <Button onClick={() => getIngredDetails()}>Get WW Data</Button>
+                                <Button onClick={() => getIngredDetails(ingreds)}>Get Grocery Store Data</Button>
                                 <br></br>
                                         <Button variant="danger" onClick={() => deleteRecipe()}>
                                             Delete Recipe
