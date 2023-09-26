@@ -32,7 +32,7 @@ export default async function handler(req, res) {
             console.log(IngredData)
             if (IngredData.length == 0) {
                 let allIngredData = []
-                let companies = ["WW"]
+                let companies = ["WW", "IGA", "PanettaGG"]
                 if (supplier !== undefined) {
                     companies = [supplier]
                 }
