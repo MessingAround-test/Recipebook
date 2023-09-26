@@ -5,7 +5,7 @@ import dbConnect from '../../../../lib/dbConnect'
 import User from '../../../../models/User'
 import Ingredients from '../../../../models/Ingredients'
 import axios from 'axios';
-import {convertMetricReading} from '../../../../lib/conversion'
+import { convertMetricReading } from '../../../../lib/conversion'
 
 
 export default async function handler(req, res) {
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
                     console.log(decoded)
                     var db_id = decoded.id
                     var userData = await User.findOne({ id: db_id });
-                    if (userData === {}) {
+                    if (userData.id === undefined) {
                         return res.status(400).json({ res: "user not found, please relog" })
                     } else {
                         let newIngredData = await axios({
@@ -45,15 +45,15 @@ export default async function handler(req, res) {
                                 }
                                 let filteredData = newIngredData.data.items[ingredData]
                                 // console.log(filteredData)
-                                
+
                                 let internal_id = filteredData.sku
                                 let quantity_type = filteredData.unitOfPrice.type.size
                                 let name = filteredData.name
                                 let price = filteredData.price.replace("$", "").replace("avg/ea", "")
                                 let quantity = filteredData.unitOfPrice.size
                                 // If quantity type is not defined or null then extract from the name
-                                if (!(quantity_type)){
-                                    
+                                if (!(quantity_type)) {
+
                                     let metricConversion = convertMetricReading(name)
                                     console.log(metricConversion)
                                     quantity = metricConversion.quantity
@@ -64,15 +64,15 @@ export default async function handler(req, res) {
                                     quantity_type = metricConversion.quantity_type
                                     console.log(metricConversion)
                                     // If the quantity returned is not 1, then multiply it by the quantity
-                                    if (metricConversion.quantity !== 1){
+                                    if (metricConversion.quantity !== 1) {
                                         quantity = quantity * metricConversion.quantity
                                     }
                                 }
-                                
+
                                 var filteredObj = {
-                                    "id": source + "-" + name + "-" +internal_id ,
+                                    "id": source + "-" + name + "-" + internal_id,
                                     "name": name,
-                                    "price": price ,
+                                    "price": price,
                                     "quantity_type": quantity_type,
                                     "quantity": quantity,
                                     "search_term": search_term,
@@ -82,9 +82,9 @@ export default async function handler(req, res) {
                                 }
                                 console.log(filteredObj)
                                 const response = Ingredients.create({
-                                    "id": source + "-" + name + "-" +internal_id ,
+                                    "id": source + "-" + name + "-" + internal_id,
                                     "name": name,
-                                    "price": price ,
+                                    "price": price,
                                     "quantity_type": quantity_type,
                                     "quantity": quantity,
                                     "search_term": search_term,
@@ -93,10 +93,10 @@ export default async function handler(req, res) {
                                 // console.log(await response);
 
                                 filteredDataArray.push(filteredObj)
-                            } catch (e){
+                            } catch (e) {
                                 console.log(e)
                             }
-                            
+
                         }
 
 

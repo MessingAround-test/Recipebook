@@ -37,9 +37,9 @@ export default function Home() {
     async function getIngredDetails() {
         const newItems = [...ingreds];
         for (var ingredients in newItems) {
-            var data = await (await fetch(`/api/Ingredients/${newItems[ingredients].Name}?qType=${newItems[ingredients].AmountType}&returnN=1&EDGEtoken=${localStorage.getItem('Token')}`)).json()
+            var data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&returnN=1&EDGEtoken=${localStorage.getItem('Token')}`)).json()
             console.log(data)
-            if (data.success === true) {
+            if (data.success === true && data.res.length > 0) {
                 newItems[ingredients].price = data.res[0].price;
                 newItems[ingredients].price_measure = data.res[0].quantity_type;
                 newItems[ingredients].supplierName = data.res[0].name;

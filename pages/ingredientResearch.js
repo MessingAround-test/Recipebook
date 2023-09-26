@@ -55,10 +55,10 @@ export default function Home() {
         let supplierName = e.target.supplierName.value
 
 
-        let data = await (await fetch(`/api/Ingredients/${IngredQuery}?supplier=${supplierName}&EDGEtoken=` + localStorage.getItem('Token'))).json()
+        let data = await (await fetch(`/api/Ingredients?name=${IngredQuery}&supplier=${supplierName}&EDGEtoken=` + localStorage.getItem('Token'))).json()
         console.log(data)
         if (data.loadedSource === true){
-            data = await (await fetch(`/api/Ingredients/${IngredQuery}?supplier=${supplierName}&EDGEtoken=` + localStorage.getItem('Token'))).json()
+            data = await (await fetch(`/api/Ingredients?name=${IngredQuery}&supplier=${supplierName}&EDGEtoken=` + localStorage.getItem('Token'))).json()
             console.log(data)
         } 
 

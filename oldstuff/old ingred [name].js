@@ -13,11 +13,12 @@ export default async function handler(req, res) {
     let search_term = req.query.name
     let supplier = req.query.supplier
 
+
     let filterDetails = {
         "search_term": search_term,
         "supplier": supplier,
         "optionSort": req.query.sort,
-        "returnN": req.query.returnN, 
+        "returnN": req.query.returnN,
         "quantity_type": req.query.qType,
     }
 
@@ -33,17 +34,8 @@ export default async function handler(req, res) {
                 search_query["source"] = supplier
             }
             let IngredData = await Ingredients.find(search_query).exec()
-
-            // IngredData.concat(await Ingredients.find({ $text: { $search: search_term } }, { score: { $meta: "textScore" } }).exec())
-            // If we havent already extracted it, then we want to extract it from the source systems
-            //console.log("MADE IT")
-            //console.log(IngredData)
             if (IngredData.length == 0) {
                 let allIngredData = []
-                // "Coles"
-                // , "PanettaGG"
-                // "IGA"
-                // "WW"
                 let companies = ["WW", "IGA", "PanettaGG"]
                 if (supplier !== undefined) {
                     companies = [supplier]
@@ -85,20 +77,6 @@ export default async function handler(req, res) {
             let IngredData = await Ingredients.deleteMany({ "search_term": search_term }).exec()
             return res.status(200).json({ success: true, data: IngredData, message: "Success" })
         }
-
-        // await dbConnect()
-
-        // //console.log(decoded)
-        // let db_id = decoded.id
-        // let userData = await User.findOne({ id: db_id });
-        // if (userData === {}) {
-        //     return res.status(400).json({ res: "user not found, please relog" })
-        // } else {
-
-        //     let RecipeData = await Recipe.deleteOne({ _id: recipe_id })
-        //     return res.status(200).json({ success: true, data: RecipeData, message: "Success" })
-        // }
-        // return res.status(400).json({ success: false, data: [], message: "Not supported request" })
     } else {
         return res.status(400).json({ success: false, data: [], message: "Not supported request" })
     }
