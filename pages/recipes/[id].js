@@ -159,97 +159,89 @@ export default function Home() {
                         <link rel="icon" href="/avo.ico" />
                     </Head>
                     <main className={styles.main}>
-
-                        <div>
-                            <Container className={styles.centered}>
-                                <h1 className={styles.centered}>{recipeName}</h1>
-                                <h2>Ingredients</h2>
-                                <Row>
-                                    <Col>
-                                        <div style={{ color: "white" }}>
-                                            <Container>
-                                                {ingreds.map((ingred) => {
-                                                    return (
-                                                        <div style={{ padding: "1rem" }} >
-                                                            <Row>
-                                                            <Col>
-                                                                 {ingred.Amount} {ingred.AmountType}
-                                                                </Col>
-                                                                <Col> {ingred.Name}</Col>
-                                                                <Col>
-                                                                    <img src={`/${ingred.source}.png`} />
-                                                                </Col>
-                                                                <Col className={[styles.curvedEdge]} style={{ background: "grey" }}>
-                                                                    {ingred.name} 
-                                                                </Col>
-                                                                <Col>
-                                                                    ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}
-                                                                </Col>
+                        <Container className={styles.centered}>
+                            <h1 className={styles.centered}>{recipeName}</h1>
+                            <h2>Ingredients</h2>
+                            <Row>
+                                {ingreds.map((ingred) => {
+                                    return (
+                                        <div style={{ padding: "1rem" }} >
+                                            <Row>
+                                                <Col>
+                                                    {ingred.Amount} {ingred.AmountType}
+                                                </Col>
+                                                <Col> {ingred.Name}</Col>
+                                                <Col>
+                                                    <img src={`/${ingred.source}.png`} />
+                                                </Col>
+                                                <Col className={[styles.curvedEdge]} style={{ background: "grey" }}>
+                                                    {ingred.name}
+                                                </Col>
+                                                <Col>
+                                                    ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}
+                                                </Col>
 
 
 
-                                                                {/* <Image src={ingred.source}></Image> */}
-                                                                {/* <div className="w-full h-64 rounded-b-lg bg-cover bg-center" style={{ backgroundImage: `url(${ingred.source})` }}>hi there</div> */}
-                                                                {/* <Col>
+                                                {/* <Image src={ingred.source}></Image> */}
+                                                {/* <div className="w-full h-64 rounded-b-lg bg-cover bg-center" style={{ backgroundImage: `url(${ingred.source})` }}>hi there</div> */}
+                                                {/* <Col>
                                                                     {<>${(ingred.unit_price)}</>}
                                                                 </Col> */}
-                                                                {/* <Col>
+                                                {/* <Col>
                                                                     {<>${(ingred.unit_price * ingred.Amount).toFixed(2)}</>}
 
                                                                 </Col> */}
-                                                            </Row>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </Container>
+                                            </Row>
                                         </div>
+                                    )
+                                })}
 
-                                    </Col>
-                                </Row>
-                                <h2>Total {getAproxTotalRecipeCost()}</h2>
-                                <h2>Instructions</h2>
-                                <Row >
-                                    <Col>
+                            </Row>
+                            <h2>Total {getAproxTotalRecipeCost()}</h2>
+                            <h2>Instructions</h2>
+                            <Row >
+                                <Col>
 
-                                        {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
+                                    {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
 
-                                        <ol>
-                                            {instructions.map((instruction, index) => {
-                                                return (
-                                                    <div>
-                                                        <Row>
-                                                            <Col>
-                                                                <p> Step:  {index + 1}: {instruction.Text} </p>
-                                                            </Col>
+                                    <ol>
+                                        {instructions.map((instruction, index) => {
+                                            return (
+                                                <div>
+                                                    <Row>
+                                                        <Col>
+                                                            <p> Step:  {index + 1}: {instruction.Text} </p>
+                                                        </Col>
 
-                                                        </Row>
-                                                    </div>
-                                                )
-                                            })}
-                                        </ol>
+                                                    </Row>
+                                                </div>
+                                            )
+                                        })}
+                                    </ol>
 
-                                    </Col>
-                                </Row>
-                                <Row style={{ paddingBottom: "1vw", display: "flex" }}>
+                                </Col>
+                            </Row>
+                            <Row style={{ paddingBottom: "1vw", display: "flex" }}>
 
-                                    <Col >
-                                        {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
-                                        <Card style={{ maxWidth: '80vw', color: "black", "backgroundColor": "rgba(76, 175, 80, 0.0)" }}>
-                                            <img src={imageData} style={{ display: "block", maxWidth: "20vw", maxHeight: "20vw", width: "auto", height: "auto" }} />
-                                        </Card>
+                                <Col >
+                                    {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
+                                    <Card style={{ maxWidth: '80vw', color: "black", "backgroundColor": "rgba(76, 175, 80, 0.0)" }}>
+                                        <img src={imageData} style={{ display: "block", maxWidth: "20vw", maxHeight: "20vw", width: "auto", height: "auto" }} />
+                                    </Card>
 
-                                    </Col>
-                                </Row>
-                                <Button onClick={() => getIngredDetails(ingreds)}>Get Grocery Store Data</Button>
-                                <br></br>
-                                <Button variant="danger" onClick={() => deleteRecipe()}>
-                                    Delete Recipe
-                                </Button>
+                                </Col>
+                            </Row>
+                            <Button onClick={() => getIngredDetails(ingreds)}>Get Grocery Store Data</Button>
+                            <br></br>
+                            <Button variant="danger" onClick={() => deleteRecipe()}>
+                                Delete Recipe
+                            </Button>
 
 
-                                <p>RECIPEID = {id}</p>
-                            </Container>
-                        </div>
+                            <p>RECIPEID = {id}</p>
+                        </Container>
+
 
                     </main>
 
