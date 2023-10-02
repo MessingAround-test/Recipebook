@@ -97,7 +97,7 @@ export default function Home() {
             alert("please re-log in")
             Router.push("/login")
         }
-        
+        console.log(quantity_unit_conversions)
         setQuanityTypes(quantity_unit_conversions)
     }, []) // <-- empty dependency array
 
