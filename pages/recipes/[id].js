@@ -183,8 +183,11 @@ export default function Home() {
                                                                 </Col>
                                                                 <Col>{ingred.supplierName}</Col>
                                                                 <Col>
-
                                                                     {<>${(ingred.totalCost)}</>}
+                                                                </Col>
+                                                                <Col>
+                                                                {<>${(ingred.Amount * ingred.price)}</>}
+
                                                                 </Col>
                                                             </Row>
                                                         </div>

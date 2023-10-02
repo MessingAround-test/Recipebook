@@ -1,6 +1,8 @@
 import Ingredients from '../../../models/Ingredients'
 import axios from 'axios';
 import { filter } from '../../../lib/filtering'
+import { convertMetricReading } from '../../../lib/conversion'
+
 
 export default async function handler(req, res) {
     if (req.method === "GET") {
@@ -8,13 +10,19 @@ export default async function handler(req, res) {
         if (search_term !== undefined){
             search_term = search_term.toLowerCase()
         }
+        let qType = req.query.qType
+
+        if (qType !== undefined){
+            qType = convertMetricReading(qType).quantity_type
+        }
+
         let supplier = req.query.supplier
         let filterDetails = {
             "search_term": search_term,
             "supplier": supplier,
             "optionSort": req.query.sort,
             "returnN": req.query.returnN,
-            "quantity_type": req.query.qType,
+            "quantity_type": qType,
         }
 
         if (search_term === "" || search_term === undefined) {

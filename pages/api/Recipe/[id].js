@@ -24,7 +24,7 @@ export default async function handler(req, res) {
         console.log(decoded)
         var db_id = decoded.id
         var userData = await User.findOne({ id: db_id });
-        if (userData === {}) {
+        if (userData === undefined) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
 
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
         console.log(decoded)
         var db_id = decoded.id
         var userData = await User.findOne({ id: db_id });
-        if (userData === {}) {
+        if (userData === undefined) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
 
