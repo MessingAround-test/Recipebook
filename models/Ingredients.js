@@ -6,6 +6,7 @@ const IngredSchema = new mongoose.Schema(
         name: {type: String, required: true},
         source: {type: String, required: true}, 
         price: {type: Number, required: false},
+        unit_price: {type: Number, required: false},
         quantity: {type: Number, required: false},
         quantity_type: {type: String, required: false},
         quantity_unit: {type: String, required: false},

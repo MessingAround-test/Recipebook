@@ -19,7 +19,7 @@ export default async function handler(req, res) {
         "supplier": supplier,
         "optionSort": req.query.sort,
         "returnN": req.query.returnN,
-        "quantity_type": req.query.qType,
+        "quantity_unit": req.query.qType,
     }
 
     //console.log(search_term)
