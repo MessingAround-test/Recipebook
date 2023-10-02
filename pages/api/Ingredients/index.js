@@ -13,7 +13,7 @@ export default async function handler(req, res) {
         let qType = req.query.qType
 
         if (qType !== undefined){
-            qType = convertMetricReading(qType).quantity_type
+            qType = convertMetricReading(qType).quantity_unit
         }
 
         let supplier = req.query.supplier
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
             "supplier": supplier,
             "optionSort": req.query.sort,
             "returnN": req.query.returnN,
-            "quantity_type": qType,
+            "quantity_unit": qType,
         }
 
         if (search_term === "" || search_term === undefined) {
@@ -34,8 +34,7 @@ export default async function handler(req, res) {
             if (supplier !== undefined) {
                 search_query["source"] = supplier
             }
-            console.log("HERE HERE")
-            console.log(search_query)
+            
             let IngredData = await Ingredients.find(search_query).exec()
             console.log(IngredData)
             if (IngredData.length == 0) {
@@ -61,9 +60,9 @@ export default async function handler(req, res) {
                 let IngredData = filter(allIngredData, filterDetails)
                 return res.status(200).send({ success: true, res: IngredData, "loadedSource": true })
             } else {
-                console.log("yes maam we made it")
-                IngredData = filter(IngredData, filterDetails)
-                return res.status(200).send({ success: true, res: IngredData, "loadedSource": false })
+                let filteredIngredData =  filter(IngredData, filterDetails) 
+                // IngredData 
+                return res.status(200).send({ success: true, res: filteredIngredData, "loadedSource": false })
             }
         }
     } else if (req.method === "DELETE") {

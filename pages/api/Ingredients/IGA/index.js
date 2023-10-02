@@ -47,20 +47,24 @@ export default async function handler(req, res) {
                                 // console.log(filteredData)
 
                                 let internal_id = filteredData.sku
-                                let quantity_type = filteredData.unitOfPrice.type.size
+                                let quantity_unit = filteredData.unitOfPrice.type.size
+                                let quantity_type;
                                 let name = filteredData.name
                                 let price = filteredData.price.replace("$", "").replace("avg/ea", "")
                                 let quantity = filteredData.unitOfPrice.size
+                                
                                 // If quantity type is not defined or null then extract from the name
-                                if (!(quantity_type)) {
+                                if (!(quantity_unit)) {
 
                                     let metricConversion = convertMetricReading(name)
                                     console.log(metricConversion)
                                     quantity = metricConversion.quantity
+                                    quantity_unit = metricConversion.quantity_unit
                                     quantity_type = metricConversion.quantity_type
                                 } else {
-                                    // If we get a quantity_type, we need it converted to our format
-                                    let metricConversion = convertMetricReading(quantity_type)
+                                    // If we get a quantity_unit, we need it converted to our format
+                                    let metricConversion = convertMetricReading(quantity_unit)
+                                    quantity_unit = metricConversion.quantity_unit
                                     quantity_type = metricConversion.quantity_type
                                     console.log(metricConversion)
                                     // If the quantity returned is not 1, then multiply it by the quantity
@@ -68,11 +72,13 @@ export default async function handler(req, res) {
                                         quantity = quantity * metricConversion.quantity
                                     }
                                 }
-
+                                let unit_price =  parseFloat((price/quantity).toFixed(3))
                                 var filteredObj = {
                                     "id": source + "-" + name + "-" + internal_id,
                                     "name": name,
                                     "price": price,
+                                    "unit_price": unit_price,
+                                    "quantity_unit": quantity_unit,
                                     "quantity_type": quantity_type,
                                     "quantity": quantity,
                                     "search_term": search_term,
@@ -85,6 +91,8 @@ export default async function handler(req, res) {
                                     "id": source + "-" + name + "-" + internal_id,
                                     "name": name,
                                     "price": price,
+                                    "unit_price": unit_price,
+                                    "quantity_unit": quantity_unit,
                                     "quantity_type": quantity_type,
                                     "quantity": quantity,
                                     "search_term": search_term,

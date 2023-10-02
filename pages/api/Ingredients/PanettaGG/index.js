@@ -59,7 +59,7 @@ export default async function handler(req, res) {
 
                                     let internal_id = filteredData.id
 
-                                    // Previous def of quantity_type
+                                    // Previous def of quantity_unit
                                     // filteredData.measure || filteredData.CupMeasure
 
                                     let name = filteredData.name
@@ -67,20 +67,23 @@ export default async function handler(req, res) {
                                     
                                     // Always extract out of name.. 
                                     let quantity = 1
-                                    let quantity_type = undefined
+                                    let quantity_unit = undefined
 
                                     // With woolies they put the quantity type in here for some weird reason
                                     //console.log(quantity)
-                                    //console.log(quantity_type)
+                                    //console.log(quantity_unit)
                                     // If quantity type is not defined or null then extract from the name
-                                    if (!(quantity_type)) {
+                                    let quantity_type;
+                                    if (!(quantity_unit)) {
                                         let metricConversion = convertMetricReading(name)
                                         //console.log(metricConversion)
                                         quantity = metricConversion.quantity
+                                        quantity_unit = metricConversion.quantity_unit
                                         quantity_type = metricConversion.quantity_type
                                     } else {
-                                        // If we get a quantity_type, we need it converted to our format
-                                        let metricConversion = convertMetricReading(quantity_type)
+                                        // If we get a quantity_unit, we need it converted to our format
+                                        let metricConversion = convertMetricReading(quantity_unit)
+                                        quantity_unit = metricConversion.quantity_unit
                                         quantity_type = metricConversion.quantity_type
                                         //console.log(metricConversion)
                                         // If the quantity returned is not 1, then multiply it by the quantity
@@ -88,11 +91,13 @@ export default async function handler(req, res) {
                                             quantity = quantity * metricConversion.quantity
                                         }
                                     }
-
+                                    let unit_price =  parseFloat((price/quantity).toFixed(3))
                                     var filteredObj = {
                                         "id": source + "-" + name + "-" + internal_id,
                                         "name": name,
                                         "price": price,
+                                        "unit_price": unit_price,
+                                        "quantity_unit": quantity_unit,
                                         "quantity_type": quantity_type,
                                         "quantity": quantity,
                                         "search_term": search_term,
@@ -107,6 +112,8 @@ export default async function handler(req, res) {
                                         "id": source + "-" + name + "-" + internal_id,
                                         "name": name,
                                         "price": price,
+                                        "unit_price": unit_price,
+                                        "quantity_unit": quantity_unit,
                                         "quantity_type": quantity_type,
                                         "quantity": quantity,
                                         "search_term": search_term,

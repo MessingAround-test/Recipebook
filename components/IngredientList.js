@@ -106,9 +106,11 @@ export function IngredientList(props) {
             "name",
             "source",
             "price",
+            "unit_price",
             "quantity",
             "quantity_type",
-            "search_term",
+            "quantity_unit",
+            "search_term"
             // "created_at",
             // "updated_at",
             // "__v"

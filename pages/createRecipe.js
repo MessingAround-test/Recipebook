@@ -4,7 +4,7 @@ import styles from '../styles/Home.module.css'
 
 import Card from 'react-bootstrap/Card'
 import Button from 'react-bootstrap/Button'
-import {quantity_type_conversions} from "../lib/conversion"
+import {quantity_unit_conversions} from "../lib/conversion"
 
 import { Toolbar } from './Toolbar'
 import { useEffect, useState } from 'react'
@@ -98,7 +98,7 @@ export default function Home() {
             Router.push("/login")
         }
         
-        setQuanityTypes(quantity_type_conversions)
+        setQuanityTypes(quantity_unit_conversions)
     }, []) // <-- empty dependency array
 
 
@@ -182,7 +182,7 @@ export default function Home() {
                                             <Form.Control name="ingredAmount" id="ingredAmount" type="text" placeholder="Enter Amount" required />
 
                                             <Form.Select aria-label="Default select example" name="ingredAmountType" id="ingredAmountType" required>
-                                            {Object.keys(quantity_type_conversions).map((item) => <option value={item}>{item}</option>)}
+                                            {Object.keys(quantity_unit_conversions).map((item) => <option value={item}>{item}</option>)}
                                             </Form.Select>
                                         </Form.Group>
 

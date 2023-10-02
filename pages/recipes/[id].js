@@ -2,7 +2,7 @@
 import Head from 'next/head'
 import styles from '../../styles/Home.module.css'
 
-
+import Image from 'next/image'
 
 import { Toolbar } from '../Toolbar'
 import { useEffect, useState } from 'react'
@@ -36,14 +36,12 @@ export default function Home() {
 
     async function getIngredDetails(ingredients) {
         const newItems = [...ingredients];
+        console.log(newItems)
         for (var ingredients in newItems) {
             var data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&returnN=1&EDGEtoken=${localStorage.getItem('Token')}`)).json()
             console.log(data)
             if (data.success === true && data.res.length > 0) {
-                newItems[ingredients].price = data.res[0].price;
-                newItems[ingredients].price_measure = data.res[0].quantity_type;
-                newItems[ingredients].supplierName = data.res[0].name;
-                newItems[ingredients].totalCost = data.res[0].totalCost;
+                newItems[ingredients] = { ...newItems[ingredients], ...data.res[0] }
             }
         }
         setIngreds(newItems)
@@ -80,7 +78,7 @@ export default function Home() {
         setInstructions(data.res.instructions)
         setImageData(data.res.image)
         setRecipeName(data.res.name)
-        
+
         getIngredDetails(data.res.ingredients)
     }
 
@@ -89,8 +87,8 @@ export default function Home() {
         var total = 0
         for (let ingredient in ingreds) {
             let current = ingreds[ingredient]
-            if (current.totalCost !== undefined) {
-                total = total + parseFloat(current.totalCost)
+            if (current.unit_price !== undefined) {
+                total = total + current.unit_price * (current.Amount)
             }
         }
         return (<>{total.toFixed(2)}</>)
@@ -104,12 +102,12 @@ export default function Home() {
             alert("please re-log in")
             Router.push("/login")
         }
-        
+
         // getUserDetails();
         getRecipeDetails()
-        
+
         // console.log(await data)
-    
+
 
         // console.log(await data)
     }, [router.isReady]) // <-- empty dependency array
@@ -161,7 +159,7 @@ export default function Home() {
                         <link rel="icon" href="/avo.ico" />
                     </Head>
                     <main className={styles.main}>
-                        
+
                         <div>
                             <Container className={styles.centered}>
                                 <h1 className={styles.centered}>{recipeName}</h1>
@@ -174,19 +172,29 @@ export default function Home() {
                                                     return (
                                                         <div style={{ padding: "1rem" }} >
                                                             <Row>
+                                                            <Col>
+                                                                 {ingred.Amount} {ingred.AmountType}
+                                                                </Col>
+                                                                <Col> {ingred.Name}</Col>
+                                                                <Col>
+                                                                    <img src={`/${ingred.source}.png`} />
+                                                                </Col>
                                                                 <Col className={[styles.curvedEdge]} style={{ background: "grey" }}>
-                                                                    {ingred.Name} -  {ingred.Amount} / {ingred.AmountType}
+                                                                    {ingred.name} 
+                                                                </Col>
+                                                                <Col>
+                                                                    ${ingred.price} / {ingred.quantity} {ingred.quantity_unit}
                                                                 </Col>
 
+
+
+                                                                {/* <Image src={ingred.source}></Image> */}
+                                                                {/* <div className="w-full h-64 rounded-b-lg bg-cover bg-center" style={{ backgroundImage: `url(${ingred.source})` }}>hi there</div> */}
+                                                                {/* <Col>
+                                                                    {<>${(ingred.unit_price)}</>}
+                                                                </Col> */}
                                                                 <Col>
-                                                                    ${ingred.price} / {ingred.price_measure}
-                                                                </Col>
-                                                                <Col>{ingred.supplierName}</Col>
-                                                                <Col>
-                                                                    {<>${(ingred.totalCost)}</>}
-                                                                </Col>
-                                                                <Col>
-                                                                {<>${(ingred.Amount * ingred.price)}</>}
+                                                                    {<>${(ingred.unit_price * ingred.Amount).toFixed(2)}</>}
 
                                                                 </Col>
                                                             </Row>
@@ -234,11 +242,11 @@ export default function Home() {
                                 </Row>
                                 <Button onClick={() => getIngredDetails(ingreds)}>Get Grocery Store Data</Button>
                                 <br></br>
-                                        <Button variant="danger" onClick={() => deleteRecipe()}>
-                                            Delete Recipe
-                                        </Button>
-                                      
-                                
+                                <Button variant="danger" onClick={() => deleteRecipe()}>
+                                    Delete Recipe
+                                </Button>
+
+
                                 <p>RECIPEID = {id}</p>
                             </Container>
                         </div>
