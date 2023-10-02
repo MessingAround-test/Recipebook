@@ -183,7 +183,7 @@ export default function Home() {
                                                                     {ingred.name} 
                                                                 </Col>
                                                                 <Col>
-                                                                    ${ingred.price} / {ingred.quantity} {ingred.quantity_unit}
+                                                                    ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}
                                                                 </Col>
 
 
@@ -193,10 +193,10 @@ export default function Home() {
                                                                 {/* <Col>
                                                                     {<>${(ingred.unit_price)}</>}
                                                                 </Col> */}
-                                                                <Col>
+                                                                {/* <Col>
                                                                     {<>${(ingred.unit_price * ingred.Amount).toFixed(2)}</>}
 
-                                                                </Col>
+                                                                </Col> */}
                                                             </Row>
                                                         </div>
                                                     )
