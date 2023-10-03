@@ -70,6 +70,15 @@ export default function Home() {
                 
                 <main className={styles.main}>
                 <div className={styles.cardGroup}>
+                <div style={{padding:"0.5vh"}}>
+                            <Card style={{ maxWidth: '15rem', minWidth:"15rem", maxHeight: "15rem", minHeight: "15rem", color: "black"}} onClick={()=>(redirect("/createRecipe"))}>
+                                <Card.Body style={{overflow: "hidden"}}>
+                                    <Card.Title>{String("New Recipe")}</Card.Title>
+                                    <Card.Img style={{}} variant="top" src={"add-128.png"} />
+                                </Card.Body>
+
+                            </Card>
+                            </div>
                     {recipes.map((recipe) => {
                         return (
                             <div style={{padding:"0.5vh"}}>

@@ -188,6 +188,15 @@
   background-color: white;
   font-size: 2cqw;
   flex-direction: column; 
+  text-align: center;
+  vertical-align: middle;
+}
+
+.col{
+  padding: 0.5rem;
+  flex-direction: column; 
+  text-align: center;
+  vertical-align: middle;
 }
 
 
@@ -197,4 +206,7 @@
   color: white;
   font-size: 2cqw;
   flex-direction: column; 
+  flex-direction: column; 
+  text-align: center;
+  vertical-align: middle;
 }

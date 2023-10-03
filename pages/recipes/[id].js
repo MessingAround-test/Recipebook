@@ -191,13 +191,13 @@ export default function Home() {
                             <Row>
                                 {ingreds.map((ingred) => {
                                     return (
-                                        <div style={{ padding: "1rem" }} >
+                                        <div style={{ padding: "1rem",  }} >
                                             <Row>
-                                                <Col>
+                                                <Col className={styles.col}>
                                                     {ingred.Amount} {ingred.AmountType}
                                                 </Col>
-                                                <Col> {ingred.Name}</Col>
-                                                <Col>
+                                                <Col className={styles.col}> {ingred.Name}</Col>
+                                                <Col className={styles.col}>
                                                     <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} />
                                                 </Col>
                                                 <Col className={[styles.curvedEdge]} style={{ background: "grey" }}>
@@ -205,7 +205,7 @@ export default function Home() {
                                                         {ingred.name}
                                                     </a>
                                                 </Col>
-                                                <Col>
+                                                <Col className={styles.col}>
                                                     ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}
                                                 </Col>
 
