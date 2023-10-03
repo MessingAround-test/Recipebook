@@ -38,8 +38,12 @@ export default function Home() {
         const newItems = [...ingredients];
         console.log(newItems)
         for (var ingredients in newItems) {
-            var data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&returnN=1&EDGEtoken=${localStorage.getItem('Token')}`)).json()
+            let data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&returnN=1&EDGEtoken=${localStorage.getItem('Token')}`)).json()
             console.log(data)
+            if (data.loadedSource){
+                // We extract again if the source was loaded... our response is returning some weird stuff... 
+                data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&returnN=1&extractLocation=DB&EDGEtoken=${localStorage.getItem('Token')}`)).json()
+            }
             if (data.success === true && data.res.length > 0) {
                 newItems[ingredients] = { ...newItems[ingredients], ...data.res[0] }
             }
@@ -172,7 +176,7 @@ export default function Home() {
                                                 </Col>
                                                 <Col> {ingred.Name}</Col>
                                                 <Col>
-                                                    <img src={`/${ingred.source}.png`} />
+                                                    <img style={{"maxWidth": "32px", "borderRadius":"5px"}}src={`/${((ingred.source))?ingred.source:"cross"}.png`} />
                                                 </Col>
                                                 <Col className={[styles.curvedEdge]} style={{ background: "grey" }}>
                                                     {ingred.name}
