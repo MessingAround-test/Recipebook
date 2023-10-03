@@ -10,6 +10,16 @@
   opacity: 0.8; */
 }
 
+.modal {
+  /* padding: 0rem 1vw; */
+  /* background-color:  	 	#394955;
+  max-width: 40vw; */
+  /* background-color:steelblue;
+  opacity: 0.8; */
+}
+
+
+
 .curvedEdge {
   border-radius :20px;
 }
@@ -177,6 +187,7 @@
   padding: 0.5rem;
   background-color: white;
   font-size: 2cqw;
+  flex-direction: column; 
 }
 
 
@@ -185,4 +196,5 @@
   background-color: #1C2640;
   color: white;
   font-size: 2cqw;
+  flex-direction: column; 
 }

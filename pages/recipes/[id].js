@@ -11,8 +11,12 @@ import Router from 'next/router'
 import Card from 'react-bootstrap/Card'
 import { useRouter } from 'next/router'
 import Container from 'react-bootstrap/Container'
+import { IngredientList } from '../../components/IngredientList'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
+import Modal from 'react-modal';
+import { set } from 'mongoose'
+
 
 export default function Home() {
     const [userData, setUserData] = useState({})
@@ -25,8 +29,20 @@ export default function Home() {
     const [imageData, setImageData] = useState()
     const [recipeName, setRecipeName] = useState("")
     const [ingredientData, setIngredientData] = useState([])
+    const [modalIsOpen, setIsOpen] = useState(false);
+    const [selectedIngred, setSelectedIngred] = useState("")
 
 
+    async function openModal(ingredName) {
+        setIsOpen(true);
+        setSelectedIngred(ingredName)
+    }
+
+
+
+    async function closeModal() {
+        setIsOpen(false);
+    }
 
     async function getUserDetails() {
         var data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
@@ -40,7 +56,7 @@ export default function Home() {
         for (var ingredients in newItems) {
             let data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&returnN=1&EDGEtoken=${localStorage.getItem('Token')}`)).json()
             console.log(data)
-            if (data.loadedSource){
+            if (data.loadedSource) {
                 // We extract again if the source was loaded... our response is returning some weird stuff... 
                 data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&returnN=1&extractLocation=DB&EDGEtoken=${localStorage.getItem('Token')}`)).json()
             }
@@ -121,6 +137,12 @@ export default function Home() {
         Router.push(page)
     };
 
+    const customStyles = {
+        content: {
+            "backgroundColor": "grey"
+        }
+    }
+
 
     if (recipe === undefined) {
         return (
@@ -176,10 +198,12 @@ export default function Home() {
                                                 </Col>
                                                 <Col> {ingred.Name}</Col>
                                                 <Col>
-                                                    <img style={{"maxWidth": "32px", "borderRadius":"5px"}}src={`/${((ingred.source))?ingred.source:"cross"}.png`} />
+                                                    <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} />
                                                 </Col>
                                                 <Col className={[styles.curvedEdge]} style={{ background: "grey" }}>
-                                                    {ingred.name}
+                                                    <a onClick={() => openModal(ingred.Name)}>
+                                                        {ingred.name}
+                                                    </a>
                                                 </Col>
                                                 <Col>
                                                     ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}
@@ -236,6 +260,16 @@ export default function Home() {
 
                                 </Col>
                             </Row>
+                            <Modal
+                                isOpen={modalIsOpen}
+                                onRequestClose={closeModal}
+                                style={customStyles}
+                                contentLabel="Example Modal"
+                            >
+                                <button style={{ float: "right", "borderRadius": "5px" }} onClick={closeModal}><img style={{ "maxWidth": "32px", "maxHeight": "32px" }} src={"/cross.png"}></img></button>
+                                <h2>Ingredient Research</h2>
+                                <IngredientList search_term={selectedIngred}></IngredientList>
+                            </Modal>
                             <Button onClick={() => getIngredDetails(ingreds)}>Get Grocery Store Data</Button>
                             <br></br>
                             <Button variant="danger" onClick={() => deleteRecipe()}>

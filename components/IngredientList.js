@@ -20,9 +20,16 @@ export function IngredientList(props) {
 
 
     async function getAllIngredients() {
-        var data = await (await fetch(`/api/Ingredients/?EDGEtoken=` + localStorage.getItem('Token'))).json()
-        setAllIngreds(data.res)
-        setFilteredIngreds(data.res)
+        if (props.search_term === undefined) {
+            var data = await (await fetch(`/api/Ingredients/?EDGEtoken=` + localStorage.getItem('Token'))).json()
+            setAllIngreds(data.res)
+            setFilteredIngreds(data.res)
+        } else {
+            let data = await getIngredient(props.search_term, undefined)
+            setAllIngreds(data)
+            setFilteredIngreds(data)
+        }
+
         // console.log(data)
         // setRecipes(data.res)
     }
@@ -32,24 +39,48 @@ export function IngredientList(props) {
         setAllIngreds([])
     }
 
-    async function getIngredient(e) {
+    async function handleGetIngredient(e){
         e.preventDefault();
 
         console.log(e)
         let IngredQuery = e.target.ingredName.value.toLowerCase()
         let supplierName = e.target.supplierName.value
+        let data = getIngredient(IngredQuery, supplierName)
+        setAllIngreds([...allIngreds.concat(data)])
+    }
 
+    function objectToQueryString(obj) {
+        const queryString = [];
+        
+        for (const key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            const value = obj[key];
+            if (value !== undefined) {
+              if (Array.isArray(value)) {
+                value.forEach(item => {
+                  queryString.push(`${encodeURIComponent(key)}[]=${encodeURIComponent(item)}`);
+                });
+              } else {
+                queryString.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
+              }
+            }
+          }
+        }
+        
+        return queryString.join('&');
+      }
+      
 
-        let data = await (await fetch(`/api/Ingredients?name=${IngredQuery}&supplier=${supplierName}&EDGEtoken=` + localStorage.getItem('Token'))).json()
+    async function getIngredient(IngredQuery, supplierName) {
+        let queryObj = {"name": IngredQuery, "supplier": supplierName, "EDGEtoken": localStorage.getItem('Token')}
+        let data = await (await fetch(`/api/Ingredients?${objectToQueryString(queryObj)}`)).json()
         console.log(data)
         if (data.loadedSource === true) {
             data = await (await fetch(`/api/Ingredients?name=${IngredQuery}&supplier=${supplierName}&EDGEtoken=` + localStorage.getItem('Token'))).json()
             console.log(data)
         }
 
-        setAllIngreds([...allIngreds.concat(data.res)])
-
-        console.log(allIngreds)
+        return data.res
         // setRecipes(data.res)
     }
 
@@ -110,7 +141,8 @@ export function IngredientList(props) {
             "quantity",
             "quantity_type",
             "quantity_unit",
-            "search_term"
+            "search_term",
+            "rank"
             // "created_at",
             // "updated_at",
             // "__v"
@@ -131,10 +163,10 @@ export function IngredientList(props) {
     return (
         <div>
             <div >
-                <Form onSubmit={(e) => getIngredient(e)}>
+                <Form onSubmit={(e) => handleGetIngredient(e)}>
                     <Form.Group className="mb-3" id="formBasicEmail">
                         <Form.Label>Name</Form.Label>
-                        <Form.Control name="ingredName" id="ingredName" type="text" placeholder="Enter ingredient Name" onChange={(e) => updateFilteredIngreds(e)} required />
+                        <Form.Control name="ingredName" id="ingredName" value={props.search_term} type="text" placeholder="Enter ingredient Name" onChange={(e) => updateFilteredIngreds(e)} required />
                         <Form.Label>Supplier</Form.Label>
                         <Form.Select name="supplierName" id="supplierName" type="text" placeholder="Enter ingredient Name" onChange={(e) => updateFilteredIngreds(e)}>
                             {
@@ -156,7 +188,7 @@ export function IngredientList(props) {
                 </Form>
             </div>
             <br></br>
-            <Table style={{ borderRadius: '5px', overflow: 'hidden', maxWidth: "100vw"}}>
+            <Table style={{ borderRadius: '5px', overflow: 'hidden', maxWidth: "100vw" }}>
                 {Headers.map((key) => {
                     return (
                         <>
