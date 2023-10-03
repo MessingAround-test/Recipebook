@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Router from 'next/router'
+import { Popup } from './Popup';
 
 
 
@@ -39,7 +40,7 @@ export function IngredientList(props) {
         setAllIngreds([])
     }
 
-    async function handleGetIngredient(e){
+    async function handleGetIngredient(e) {
         e.preventDefault();
 
         console.log(e)
@@ -51,28 +52,28 @@ export function IngredientList(props) {
 
     function objectToQueryString(obj) {
         const queryString = [];
-        
+
         for (const key in obj) {
-          if (obj.hasOwnProperty(key)) {
-            const value = obj[key];
-            if (value !== undefined) {
-              if (Array.isArray(value)) {
-                value.forEach(item => {
-                  queryString.push(`${encodeURIComponent(key)}[]=${encodeURIComponent(item)}`);
-                });
-              } else {
-                queryString.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
-              }
+            if (obj.hasOwnProperty(key)) {
+                const value = obj[key];
+                if (value !== undefined) {
+                    if (Array.isArray(value)) {
+                        value.forEach(item => {
+                            queryString.push(`${encodeURIComponent(key)}[]=${encodeURIComponent(item)}`);
+                        });
+                    } else {
+                        queryString.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
+                    }
+                }
             }
-          }
         }
-        
+
         return queryString.join('&');
-      }
-      
+    }
+
 
     async function getIngredient(IngredQuery, supplierName) {
-        let queryObj = {"name": IngredQuery, "supplier": supplierName, "EDGEtoken": localStorage.getItem('Token')}
+        let queryObj = { "name": IngredQuery, "supplier": supplierName, "EDGEtoken": localStorage.getItem('Token') }
         let data = await (await fetch(`/api/Ingredients?${objectToQueryString(queryObj)}`)).json()
         console.log(data)
         if (data.loadedSource === true) {
@@ -161,7 +162,7 @@ export function IngredientList(props) {
     };
 
     return (
-        <div>
+        <>
             <div >
                 <Form onSubmit={(e) => handleGetIngredient(e)}>
                     <Form.Group className="mb-3" id="formBasicEmail">
@@ -198,14 +199,15 @@ export function IngredientList(props) {
                         </>
                     )
                 })}
+                <th className={styles.th}>
+                    Extra Info
+                </th>
                 {filteredIngreds.map((ingredient) => {
                     let res = Headers.map((key) => {
                         return (
                             <>
                                 <td className={styles.td}>
-                                    <a>
                                         {ingredient[key]}
-                                    </a>
                                 </td>
                             </>
                         )
@@ -214,6 +216,11 @@ export function IngredientList(props) {
                         <>
                             <tr className={styles.tr} style={{ padding: "0.5vh" }}>
                                 {res}
+                                <td className={styles.td}>
+
+                                   <Popup details={{"hi": "there"}} isOpen={false}></Popup>
+                                   hi
+                                </td>
                             </tr>
                         </>
                     )
@@ -222,6 +229,6 @@ export function IngredientList(props) {
 
             </Table>
 
-        </div>
+        </>
     )
 }
