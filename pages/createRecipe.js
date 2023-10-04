@@ -4,7 +4,7 @@ import styles from '../styles/Home.module.css'
 
 import Card from 'react-bootstrap/Card'
 import Button from 'react-bootstrap/Button'
-import {quantity_unit_conversions} from "../lib/conversion"
+import { quantity_unit_conversions } from "../lib/conversion"
 
 import { Toolbar } from './Toolbar'
 import { useEffect, useState } from 'react'
@@ -17,6 +17,8 @@ import Col from 'react-bootstrap/Col'
 
 import { RiDeleteBin7Line } from 'react-icons/ri';
 
+
+
 export default function Home() {
     const [ingreds, setIngreds] = useState([])
     const [instructions, setInstructions] = useState([])
@@ -24,15 +26,49 @@ export default function Home() {
     const [imageData, setImageData] = useState()
     const [recipeName, setRecipeName] = useState("")
     const [quanityTypes, setQuanityTypes] = useState({})
-    
+
+    const blobToBase64 = blob => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+
+    const convertBlobToBase64 = async (blob) => {
+        return await blobToBase64(blob);
+    }
+
+    async function generateImage(prompt) {
+        if (recipeName !== undefined && recipeName !== "") {
+            let promptImage = await (await fetch(`https://image.pollinations.ai/prompt/content:${prompt};style:realistic`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })).blob();
+            
+            let resData = await convertBlobToBase64(promptImage)
+            setImageData(resData)
+            return resData
+        } else {
+            alert("Please set a Recipe Name")
+        }
+    }
 
     const onSubmitRecipe = async function (e) {
+        let localImage;
 
-        console.log(await ingreds)
-        console.log(await instructions)
-        console.log(await imageData)
+        if (imageData === undefined) {
+            // if (input("Would you like to generate an image?")) {
+            localImage = await generateImage(recipeName)
+            // }
 
-        var data = await (await fetch("/api/Recipe?EDGEtoken=" + localStorage.getItem('Token'), {
+        } else {
+            localImage = imageData
+        }
+
+
+        const data = await (await fetch("/api/Recipe?EDGEtoken=" + localStorage.getItem('Token'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -40,7 +76,7 @@ export default function Home() {
             body: JSON.stringify({
                 "ingreds": ingreds,
                 "instructions": instructions,
-                "image": imageData,
+                "image": localImage,
                 "name": recipeName
             })
         })).json()
@@ -55,11 +91,15 @@ export default function Home() {
         } else {
             redirect("/recipes")
         }
+
+
     }
 
     const redirect = async function (page) {
         Router.push(page)
     };
+
+
 
 
     const onSubmitIngred = async function (e) {
@@ -79,6 +119,7 @@ export default function Home() {
 
     const onSubmitInstruc = async function (e) {
         e.preventDefault();
+
 
         var InstructObj = {
             "Text": e.target.instructText.value,
@@ -112,9 +153,6 @@ export default function Home() {
             console.log('Error: ', error);
         };
     }
-
-
-
 
 
     return (
@@ -182,7 +220,7 @@ export default function Home() {
                                             <Form.Control name="ingredAmount" id="ingredAmount" type="text" placeholder="Enter Amount" required />
 
                                             <Form.Select aria-label="Default select example" name="ingredAmountType" id="ingredAmountType" required>
-                                            {Object.keys(quantity_unit_conversions).map((item) => <option value={item}>{item}</option>)}
+                                                {Object.keys(quantity_unit_conversions).map((item) => <option value={item}>{item}</option>)}
                                             </Form.Select>
                                         </Form.Group>
 
@@ -290,7 +328,7 @@ export default function Home() {
                             <Col>
                                 <h1>Add Image</h1>
                                 <input accept="image/*" type="file" onChange={(e) => { getBase64(e.target.files[0], (data) => setImageData(data)) }} />
-
+                                <Button onClick={() => generateImage(recipeName)}>Generate Image</Button>
                             </Col>
                             <Col>
                                 {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
