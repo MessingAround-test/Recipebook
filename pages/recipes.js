@@ -102,7 +102,7 @@ export default function Home() {
                 </div>
                     <div className={styles.cardGroup}>
                         <div style={{ padding: "0.5vh" }}>
-                            <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black", "borderStyle": "solid", "borderColor": "green", "borderWidth": "0.5rem" }} onClick={() => (redirect("/createRecipe"))}>
+                            <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black", "borderStyle": "solid", "borderColor": "green", "borderWidth": "0.5rem", "alignItems": "center","justifyContent": "center" }} onClick={() => (redirect("/createRecipe"))}>
                                 <Card.Body style={{ overflow: "hidden" }}>
                                     <Card.Title>{String("New Recipe")}</Card.Title>
                                     <Card.Img style={{maxHeight:"10rem", maxWidth:"10rem"}} variant="top" src={"add-128.png"} />
@@ -113,7 +113,7 @@ export default function Home() {
                         {recipes.map((recipe) => {
                             return (
                                 <div style={{ padding: "0.5vh" }}>
-                                    <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black" }} >
+                                    <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black", "alignItems": "center","justifyContent": "center" }} >
 
                                         {(allowDelete) ? (<>
                                             <Button variant="danger" onClick={() => deleteRecipe(recipe._id)} style={{ "float": "right" }}>x </Button>
