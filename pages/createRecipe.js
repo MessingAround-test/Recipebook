@@ -46,7 +46,7 @@ export default function Home() {
                     'Content-Type': 'application/json'
                 }
             })).blob();
-            
+
             let resData = await convertBlobToBase64(promptImage)
             setImageData(resData)
             return resData
@@ -100,6 +100,46 @@ export default function Home() {
     };
 
 
+    const onSubmitTasteImport = async function (e) {
+        e.preventDefault();
+
+        let tasteURL = e.target.tasteURL.value
+        const data = await (await fetch(`/api/taste?url=${tasteURL}&EDGEtoken=${localStorage.getItem('Token')}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })).json()
+
+        let tasteIngredsList = []
+        data.data.ingredients.forEach(function (ingred) {
+            if (ingred.converted !== undefined) {
+
+                var IngredObj = {
+                    "Name": ingred.converted.name,
+                    "Amount": ingred.converted.quantity,
+                    "AmountType": ingred.converted.quantity_unit,
+                    "Note": "Imported from Taste"
+                }
+                tasteIngredsList.push(IngredObj)
+            }
+        })
+        setIngreds(tasteIngredsList)
+
+
+        let tasteInstructionList = []
+        data.data.instructions.forEach(function (instruction) {
+
+            var InstructObj = {
+                "Text": instruction.instruction,
+                "Note": instruction.stepNumber
+            }
+
+            tasteInstructionList.push(InstructObj)
+
+        })
+        setInstructions(tasteInstructionList)
+    }
 
 
     const onSubmitIngred = async function (e) {
@@ -199,6 +239,15 @@ export default function Home() {
 
                             </Col>
                         </Row>
+                        <Form onSubmit={(e) => onSubmitTasteImport(e)}>
+                            <Form.Group className="mb-3" id="formBasicEmail">
+                                <Form.Control name="tasteURL" id="tasteURL" type="text" placeholder="Taste.com url" />
+                            </Form.Group>
+                            <Button variant="primary" type="submit">
+                                Import
+                            </Button>
+                        </Form>
+
                         <h1>Ingredients</h1>
                         <Row>
 
