@@ -137,6 +137,29 @@ export default function Home() {
         Router.push(page)
     };
 
+    const markAsIncorrect = async function (ingredientId, ingredName) {
+        var data = await (await fetch("/api/Ingredients/?id=" + ingredientId + "&EDGEtoken=" + localStorage.getItem('Token'), {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+            })
+        })).json()
+        console.log(data)
+        if (data.success === false || data.success === undefined) {
+            if (data.message !== undefined) {
+                alert(data.message)
+            } else {
+                alert("failed, unexpected error")
+            }
+
+        } else {
+            // Ran successfully
+            getRecipeDetails()
+        }
+    }
+
     const customStyles = {
         content: {
             "backgroundColor": "grey"
@@ -204,6 +227,9 @@ export default function Home() {
                                                     <div onClick={() => openModal(ingred.Name)}>
                                                         {ingred.name}
                                                     </div>
+                                                </Col>
+                                                <Col className={styles.col}>
+                                                    <Button variant={"warning"} onClick={(e)=>markAsIncorrect(ingred._id, ingred.name)}>Not right?</Button>
                                                 </Col>
                                                 <Col className={styles.col}>
                                                     ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}

@@ -5,14 +5,15 @@ import { convertMetricReading } from '../../../lib/conversion'
 
 
 export default async function handler(req, res) {
+    let search_term = req.query.name
+    if (search_term !== undefined) {
+        search_term = search_term.toLowerCase()
+    }
     if (req.method === "GET") {
-        var search_term = req.query.name
-        if (search_term !== undefined){
-            search_term = search_term.toLowerCase()
-        }
+
         let qType = req.query.qType
 
-        if (qType !== undefined){
+        if (qType !== undefined) {
             qType = convertMetricReading(qType).quantity_unit
         }
 
@@ -34,7 +35,7 @@ export default async function handler(req, res) {
             if (supplier !== undefined) {
                 search_query["source"] = supplier
             }
-            
+
             let IngredData = await Ingredients.find(search_query).exec()
             console.log(IngredData)
             if (IngredData.length == 0) {
@@ -60,13 +61,25 @@ export default async function handler(req, res) {
                 let IngredData = filter(allIngredData, filterDetails)
                 return res.status(200).send({ success: true, res: IngredData, "loadedSource": true })
             } else {
-                let filteredIngredData =  filter(IngredData, filterDetails) 
+                let filteredIngredData = filter(IngredData, filterDetails)
                 // IngredData 
                 return res.status(200).send({ success: true, res: filteredIngredData, "loadedSource": false })
             }
         }
     } else if (req.method === "DELETE") {
-        let IngredData = await Ingredients.deleteMany({}).exec()
+        
+        let id = req.query.id
+        let IngredData;
+
+        if (id !== undefined && id !== "") {
+            IngredData = await Ingredients.deleteOne({ _id: id }).exec()
+        } else if (search_term !== undefined && search_term !== "") {
+            IngredData = await Ingredients.deleteMany({ search_term: search_term }).exec()
+        } else {
+            throw new Error("Please provide either a search term or id")
+        }
+
+        // let IngredData = await Ingredients.deleteMany({}).exec()
         res.status(200).json({ success: true, data: IngredData, message: "Success" })
     } else {
         res.status(400).json({ success: false, data: [], message: "Not supported request" })
