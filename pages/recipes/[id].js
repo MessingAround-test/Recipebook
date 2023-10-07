@@ -200,10 +200,10 @@ export default function Home() {
                                                 <Col className={styles.col}>
                                                     <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} />
                                                 </Col>
-                                                <Col className={[styles.curvedEdge]} style={{ background: "grey" }}>
-                                                    <a onClick={() => openModal(ingred.Name)}>
+                                                <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
+                                                    <div onClick={() => openModal(ingred.Name)}>
                                                         {ingred.name}
-                                                    </a>
+                                                    </div>
                                                 </Col>
                                                 <Col className={styles.col}>
                                                     ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}
@@ -265,10 +265,13 @@ export default function Home() {
                                 onRequestClose={closeModal}
                                 style={customStyles}
                                 contentLabel="Example Modal"
+                                className={styles.modal}
                             >
+                                <a>
                                 <button style={{ float: "right", "borderRadius": "5px" }} onClick={closeModal}><img style={{ "maxWidth": "32px", "maxHeight": "32px" }} src={"/cross.png"}></img></button>
                                 <h2>Ingredient Research</h2>
                                 <IngredientList search_term={selectedIngred}></IngredientList>
+                                </a>
                             </Modal>
                             <Button onClick={() => getIngredDetails(ingreds)}>Get Grocery Store Data</Button>
                             <br></br>

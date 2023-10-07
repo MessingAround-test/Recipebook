@@ -139,7 +139,7 @@ export function IngredientList(props) {
             "price",
             "unit_price",
             "quantity",
-            "quantity_type",
+            // "quantity_type",
             "quantity_unit",
             "search_term",
             "rank"
@@ -161,7 +161,7 @@ export function IngredientList(props) {
     };
 
     return (
-        <div>
+        <>
             <div >
                 <Form onSubmit={(e) => handleGetIngredient(e)}>
                     <Form.Group className="mb-3" id="formBasicEmail">
@@ -188,11 +188,11 @@ export function IngredientList(props) {
                 </Form>
             </div>
             <br></br>
-            <Table style={{ borderRadius: '5px', overflow: 'hidden', maxWidth: "100vw" }}>
+            <Table style={{ borderRadius: '5px',  maxWidth: "100%"}}>
                 {Headers.map((key) => {
                     return (
                         <>
-                            <th className={styles.th}>
+                            <th className={styles.th} style={{"maxWidth": `${80/(Headers.length)}vw`}}>
                                 {key}
                             </th>
                         </>
@@ -202,17 +202,17 @@ export function IngredientList(props) {
                     let res = Headers.map((key) => {
                         return (
                             <>
-                                <td className={styles.td}>
-                                    <a>
+                                <td className={styles.td} style={{"maxWidth": `${80/(Headers.length)}vw`}}>
+                                    
                                         {ingredient[key]}
-                                    </a>
+                                    
                                 </td>
                             </>
                         )
                     })
                     return (
                         <>
-                            <tr className={styles.tr} style={{ padding: "0.5vh" }}>
+                            <tr className={styles.tr} style={{}}>
                                 {res}
                             </tr>
                         </>
@@ -222,6 +222,6 @@ export function IngredientList(props) {
 
             </Table>
 
-        </div>
+        </>
     )
 }
