@@ -252,10 +252,10 @@ export default function Home() {
                             </Row>
                             <Row style={{ paddingBottom: "1vw", display: "flex" }}>
 
-                                <Col >
+                                <Col className={styles.centered}>
                                     {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
-                                    <Card style={{ maxWidth: '80vw', color: "black", "backgroundColor": "rgba(76, 175, 80, 0.0)" }}>
-                                        <img src={imageData} style={{ display: "block", maxWidth: "20vw", maxHeight: "20vw", width: "auto", height: "auto" }} />
+                                    <Card style={{ maxWidth: '30vw', color: "black", "backgroundColor": "rgba(76, 175, 80, 0.0)" }}>
+                                        <img src={imageData} style={{ width: "auto", height: "auto"}} />
                                     </Card>
 
                                 </Col>
