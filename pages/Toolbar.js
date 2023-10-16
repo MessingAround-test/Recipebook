@@ -58,6 +58,7 @@ export function Toolbar(props) {
                             <Nav.Link href="/createRecipe"><AiFillPlusCircle /></Nav.Link>
                             <Nav.Link href="/ingredientResearch">Ingredient Research</Nav.Link>
 
+                            <Nav.Link href="/budget">Budget</Nav.Link>
 
                         </Nav>
                     </Navbar.Collapse>

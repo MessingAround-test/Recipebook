@@ -221,7 +221,11 @@ export default function Home() {
                                                 </Col>
                                                 <Col className={styles.col}> {ingred.Name}</Col>
                                                 <Col className={styles.col}>
+                                                    
+                                                    <a onClick={((ingred.source)) ? console.log("nothing") : ()=>alert("hi there")}>
                                                     <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} />
+                                                    </a>
+                                                    
                                                 </Col>
                                                 <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
                                                     <div onClick={() => openModal(ingred.Name)}>
