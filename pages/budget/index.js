@@ -10,7 +10,7 @@ import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Router from 'next/router'
 import Card from 'react-bootstrap/Card'
-import ExpenseForm from '../../components/expenseForm'
+// import ExpenseForm from '../../components/expenseForm'
 import { TransactionList } from '../../components/TransactionList'
 
 
@@ -63,7 +63,7 @@ export default function Home() {
                 </Head>
                 <main className={styles.main}>
                     <div className={styles.cardGroup}>
-                    <ExpenseForm></ExpenseForm>
+                    {/* <ExpenseForm></ExpenseForm> */}
                     <TransactionList></TransactionList>
                     </div>
                     {/* <Button onClick={() => console.log(recipes)}> show Recipes</Button> */}
