@@ -6,8 +6,10 @@ import NavDropdown from 'react-bootstrap/NavDropdown'
 import React from "react";
 import { AiFillPlusCircle } from "react-icons/ai";
 import { useEffect, useState } from 'react'
-
+import Image from 'next/image'
 import styles from '../styles/Toolbar.module.css'
+import { CgProfile } from 'react-icons/cg'
+import {MdLogout} from 'react-icons/md'
 
 export function Toolbar(props) {
     const clearCookie = async function (e) {
@@ -32,11 +34,14 @@ export function Toolbar(props) {
 
 
     return (
-        <div>
+        <div className={styles.Container}>
 
             <Navbar expand="lg" variant='dark' style={{ "borderRadius": "0rem 0rem 0rem 0rem" }} className={styles.stickynav}>
                 <Container>
-                    <Navbar.Brand href="/">Bryns garbage</Navbar.Brand>
+
+                    <Navbar.Brand href="/">
+                        Bryns Garbage
+                    </Navbar.Brand>
                     <Navbar.Toggle aria-controls="basic-navbar-nav" />
                     <Navbar.Collapse id="basic-navbar-nav">
                         <Nav className="me-auto">
@@ -52,9 +57,24 @@ export function Toolbar(props) {
                             <Nav.Link href="/recipes">Recipes</Nav.Link>
                             <Nav.Link href="/createRecipe"><AiFillPlusCircle /></Nav.Link>
                             <Nav.Link href="/ingredientResearch">Ingredient Research</Nav.Link>
-                            <Nav.Link href="/profile">Profile</Nav.Link>
-                            <Nav.Link href="/login" onClick={(e) => clearCookie(e)}>Logout</Nav.Link>
+
+                            <Nav.Link href="/budget">Budget</Nav.Link>
+
                         </Nav>
+                    </Navbar.Collapse>
+                    <Navbar.Collapse className="justify-content-end" >
+                        <Nav.Link href="/profile" style={{"padding":"20px"}} >
+                            <Navbar.Text>
+                                <CgProfile size={25} />
+
+                            </Navbar.Text>
+                        </Nav.Link>
+                        
+                        <Nav.Link href="/login" onClick={(e) => clearCookie(e)} >
+                            <Navbar.Text>
+                                <MdLogout size={25}/>
+                            </Navbar.Text>
+                        </Nav.Link>
                     </Navbar.Collapse>
                 </Container>
             </Navbar>

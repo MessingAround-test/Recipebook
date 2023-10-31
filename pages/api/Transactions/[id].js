@@ -3,7 +3,7 @@ import { secret } from "../../../lib/dbsecret"
 import { verify } from "jsonwebtoken";
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
-import Recipe from '../../../models/Recipe'
+import Transactions from '../../../models/Transactions'
 
 
 
@@ -11,7 +11,7 @@ import Recipe from '../../../models/Recipe'
 
 export default async function handler(req, res) {
     console.log(req.query)
-   var recipe_id= req.query.id
+   let transaction_id= req.query.id
     
   verify(req.query.EDGEtoken, secret, async function (err, decoded) {
     if (err) {
@@ -27,9 +27,8 @@ export default async function handler(req, res) {
         if (userData === undefined) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
-
-          var RecipeData = await Recipe.findOne({_id: recipe_id})
-          res.status(200).json({ res: RecipeData})
+          var TransactionData = await Transactions.find({user_id: userData._id}) //_id: transaction_id, 
+          res.status(200).json({ res: TransactionData})
         }
       
       
@@ -38,13 +37,13 @@ export default async function handler(req, res) {
 
         console.log(decoded)
         var db_id = decoded.id
-        var userData = await User.findOne({ id: db_id });
+        var userData = await Transac.findOne({ id: db_id });
         if (userData === undefined) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
 
-          var RecipeData = await Recipe.deleteOne({_id: recipe_id})
-          res.status(200).json({ success: true, data: RecipeData, message: "Success"})
+          var TransactionData = await Transactions.deleteOne({_id: transaction_id})
+          res.status(200).json({ success: true, data: TransactionData, message: "Success"})
         }
       }else {
         res.status(400).json({ success: false, data: [], message: "Not supported request"})

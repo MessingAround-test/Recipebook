@@ -1,31 +1,86 @@
-
-import { secret } from "../../../lib/dbsecret"
-import { verify } from "jsonwebtoken";
-import dbConnect from '../../../lib/dbConnect'
-import User from '../../../models/User'
 import Ingredients from '../../../models/Ingredients'
 import axios from 'axios';
+import { filter } from '../../../lib/filtering'
+import { convertMetricReading } from '../../../lib/conversion'
+
 
 export default async function handler(req, res) {
+    let search_term = req.query.name
+    if (search_term !== undefined) {
+        search_term = search_term.toLowerCase()
+    }
     if (req.method === "GET") {
-        let IngredData = await Ingredients.find({}).exec()
-        res.status(200).send({ res: IngredData })
+
+        let qType = req.query.qType
+
+        if (qType !== undefined) {
+            qType = convertMetricReading(qType).quantity_unit
+        }
+
+        let supplier = req.query.supplier
+        let filterDetails = {
+            "search_term": search_term,
+            "supplier": supplier,
+            "optionSort": req.query.sort,
+            "returnN": req.query.returnN,
+            "quantity_unit": qType,
+        }
+
+        if (search_term === "" || search_term === undefined) {
+            let IngredData = await Ingredients.find({}).exec()
+            return res.status(200).send({ res: IngredData })
+        } else {
+            // let IngredData = []
+            let search_query = { search_term: search_term }
+            if (supplier !== undefined) {
+                search_query["source"] = supplier
+            }
+
+            let IngredData = await Ingredients.find(search_query).exec()
+            console.log(IngredData)
+            if (IngredData.length == 0) {
+                let allIngredData = []
+                let companies = ["WW", "IGA", "PanettaGG"]
+                if (supplier !== undefined) {
+                    companies = [supplier]
+                }
+
+                for (let supplierIndex in companies) {
+                    let supplier = companies[supplierIndex]
+                    let newIngredData = await axios({
+                        method: 'get',
+                        url: `http://localhost:8080/api/Ingredients/${supplier}/?name=${search_term}&EDGEtoken=${req.query.EDGEtoken}`,
+                    })
+
+                    if (newIngredData.data.success === true && newIngredData.data.res.length > 0) {
+                        allIngredData = [...allIngredData.concat(newIngredData.data.res)]
+                    }
+                }
+                // Re-search at the end and get results
+                // allIngredData = await Ingredients.find(search_query).exec()
+                let IngredData = filter(allIngredData, filterDetails)
+                return res.status(200).send({ success: true, res: IngredData, "loadedSource": true })
+            } else {
+                let filteredIngredData = filter(IngredData, filterDetails)
+                // IngredData 
+                return res.status(200).send({ success: true, res: filteredIngredData, "loadedSource": false })
+            }
+        }
     } else if (req.method === "DELETE") {
-        let IngredData = await Ingredients.deleteMany({}).exec()
+        
+        let id = req.query.id
+        let IngredData;
+
+        if (id !== undefined && id !== "") {
+            IngredData = await Ingredients.deleteOne({ _id: id }).exec()
+        } else if (search_term !== undefined && search_term !== "") {
+            IngredData = await Ingredients.deleteMany({ search_term: search_term }).exec()
+        } else {
+            throw new Error("Please provide either a search term or id")
+        }
+
+        // let IngredData = await Ingredients.deleteMany({}).exec()
         res.status(200).json({ success: true, data: IngredData, message: "Success" })
-        // await dbConnect()
-
-        // console.log(decoded)
-        // var db_id = decoded.id
-        // var userData = await User.findOne({ id: db_id });
-        // if (userData === {}) {
-        //     res.status(400).json({ res: "user not found, please relog" })
-        // } else {
-
-        //     var RecipeData = await Recipe.deleteOne({ _id: recipe_id })
-        //     res.status(200).json({ success: true, data: RecipeData, message: "Success" })
-        // }
-        // res.status(400).json({ success: false, data: [], message: "Not supported request" })
     } else {
         res.status(400).json({ success: false, data: [], message: "Not supported request" })
     }

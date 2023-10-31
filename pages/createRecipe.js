@@ -4,7 +4,7 @@ import styles from '../styles/Home.module.css'
 
 import Card from 'react-bootstrap/Card'
 import Button from 'react-bootstrap/Button'
-
+import { quantity_unit_conversions } from "../lib/conversion"
 
 import { Toolbar } from './Toolbar'
 import { useEffect, useState } from 'react'
@@ -17,20 +17,58 @@ import Col from 'react-bootstrap/Col'
 
 import { RiDeleteBin7Line } from 'react-icons/ri';
 
+
+
 export default function Home() {
     const [ingreds, setIngreds] = useState([])
     const [instructions, setInstructions] = useState([])
 
     const [imageData, setImageData] = useState()
     const [recipeName, setRecipeName] = useState("")
+    const [quanityTypes, setQuanityTypes] = useState({})
+
+    const blobToBase64 = blob => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+
+    const convertBlobToBase64 = async (blob) => {
+        return await blobToBase64(blob);
+    }
+
+    async function generateImage(prompt) {
+        if (recipeName !== undefined && recipeName !== "") {
+            let promptImage = await (await fetch(`https://image.pollinations.ai/prompt/content:${prompt};style:realistic`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })).blob();
+
+            let resData = await convertBlobToBase64(promptImage)
+            setImageData(resData)
+            return resData
+        } else {
+            alert("Please set a Recipe Name")
+        }
+    }
 
     const onSubmitRecipe = async function (e) {
+        let localImage;
 
-        console.log(await ingreds)
-        console.log(await instructions)
-        console.log(await imageData)
+        if (imageData === undefined) {
+            // if (input("Would you like to generate an image?")) {
+            localImage = await generateImage(recipeName)
+            // }
 
-        var data = await (await fetch("/api/Recipe?EDGEtoken=" + localStorage.getItem('Token'), {
+        } else {
+            localImage = imageData
+        }
+
+
+        const data = await (await fetch("/api/Recipe?EDGEtoken=" + localStorage.getItem('Token'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -38,7 +76,7 @@ export default function Home() {
             body: JSON.stringify({
                 "ingreds": ingreds,
                 "instructions": instructions,
-                "image": imageData,
+                "image": localImage,
                 "name": recipeName
             })
         })).json()
@@ -53,11 +91,55 @@ export default function Home() {
         } else {
             redirect("/recipes")
         }
+
+
     }
 
     const redirect = async function (page) {
         Router.push(page)
     };
+
+
+    const onSubmitTasteImport = async function (e) {
+        e.preventDefault();
+
+        let tasteURL = e.target.tasteURL.value
+        const data = await (await fetch(`/api/taste?url=${tasteURL}&EDGEtoken=${localStorage.getItem('Token')}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })).json()
+
+        let tasteIngredsList = []
+        data.data.ingredients.forEach(function (ingred) {
+            if (ingred.converted !== undefined) {
+
+                var IngredObj = {
+                    "Name": ingred.converted.name,
+                    "Amount": ingred.converted.quantity,
+                    "AmountType": ingred.converted.quantity_unit,
+                    "Note": "Imported from Taste"
+                }
+                tasteIngredsList.push(IngredObj)
+            }
+        })
+        setIngreds(tasteIngredsList)
+
+
+        let tasteInstructionList = []
+        data.data.instructions.forEach(function (instruction) {
+
+            var InstructObj = {
+                "Text": instruction.instruction,
+                "Note": instruction.stepNumber
+            }
+
+            tasteInstructionList.push(InstructObj)
+
+        })
+        setInstructions(tasteInstructionList)
+    }
 
 
     const onSubmitIngred = async function (e) {
@@ -78,6 +160,7 @@ export default function Home() {
     const onSubmitInstruc = async function (e) {
         e.preventDefault();
 
+
         var InstructObj = {
             "Text": e.target.instructText.value,
             "Note": e.target.instructNote.value
@@ -95,7 +178,8 @@ export default function Home() {
             alert("please re-log in")
             Router.push("/login")
         }
-
+        console.log(quantity_unit_conversions)
+        setQuanityTypes(quantity_unit_conversions)
     }, []) // <-- empty dependency array
 
 
@@ -111,9 +195,6 @@ export default function Home() {
     }
 
 
-
-
-
     return (
         <div>
             <Toolbar>
@@ -122,7 +203,7 @@ export default function Home() {
                 <Head>
                     <title>Recipes</title>
                     <meta name="description" content="Generated by create next app" />
-                    <link rel="icon" href="/favicon.ico" />
+                    <link rel="icon" href="/avo.ico" />
                 </Head>
 
 
@@ -135,110 +216,95 @@ export default function Home() {
                 <main className={styles.main}>
 
                     <Container>
-                        <h1>General</h1>
                         <Row>
                             <Col>
-                                <Card style={{ maxWidth: '20em', color: "black" }}>
-                                    {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
-                                    <Card.Body>
-                                        {/* <Card.Title>Add ingredient</Card.Title> */}
 
-                                        <Form>
+                                {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
+                                <Card.Body>
+                                    {/* <Card.Title>Add ingredient</Card.Title> */}
 
-                                            <Form.Group className="mb-3" id="formBasicEmail">
-                                                <Form.Label>Recipe Name</Form.Label>
-                                                <Form.Control name="recipeName" id="recipeName" type="text" placeholder="Enter Recipe Name" onChange={(e) => setRecipeName(e.target.value)} />
+                                    <Form>
 
-                                            </Form.Group>
+                                        <Form.Group className="mb-3" id="formBasicEmail">
 
-                                        </Form>
+                                            <Form.Control name="recipeName" id="recipeName" type="text" placeholder="Enter Recipe Name" onChange={(e) => setRecipeName(e.target.value)} />
+
+                                        </Form.Group>
+
+                                    </Form>
 
 
 
-                                    </Card.Body>
-                                </Card>
+                                </Card.Body>
+
                             </Col>
                         </Row>
+                        <Form onSubmit={(e) => onSubmitTasteImport(e)}>
+                            <Form.Group className="mb-3" id="formBasicEmail">
+                                <Form.Control name="tasteURL" id="tasteURL" type="text" placeholder="Taste.com url" />
+                            </Form.Group>
+                            <Button variant="primary" type="submit">
+                                Import
+                            </Button>
+                        </Form>
+
                         <h1>Ingredients</h1>
                         <Row>
 
                             <Col>
 
-                                <Card style={{ maxWidth: '20em', color: "black" }}>
-                                    {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
-                                    <Card.Body>
-                                        {/* <Card.Title>Add ingredient</Card.Title> */}
+                                {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
+                                <Card.Body>
+                                    {/* <Card.Title>Add ingredient</Card.Title> */}
 
-                                        <Form onSubmit={(e) => onSubmitIngred(e)}>
-                                            <Form.Group className="mb-3" id="formBasicEmail">
-                                                <Form.Label>Name</Form.Label>
-                                                <Form.Control name="ingredName" id="ingredName" type="text" placeholder="Enter ingredient Name" required/>
+                                    <Form onSubmit={(e) => onSubmitIngred(e)}>
+                                        <Form.Group className="mb-3" id="formBasicEmail">
 
-                                            </Form.Group>
+                                            <Form.Control name="ingredName" id="ingredName" type="text" placeholder="Enter ingredient Name" required />
 
-                                            <Form.Group className="mb-3" id="formBasicEmail">
-                                                <Form.Label>Measure</Form.Label>
-                                                <Form.Control name="ingredAmount" id="ingredAmount" type="text" placeholder="Enter Amount" required/>
-                                                
-                                                <Form.Select aria-label="Default select example" name="ingredAmountType" id="ingredAmountType" required>
+                                        </Form.Group>
 
-                                                    <option value="x">Amount (xN)</option>
-                                                    <option value="g">Grams</option>
-                                                    <option value="c">Cups</option>
-                                                    <option value="tbs">Tablespoon</option>
-                                                    <option value="tsp">Teaspoon</option>
-                                                    <option value="L">Litres</option>
+                                        <Form.Group className="mb-3" id="formBasicEmail">
 
-                                                </Form.Select>
-                                            </Form.Group>
+                                            <Form.Control name="ingredAmount" id="ingredAmount" type="text" placeholder="Enter Amount" required />
+
+                                            <Form.Select aria-label="Default select example" name="ingredAmountType" id="ingredAmountType" required>
+                                                {Object.keys(quantity_unit_conversions).map((item) => <option value={item}>{item}</option>)}
+                                            </Form.Select>
+                                        </Form.Group>
 
 
 
-                                            <Form.Group className="mb-3" id="formBasicPassword">
-                                                <Form.Label>Note</Form.Label>
-                                                <Form.Control name="ingredNote" id="ingredNote" type="text" placeholder="(optional)" />
-                                            </Form.Group>
-                                            {/* <Form.Group className="mb-3" controlId="formBasicCheckbox">
-                                <Form.Check type="checkbox" label="Check me out" />
-                            </Form.Group> */}
-                                            <Button variant="primary" type="submit">
-                                                Submit
-                                            </Button>
-
-                                        </Form>
-
-
-
-                                    </Card.Body>
-                                </Card>
+                                        <Form.Group className="mb-3" id="formBasicPassword">
+                                            <Form.Control name="ingredNote" id="ingredNote" type="text" placeholder="(optional note)" />
+                                        </Form.Group>
+                                        <Button variant="primary" type="submit">
+                                            Submit
+                                        </Button>
+                                    </Form>
+                                </Card.Body>
 
                             </Col>
                             <Col>
 
-                                <Card style={{ maxWidth: '20em', color: "black", right: "0px", float: "right" }}>
+                                <div style={{ right: "0px", float: "right", "background-color": "rgba(245, 245, 245, 0.0)" }}>
                                     {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                     <Card.Body>
-                                        <Card.Title>Ingred Summary</Card.Title>
+
                                         <Container>
 
                                             {ingreds.map((ingred) => {
                                                 return (
                                                     <div>
-                                                        <Row>
-                                                            <Col>
-                                                                <li>{ingred.Amount} {ingred.AmountType} {ingred.Name}</li>
-                                                            </Col>
-                                                            <Col>
-                                                                <Button onClick={() => setIngreds(ingreds.filter(function (ingredItem) { return ingredItem.Name !== ingred.Name }))}><RiDeleteBin7Line></RiDeleteBin7Line></Button>
-                                                            </Col>
-                                                        </Row>
+                                                        <a>-{ingred.Amount} / {ingred.AmountType} {ingred.Name}</a>
+                                                        <Button onClick={() => setIngreds(ingreds.filter(function (ingredItem) { return ingredItem.Name !== ingred.Name }))}><RiDeleteBin7Line></RiDeleteBin7Line></Button>
                                                     </div>
                                                 )
                                             })}
                                         </Container>
 
                                     </Card.Body>
-                                </Card>
+                                </div>
 
                             </Col>
                         </Row>
@@ -254,15 +320,13 @@ export default function Home() {
                                         <Form onSubmit={(e) => onSubmitInstruc(e)}>
 
                                             <Form.Group className="mb-3" id="formBasicEmail">
-                                                <Form.Label>Instruction Step</Form.Label>
-                                                <Form.Control name="instructText" id="instructText" type="text" placeholder="Enter Instruction" required/>
+                                                <Form.Control name="instructText" id="instructText" type="text" placeholder="Enter Instruction" required />
                                             </Form.Group>
 
 
 
                                             <Form.Group className="mb-3" id="formBasicPassword">
-                                                <Form.Label>Note</Form.Label>
-                                                <Form.Control name="instructNote" id="instructNote" type="text" placeholder="(optional)" />
+                                                <Form.Control name="instructNote" id="instructNote" type="text" placeholder="(optional note)" />
                                             </Form.Group>
                                             {/* <Form.Group className="mb-3" controlId="formBasicCheckbox">
                                 <Form.Check type="checkbox" label="Check me out" />
@@ -313,7 +377,7 @@ export default function Home() {
                             <Col>
                                 <h1>Add Image</h1>
                                 <input accept="image/*" type="file" onChange={(e) => { getBase64(e.target.files[0], (data) => setImageData(data)) }} />
-                                
+                                <Button onClick={() => generateImage(recipeName)}>Generate Image</Button>
                             </Col>
                             <Col>
                                 {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}

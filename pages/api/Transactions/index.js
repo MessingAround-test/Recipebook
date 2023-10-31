@@ -3,7 +3,7 @@ import { secret } from "../../../lib/dbsecret"
 import { verify } from "jsonwebtoken";
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
-import Recipe from '../../../models/Recipe'
+import Transactions from '../../../models/Transactions'
 
 
 
@@ -11,7 +11,7 @@ import Recipe from '../../../models/Recipe'
 
 export default async function handler(req, res) {
     console.log(req.query)
-   var recipe_id= req.query.id
+   let transaction_id= req.query.id
     
   verify(req.query.EDGEtoken, secret, async function (err, decoded) {
     if (err) {
@@ -27,13 +27,13 @@ export default async function handler(req, res) {
         if (userData === undefined) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
-
-          var RecipeData = await Recipe.findOne({_id: recipe_id})
-          res.status(200).json({ res: RecipeData})
+          var TransactionData = await Transactions.find({user_id: userData._id}) //_id: transaction_id, 
+          res.status(200).json({ res: TransactionData})
         }
       
       
-      } else if (req.method === "DELETE") {
+      } else if (req.method === "POST"){
+        let transactionDetails = req.body
         await dbConnect()
 
         console.log(decoded)
@@ -42,10 +42,11 @@ export default async function handler(req, res) {
         if (userData === undefined) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
-
-          var RecipeData = await Recipe.deleteOne({_id: recipe_id})
-          res.status(200).json({ success: true, data: RecipeData, message: "Success"})
+            transactionDetails.user_id = userData._id
+            let createResponse = createTransaction(transactionDetails)
+            res.status(200).json({ res: createResponse})
         }
+        
       }else {
         res.status(400).json({ success: false, data: [], message: "Not supported request"})
       }
@@ -56,4 +57,21 @@ export default async function handler(req, res) {
 
 
 
+}
+
+
+
+
+async function createTransaction(body) {
+    // userModel.
+    
+    
+    try {
+        const res = Transactions.create(body);
+        console.log(await res);
+        return { success: true, data: await res, message: "Success" }
+    } catch (error)  {
+        console.log(error)
+        return { success: false, data: error, message: "Incorrect data input" }
+    }
 }

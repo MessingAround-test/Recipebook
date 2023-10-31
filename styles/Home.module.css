@@ -1,24 +1,67 @@
 .container {
   padding: 0rem 1vw;
   background-color:  	 	#394955;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: scroll; 
+  font-size: 3.2vw;
+  
   /* background-color:steelblue;
   opacity: 0.8; */
-  
-    
-  
+}
+
+.modal {
+  /* padding: 0rem 1vw; */
+  /* background-color:  	 	#394955;
+  max-width: 40vw; */
+  /* background-color:steelblue;
+  opacity: 0.8; */
+}
+
+
+
+.curvedEdge {
+  border-radius :20px;
+}
+
+.modal {
+	position: absolute;
+	inset: 40px;
+	border: 1px solid rgb(204, 204, 204);
+	background: grey;
+	overflow: auto;
+	border-radius: 4px;
+	outline: none;
+	padding: 10px;
+}
+
+.right {
+  float: right
+}
+
+.bordered {
+  border-color: black;
+  border-width: 0.25rem;
+  border-style: solid;
+}
+
+.centered {
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  display: grid;
 }
 
 .cardGroup{
   display: -webkit-flex;
   display: flex;
   flex-wrap: wrap;
-  
-
 }
 
 .main {
   border-radius: 0rem 0rem 1rem 1rem;
   min-height: 100vh;
+  font-size: 1.7cqw;
   padding: 2rem 2rem;
   flex: 1;
   /* display: flex; */
@@ -151,6 +194,36 @@
   }
 }
 
+.tr {
+}
+
 .td{
   padding: 0.5rem;
+  background-color: white;
+  font-size: 2cqw;
+  flex-direction: column; 
+  text-align: center;
+  vertical-align: middle;
+}
+
+.col{
+  padding: 0.5rem;
+  flex-direction: column; 
+  text-align: center;
+  vertical-align: middle;
+  align-items: center;
+  justify-content: center;
+  display: grid;
+}
+
+
+.th{
+  padding: 0.5rem;
+  background-color: #1C2640;
+  font-size: 1.8cqw;
+  flex-direction: column; 
+  text-align: center;
+  vertical-align: middle;
+  color:white;
+  overflow: hidden  
 }
