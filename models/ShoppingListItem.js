@@ -4,6 +4,10 @@ const ShoppingListItem = new mongoose.Schema(
     {
         id: {type: mongoose.ObjectId, unique: true, dropDups: true , index: true},
         name:  {type: String, required: true},
+        quantity: {type: Number, required: true},
+        quantity_type: {type: String, required: true},
+        quantity_unit: {type: String, required: false},
+
         shoppingListId: {type: String, required: true},
         selectedIngredientId: {type: String, required: false}, 
         complete: {type: Boolean, required: true},

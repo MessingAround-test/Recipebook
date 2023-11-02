@@ -38,26 +38,28 @@ export default async function handler(req, res) {
                     var userData = await User.findOne({ id: db_id });
                     console.log(req.query)
                     console.log(req.body)
-                    if (req.body.ingredientId === undefined){
-                        throw "ingredientId is required"
-                    }
+                    // if (req.body.ingredientId === undefined){
+                    //     throw "ingredientId is required"
+                    // }
 
                     if (req.body.shoppingListId === undefined){
                         throw "shoppingListId is required"
                     }
                     
-                    var ingredient = await Ingredient.findOne({id: req.body.ingredientId})
+                    // var ingredient = await Ingredient.findOne({id: req.body.ingredientId})
                     
-                    if (ingredient === null ||ingredient.id === undefined){
-                        throw "Ingredient does not exist"
-                    }
+                    // if (ingredient === null ||ingredient.id === undefined){
+                    //     throw "Ingredient does not exist"
+                    // }
 
                     
-                    var shoppingList = await Ingredient.findOne({id: req.body.shoppingListId})
-                    if (shoppingList === null ||shoppingList.id === undefined ){
+                    var shoppingList = await ShoppingList.findOne({_id: req.body.shoppingListId})
+                    console.log(shoppingList)
+                    console.log(req.body.shoppingListId)
+                    if (shoppingList === null ||shoppingList._id === undefined ){
                         throw "ShoppingList does not exist"
                     }
-                    
+
                     const response = ShoppingListItem.create({
                         name: req.body.name,
                         createdBy: userData._id,

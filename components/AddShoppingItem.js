@@ -27,44 +27,51 @@ let categories = [
     "Home and Garden"
   ]
 
-function AddShoppingItem() {
+function AddShoppingItem({shoppingListId}) {
     const [formData, setFormData] = useState({
-        ingredientName: "",
-        amount: "",
-        ingredAmountType: "",
-        note: ""
+        name: "",
+        quantity: "",
+        quantity_type: "",
+        note: "",
+        "shoppingListId": shoppingListId
     });
 
     const [knownIngredients, setKnownIngredients] = useState([])
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
+        console.log(e)
+        console.log(formData)
+        console.log(name)
+        console.log(value)
+        setFormData({ ...formData, [name]: value });  
     };
 
-    // const handleSubmit = async (e) => {
-    //     e.preventDefault();
-    //     try {
-    //         const response = await fetch(`/ASDASDapi/Transactionsasdsd/?EDGEtoken=${localStorage.getItem('Token')}`, {
-    //             method: 'POST',
-    //             headers: {
-    //                 'Content-Type': 'application/json',
-    //             },
-    //             body: JSON.stringify(formData),
-    //         });
+    
 
-    //         if (response.ok) {
-    //             // alert(response)
-    //             // Handle success, e.g., show a success message or redirect
-    //         } else {
-    //             // alert(response)
-    //             // Handle errors, e.g., show an error message
-    //         }
-    //     } catch (error) {
-    //         alert(error)
-    //         // Handle network or other errors
-    //     }
-    // };
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const response = await fetch(`/api/ShoppingListItem/?EDGEtoken=${localStorage.getItem('Token')}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            });
+
+            if (response.ok) {
+                alert(response)
+                // Handle success, e.g., show a success message or redirect
+            } else {
+                alert(response)
+                // Handle errors, e.g., show an error message
+            }
+        } catch (error) {
+            alert(error)
+            // Handle network or other errors
+        }
+    };
 
     const getKnownIngredients = async (e) => {
         // e.preventDefault();
@@ -95,29 +102,32 @@ function AddShoppingItem() {
     return (
         <div className={styles['centered']}>
             <h2>Add New Ingredient</h2>
-            <Form onSubmit={(e) => onSubmitIngred(e)}>
-                {/* <Form.Group className="mb-3" id="formBasicEmail">
-                    <Form.Control name="ingredName" id="ingredName" type="text" placeholder="Enter ingredient Name" required />
-                </Form.Group> */}
+            <Form onSubmit={(e) => handleSubmit(e)}>
+                <Form.Group className="mb-3" id="formBasicEmail">
+                    <Form.Control name="name" id="ingredName" type="text" placeholder={shoppingListId} disabled />
+                </Form.Group>
                 <Form.Group className="mb-3" id="formIngredName">
-                    <SearchableDropdown options={knownIngredients} placeholder={"Enter Ingredient Name"}></SearchableDropdown>
+                    <SearchableDropdown options={knownIngredients} placeholder={"Enter Ingredient Name"} onChange={handleChange} name={"name"}></SearchableDropdown>
                 </Form.Group>
                 <Form.Group className="mb-3" id="formBasicEmail">
-                    <Form.Control name="ingredAmount" id="ingredAmount" type="text" placeholder="Enter Amount" required />
-                    <Form.Select aria-label="Default select example" name="ingredAmountType" id="ingredAmountType" required>
+                    <Form.Control name="quantity" id="ingredAmount" type="text" placeholder="Enter Amount" required onChange={handleChange}/>
+                    <Form.Select aria-label="Default select example" name="quantity_type" id="quantity_type" onChange={handleChange} required>
                         {Object.keys(quantity_unit_conversions).map((item) => <option value={item}>{item}</option>)}
                     </Form.Select>
                 </Form.Group>
                 <Form.Group className="mb-3" id="formBasicPassword">
-                    <Form.Control name="ingredNote" id="ingredNote" type="text" placeholder="(optional note)" />
+                    <Form.Control name="note" id="ingredNote" type="text" placeholder="(optional note)" onChange={handleChange}/>
                 </Form.Group>
                 <Form.Group className="mb-3" id="formCategory">
-                    <SearchableDropdown options={categories} placeholder={"Category"}></SearchableDropdown>
+                    <SearchableDropdown options={categories} placeholder={"Category"} onChange={handleChange} name={"category"}></SearchableDropdown>
                 </Form.Group>
 
 
                 <Button variant="primary" type="submit">
                     Submit
+                </Button>
+                <Button variant="primary" onClick={()=>console.log(formData)}>
+                    show state
                 </Button>
             </Form>
         </div>

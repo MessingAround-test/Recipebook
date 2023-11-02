@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 import styles from '../styles/SearchableDropdown.module.css'
 
-function SearchableDropdown({ options, placeholder }) {
+function SearchableDropdown({ options, placeholder, onChange,name }) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [selectedOption, setSelectedOption] = useState(null);
@@ -23,12 +23,15 @@ function SearchableDropdown({ options, placeholder }) {
   const handleInputChange = (e) => {
     setInputValue(e.target.value);
     setIsOpen(true); // Open the dropdown when typing in the input
+    onChange(e)
   };
 
   const selectOption = (option) => {
     setSelectedOption(option);
     setInputValue(option);
     setIsOpen(false);
+    let e = {target: {name: name, value: option}}
+    onChange(e)
   };
 
   const filteredOptions = filterOptions();
@@ -57,6 +60,7 @@ function SearchableDropdown({ options, placeholder }) {
         type="text"
         value={inputValue}
         onChange={handleInputChange}
+        name={name}
         onClick={toggleDropdown}
         placeholder={placeholder}
         className={styles.input}
@@ -66,7 +70,7 @@ function SearchableDropdown({ options, placeholder }) {
           {filteredOptions.map((option, index) => (
             <li
               key={index}
-              onClick={() => selectOption(option)}
+              onClick={(e) => selectOption(option)}
               className={
                 option === selectedOption
                   ? styles.selected

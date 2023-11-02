@@ -55,11 +55,11 @@ export default function Home() {
         const newItems = [...ingredients];
         console.log(newItems)
         for (var ingredients in newItems) {
-            let data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&returnN=1&EDGEtoken=${localStorage.getItem('Token')}`)).json()
+            let data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].name}&qType=${newItems[ingredients].quantity_unit}&returnN=1&EDGEtoken=${localStorage.getItem('Token')}`)).json()
             console.log(data)
             if (data.loadedSource) {
                 // We extract again if the source was loaded... our response is returning some weird stuff... 
-                data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&returnN=1&extractLocation=DB&EDGEtoken=${localStorage.getItem('Token')}`)).json()
+                data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].name}&qType=${newItems[ingredients].quantity_unit}&returnN=1&extractLocation=DB&EDGEtoken=${localStorage.getItem('Token')}`)).json()
             }
             if (data.success === true && data.res.length > 0) {
                 newItems[ingredients] = { ...newItems[ingredients], ...data.res[0] }
@@ -92,9 +92,13 @@ export default function Home() {
     }
 
     async function getRecipeDetails() {
-        var data = await (await fetch("/api/ShoppingList/" + String(await router.query.id) + "?EDGEtoken=" + localStorage.getItem('Token'))).json()
-        console.log(data)
+        var data = await (await fetch("/api/ShoppingList/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'))).json()
         setRecipe(data.res)
+
+        var data = await (await fetch("/api/ShoppingListItem/" + "?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        console.log(data)
+        
+        getIngredDetails(data.res)
         // setIngreds(data.res.ingredients)
         // setInstructions(data.res.instructions)
         // setImageData(data.res.image)
@@ -131,7 +135,7 @@ export default function Home() {
 
 
         // console.log(await data)
-    }, [router.isReady]) // <-- empty dependency array
+    }, [router.isReady, id]) // <-- empty dependency array
 
 
     const redirect = async function (page) {
@@ -212,7 +216,8 @@ export default function Home() {
                         <Container className={styles.centered}>
                             <h1 className={styles.centered}>{recipeName}</h1>
                             <h2>Ingredients</h2>
-                            <AddShoppingItem></AddShoppingItem>
+                            {/* <Button onClick={()=>console.log(ingreds)}>Show Ingreds List</Button> */}
+                            
                             <Row>
                                 {ingreds.map((ingred) => {
                                     return (
@@ -221,7 +226,7 @@ export default function Home() {
                                                 <Col className={styles.col}>
                                                     {ingred.Amount} {ingred.AmountType}
                                                 </Col>
-                                                <Col className={styles.col}> {ingred.Name}</Col>
+                                                <Col className={styles.col}> {ingred.search_term}</Col>
                                                 <Col className={styles.col}>
                                                     
                                                     <a onClick={((ingred.source)) ? console.log("nothing") : ()=>alert("hi there")}>
@@ -230,7 +235,7 @@ export default function Home() {
                                                     
                                                 </Col>
                                                 <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
-                                                    <div onClick={() => openModal(ingred.Name)}>
+                                                    <div onClick={() => openModal(ingred.name)}>
                                                         {ingred.name}
                                                     </div>
                                                 </Col>
@@ -259,29 +264,7 @@ export default function Home() {
 
                             </Row>
                             <h2>Total {getAproxTotalRecipeCost()}</h2>
-                            <h2>Instructions</h2>
-                            <Row >
-                                <Col>
-
-                                    {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
-
-                                    <ol>
-                                        {instructions.map((instruction, index) => {
-                                            return (
-                                                <div>
-                                                    <Row>
-                                                        <Col>
-                                                            <p> Step:  {index + 1}: {instruction.Text} </p>
-                                                        </Col>
-
-                                                    </Row>
-                                                </div>
-                                            )
-                                        })}
-                                    </ol>
-
-                                </Col>
-                            </Row>
+                            <AddShoppingItem shoppingListId={id}></AddShoppingItem>
                             <Row style={{ paddingBottom: "1vw", display: "flex" }}>
 
                                 <Col className={styles.centered}>
