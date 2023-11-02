@@ -2,8 +2,8 @@ import mongoose from 'mongoose';
 
 const IngredSchema = new mongoose.Schema(
     {
-        id: {type: String, unique: true, dropDups: true },
-        name: {type: String, required: true},
+        id: {type: String, unique: true, dropDups: true, index: true },
+        name: {type: String, required: true, index: true},
         source: {type: String, required: true}, 
         price: {type: Number, required: false},
         unit_price: {type: Number, required: false},

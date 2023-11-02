@@ -1,0 +1,62 @@
+/* SearchableDropdown.module.css */
+
+/* Container for the searchable dropdown */
+.searchable-dropdown {
+  position: relative;
+}
+
+/* Input field styling */
+.searchable-dropdown input {
+    display: block;
+    width: 100%;
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid #ced4da;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border-radius: .375rem;
+    transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+  }
+
+/* Dropdown list styling */
+.searchable-dropdown .dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  background-color: #fff;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 1rem;
+  color: black
+}
+
+
+/* Individual option styling */
+.searchable-dropdown .dropdown-list li {
+
+  cursor: pointer;
+}
+
+/* Styling for the selected option */
+.searchable-dropdown .dropdown-list li.selected {
+  background-color: #f0f0f0;
+}
+
+/* Hover effect on options */
+.searchable-dropdown .dropdown-list li:hover {
+  background-color: #f5f5f5;
+}
