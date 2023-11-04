@@ -12,13 +12,14 @@ import Card from 'react-bootstrap/Card'
 import { useRouter } from 'next/router'
 import Container from 'react-bootstrap/Container'
 import { IngredientList } from '../../components/IngredientList'
-import  ImageList  from '../../components/ImageList'
+import ImageList from '../../components/ImageList'
 
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Modal from 'react-modal';
 import { set } from 'mongoose'
 import AddShoppingItem from '../../components/AddShoppingItem'
+import IngredientTable from '../../components/IngredientTable'
 
 
 export default function Home() {
@@ -36,11 +37,30 @@ export default function Home() {
     const [selectedIngred, setSelectedIngred] = useState("")
     const [createNewIngredOpen, setCreateNewIngredOpen] = useState(false)
     const [enabledSuppliers, setEnabledSuppliers] = useState([])
+    const setSortedIngreds = async (ingreds) => {
+        // Sort the ingredients
+        const sortedIngreds = [...ingreds];
 
+        // Sort by source (group by source)
+        sortedIngreds.sort((a, b) => {
+            // Move bought items to the end
+            if (a.bought && !b.bought) return 1;
+            if (!a.bought && b.bought) return -1;
+
+            // Group by source
+            if (a.source > b.source) return 1;
+            if (a.source < b.source) return -1;
+
+            return 0;
+        });
+        console.log(sortedIngreds)
+        // Set the sorted ingredients in state
+        setIngreds(sortedIngreds);
+    };
 
     const handleSubmitCreateNewItem = async (e) => {
         e.preventDefault();
-        
+
         try {
             const response = await fetch(`/api/ShoppingListItem/?EDGEtoken=${localStorage.getItem('Token')}`, {
                 method: 'POST',
@@ -58,7 +78,10 @@ export default function Home() {
                 // alert(response)
                 // Handle success, e.g., show a success message or redirect
             } else {
-                alert(response.data)
+                // console.log()
+                let error = await response.json()
+                console.log(error)
+                alert(error.message)
                 // Handle errors, e.g., show an error message
             }
         } catch (error) {
@@ -85,6 +108,13 @@ export default function Home() {
         setUserData(data.res)
     }
 
+    const handleCheckboxChange = (index) => {
+        const updatedIngredients = [...ingreds];
+        updatedIngredients[index].bought = !updatedIngredients[index].bought;
+        setSortedIngreds(updatedIngredients);
+    };
+
+
     async function getIngredDetails(ingredients) {
         const newItems = [...ingredients];
         console.log(newItems)
@@ -97,9 +127,20 @@ export default function Home() {
             }
             if (data.success === true && data.res.length > 0) {
                 newItems[ingredients] = { ...newItems[ingredients], ...data.res[0] }
+                console.log(newItems)
+                setSortedIngreds(newItems)
             }
         }
-        setIngreds(newItems)
+        console.log("INGREDS ARE: ")
+        console.log(ingreds)
+        console.log(newItems)
+        if (newItems.length !== 0){
+
+            setSortedIngreds(newItems)
+        } 
+
+
+
     }
 
     const deleteRecipe = async function (e) {
@@ -131,9 +172,9 @@ export default function Home() {
 
         var data = await (await fetch(`/api/ShoppingListItem/?shoppingListId=${id}&EDGEtoken=${localStorage.getItem('Token')}`)).json()
         console.log(data)
-        
+
         getIngredDetails(data.res)
-        // setIngreds(data.res.ingredients)
+        // setSortedIngreds(data.res.ingredients)
         // setInstructions(data.res.instructions)
         // setImageData(data.res.image)
         // setRecipeName(data.res.name)
@@ -176,28 +217,7 @@ export default function Home() {
         Router.push(page)
     };
 
-    const markAsIncorrect = async function (ingredientId, ingredName) {
-        var data = await (await fetch("/api/Ingredients/?id=" + ingredientId + "&EDGEtoken=" + localStorage.getItem('Token'), {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-            })
-        })).json()
-        console.log(data)
-        if (data.success === false || data.success === undefined) {
-            if (data.message !== undefined) {
-                alert(data.message)
-            } else {
-                alert("failed, unexpected error")
-            }
 
-        } else {
-            // Ran successfully
-            getRecipeDetails()
-        }
-    }
 
     const customStyles = {
         content: {
@@ -249,80 +269,37 @@ export default function Home() {
                     <main className={styles.main}>
                         <Container className={styles.centered}>
                             <Row>
-                            <Col>
-                            <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png"]} onImageChange={(e)=>console.log(e)}></ImageList>
-                            </Col>
-                            <Col>
-                            {
-                                (createNewIngredOpen?<Button variant={"danger"} style={{ "float": "right" }} onClick={()=>setCreateNewIngredOpen(false)}>Hide</Button>:<Button variant={"success"} style={{ "float": "right" }} onClick={()=>setCreateNewIngredOpen(true)}>Add to List</Button>)
-                            }
-                            </Col>
+                                <Col>
+                                    <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png"]} onImageChange={(e) => console.log(e)}></ImageList>
+                                </Col>
+                                <Col>
+                                    {
+                                        (createNewIngredOpen ? <Button variant={"danger"} style={{ "float": "right" }} onClick={() => setCreateNewIngredOpen(false)}>Hide</Button> : <Button variant={"success"} style={{ "float": "right" }} onClick={() => setCreateNewIngredOpen(true)}>Add to List</Button>)
+                                    }
+                                </Col>
                             </Row>
-                            
-                            
-                            
+
+
+
                             {
-                                (createNewIngredOpen?<AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem}></AddShoppingItem>:<></>)
+                                (createNewIngredOpen ? <AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getIngredDetails}></AddShoppingItem> : <></>)
                             }
-                            
+
                             <h2>List</h2>
-                            
+
                             {/* <Button onClick={()=>console.log(ingreds)}>Show Ingreds List</Button> */}
-                            
+
                             <Row>
-                                {ingreds.map((ingred) => {
-                                    return (
-                                        <div style={{ padding: "1rem",  }} >
-                                            <Row>
-                                                <Col className={styles.col}>
-                                                    {ingred.Amount} {ingred.AmountType}
-                                                </Col>
-                                                <Col className={styles.col}> {ingred.search_term}</Col>
-                                                <Col className={styles.col}>
-                                                    
-                                                    <a onClick={((ingred.source)) ? console.log("nothing") : ()=>alert("hi there")}>
-                                                    <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} />
-                                                    </a>
-                                                    
-                                                </Col>
-                                                <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
-                                                    <div onClick={() => openModal(ingred.name)}>
-                                                        {ingred.name}
-                                                    </div>
-                                                </Col>
-                                                <Col className={styles.col}>
-                                                    <Button variant={"warning"} onClick={(e)=>markAsIncorrect(ingred._id, ingred.name)}>Not right?</Button>
-                                                </Col>
-                                                <Col className={styles.col}>
-                                                    ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}
-                                                </Col>
-
-
-
-                                                {/* <Image src={ingred.source}></Image> */}
-                                                {/* <div className="w-full h-64 rounded-b-lg bg-cover bg-center" style={{ backgroundImage: `url(${ingred.source})` }}>hi there</div> */}
-                                                {/* <Col>
-                                                                    {<>${(ingred.unit_price)}</>}
-                                                                </Col> */}
-                                                {/* <Col>
-                                                                    {<>${(ingred.unit_price * ingred.Amount).toFixed(2)}</>}
-
-                                                                </Col> */}
-                                            </Row>
-                                        </div>
-                                    )
-                                })}
-
+                                <IngredientTable ingredients={ingreds} handleCheckboxChange={handleCheckboxChange} reload={() => { }}></IngredientTable>
                             </Row>
                             <h2>Total {getAproxTotalRecipeCost()}</h2>
-                            
-                            
+
                             <Row style={{ paddingBottom: "1vw", display: "flex" }}>
 
                                 <Col className={styles.centered}>
                                     {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
                                     <Card style={{ maxWidth: '30vw', color: "black", "backgroundColor": "rgba(76, 175, 80, 0.0)" }}>
-                                        <img src={imageData} style={{ width: "auto", height: "auto"}} />
+                                        <img src={imageData} style={{ width: "auto", height: "auto" }} />
                                     </Card>
 
                                 </Col>
@@ -335,17 +312,20 @@ export default function Home() {
                                 className={styles.modal}
                             >
                                 <a>
-                                <button style={{ float: "right", "borderRadius": "5px" }} onClick={closeModal}><img style={{ "maxWidth": "32px", "maxHeight": "32px" }} src={"/cross.png"}></img></button>
-                                <h2>Ingredient Research</h2>
-                                <IngredientList search_term={selectedIngred}></IngredientList>
+                                    <button style={{ float: "right", "borderRadius": "5px" }} onClick={closeModal}><img style={{ "maxWidth": "32px", "maxHeight": "32px" }} src={"/cross.png"}></img></button>
+                                    <h2>Ingredient Research</h2>
+                                    <IngredientList search_term={selectedIngred}></IngredientList>
                                 </a>
                             </Modal>
-                            
+
                             <br></br>
-                            {/* onClick={() => deleteRecipe()} */}
-                            {/* <Button variant="danger" >
+                            
+                            <Button  onClick={() => console.log(ingreds)} >
+                                see state
+                            </Button>
+                            <Button variant="danger" onClick={() => deleteRecipe()} >
                                 Mark as Finished
-                            </Button> */}
+                            </Button>
 
 
                             <p>ID = {id}</p>

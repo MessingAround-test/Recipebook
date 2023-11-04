@@ -107,6 +107,7 @@ function AddShoppingItem({shoppingListId, handleSubmit}) {
                 <Form.Group className="mb-3" id="formBasicEmail">
                     <Form.Control name="quantity" id="ingredAmount" type="text" placeholder="Enter Amount" required onChange={handleChange} value={formData.quantity}/>
                     <Form.Select aria-label="Default select example" name="quantity_type" id="quantity_type" onChange={handleChange} value={formData.quantity_type} required>
+                    <option></option>
                         {Object.keys(quantity_unit_conversions).map((item) => <option value={item}>{item}</option>)}
                     </Form.Select>
                 </Form.Group>

@@ -75,6 +75,8 @@ export default async function handler(req, res) {
                         deleted: false,
                         note: req.body.note,
                         complete: false,
+                        quantity_type: req.body.quantity_type,
+                        quantity: req.body.quantity,
                         shoppingListId: req.body.shoppingListId,
                         ingredientId: req.body.ingredientId,
                     });
