@@ -14,27 +14,36 @@ export default async function handler(req, res) {
             res.status(400).json({ res: "error: " + String(err) })
         } else {
             if (req.method === "GET") {
+                try {
+                    await dbConnect()
 
-                await dbConnect()
+                    console.log(decoded)
+                    var db_id = decoded.id
+                    var userData = await User.findOne({ id: db_id });
+                    if (userData._id === undefined) {
+                        res.status(400).json({ res: "user not found, please relog" })
+                    } else {
+                        if (req.query.shoppingListId === undefined) {
+                            throw "shoppingListId is required"
+                        }
 
-                console.log(decoded)
-                var db_id = decoded.id
-                var userData = await User.findOne({ id: db_id });
-                if (userData._id === undefined) {
-                    res.status(400).json({ res: "user not found, please relog" })
-                } else {
-
-                    var ShoppingListItemData = await ShoppingListItem.find({})
-                    res.status(200).json({ res: ShoppingListItemData })
+                        var ShoppingListItemData = await ShoppingListItem.find({shoppingListId: req.query.shoppingListId })
+                        res.status(200).json({ res: ShoppingListItemData })
+                    }
+                } catch (error) {
+                    console.log(error.line)
+                    console.log(error)
+                    res.status(400).json({ success: false, data: [], message: String(error) })
                 }
+
             } else if (req.method === "POST") {
                 // console.log(req.body)
                 try {
                     await dbConnect()
                     var db_id = decoded.id
                     console.log("HERE")
-                    
-                    
+
+
                     var userData = await User.findOne({ id: db_id });
                     console.log(req.query)
                     console.log(req.body)
@@ -42,21 +51,21 @@ export default async function handler(req, res) {
                     //     throw "ingredientId is required"
                     // }
 
-                    if (req.body.shoppingListId === undefined){
+                    if (req.body.shoppingListId === undefined) {
                         throw "shoppingListId is required"
                     }
-                    
+
                     // var ingredient = await Ingredient.findOne({id: req.body.ingredientId})
-                    
+
                     // if (ingredient === null ||ingredient.id === undefined){
                     //     throw "Ingredient does not exist"
                     // }
 
-                    
-                    var shoppingList = await ShoppingList.findOne({_id: req.body.shoppingListId})
+
+                    var shoppingList = await ShoppingList.findOne({ _id: req.body.shoppingListId })
                     console.log(shoppingList)
                     console.log(req.body.shoppingListId)
-                    if (shoppingList === null ||shoppingList._id === undefined ){
+                    if (shoppingList === null || shoppingList._id === undefined) {
                         throw "ShoppingList does not exist"
                     }
 

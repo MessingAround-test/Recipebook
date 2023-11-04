@@ -12,6 +12,8 @@ import Card from 'react-bootstrap/Card'
 import { useRouter } from 'next/router'
 import Container from 'react-bootstrap/Container'
 import { IngredientList } from '../../components/IngredientList'
+import  ImageList  from '../../components/ImageList'
+
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Modal from 'react-modal';
@@ -32,6 +34,38 @@ export default function Home() {
     const [ingredientData, setIngredientData] = useState([])
     const [modalIsOpen, setIsOpen] = useState(false);
     const [selectedIngred, setSelectedIngred] = useState("")
+    const [createNewIngredOpen, setCreateNewIngredOpen] = useState(false)
+    const [enabledSuppliers, setEnabledSuppliers] = useState([])
+
+
+    const handleSubmitCreateNewItem = async (e) => {
+        e.preventDefault();
+        
+        try {
+            const response = await fetch(`/api/ShoppingListItem/?EDGEtoken=${localStorage.getItem('Token')}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(e.value),
+            });
+
+            if (response.ok) {
+                alert("WORKED")
+                e.resetForm()
+                console.log(e)
+                getRecipeDetails()
+                // alert(response)
+                // Handle success, e.g., show a success message or redirect
+            } else {
+                alert(response.data)
+                // Handle errors, e.g., show an error message
+            }
+        } catch (error) {
+            alert(error)
+            // Handle network or other errors
+        }
+    };
 
 
     async function openModal(ingredName) {
@@ -95,7 +129,7 @@ export default function Home() {
         var data = await (await fetch("/api/ShoppingList/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'))).json()
         setRecipe(data.res)
 
-        var data = await (await fetch("/api/ShoppingListItem/" + "?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        var data = await (await fetch(`/api/ShoppingListItem/?shoppingListId=${id}&EDGEtoken=${localStorage.getItem('Token')}`)).json()
         console.log(data)
         
         getIngredDetails(data.res)
@@ -214,8 +248,25 @@ export default function Home() {
                     </Head>
                     <main className={styles.main}>
                         <Container className={styles.centered}>
-                            <h1 className={styles.centered}>{recipeName}</h1>
-                            <h2>Ingredients</h2>
+                            <Row>
+                            <Col>
+                            <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png"]} onImageChange={(e)=>console.log(e)}></ImageList>
+                            </Col>
+                            <Col>
+                            {
+                                (createNewIngredOpen?<Button variant={"danger"} style={{ "float": "right" }} onClick={()=>setCreateNewIngredOpen(false)}>Hide</Button>:<Button variant={"success"} style={{ "float": "right" }} onClick={()=>setCreateNewIngredOpen(true)}>Add to List</Button>)
+                            }
+                            </Col>
+                            </Row>
+                            
+                            
+                            
+                            {
+                                (createNewIngredOpen?<AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem}></AddShoppingItem>:<></>)
+                            }
+                            
+                            <h2>List</h2>
+                            
                             {/* <Button onClick={()=>console.log(ingreds)}>Show Ingreds List</Button> */}
                             
                             <Row>
@@ -264,7 +315,8 @@ export default function Home() {
 
                             </Row>
                             <h2>Total {getAproxTotalRecipeCost()}</h2>
-                            <AddShoppingItem shoppingListId={id}></AddShoppingItem>
+                            
+                            
                             <Row style={{ paddingBottom: "1vw", display: "flex" }}>
 
                                 <Col className={styles.centered}>
@@ -290,9 +342,10 @@ export default function Home() {
                             </Modal>
                             
                             <br></br>
-                            <Button variant="danger" onClick={() => deleteRecipe()}>
-                                Delete List
-                            </Button>
+                            {/* onClick={() => deleteRecipe()} */}
+                            {/* <Button variant="danger" >
+                                Mark as Finished
+                            </Button> */}
 
 
                             <p>ID = {id}</p>

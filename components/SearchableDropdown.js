@@ -2,15 +2,21 @@ import React, { useState, useEffect, useRef } from 'react';
 
 import styles from '../styles/SearchableDropdown.module.css'
 
-function SearchableDropdown({ options, placeholder, onChange,name }) {
+function SearchableDropdown({ options, placeholder, onChange,name,value}) {
   const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState(value);
   const [selectedOption, setSelectedOption] = useState(null);
   const dropdownRef = useRef(null);
 
   const filterOptions = () => {
     return options.filter((option) =>
-      option.toLowerCase().includes(inputValue.toLowerCase())
+      {
+        if (inputValue=== undefined){
+          return false
+        }
+        return (option.toLowerCase().includes(inputValue.toLowerCase()))
+      }
+      
     );
   };
 

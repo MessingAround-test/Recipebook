@@ -10,6 +10,7 @@ import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Router from 'next/router'
 import Card from 'react-bootstrap/Card'
+import GenericForm from '../../components/GenericForm'
 
 
 
@@ -29,6 +30,13 @@ export default function Home() {
         var data = await (await fetch("/api/ShoppingList?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
         setRecipes(data.res)
+    }
+
+    async function handleSubmit(e) {
+        
+        console.log(e)
+        console.log(e.value)
+
     }
 
 
@@ -101,9 +109,11 @@ export default function Home() {
                     <div>
                 
                 </div>
+                
+                
                     <div className={styles.cardGroup}>
                         <div style={{ padding: "0.5vh" }}>
-                            <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black", "borderStyle": "solid", "borderColor": "green", "borderWidth": "0.5rem", "alignItems": "center","justifyContent": "center" }} onClick={() => (redirect("/createRecipe"))}>
+                            <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black", "borderStyle": "solid", "borderColor": "green", "borderWidth": "0.5rem", "alignItems": "center","justifyContent": "center" }} onClick={() => (redirect("/shoppingList/create/"))}>
                                 <Card.Body style={{ overflow: "hidden" }}>
                                     <Card.Title>{String("New List")}</Card.Title>
                                     <Card.Img style={{maxHeight:"10rem", maxWidth:"10rem"}} variant="top" src={"add-128.png"} />

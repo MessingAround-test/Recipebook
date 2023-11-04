@@ -27,7 +27,7 @@ let categories = [
     "Home and Garden"
   ]
 
-function AddShoppingItem({shoppingListId}) {
+function AddShoppingItem({shoppingListId, handleSubmit}) {
     const [formData, setFormData] = useState({
         name: "",
         quantity: "",
@@ -36,6 +36,19 @@ function AddShoppingItem({shoppingListId}) {
         "shoppingListId": shoppingListId
     });
 
+    const resetForm = () => {
+        console.log("HAPPENED")
+        setFormData({
+          name: "",
+          quantity: "",
+          quantity_type: "",
+          note: "",
+          shoppingListId: shoppingListId,
+        });
+      };
+      
+
+    
     const [knownIngredients, setKnownIngredients] = useState([])
 
     const handleChange = (e) => {
@@ -47,31 +60,13 @@ function AddShoppingItem({shoppingListId}) {
         setFormData({ ...formData, [name]: value });  
     };
 
-    
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            const response = await fetch(`/api/ShoppingListItem/?EDGEtoken=${localStorage.getItem('Token')}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            });
-
-            if (response.ok) {
-                alert(response)
-                // Handle success, e.g., show a success message or redirect
-            } else {
-                alert(response)
-                // Handle errors, e.g., show an error message
-            }
-        } catch (error) {
-            alert(error)
-            // Handle network or other errors
-        }
+    const handleSubmitLocal = async (e) => {
+        e.value = formData
+        e.resetForm = resetForm; // Reset the form data after successful submission
+        handleSubmit(e)
     };
+
+    
 
     const getKnownIngredients = async (e) => {
         // e.preventDefault();
@@ -102,24 +97,24 @@ function AddShoppingItem({shoppingListId}) {
     return (
         <div className={styles['centered']}>
             <h2>Add New Ingredient</h2>
-            <Form onSubmit={(e) => handleSubmit(e)}>
+            <Form onSubmit={(e) => handleSubmitLocal(e)}>
                 <Form.Group className="mb-3" id="formBasicEmail">
                     <Form.Control name="name" id="ingredName" type="text" placeholder={shoppingListId} disabled />
                 </Form.Group>
                 <Form.Group className="mb-3" id="formIngredName">
-                    <SearchableDropdown options={knownIngredients} placeholder={"Enter Ingredient Name"} onChange={handleChange} name={"name"}></SearchableDropdown>
+                    <SearchableDropdown options={knownIngredients} placeholder={"Enter Ingredient Name"} onChange={handleChange} name={"name"} value={formData.name} ></SearchableDropdown>
                 </Form.Group>
                 <Form.Group className="mb-3" id="formBasicEmail">
-                    <Form.Control name="quantity" id="ingredAmount" type="text" placeholder="Enter Amount" required onChange={handleChange}/>
-                    <Form.Select aria-label="Default select example" name="quantity_type" id="quantity_type" onChange={handleChange} required>
+                    <Form.Control name="quantity" id="ingredAmount" type="text" placeholder="Enter Amount" required onChange={handleChange} value={formData.quantity}/>
+                    <Form.Select aria-label="Default select example" name="quantity_type" id="quantity_type" onChange={handleChange} value={formData.quantity_type} required>
                         {Object.keys(quantity_unit_conversions).map((item) => <option value={item}>{item}</option>)}
                     </Form.Select>
                 </Form.Group>
                 <Form.Group className="mb-3" id="formBasicPassword">
-                    <Form.Control name="note" id="ingredNote" type="text" placeholder="(optional note)" onChange={handleChange}/>
+                    <Form.Control name="note" id="ingredNote" type="text" placeholder="(optional note)" onChange={handleChange} value={formData.note}/>
                 </Form.Group>
                 <Form.Group className="mb-3" id="formCategory">
-                    <SearchableDropdown options={categories} placeholder={"Category"} onChange={handleChange} name={"category"}></SearchableDropdown>
+                    <SearchableDropdown options={categories} placeholder={"Category"} onChange={handleChange} name={"category"} value={formData.category}></SearchableDropdown>
                 </Form.Group>
 
 
