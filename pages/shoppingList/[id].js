@@ -71,7 +71,7 @@ export default function Home() {
             });
 
             if (response.ok) {
-                alert("WORKED")
+
                 e.resetForm()
                 console.log(e)
                 getRecipeDetails()
@@ -116,6 +116,11 @@ export default function Home() {
 
 
     async function getIngredDetails(ingredients) {
+        // THIS ADDS IN A BUG WHICH USES THE name from the shop to search.... when clicking refresh....
+        // if (ingredients === undefined){
+        //     ingredients = ingreds
+        // }
+        console.log("WE GOT HERE...")
         const newItems = [...ingredients];
         console.log(newItems)
         for (var ingredients in newItems) {
@@ -143,9 +148,9 @@ export default function Home() {
 
     }
 
-    const deleteRecipe = async function (e) {
+    const deleteItem = async function (e) {
 
-        var data = await (await fetch("/api/Recipe/" + String(router.query.id) + "?EDGEtoken=" + localStorage.getItem('Token'), {
+        var data = await (await fetch("/api/ShoppingList/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'), {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json'
@@ -162,7 +167,7 @@ export default function Home() {
             }
 
         } else {
-            redirect("/recipes")
+            redirect("/shoppingList/")
         }
     }
 
@@ -290,7 +295,7 @@ export default function Home() {
                             {/* <Button onClick={()=>console.log(ingreds)}>Show Ingreds List</Button> */}
 
                             <Row>
-                                <IngredientTable ingredients={ingreds} handleCheckboxChange={handleCheckboxChange} reload={() => { }}></IngredientTable>
+                                <IngredientTable ingredients={ingreds} handleCheckboxChange={handleCheckboxChange} reload={getIngredDetails}></IngredientTable>
                             </Row>
                             <h2>Total {getAproxTotalRecipeCost()}</h2>
 
@@ -323,7 +328,7 @@ export default function Home() {
                             <Button  onClick={() => console.log(ingreds)} >
                                 see state
                             </Button>
-                            <Button variant="danger" onClick={() => deleteRecipe()} >
+                            <Button variant="danger" onClick={() => deleteItem()} >
                                 Mark as Finished
                             </Button>
 

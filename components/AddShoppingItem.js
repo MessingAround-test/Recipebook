@@ -99,7 +99,7 @@ function AddShoppingItem({shoppingListId, handleSubmit}) {
             <h2>Add New Ingredient</h2>
             <Form onSubmit={(e) => handleSubmitLocal(e)}>
                 <Form.Group className="mb-3" id="formBasicEmail">
-                    <Form.Control name="name" id="ingredName" type="text" placeholder={shoppingListId} disabled />
+                    <Form.Control name="name" id="ingredName" type="text" placeholder={shoppingListId} disabled hidden />
                 </Form.Group>
                 <Form.Group className="mb-3" id="formIngredName">
                     <SearchableDropdown options={knownIngredients} placeholder={"Enter Ingredient Name"} onChange={handleChange} name={"name"} value={formData.name} ></SearchableDropdown>
