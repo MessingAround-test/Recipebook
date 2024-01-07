@@ -63,7 +63,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload}) {
           <Col className={styles.col}>{ingred.search_term}</Col>
           <Col className={styles.col}>
             <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
-              <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/${ingred.source ? ingred.source : "cross"}.png`} />
+              <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/${ingred.source ? `${ingred.source}.png` : "loading.svg"}`} />
             </a>
           </Col>
           <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>

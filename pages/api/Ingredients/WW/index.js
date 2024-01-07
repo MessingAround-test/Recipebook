@@ -11,7 +11,7 @@ import { convertMetricReading } from '../../../../lib/conversion'
 
 export default async function handler(req, res) {
     let search_term = req.query.name
-    console.log(req)
+    //console.log(req)
 
     verify(req.query.EDGEtoken, secret, async function (err, decoded) {
         if (err) {
@@ -45,12 +45,12 @@ export default async function handler(req, res) {
                         let quantity_unit = filteredData.measure || filteredData.CupMeasure
                         let quantity_type;
                         // With woolies they put the quantity type in here for some weird reason
-                        //console.log(quantity)
-                        //console.log(quantity_unit)
+                        ////console.log(quantity)
+                        ////console.log(quantity_unit)
                         // If quantity type is not defined or null then extract from the name
                         if (!(quantity_unit)) {
                             let metricConversion = convertMetricReading(name)
-                            //console.log(metricConversion)
+                            ////console.log(metricConversion)
                             quantity = metricConversion.quantity
                             quantity_unit = metricConversion.quantity_unit
                             quantity_type = metricConversion.quantity_type
@@ -59,7 +59,7 @@ export default async function handler(req, res) {
                             let metricConversion = convertMetricReading(quantity_unit)
                             quantity_unit = metricConversion.quantity_unit
                             quantity_type = metricConversion.quantity_type
-                            //console.log(metricConversion)
+                            ////console.log(metricConversion)
                             // If the quantity returned is not 1, then multiply it by the quantity
                             if (metricConversion.quantity !== 1) {
                                 quantity = quantity * metricConversion.quantity
@@ -79,11 +79,11 @@ export default async function handler(req, res) {
                             // "extraData": filteredData
 
                         }
-                        console.log("EHERE")
-                        console.log(filteredObj)
+                        //console.log("EHERE")
+                        //console.log(filteredObj)
 
                         // Have a look at .MaxSupplyLimitMessage pretty weird
-                        //console.log(filteredObj)
+                        ////console.log(filteredObj)
                         let response = Ingredients.create({
                             "id": source + "-" + name + "-" + internal_id,
                             "name": name,
@@ -95,7 +95,7 @@ export default async function handler(req, res) {
                             "search_term": search_term,
                             "source": source,
                         });
-                        // //console.log(await response);
+                        // ////console.log(await response);
 
                         filteredDataArray.push(filteredObj)
 
@@ -108,7 +108,7 @@ export default async function handler(req, res) {
             } else if (req.method === "DELETE") {
                 // await dbConnect()
 
-                // //console.log(decoded)
+                // ////console.log(decoded)
                 // let db_id = decoded.id
                 // let userData = await User.findOne({ id: db_id });
                 // if (userData === {}) {

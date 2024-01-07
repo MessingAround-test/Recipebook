@@ -18,6 +18,11 @@ export default async function handler(req, res) {
         }
 
         let supplier = req.query.supplier
+
+        // If we want multiple supplier filters then we pass in the body.
+        // Body takes priority
+
+
         let filterDetails = {
             "search_term": search_term,
             "supplier": supplier,
@@ -32,28 +37,54 @@ export default async function handler(req, res) {
         } else {
             // let IngredData = []
             let search_query = { search_term: search_term }
-            if (supplier !== undefined) {
-                search_query["source"] = supplier
+            // "Aldi",
+            let companies = ["WW", "IGA",  "PanettaGG"]
+            const supplierParam = req.query.supplier;
+
+            if (supplierParam === undefined) {
+
+            } else if (supplierParam.includes(',')) {
+                // Split the comma-separated values into an array
+                companies = supplierParam.split(',');
+
+                // Now, 'companies' will be an array of supplier names
+                //console.log(companies);
+
+                // You can use 'companies' as an array in your server logic
+            } else if (supplierParam == []) {
+                // Do nuttin
+            } else {
+                // Handle the case when 'supplier' does not contain a comma
+                //console.log('Supplier parameter does not contain a comma:', supplierParam);
+                companies = [supplierParam]
             }
 
+            search_query["source"] = { "$in": companies }
+
+
             let IngredData = await Ingredients.find(search_query).exec()
-            console.log(IngredData)
+            //console.log(IngredData)
             if (IngredData.length == 0) {
                 let allIngredData = []
-                let companies = ["WW", "IGA", "PanettaGG"]
-                if (supplier !== undefined) {
-                    companies = [supplier]
-                }
+                // Reset companies so we get from all"Aldi",
+                companies = ["WW", "IGA", "PanettaGG"]
+
+
 
                 for (let supplierIndex in companies) {
-                    let supplier = companies[supplierIndex]
-                    let newIngredData = await axios({
-                        method: 'get',
-                        url: `http://localhost:8080/api/Ingredients/${supplier}/?name=${search_term}&EDGEtoken=${req.query.EDGEtoken}`,
-                    })
+                    try {
+                        let supplier = companies[supplierIndex]
+                        let newIngredData = await axios({
+                            method: 'get',
+                            url: `http://localhost:8080/api/Ingredients/${supplier}/?name=${search_term}&EDGEtoken=${req.query.EDGEtoken}`,
+                        })
 
-                    if (newIngredData.data.success === true && newIngredData.data.res.length > 0) {
-                        allIngredData = [...allIngredData.concat(newIngredData.data.res)]
+                        if (newIngredData.data.success === true && newIngredData.data.res.length > 0) {
+                            allIngredData = [...allIngredData.concat(newIngredData.data.res)]
+                        }
+                    } catch (error) {
+                        //console.log("API FAILED")
+                        //console.log(error)
                     }
                 }
                 // Re-search at the end and get results
@@ -67,7 +98,7 @@ export default async function handler(req, res) {
             }
         }
     } else if (req.method === "DELETE") {
-        
+
         let id = req.query.id
         let IngredData;
 

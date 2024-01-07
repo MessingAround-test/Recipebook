@@ -40,7 +40,7 @@ export default function Home() {
 
     async function generateImage(prompt) {
         if (recipeName !== undefined && recipeName !== "") {
-            let promptImage = await (await fetch(`https://image.pollinations.ai/prompt/content:${prompt};style:realistic`, {
+            let promptImage = await (await fetch(`https://image.pollinations.ai/prompt/${prompt} realistic`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'

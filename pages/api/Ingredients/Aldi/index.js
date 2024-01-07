@@ -39,8 +39,8 @@ function calculateLevenshteinDistance(a, b) {
   
     return matrix[a.length][b.length];
   }
-// Function to find matches from the list above the threshold
-function findMatches(inputIngredient, products) {
+// Function to find matches from the list of dictionaries and filter down to the top 5
+function findMatches(inputIngredient, products, maxNameLength) {
     const threshold = 5; // Default threshold
     const boostThreshold = 2; // Lower threshold for boosted matches
     const matches = [];
@@ -66,9 +66,11 @@ function findMatches(inputIngredient, products) {
     }
   
     if (matches.length > 0) {
-      // Sort the matches by distance in ascending order
+      // Filter out long product names
       matches.sort((a, b) => (a.distance < b.distance ? -1 : 1));
       return matches;
+      // Return the top 5 matches or fewer if there are fewer than 5 matches
+      
     } else {
       return [];
     }
@@ -324,7 +326,7 @@ export default async function handler(req, res) {
 
 
                     } else {
-                        let IngredData = await AldiIngredient.find({}).exec().lean()
+                        let IngredData = await AldiIngredient.find({}).lean().exec()
                         return res.status(200).send({ success: true, res: IngredData, message: "" })
                     }
 
