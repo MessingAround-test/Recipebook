@@ -154,7 +154,33 @@ export default function Home() {
         const updatedIngredients = [...matchedListIngreds];
         updatedIngredients[index].complete = !updatedIngredients[index].complete;
         setMatchedListIngreds(updatedIngredients);
+
+        await updateCompleteInDB(updatedIngredients[index]._id,updatedIngredients[index].complete)
     };
+
+    async function updateCompleteInDB(id, complete){
+        try {
+            const response = await fetch(`/api/ShoppingListItem/${id}?EDGEtoken=${localStorage.getItem('Token')}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({"complete": complete}),
+            });
+            console.log(response)
+
+            if (!response.ok) {
+                // console.log()
+                let error = await response.json()
+                console.log(error)
+                alert(error.message)
+                // Handle errors, e.g., show an error message
+            }
+        } catch (error) {
+            alert(error)
+            // Handle network or other errors
+        }
+    }
 
     async function updateSupplierFromInputObject(inputObject) {
         const resultArray = Object.keys(inputObject).filter(key => inputObject[key]);

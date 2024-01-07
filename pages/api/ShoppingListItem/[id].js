@@ -10,14 +10,14 @@ import ShoppingListItem from '../../../models/ShoppingListItem'
 
 
 export default async function handler(req, res) {
-   var id= req.query.id
-    
+  var id = req.query.id
+
   verify(req.query.EDGEtoken, secret, async function (err, decoded) {
     if (err) {
       res.status(400).json({ res: "error: " + String(err) })
     } else {
       if (req.method === "GET") {
-        
+
         await dbConnect()
 
         console.log(decoded)
@@ -27,11 +27,11 @@ export default async function handler(req, res) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
 
-          var DbData = await ShoppingListItem.findOne({_id: id})
-          res.status(200).json({ res:DbData})
+          var DbData = await ShoppingListItem.findOne({ _id: id })
+          res.status(200).json({ res: DbData })
         }
-      
-      
+
+
       } else if (req.method === "DELETE") {
         await dbConnect()
 
@@ -42,11 +42,28 @@ export default async function handler(req, res) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
 
-          var DbData = await ShoppingListItem.deleteOne({_id: id})
-          res.status(200).json({ success: true, data: DbData, message: "Success"})
+          var DbData = await ShoppingListItem.deleteOne({ _id: id })
+          res.status(200).json({ success: true, data: DbData, message: "Success" })
         }
-      }else {
-        res.status(400).json({ success: false, data: [], message: "Not supported request"})
+
+      } else if (req.method === "PUT") {
+        console.log("CALLED")
+        const dbData = await ShoppingListItem.findOne({ _id: id });
+
+        if (!dbData) {
+          return res.status(404).json({ error: 'ShoppingListItem not found' });
+        }
+
+        // Update the Complete property with the value from the request body
+        dbData.complete = req.body.complete;
+
+        // Save the updated document
+        await dbData.save();
+
+        return res.json(dbData);
+
+      } else {
+        res.status(400).json({ success: false, data: [], message: "Not supported request" })
       }
     }
   });
