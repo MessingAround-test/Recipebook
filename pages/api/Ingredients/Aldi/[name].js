@@ -10,20 +10,20 @@ export default async function handler(req, res) {
 
 
 
-    console.log(req.query)
+    //console.log(req.query)
     var search_term = req.query.name
 
     verify(req.query.EDGEtoken, secret, async function (err, decoded) {
         try {
             if (err) {
-                console.log(err)
+                //console.log(err)
                 return res.status(400).json({ res: "error: " + String(err) })
             } else {
                 if (req.method === "GET") {
 
                     await dbConnect()
 
-                    console.log(decoded)
+                    //console.log(decoded)
                     var db_id = decoded.id
                     var userData = await User.findOne({ id: db_id });
                     if (userData == {}) {
@@ -32,14 +32,14 @@ export default async function handler(req, res) {
 
                         // Get out of the ALdi DB
                         let allIngreds = await AldiIngredient.find({}).lean().exec()
-                        console.log(allIngreds)
-                        console.log("SEARCH TERM =")
-                        console.log(search_term)
+                        //console.log(allIngreds)
+                        //console.log("SEARCH TERM =")
+                        //console.log(search_term)
                         let matchedProducts = findMatches(search_term, allIngreds);
-                        console.log("Matches:", matchedProducts);
+                        //console.log("Matches:", matchedProducts);
                         var filteredDataArray = []
                         let source = "Aldi"
-                        console.log(matchedProducts)
+                        //console.log(matchedProducts)
                         // filteredDataArray = newIngredData
                         for (let ingredData in matchedProducts) {
                             
@@ -66,7 +66,7 @@ export default async function handler(req, res) {
                                 // "extraData": filteredData
 
                             }
-                            console.log(filteredObj)
+                            //console.log(filteredObj)
                             const response = Ingredients.create({
                                 "id": source + "-" + name + "-" + internal_id,
                                 "name": name,
@@ -78,13 +78,13 @@ export default async function handler(req, res) {
                                 "search_term": search_term,
                                 "source": source,
                             });
-                            console.log("BEORE CREATE")
-                            console.log(await response);
+                            //console.log("BEORE CREATE")
+                            //console.log(await response);
 
 
                             filteredDataArray.push(filteredObj)
                         }
-                        console.log(filteredDataArray)
+                        //console.log(filteredDataArray)
                         return res.status(200).send({ data: filteredDataArray, success: true })
 
 
@@ -94,7 +94,7 @@ export default async function handler(req, res) {
                 } else if (req.method === "DELETE") {
                     // await dbConnect()
 
-                    // console.log(decoded)
+                    // //console.log(decoded)
                     // var db_id = decoded.id
                     // var userData = await User.findOne({ id: db_id });
                     // if (userData === {}) {

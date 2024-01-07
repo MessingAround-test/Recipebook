@@ -102,9 +102,9 @@ async function extractFromAldi(endpoint, formattedDateTime) {
     try {
 
         // Make an HTTP GET request to the URL
-        console.log(endpoint)
+        //console.log(endpoint)
         const response = await axios.get(endpoint);
-        // console.log(response.data)
+        // //console.log(response.data)
         // Parse the HTML content using JSSoup
         const soup = new JSSoup(response.data, true);
 
@@ -127,9 +127,9 @@ async function extractFromAldi(endpoint, formattedDateTime) {
                         let cents = parseFloat((priceDiv.find("span", "box--decimal").text).replace("$", ""))
                         price = Number((dollars + cents / 100).toFixed(2))
 
-                        // console.log(priceDiv.prettify()); // Output the prettified HTML of each matching sub div
+                        // //console.log(priceDiv.prettify()); // Output the prettified HTML of each matching sub div
                     } else {
-                        console.log('No matching sub div with class "box--price" found in the parent div.');
+                        //console.log('No matching sub div with class "box--price" found in the parent div.');
                     }
 
                     let internal_id = formattedDateTime
@@ -141,7 +141,7 @@ async function extractFromAldi(endpoint, formattedDateTime) {
                     if (!(quantity_unit)) {
 
                         let metricConversion = convertMetricReading(name)
-                        // console.log(metricConversion)
+                        // //console.log(metricConversion)
                         quantity = metricConversion.quantity
                         quantity_unit = metricConversion.quantity_unit
                         quantity_type = metricConversion.quantity_type
@@ -150,7 +150,7 @@ async function extractFromAldi(endpoint, formattedDateTime) {
                         let metricConversion = convertMetricReading(quantity_unit)
                         quantity_unit = metricConversion.quantity_unit
                         quantity_type = metricConversion.quantity_type
-                        // console.log(metricConversion)
+                        // //console.log(metricConversion)
                         // If the quantity returned is not 1, then multiply it by the quantity
                         if (metricConversion.quantity !== 1) {
                             quantity = quantity * metricConversion.quantity
@@ -171,15 +171,15 @@ async function extractFromAldi(endpoint, formattedDateTime) {
                     ingredList.push(ingredDict)
 
                 } catch (error) {
-                    console.log(error)
+                    //console.log(error)
                 }
 
 
-                // console.log(div.prettify()); // Output the prettified HTML of each matching div
+                // //console.log(div.prettify()); // Output the prettified HTML of each matching div
             });
 
         } else {
-            console.log('No matching div elements found.');
+            //console.log('No matching div elements found.');
         }
     } catch (error) {
         console.error('An error occurred:', error);
@@ -201,11 +201,11 @@ function formatCurrentDateTime() {
 
 export default async function handler(req, res) {
     const formattedDateTime = formatCurrentDateTime();
-    console.log(formattedDateTime);
+    //console.log(formattedDateTime);
 
 
 
-    console.log(req.query)
+    //console.log(req.query)
     var ingredient_name = req.query.name
 
     verify(req.query.EDGEtoken, secret, async function (err, decoded) {
@@ -254,7 +254,7 @@ export default async function handler(req, res) {
                 } else if (req.method === "DELETE") {
                     await dbConnect()
 
-                    console.log(decoded)
+                    //console.log(decoded)
                     var db_id = decoded.id
                     var userData = await User.findOne({ id: db_id });
                     if (userData == {}) {
@@ -269,14 +269,14 @@ export default async function handler(req, res) {
                     if (ingredient_name !== undefined && ingredient_name !== null) {
                         // Get out of the ALdi DB
                         let allIngreds = await AldiIngredient.find({}).lean().exec()
-                        console.log(allIngreds)
-                        console.log("SEARCH TERM =")
-                        console.log(search_term)
+                        //console.log(allIngreds)
+                        //console.log("SEARCH TERM =")
+                        //console.log(search_term)
                         let matchedProducts = findMatches(search_term, allIngreds);
-                        console.log("Matches:", matchedProducts);
+                        //console.log("Matches:", matchedProducts);
                         var filteredDataArray = []
                         let source = "Aldi"
-                        console.log(matchedProducts)
+                        //console.log(matchedProducts)
                         // filteredDataArray = newIngredData
                         for (let ingredData in matchedProducts) {
 
@@ -303,7 +303,7 @@ export default async function handler(req, res) {
                                 // "extraData": filteredData
 
                             }
-                            console.log(filteredObj)
+                            //console.log(filteredObj)
                             const response = Ingredients.create({
                                 "id": source + "-" + name + "-" + internal_id,
                                 "name": name,
@@ -315,13 +315,13 @@ export default async function handler(req, res) {
                                 "search_term": search_term,
                                 "source": source,
                             });
-                            console.log("BEORE CREATE")
-                            console.log(await response);
+                            //console.log("BEORE CREATE")
+                            //console.log(await response);
 
 
                             filteredDataArray.push(filteredObj)
                         }
-                        console.log(filteredDataArray)
+                        //console.log(filteredDataArray)
                         return res.status(200).send({ res: filteredDataArray, success: true })
 
 

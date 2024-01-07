@@ -19,6 +19,27 @@ export default function Home() {
     const [recipes, setRecipes] = useState([])
     const [allowDelete, setAllowDelete] = useState(false)
 
+
+    
+
+    const cardStyles = {
+        maxWidth: '15rem',
+        minWidth: "15rem",
+        maxHeight: "15rem",
+        minHeight: "15rem",
+        color: "black",
+        alignItems: "center",
+        justifyContent: "center",
+        margin: "0 auto",
+        width:'15rem',
+        boxSizing: "border-box",
+    };
+
+    const divStyles = {
+        padding: "0.5vh",
+        width: 'auto',
+    };
+
     async function getUserDetails() {
         var data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
@@ -33,7 +54,7 @@ export default function Home() {
     }
 
     async function handleSubmit(e) {
-        
+
         console.log(e)
         console.log(e.value)
 
@@ -79,7 +100,7 @@ export default function Home() {
         } else {
             const localRecipes = recipes;
             // Remove the recipe with the same ID which was just deleted from local state
-            localRecipes = localRecipes.filter(function( obj ) {
+            localRecipes = localRecipes.filter(function (obj) {
                 return obj._id !== id;
             });
             setRecipes(localRecipes)
@@ -103,39 +124,35 @@ export default function Home() {
                     <link rel="icon" href="/avo.ico" />
                 </Head>
                 <div style={{ padding: "0.5vh" }}>
-                <Button variant="danger" onClick={() => toggleMassDelete()} style={{ "float": "right" }}>Allow Mass Delete</Button>
+                    <Button variant="danger" onClick={() => toggleMassDelete()} style={{ "float": "right" }}>Allow Mass Delete</Button>
                 </div>
                 <main className={styles.main}>
                     <div>
-                
-                </div>
-                
-                
+
+                    </div>
+
+
                     <div className={styles.cardGroup}>
                         <div style={{ padding: "0.5vh" }}>
-                            <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black", "borderStyle": "solid", "borderColor": "green", "borderWidth": "0.5rem", "alignItems": "center","justifyContent": "center" }} onClick={() => (redirect("/shoppingList/create/"))}>
+                            <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black", "borderStyle": "solid", "borderColor": "green", "borderWidth": "0.5rem", "alignItems": "center", "justifyContent": "center" }} onClick={() => (redirect("/shoppingList/create/"))}>
                                 <Card.Body style={{ overflow: "hidden" }}>
                                     <Card.Title>{String("New List")}</Card.Title>
-                                    <Card.Img style={{maxHeight:"10rem", maxWidth:"10rem"}} variant="top" src={"add-128.png"} />
+                                    <Card.Img style={{ maxHeight: "10rem", maxWidth: "10rem" }} variant="top" src={"add-128.png"} />
                                 </Card.Body>
 
                             </Card>
                         </div>
                         {recipes.map((recipe) => {
                             return (
-                                <div style={{ padding: "0.5vh" }}>
-                                    <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black", "alignItems": "center","justifyContent": "center" }} >
-
-                                        {(allowDelete) ? (<>
-                                            <Button variant="danger" onClick={() => deleteRecipe(recipe._id)} style={{ "float": "right" }}>x </Button>
-                                        </>) : (<></>)}
+                                <div style={divStyles}>
+                                    <Card style={cardStyles}>
+                                        {(allowDelete) && (
+                                            <Button variant="danger" onClick={() => deleteRecipe(recipe._id)} style={{ float: "right" }}>x </Button>
+                                        )}
                                         <Card.Body style={{ overflow: "hidden" }} onClick={() => (redirect("/shoppingList/" + recipe._id))}>
-
-
                                             <Card.Title>{String(recipe.name)}</Card.Title>
                                             <Card.Img variant="top" src={recipe.image} />
                                         </Card.Body>
-
                                     </Card>
                                 </div>
                             )
