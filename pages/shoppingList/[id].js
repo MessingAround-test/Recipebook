@@ -31,7 +31,7 @@ export default function Home() {
     const [matchedListIngreds, setMatchedListIngreds] = useState([])
     const [isLoading, setLoading] = useState(false)
     const [createNewIngredOpen, setCreateNewIngredOpen] = useState(false)
-    const [enabledSuppliers, setEnabledSuppliers] = useState(["WW"])
+    const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA"])
 
 
     useEffect(() => {
@@ -61,14 +61,14 @@ export default function Home() {
             loading: true,
         }));
         setMatchedListIngreds(updatedListIngreds);
-    
+
         // Use a loop to update the state for each ingredient individually
         for (let i = 0; i < updatedListIngreds.length; i++) {
             try {
                 const updatedIngredient = await getGroceryStoreProducts(
                     updatedListIngreds[i]
                 );
-    
+
                 // Update the state for the specific ingredient
                 updatedListIngreds[i] = {
                     ...updatedIngredient,
@@ -81,8 +81,8 @@ export default function Home() {
             }
         }
     };
-    
-    
+
+
 
     useEffect(() => {
         if (listIngreds.length > 0) {
@@ -156,6 +156,26 @@ export default function Home() {
         setMatchedListIngreds(updatedIngredients);
     };
 
+    async function updateSupplierFromInputObject(inputObject) {
+        const resultArray = Object.keys(inputObject).filter(key => inputObject[key]);
+
+        const formattedResultArray = resultArray.map(key => key.replace(/^\/|\.png$/g, ''));
+
+        console.log(formattedResultArray);
+        setEnabledSuppliers(formattedResultArray)
+    };
+
+    useEffect(() => {
+        // This code will run after the component renders and whenever enabledSuppliers changes
+        reloadAllIngredients();
+      }, [enabledSuppliers]);
+
+    async function handleActiveSupplierChange(inputObject){
+        await updateSupplierFromInputObject(inputObject)
+        
+    }
+
+
 
     return (
         <div>
@@ -174,21 +194,37 @@ export default function Home() {
                         :
                         <></>}
                     <Container className={styles.centered}>
+                        <Row>
+                            <Col>
+                                <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
+                            </Col>
+                            <Col>
+                                {
+                                    (createNewIngredOpen ?
+                                        <div>
+                                            <Button variant={"danger"} style={{ "float": "right" }} onClick={() => setCreateNewIngredOpen(false)}>Hide</Button>
+                                            <AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getRecipeDetails}></AddShoppingItem>
+                                        </div>
+                                        :
+                                        <Button variant={"success"} style={{ "float": "right" }} onClick={() => setCreateNewIngredOpen(true)}>Add to List</Button>)
+                                }
+                            </Col>
+                        </Row>
+
+
 
                         {
-                            (createNewIngredOpen ?
-                                <div>
-                                    <Button variant={"danger"} style={{ "float": "right" }} onClick={() => setCreateNewIngredOpen(false)}>Hide</Button>
-                                    <AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getRecipeDetails}></AddShoppingItem>
-                                </div>
-                                :
-                                <Button variant={"success"} style={{ "float": "right" }} onClick={() => setCreateNewIngredOpen(true)}>Add to List</Button>)
+                            (createNewIngredOpen ? <AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getIngredDetails}></AddShoppingItem> : <></>)
                         }
+
+                        <h2>List</h2>
+
+
 
 
 
                         <Row>
-                            <IngredientTable reload={()=>reloadAllIngredients()} ingredients={matchedListIngreds.map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange}></IngredientTable>
+                            <IngredientTable reload={() => reloadAllIngredients()} ingredients={matchedListIngreds.map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange}></IngredientTable>
                         </Row>
 
                         <Button onClick={() => console.log(matchedListIngreds)} >
