@@ -5,50 +5,51 @@ import PropTypes from 'prop-types';
 import styles from '../styles/Home.module.css';
 import { Button } from 'react-bootstrap';
 
-function IngredientTable({ ingredients, handleCheckboxChange, reload}) {
+function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
   const [ingredientData, setIngredientData] = useState(ingredients);
 
   const markAsIncorrect = async function (ingredientId, ingredName) {
     var data = await (await fetch("/api/Ingredients/?id=" + ingredientId + "&EDGEtoken=" + localStorage.getItem('Token'), {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-        })
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+      })
     })).json()
     console.log(data)
     if (data.success === false || data.success === undefined) {
-        if (data.message !== undefined) {
-            alert(data.message)
-        } else {
-            alert("failed, unexpected error")
-        }
+      if (data.message !== undefined) {
+        alert(data.message)
+      } else {
+        alert("failed, unexpected error")
+      }
 
     } else {
-        // Ran successfully
-        reload()
+      // Ran successfully
+      reload()
     }
-}
+  }
 
   useEffect(() => {
     setIngredientData(ingredients);
   }, [ingredients]);
 
-  
+
 
   return (
     <div>
       <Row>
         <Col className={styles.col}><strong>Bought</strong></Col>
         <Col className={styles.col}><strong>Amount</strong></Col>
-        <Col className={styles.col}><strong>Search Term</strong></Col>
+        <Col className={styles.col}><strong>Product</strong></Col>
         <Col className={styles.col}><strong>Source</strong></Col>
-        <Col className={styles.col}><strong>Name</strong></Col>
-        <Col className={styles.col}><strong>Not Right?</strong></Col>
+        <Col className={styles.col}><strong>Search Term</strong></Col>
         <Col className={styles.col}><strong>Price</strong></Col>
+        <Col className={styles.col}><strong>Unit Price</strong></Col>
+        <Col className={styles.col}><strong>Not Right?</strong></Col>
       </Row>
-      
+
       {ingredientData.map((ingred, index) => (
         <Row key={index} style={{ filter: ingred.bought ? 'grayscale(100%)' : 'none' }}>
           <Col className={styles.col}>
@@ -59,24 +60,52 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload}) {
               onChange={() => handleCheckboxChange(index)}
             />
           </Col>
-          <Col className={styles.col}>{ingred.Amount} {ingred.AmountType}</Col>
-          <Col className={styles.col}>{ingred.search_term}</Col>
-          <Col className={styles.col}>
-            <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
-              <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/${ingred.source ? `${ingred.source}.png` : "loading.svg"}`} />
-            </a>
-          </Col>
-          <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
-            <div onClick={() => openModal(ingred.name)}>
-              {ingred.bought ? <del>{ingred.name}</del> : ingred.name}
-            </div>
-          </Col>
-          <Col className={styles.col}>
-            <Button variant="warning" onClick={(e) => markAsIncorrect(ingred._id, ingred.name)}>Not right?</Button>
-          </Col>
-          <Col className={styles.col}>
-            ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}
-          </Col>
+          <Col className={styles.col}>{ingred.quantity} {ingred.quantity_type}</Col>
+          {ingred.options[0] !== undefined
+            ?
+            <Col className={styles.col}>{ingred.options[0].name}</Col>
+            :
+            <Col className={styles.col}></Col>
+          }
+
+
+          {
+            ingred.options[0] !== undefined ?
+              <>
+                <Col className={styles.col}>
+                  <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
+                    <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/${ingred.options[0].source ? `${ingred.options[0].source}.png` : "loading.svg"}`} />
+                  </a>
+                </Col>
+                <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
+                  <div onClick={() => openModal(ingred.name)}>
+                    {ingred.bought ? <del>{ingred.name}</del> : ingred.name}
+                  </div>
+                </Col>
+                <Col className={styles.col}>{(ingred.options[0].unit_price * ingred.quantity).toFixed(2)}</Col>
+                <Col className={styles.col}>{ingred.options[0].unit_price}</Col>
+                <Col className={styles.col}>
+                  <Button variant="warning" onClick={(e) => markAsIncorrect(ingred.options[0]._id, ingred.name)}>Not right?</Button>
+                </Col>
+              </>
+              :
+              <>
+                <Col className={styles.col}>
+                  <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
+                    <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/${ingred.source ? `${ingred.source}.png` : "loading.svg"}`} />
+                  </a>
+                </Col>
+                <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
+                  <div onClick={() => openModal(ingred.name)}>
+                    {ingred.bought ? <del>{ingred.name}</del> : ingred.name}
+                  </div>
+                </Col>
+                <Col className={styles.col}></Col>
+                <Col className={styles.col}></Col>
+                <Col className={styles.col}>No match found</Col>
+              </>
+          }
+
         </Row>
       ))}
     </div>
