@@ -99,7 +99,11 @@ const customStyles = {
               onChange={() => handleCheckboxChange(index)}
             />
           </Col>
-          <Col className={styles.col}>{ingred.quantity} {ingred.quantity_type}</Col>
+          <Col className={styles.col}>
+            <div>
+            {ingred.quantity + " " + ingred.quantity_type}
+            </div>
+            </Col>
           {ingred.options[0] !== undefined
             ?
             <Col className={styles.col}>{ingred.options[0].name}</Col>
