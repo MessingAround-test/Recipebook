@@ -110,7 +110,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
         <Col className={styles.col}><strong>Search Term</strong></Col>
         <Col className={styles.col}><strong>Price</strong></Col>
         <Col className={styles.col}><strong>Unit Price</strong></Col>
-        <Col className={styles.col}><strong>?</strong></Col>
+        <Col className={styles.col}><strong>Incorrect</strong></Col>
 
       </Row>
 
@@ -157,7 +157,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
                 <Col className={styles.col}>{(ingred.options[0].unit_price * ingred.quantity).toFixed(2)}</Col>
                 <Col className={styles.col}>{ingred.options[0].unit_price}</Col>
                 <Col className={styles.col}>
-                  <Button variant="warning" onClick={(e) => markAsIncorrect(ingred.options[0]._id, ingred.name)}>Wrong</Button>
+                  <Button variant="warning" onClick={(e) => markAsIncorrect(ingred.options[0]._id, ingred.name)}>x</Button>
                 </Col>
 
               </>
