@@ -232,7 +232,7 @@ export default function Home() {
                     <Container className={styles.centered}>
                         <Row>
                             <Col>
-                                <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
+                                <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
                             </Col>
                             <Col>
                                 {
