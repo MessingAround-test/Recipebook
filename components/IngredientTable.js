@@ -4,9 +4,30 @@ import Col from 'react-bootstrap/Col';
 import PropTypes from 'prop-types';
 import styles from '../styles/Home.module.css';
 import { Button } from 'react-bootstrap';
+import Modal from 'react-modal';
+import { IngredientList } from './IngredientList'
 
 function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
   const [ingredientData, setIngredientData] = useState(ingredients);
+  const [modalIsOpen, setIsOpen] = useState(false);
+  const [selectedIngred, setSelectedIngred] = useState("")
+
+  async function openModal(ingredName) {
+    setIsOpen(true);
+    setSelectedIngred(ingredName)
+  }
+
+  async function closeModal() {
+    setIsOpen(false);
+}
+
+const customStyles = {
+  content: {
+      "backgroundColor": "grey"
+  }
+}
+
+
 
   const markAsIncorrect = async function (ingredientId, ingredName) {
     var data = await (await fetch("/api/Ingredients/?id=" + ingredientId + "&EDGEtoken=" + localStorage.getItem('Token'), {
@@ -44,13 +65,13 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
       }
       return 0;
     });
-  
+
     const sum = total.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
-  
-    
+
+
     return sum.toFixed(2);
   };
-  
+
 
 
   return (
@@ -64,7 +85,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
         <Col className={styles.col}><strong>Search Term</strong></Col>
         <Col className={styles.col}><strong>Price</strong></Col>
         <Col className={styles.col}><strong>Unit Price</strong></Col>
-        <Col className={styles.col}><strong>Not Right?</strong></Col>
+        <Col className={styles.col}><strong>?</strong></Col>
 
       </Row>
 
@@ -107,7 +128,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
                 <Col className={styles.col}>{(ingred.options[0].unit_price * ingred.quantity).toFixed(2)}</Col>
                 <Col className={styles.col}>{ingred.options[0].unit_price}</Col>
                 <Col className={styles.col}>
-                  <Button variant="warning" onClick={(e) => markAsIncorrect(ingred.options[0]._id, ingred.name)}>Not right?</Button>
+                  <Button variant="warning" onClick={(e) => markAsIncorrect(ingred.options[0]._id, ingred.name)}>Skip</Button>
                 </Col>
 
               </>
@@ -116,7 +137,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
                 <Col className={styles.col}>
                   <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
 
-                    <object type="image/svg+xml" data="/loading.svg">SVG</object>
+                    <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} />
                   </a>
                 </Col>
                 <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
@@ -125,8 +146,8 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
                   </div>
                 </Col>
                 <Col className={styles.col}></Col>
-                <Col className={styles.col}>No match</Col>
-                <Col className={styles.col}><Button variant="warning" onClick={(e) => alert("bryn to implement")}>Reload Source?</Button></Col>
+                <Col className={styles.col}></Col>
+                {/* <Col className={styles.col}><Button variant="warning" onClick={(e) => alert("bryn to implement")}></Button></Col> */}
 
               </>
           }
@@ -134,7 +155,21 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
           {ingred.loading ? <Col ><object type="image/svg+xml" data="/loading.svg" style={{ "overflow": "hidden", "width": "200%" }}></object> </Col> : <></>}
 
         </Row>
+
       ))}
+      <Modal
+        isOpen={modalIsOpen}
+        onRequestClose={closeModal}
+        style={customStyles}
+        contentLabel="Example Modal"
+        className={styles.modal}
+      >
+        <a>
+          <button style={{ float: "right", "borderRadius": "5px" }} onClick={closeModal}><img style={{ "maxWidth": "32px", "maxHeight": "32px" }} src={"/cross.png"}></img></button>
+          <h2>Ingredient Research</h2>
+          <IngredientList search_term={selectedIngred}></IngredientList>
+        </a>
+      </Modal>
       <h1>Total: ${calculateTotalOfList()}</h1>
     </div>
   );
