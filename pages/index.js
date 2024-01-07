@@ -15,7 +15,7 @@ import Button from 'react-bootstrap/Button';
 export default function Home() {
 
   // , { "name": "Game", "_id": "/game" }
-  const [pages, setPages] = useState([{ "name": "Recipes", "_id": "/recipes", "image": "avo xl.png" }, {"name": "Shopping List", "_id": "/shoppingList", "image": "shop_list.png"}])
+  const [pages, setPages] = useState([{ "name": "Recipes", "_id": "/recipes", "image": "cookbook.png" }, {"name": "Shopping List", "_id": "/shoppingList", "image": "shop_list_realistic.png"}, {"name": "One Off Extracts", "_id": "/oneOffExtracts", "image": "extract.png"}])
 
   useEffect(() => {
     if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
