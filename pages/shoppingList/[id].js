@@ -150,11 +150,22 @@ export default function Home() {
         }
     };
 
-    async function handleCheckboxChange(index) {
+    async function searchForIndex(value, key, list) {
+        return new Promise((resolve, reject) => {
+          try {
+            const index = list.findIndex(item => item[key] === value);
+            resolve(index);
+          } catch (error) {
+            reject(error);
+          }
+        });
+      }
+
+    async function handleCheckboxChange(ingred) {
         const updatedIngredients = [...matchedListIngreds];
+        let index =await searchForIndex(ingred._id, "_id", updatedIngredients)
         updatedIngredients[index].complete = !updatedIngredients[index].complete;
         setMatchedListIngreds(updatedIngredients);
-
         await updateCompleteInDB(updatedIngredients[index]._id,updatedIngredients[index].complete)
     };
 

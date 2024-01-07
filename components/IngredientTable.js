@@ -12,6 +12,29 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
   const [modalIsOpen, setIsOpen] = useState(false);
   const [selectedIngred, setSelectedIngred] = useState("")
 
+  function sortIngredients(ingredientList) {
+    let sortedIngreds = ingredientList
+    sortedIngreds.sort((a, b) => {
+      // Check if one item is complete and the other is not
+  if (a.complete && !b.complete) return 1;
+  if (!a.complete && b.complete) return -1;
+
+  // Extract "source" from the first option (if available)
+  const sourceA = a.options.length > 0 ? a.options[0].source.toLowerCase() : '';
+  const sourceB = b.options.length > 0 ? b.options[0].source.toLowerCase() : '';
+
+  // Compare based on "source" property
+  if (sourceA < sourceB) return -1;
+  if (sourceA > sourceB) return 1;
+
+  // If "source" properties are equal and both items are complete or incomplete, maintain current order
+  return 0;
+    });
+
+    return sortedIngreds
+
+  }
+
   async function openModal(ingredName) {
     setIsOpen(true);
     setSelectedIngred(ingredName)
@@ -19,13 +42,13 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
 
   async function closeModal() {
     setIsOpen(false);
-}
-
-const customStyles = {
-  content: {
-      "backgroundColor": "grey"
   }
-}
+
+  const customStyles = {
+    content: {
+      "backgroundColor": "grey"
+    }
+  }
 
 
 
@@ -54,8 +77,10 @@ const customStyles = {
   }
 
   useEffect(() => {
-    setIngredientData(ingredients);
+    setIngredientData(sortIngredients(ingredients));
   }, [ingredients]);
+
+
 
 
   const calculateTotalOfList = () => {
@@ -96,14 +121,14 @@ const customStyles = {
               type="checkbox"
               checked={ingred.complete}
               value={ingred.complete}
-              onChange={() => handleCheckboxChange(index)}
+              onChange={() => handleCheckboxChange(ingred)}
             />
           </Col>
           <Col className={styles.col}>
             <div>
-            {ingred.quantity + " " + ingred.quantity_type}
+              {ingred.quantity + " " + ingred.quantity_type}
             </div>
-            </Col>
+          </Col>
           {ingred.options[0] !== undefined
             ?
             <Col className={styles.col}>{ingred.options[0].name}</Col>
@@ -132,7 +157,7 @@ const customStyles = {
                 <Col className={styles.col}>{(ingred.options[0].unit_price * ingred.quantity).toFixed(2)}</Col>
                 <Col className={styles.col}>{ingred.options[0].unit_price}</Col>
                 <Col className={styles.col}>
-                  <Button variant="warning" onClick={(e) => markAsIncorrect(ingred.options[0]._id, ingred.name)}>Skip</Button>
+                  <Button variant="warning" onClick={(e) => markAsIncorrect(ingred.options[0]._id, ingred.name)}>Wrong</Button>
                 </Col>
 
               </>
@@ -140,7 +165,7 @@ const customStyles = {
               <>
                 <Col className={styles.col}>
                   <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
-                  <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/cross.png`} />
+                    <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/cross.png`} />
                     {/* <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} /> */}
                   </a>
                 </Col>
