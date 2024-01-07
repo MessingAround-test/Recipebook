@@ -228,10 +228,7 @@ export default function Home() {
                     <link rel="icon" href="/avo.ico" />
                 </Head>
                 <main className={styles.main}>
-                    {isLoading ?
-                        <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/loading.svg"}`} />
-                        :
-                        <></>}
+                    
                     <Container className={styles.centered}>
                         <Row>
                             <Col>

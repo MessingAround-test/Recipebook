@@ -23,11 +23,12 @@ function ImageList({ images, onImageChange }) {
 
   const imageListStyle = {
     display: 'flex',
-    gap: '10px',
+    gap: '5px',
     borderRadius: '10px', // Set border radius to 10px
     background: '#1C2640', // Change the background color
-    padding: '20px',
-    width: '20vw', // Set the width to 20vw
+    padding: '5px',
+    width: '40vw', // Set the width to 20vw
+    
     overflow: 'hidden',
   };
 
