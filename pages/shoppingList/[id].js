@@ -152,7 +152,7 @@ export default function Home() {
 
     async function handleCheckboxChange(index) {
         const updatedIngredients = [...matchedListIngreds];
-        updatedIngredients[index].bought = !updatedIngredients[index].bought;
+        updatedIngredients[index].complete = !updatedIngredients[index].complete;
         setMatchedListIngreds(updatedIngredients);
     };
 
@@ -174,6 +174,8 @@ export default function Home() {
         await updateSupplierFromInputObject(inputObject)
         
     }
+
+    
 
 
 
@@ -203,7 +205,7 @@ export default function Home() {
                                     (createNewIngredOpen ?
                                         <div>
                                             <Button variant={"danger"} style={{ "float": "right" }} onClick={() => setCreateNewIngredOpen(false)}>Hide</Button>
-                                            <AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getRecipeDetails}></AddShoppingItem>
+                                            
                                         </div>
                                         :
                                         <Button variant={"success"} style={{ "float": "right" }} onClick={() => setCreateNewIngredOpen(true)}>Add to List</Button>)
@@ -214,7 +216,7 @@ export default function Home() {
 
 
                         {
-                            (createNewIngredOpen ? <AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getIngredDetails}></AddShoppingItem> : <></>)
+                            (createNewIngredOpen ? <AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getRecipeDetails}></AddShoppingItem> : <></>)
                         }
 
                         <h2>List</h2>

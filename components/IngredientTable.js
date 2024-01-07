@@ -37,6 +37,21 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
   }, [ingredients]);
 
 
+  const calculateTotalOfList = () => {
+    const total = ingredientData.map((ingred, index) => {
+      if (ingred.options[0] !== undefined) {
+        return ingred.options[0].unit_price * ingred.quantity;
+      }
+      return 0;
+    });
+  
+    const sum = total.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
+  
+    
+    return sum.toFixed(2);
+  };
+  
+
 
   return (
     <div>
@@ -50,16 +65,16 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
         <Col className={styles.col}><strong>Price</strong></Col>
         <Col className={styles.col}><strong>Unit Price</strong></Col>
         <Col className={styles.col}><strong>Not Right?</strong></Col>
-        
+
       </Row>
 
       {ingredientData.map((ingred, index) => (
-        <Row key={index} style={{ filter: ingred.bought ? 'grayscale(100%)' : 'none' }}>
+        <Row key={index} style={{ filter: ingred.complete ? 'grayscale(100%)' : 'none' }}>
           <Col className={styles.col}>
             <input
               type="checkbox"
-              checked={ingred.bought}
-              value={ingred.bought}
+              checked={ingred.complete}
+              value={ingred.complete}
               onChange={() => handleCheckboxChange(index)}
             />
           </Col>
@@ -77,7 +92,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
               <>
 
 
-                
+
                 <Col className={styles.col}>
                   <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
                     <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/${ingred.options[0].source ? `${ingred.options[0].source}.png` : "loading.svg"}`} />
@@ -86,7 +101,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
                 </Col>
                 <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
                   <div onClick={() => openModal(ingred.name)}>
-                    {ingred.bought ? <del>{ingred.name}</del> : ingred.name}
+                    {ingred.complete ? <del>{ingred.name}</del> : ingred.name}
                   </div>
                 </Col>
                 <Col className={styles.col}>{(ingred.options[0].unit_price * ingred.quantity).toFixed(2)}</Col>
@@ -94,7 +109,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
                 <Col className={styles.col}>
                   <Button variant="warning" onClick={(e) => markAsIncorrect(ingred.options[0]._id, ingred.name)}>Not right?</Button>
                 </Col>
-                
+
               </>
               :
               <>
@@ -106,20 +121,21 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
                 </Col>
                 <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
                   <div onClick={() => openModal(ingred.name)}>
-                    {ingred.bought ? <del>{ingred.name}</del> : ingred.name}
+                    {ingred.complete ? <del>{ingred.name}</del> : ingred.name}
                   </div>
                 </Col>
                 <Col className={styles.col}></Col>
                 <Col className={styles.col}>No match</Col>
                 <Col className={styles.col}><Button variant="warning" onClick={(e) => alert("bryn to implement")}>Reload Source?</Button></Col>
-                
+
               </>
           }
-          
-          {ingred.loading?<Col ><object type="image/svg+xml" data="/loading.svg" style={{"overflow": "hidden", "width":"200%"}}></object> </Col>:<></>}
+
+          {ingred.loading ? <Col ><object type="image/svg+xml" data="/loading.svg" style={{ "overflow": "hidden", "width": "200%" }}></object> </Col> : <></>}
 
         </Row>
       ))}
+      <h1>Total: ${calculateTotalOfList()}</h1>
     </div>
   );
 }
