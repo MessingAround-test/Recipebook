@@ -62,15 +62,10 @@ export default function Home() {
                 </Head>
 
 
-
-
-
-
-
-
                 <main className={styles.main}>
                     <div className={styles.cardGroup}>
-                    <object type="image/svg+xml" data="/beer_pour_infinite.svg">svg-animation</object>
+                    <object type="image/svg+xml" data="/loading.svg">svg-animation</object>
+
 
                     </div>
                     {/* <Button onClick={() => console.log(recipes)}> show Recipes</Button> */}

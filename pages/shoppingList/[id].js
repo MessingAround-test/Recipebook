@@ -54,13 +54,35 @@ export default function Home() {
 
 
     const reloadAllIngredients = async () => {
-
-        const updatedIngredients = await Promise.all(listIngreds.map(async (ingredient) => {
-            return await getGroceryStoreProducts(ingredient);
+        // While loading...
+        let updatedListIngreds = listIngreds.map((ingred) => ({
+            ...ingred,
+            options: [],
+            loading: true,
         }));
-
-        setMatchedListIngreds(updatedIngredients);
+        setMatchedListIngreds(updatedListIngreds);
+    
+        // Use a loop to update the state for each ingredient individually
+        for (let i = 0; i < updatedListIngreds.length; i++) {
+            try {
+                const updatedIngredient = await getGroceryStoreProducts(
+                    updatedListIngreds[i]
+                );
+    
+                // Update the state for the specific ingredient
+                updatedListIngreds[i] = {
+                    ...updatedIngredient,
+                    loading: false,
+                };
+                setMatchedListIngreds([...updatedListIngreds]);
+            } catch (error) {
+                // Handle errors if needed
+                console.error(`Error updating ingredient: ${error.message}`);
+            }
+        }
     };
+    
+    
 
     useEffect(() => {
         if (listIngreds.length > 0) {
@@ -166,7 +188,7 @@ export default function Home() {
 
 
                         <Row>
-                            <IngredientTable ingredients={matchedListIngreds.map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange}></IngredientTable>
+                            <IngredientTable reload={()=>reloadAllIngredients()} ingredients={matchedListIngreds.map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange}></IngredientTable>
                         </Row>
 
                         <Button onClick={() => console.log(matchedListIngreds)} >

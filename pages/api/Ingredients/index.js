@@ -107,7 +107,8 @@ export default async function handler(req, res) {
         } else if (search_term !== undefined && search_term !== "") {
             IngredData = await Ingredients.deleteMany({ search_term: search_term }).exec()
         } else {
-            throw new Error("Please provide either a search term or id")
+            IngredData = await Ingredients.deleteMany({}).exec()
+            // throw new Error("Please provide either a search term or id")
         }
 
         // let IngredData = await Ingredients.deleteMany({}).exec()

@@ -27,6 +27,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
 
     } else {
       // Ran successfully
+      console.log("RELAODED")
       reload()
     }
   }
@@ -40,6 +41,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
   return (
     <div>
       <Row>
+
         <Col className={styles.col}><strong>Bought</strong></Col>
         <Col className={styles.col}><strong>Amount</strong></Col>
         <Col className={styles.col}><strong>Product</strong></Col>
@@ -48,6 +50,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
         <Col className={styles.col}><strong>Price</strong></Col>
         <Col className={styles.col}><strong>Unit Price</strong></Col>
         <Col className={styles.col}><strong>Not Right?</strong></Col>
+        
       </Row>
 
       {ingredientData.map((ingred, index) => (
@@ -72,9 +75,13 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
           {
             ingred.options[0] !== undefined ?
               <>
+
+
+                
                 <Col className={styles.col}>
                   <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
                     <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/${ingred.options[0].source ? `${ingred.options[0].source}.png` : "loading.svg"}`} />
+
                   </a>
                 </Col>
                 <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
@@ -87,12 +94,14 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
                 <Col className={styles.col}>
                   <Button variant="warning" onClick={(e) => markAsIncorrect(ingred.options[0]._id, ingred.name)}>Not right?</Button>
                 </Col>
+                
               </>
               :
               <>
                 <Col className={styles.col}>
                   <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
-                    <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/${ingred.source ? `${ingred.source}.png` : "loading.svg"}`} />
+
+                    <object type="image/svg+xml" data="/loading.svg">SVG</object>
                   </a>
                 </Col>
                 <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
@@ -101,10 +110,13 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
                   </div>
                 </Col>
                 <Col className={styles.col}></Col>
-                <Col className={styles.col}></Col>
-                <Col className={styles.col}>No match found</Col>
+                <Col className={styles.col}>No match</Col>
+                <Col className={styles.col}><Button variant="warning" onClick={(e) => alert("bryn to implement")}>Reload Source?</Button></Col>
+                
               </>
           }
+          
+          {ingred.loading?<Col ><object type="image/svg+xml" data="/loading.svg" style={{"overflow": "hidden", "width":"200%"}}></object> </Col>:<></>}
 
         </Row>
       ))}
