@@ -136,8 +136,8 @@ const customStyles = {
               <>
                 <Col className={styles.col}>
                   <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
-
-                    <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} />
+                  <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/cross.png"}`} />
+                    {/* <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} /> */}
                   </a>
                 </Col>
                 <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
