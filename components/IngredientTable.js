@@ -151,7 +151,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
 
                   </a>
                 </Col>
-                <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
+                <Col className={[styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "grey" }}>
                   <div onClick={() => openModal(ingred.name)}>
                     {ingred.complete ? <del>{ingred.name}</del> : ingred.name}
                   </div>
@@ -171,7 +171,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
                     {/* <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} /> */}
                   </a>
                 </Col>
-                <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
+                <Col className={[styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "grey" }}>
                   <div onClick={() => openModal(ingred.name)}>
                     {ingred.complete ? <del>{ingred.name}</del> : ingred.name}
                   </div>
