@@ -106,9 +106,10 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
 
         <Col className={styles.col}><strong>Bought</strong></Col>
         <Col className={styles.col}><strong>Amount</strong></Col>
+        <Col className={styles.col}><strong>Search Term</strong></Col>
         <Col className={styles.col}><strong>Product</strong></Col>
         <Col className={styles.col}><strong>Source</strong></Col>
-        <Col className={styles.col}><strong>Search Term</strong></Col>
+        
         <Col className={styles.col}><strong>Total Price</strong></Col>
         {/* <Col className={styles.col}><strong>Unit Price</strong></Col> */}
         <Col className={styles.col}><strong>Incorrect</strong></Col>
@@ -131,31 +132,26 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
               {ingred.quantity + " " + ingred.quantity_type}
             </div>
           </Col>
-          {ingred.options[0] !== undefined
-            ?
-            <Col className={[styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "grey" }}>{ingred.options[0].name}</Col>
-            :
-            <Col className={[ styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "grey" }}>{ingred.name}</Col>
-          }
+          
 
 
           {
             ingred.options[0] !== undefined ?
               <>
 
-
-
+<Col className={[ styles.col,  styles.curvedEdge]} style={{ background: "#1C2640", "color": "white" }}>
+                  <div onClick={() => openModal(ingred.name)}>
+                    {ingred.complete ? <del>{ingred.name}</del> : ingred.name}
+                  </div>
+                </Col>
+                <Col className={[styles.col, styles.curvedEdge]} style={{ background: "" }}>{ingred.options[0].name}</Col>
                 <Col className={styles.col}>
                   <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
                     <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/${ingred.options[0].source ? `${ingred.options[0].source}.png` : "loading.svg"}`} />
 
                   </a>
                 </Col>
-                <Col className={[ styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "orange", "color": "black" }}>
-                  <div onClick={() => openModal(ingred.name)}>
-                    {ingred.complete ? <del>{ingred.name}</del> : ingred.name}
-                  </div>
-                </Col>
+                
                 <Col className={styles.col}>{(ingred.options[0].unit_price * ingred.quantity).toFixed(2)}</Col>
                 {/* <Col className={styles.col}>{ingred.options[0].unit_price}</Col> */}
                 <Col className={styles.col}>
@@ -165,17 +161,19 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
               </>
               :
               <>
+              <Col className={[ styles.col, styles.curvedEdge]} style={{ background: "#1C2640", "color": "white" }}>
+                  <div onClick={() => openModal(ingred.name)}>
+                    {ingred.complete ? <del>{ingred.name}</del> : ingred.name}
+                  </div>
+                </Col>
+              <Col className={[ styles.col, styles.curvedEdge]} style={{ background: "" }}>{ingred.name}</Col>
                 <Col className={styles.col}>
                   <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
                     <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/cross.png`} />
                     {/* <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} /> */}
                   </a>
                 </Col>
-                <Col className={[ styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "coral", "color": "black" }}>
-                  <div onClick={() => openModal(ingred.name)}>
-                    {ingred.complete ? <del>{ingred.name}</del> : ingred.name}
-                  </div>
-                </Col>
+                
                 <Col className={styles.col}></Col>
                 {ingred.loading ? <Col className={styles.col}><object type="image/svg+xml" data="/loading.svg"></object> </Col> : <Col className={styles.col}></Col>}
 
