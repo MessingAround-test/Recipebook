@@ -232,9 +232,9 @@ export default function Home() {
                     <Container className={styles.centered}>
                     
                         <Row className={styles.Row}>
-
+                            <Col>
                                 <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
-
+                            </Col>
 
 
                             <Col>

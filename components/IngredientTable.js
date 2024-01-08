@@ -111,6 +111,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
         <Col className={styles.col}><strong>Source</strong></Col>
         
         <Col className={styles.col}><strong>Total Price</strong></Col>
+        
         {/* <Col className={styles.col}><strong>Unit Price</strong></Col> */}
         <Col className={styles.col}><strong>Incorrect</strong></Col>
         {/* <Col className={styles.col}><strong>Remove</strong></Col> */}
@@ -151,7 +152,6 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
 
                   </a>
                 </Col>
-                
                 <Col className={styles.col}>{(ingred.options[0].unit_price * ingred.quantity).toFixed(2)}</Col>
                 {/* <Col className={styles.col}>{ingred.options[0].unit_price}</Col> */}
                 <Col className={styles.col}>
@@ -187,7 +187,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
             
             :<Col className={styles.col}></Col>
             } */}
-          {/* <Col className={styles.col}><Button variant="danger" onClick={(e) => alert("bryn to implement")}>x</Button></Col> */}
+          
 
         </Row>
 
@@ -206,6 +206,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
         </a>
       </Modal>
       <h1>Total: ${calculateTotalOfList()}</h1>
+      <Button variant="primary" onClick={(e) => console.log(ingredientData)}>show state</Button>
     </div>
   );
 }
