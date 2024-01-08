@@ -7,28 +7,29 @@ import { Button } from 'react-bootstrap';
 import Modal from 'react-modal';
 import { IngredientList } from './IngredientList'
 
-function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
+function IngredientTable({ ingredients, handleCheckboxChange, reload, availableColumns }) {
   const [ingredientData, setIngredientData] = useState(ingredients);
   const [modalIsOpen, setIsOpen] = useState(false);
   const [selectedIngred, setSelectedIngred] = useState("")
+  const [availableOptionalColumns, setAvailableOptionalColumns] = useState(availableColumns)
 
   function sortIngredients(ingredientList) {
     let sortedIngreds = ingredientList
     sortedIngreds.sort((a, b) => {
       // Check if one item is complete and the other is not
-  if (a.complete && !b.complete) return 1;
-  if (!a.complete && b.complete) return -1;
+      if (a.complete && !b.complete) return 1;
+      if (!a.complete && b.complete) return -1;
 
-  // Extract "source" from the first option (if available)
-  const sourceA = a.options.length > 0 ? a.options[0].source.toLowerCase() : '';
-  const sourceB = b.options.length > 0 ? b.options[0].source.toLowerCase() : '';
+      // Extract "source" from the first option (if available)
+      const sourceA = a.options.length > 0 ? a.options[0].source.toLowerCase() : '';
+      const sourceB = b.options.length > 0 ? b.options[0].source.toLowerCase() : '';
 
-  // Compare based on "source" property
-  if (sourceA < sourceB) return -1;
-  if (sourceA > sourceB) return 1;
+      // Compare based on "source" property
+      if (sourceA < sourceB) return -1;
+      if (sourceA > sourceB) return 1;
 
-  // If "source" properties are equal and both items are complete or incomplete, maintain current order
-  return 0;
+      // If "source" properties are equal and both items are complete or incomplete, maintain current order
+      return 0;
     });
 
     return sortedIngreds
@@ -101,21 +102,22 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
 
   return (
     <div>
-      <Row>
+      <Row className={styles.Row}>
 
         <Col className={styles.col}><strong>Bought</strong></Col>
         <Col className={styles.col}><strong>Amount</strong></Col>
         <Col className={styles.col}><strong>Product</strong></Col>
         <Col className={styles.col}><strong>Source</strong></Col>
         <Col className={styles.col}><strong>Search Term</strong></Col>
-        <Col className={styles.col}><strong>Price</strong></Col>
-        <Col className={styles.col}><strong>Unit Price</strong></Col>
+        <Col className={styles.col}><strong>Total Price</strong></Col>
+        {/* <Col className={styles.col}><strong>Unit Price</strong></Col> */}
         <Col className={styles.col}><strong>Incorrect</strong></Col>
+        {/* <Col className={styles.col}><strong>Remove</strong></Col> */}
 
       </Row>
 
       {ingredientData.map((ingred, index) => (
-        <Row key={index} style={{ filter: ingred.complete ? 'grayscale(100%)' : 'none' }}>
+        <Row key={index} className={styles.Row} style={{ filter: ingred.complete ? 'grayscale(100%)' : 'none' }}>
           <Col className={styles.col}>
             <input
               type="checkbox"
@@ -155,7 +157,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
                   </div>
                 </Col>
                 <Col className={styles.col}>{(ingred.options[0].unit_price * ingred.quantity).toFixed(2)}</Col>
-                <Col className={styles.col}>{ingred.options[0].unit_price}</Col>
+                {/* <Col className={styles.col}>{ingred.options[0].unit_price}</Col> */}
                 <Col className={styles.col}>
                   <Button variant="warning" onClick={(e) => markAsIncorrect(ingred.options[0]._id, ingred.name)}>x</Button>
                 </Col>
@@ -180,8 +182,12 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload }) {
 
               </>
           }
-
-          {ingred.loading ? <Col ><object type="image/svg+xml" data="/loading.svg" style={{ "overflow": "hidden", "width": "200%" }}></object> </Col> : <></>}
+          
+          {ingred.loading ?
+            <Col className={styles.col}><object type="image/svg+xml" data="/loading.svg"></object> </Col>
+            :<></>
+            }
+            <Col className={styles.col}><Button variant="danger" onClick={(e) => alert("bryn to implement")}>x</Button></Col>
 
         </Row>
 

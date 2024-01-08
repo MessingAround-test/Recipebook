@@ -70,6 +70,7 @@ function SearchableDropdown({ options, placeholder, onChange,name,value}) {
         onClick={toggleDropdown}
         placeholder={placeholder}
         className={styles.input}
+        autocomplete="off"
       />
       {isOpen && (
         <ul className={styles['dropdown-list']} ref={dropdownRef}>

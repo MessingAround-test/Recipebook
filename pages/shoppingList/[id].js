@@ -152,31 +152,31 @@ export default function Home() {
 
     async function searchForIndex(value, key, list) {
         return new Promise((resolve, reject) => {
-          try {
-            const index = list.findIndex(item => item[key] === value);
-            resolve(index);
-          } catch (error) {
-            reject(error);
-          }
+            try {
+                const index = list.findIndex(item => item[key] === value);
+                resolve(index);
+            } catch (error) {
+                reject(error);
+            }
         });
-      }
+    }
 
     async function handleCheckboxChange(ingred) {
         const updatedIngredients = [...matchedListIngreds];
-        let index =await searchForIndex(ingred._id, "_id", updatedIngredients)
+        let index = await searchForIndex(ingred._id, "_id", updatedIngredients)
         updatedIngredients[index].complete = !updatedIngredients[index].complete;
         setMatchedListIngreds(updatedIngredients);
-        await updateCompleteInDB(updatedIngredients[index]._id,updatedIngredients[index].complete)
+        await updateCompleteInDB(updatedIngredients[index]._id, updatedIngredients[index].complete)
     };
 
-    async function updateCompleteInDB(id, complete){
+    async function updateCompleteInDB(id, complete) {
         try {
             const response = await fetch(`/api/ShoppingListItem/${id}?EDGEtoken=${localStorage.getItem('Token')}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({"complete": complete}),
+                body: JSON.stringify({ "complete": complete }),
             });
             console.log(response)
 
@@ -205,14 +205,14 @@ export default function Home() {
     useEffect(() => {
         // This code will run after the component renders and whenever enabledSuppliers changes
         reloadAllIngredients();
-      }, [enabledSuppliers]);
+    }, [enabledSuppliers]);
 
-    async function handleActiveSupplierChange(inputObject){
+    async function handleActiveSupplierChange(inputObject) {
         await updateSupplierFromInputObject(inputObject)
-        
+
     }
 
-    
+
 
 
 
@@ -228,21 +228,29 @@ export default function Home() {
                     <link rel="icon" href="/avo.ico" />
                 </Head>
                 <main className={styles.main}>
-                    
+
                     <Container className={styles.centered}>
                         <Row>
                             <Col>
                                 <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
                             </Col>
                             <Col>
+
+                            </Col>
+
+                            <Col>
+                                
                                 {
                                     (createNewIngredOpen ?
                                         <div>
-                                            <Button variant={"danger"} style={{ "float": "right" }} onClick={() => setCreateNewIngredOpen(false)}>Hide</Button>
-                                            
+                                            <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(false)}>Hide</Button>
+
                                         </div>
                                         :
-                                        <Button variant={"success"} style={{ "float": "right" }} onClick={() => setCreateNewIngredOpen(true)}>Add to List</Button>)
+                                        <div>
+                                            <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(true)}>Add Ingredient</Button>
+                                        </div>
+                                    )
                                 }
                             </Col>
                         </Row>
@@ -263,10 +271,14 @@ export default function Home() {
                             <IngredientTable reload={() => reloadAllIngredients()} ingredients={matchedListIngreds.map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange}></IngredientTable>
                         </Row>
 
-                        <Button onClick={() => console.log(matchedListIngreds)} >
+                        {/* <Button onClick={() => console.log(matchedListIngreds)} >
                             see state
-                        </Button>
+                        </Button> */}
+                        <div>
+                                    <Button variant={"danger"} style={{}} onClick={() => setCreateNewIngredOpen(true)}>Enable Mass Delete</Button>
+                                </div>
                         <p>ID = {id}</p>
+
                     </Container>
 
 

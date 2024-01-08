@@ -119,12 +119,12 @@ function AddShoppingItem({shoppingListId, handleSubmit}) {
                 </Form.Group>
 
 
-                <Button variant="primary" type="submit">
+                <Button variant="success" type="submit">
                     Submit
                 </Button>
-                <Button variant="primary" onClick={()=>console.log(formData)}>
+                {/* <Button variant="primary" onClick={()=>console.log(formData)}>
                     show state
-                </Button>
+                </Button> */}
             </Form>
         </div>
     );
