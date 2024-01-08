@@ -133,9 +133,9 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
           </Col>
           {ingred.options[0] !== undefined
             ?
-            <Col className={styles.col}>{ingred.options[0].name}</Col>
+            <Col className={[ styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "orange", "color": "black" }}>{ingred.options[0].name}</Col>
             :
-            <Col className={styles.col}></Col>
+            <Col className={[ styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "orange", "color": "black" }}>{ingred.name}</Col>
           }
 
 

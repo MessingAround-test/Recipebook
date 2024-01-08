@@ -44,7 +44,7 @@
 
 .bordered {
   border-color: black;
-  border-width: 0.25rem;
+  border-width: 0.01rem;
   border-style: solid;
 }
 
@@ -53,6 +53,9 @@
   align-items: center;
   justify-content: center;
   display: grid;
+  /* width: 100vw; */
+  /* This margin auto is what makes the huge gap */
+  margin: auto;
 }
 
 .cardGroup{
