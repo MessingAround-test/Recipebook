@@ -1,5 +1,5 @@
 .container {
-  padding: 0rem 1vw;
+  padding: 0em 1vw;
   background-color:  	 	#394955;
   width: 100%;
   max-width: 100%;
@@ -11,7 +11,7 @@
 }
 
 .modal {
-  /* padding: 0rem 1vw; */
+  /* padding: 0em 1vw; */
   /* background-color:  	 	#394955;
   max-width: 40vw; */
   /* background-color:steelblue;
@@ -44,7 +44,7 @@
 
 .bordered {
   border-color: black;
-  border-width: 0.01rem;
+  border-width: 0.01em;
   border-style: solid;
 }
 
@@ -52,10 +52,13 @@
   text-align: center;
   align-items: center;
   justify-content: center;
-  display: grid;
+  /* display: grid; */
   /* width: 100vw; */
   /* This margin auto is what makes the huge gap */
   margin: auto;
+  /* margin-left: 0%;
+  margin-right: 0%; */
+  flex-grow: 1;
 }
 
 .cardGroup{
@@ -65,10 +68,10 @@
 }
 
 .main {
-  border-radius: 0rem 0rem 1rem 1rem;
+  border-radius: 0em 0em 1em 1em;
   min-height: 100vh;
   font-size: 1.7cqw;
-  padding: 2rem 2rem;
+  padding: 1em 1em;
   flex: 1;
   /* display: flex; */
   flex-direction: column;
@@ -81,9 +84,9 @@
 
 
 .main_flex {
-  border-radius: 1rem;
+  border-radius: 1em;
   min-height: 100vh;
-  padding: 2rem 2rem;
+  padding: 1em 1em;
   flex: 1;
   display: flex;
   
@@ -100,7 +103,7 @@
 .footer {
   display: flex;
   flex: 1;
-  padding: 2rem 0;
+  padding: 2em 0;
   border-top: 1px solid #eaeaea;
   justify-content: center;
   align-items: center;
@@ -127,7 +130,7 @@
 .title {
   margin: 0;
   line-height: 1.15;
-  font-size: 4rem;
+  font-size: 4em;
 }
 
 .title,
@@ -136,16 +139,16 @@
 }
 
 .description {
-  margin: 4rem 0;
+  margin: 4em 0;
   line-height: 1.5;
-  font-size: 1.5rem;
+  font-size: 1.5em;
 }
 
 .code {
   background: #fafafa;
   border-radius: 5px;
-  padding: 0.75rem;
-  font-size: 1.1rem;
+  padding: 0.75em;
+  font-size: 1.1em;
   font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono,
     Bitstream Vera Sans Mono, Courier New, monospace;
 }
@@ -159,8 +162,8 @@
 }
 
 .card {
-  margin: 1rem;
-  padding: 1.5rem;
+  margin: 1em;
+  padding: 1.5em;
   text-align: left;
   color: inherit;
   text-decoration: none;
@@ -179,19 +182,19 @@
 }
 
 .card h2 {
-  margin: 0 0 1rem 0;
-  font-size: 1.5rem;
+  margin: 0 0 1em 0;
+  font-size: 1.5em;
 }
 
 .card p {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.25em;
   line-height: 1.5;
 }
 
 .logo {
   height: 1em;
-  margin-left: 0.5rem;
+  margin-left: 0.5em;
 }
 
 @media (max-width: 600px) {
@@ -205,7 +208,7 @@
 }
 
 .td{
-  padding: 0.5rem;
+  padding: 0.5em;
   background-color: white;
   font-size: 2cqw;
   flex-direction: column; 
@@ -230,7 +233,7 @@
 }
 
 .col{
-  padding: 0.5rem;
+  padding: 0.5em;
   flex-direction: column; 
   text-align: center;
   vertical-align: middle;
@@ -240,11 +243,12 @@
   width: 10vw;
   min-width: 10vw;
   max-width: 10vw;
+  font-size: 1em;
 }
 
 
 .th{
-  padding: 0.5rem;
+  padding: 0.5em;
   background-color: #1C2640;
   font-size: 1.8cqw;
   flex-direction: column; 
