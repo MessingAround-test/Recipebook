@@ -133,9 +133,9 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
           </Col>
           {ingred.options[0] !== undefined
             ?
-            <Col className={[ styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "orange", "color": "black" }}>{ingred.options[0].name}</Col>
+            <Col className={[styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "grey" }}>{ingred.options[0].name}</Col>
             :
-            <Col className={[ styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "orange", "color": "black" }}>{ingred.name}</Col>
+            <Col className={[ styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "grey" }}>{ingred.name}</Col>
           }
 
 
@@ -151,7 +151,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
 
                   </a>
                 </Col>
-                <Col className={[styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "grey" }}>
+                <Col className={[ styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "orange", "color": "black" }}>
                   <div onClick={() => openModal(ingred.name)}>
                     {ingred.complete ? <del>{ingred.name}</del> : ingred.name}
                   </div>
@@ -171,7 +171,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
                     {/* <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} /> */}
                   </a>
                 </Col>
-                <Col className={[styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "grey" }}>
+                <Col className={[ styles.col, styles.bordered, styles.curvedEdge]} style={{ background: "coral", "color": "black" }}>
                   <div onClick={() => openModal(ingred.name)}>
                     {ingred.complete ? <del>{ingred.name}</del> : ingred.name}
                   </div>
