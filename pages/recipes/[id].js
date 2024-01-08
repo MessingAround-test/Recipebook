@@ -214,7 +214,7 @@ export default function Home() {
                             <Row>
                                 {ingreds.map((ingred) => {
                                     return (
-                                        <div style={{ padding: "1rem",  }} >
+                                        // <div style={{ padding: "1rem",  }} >
                                             <Row>
                                                 <Col className={styles.col}>
                                                     {ingred.Amount} {ingred.AmountType}
@@ -228,12 +228,12 @@ export default function Home() {
                                                     
                                                 </Col>
                                                 <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
-                                                    <div onClick={() => openModal(ingred.Name)}>
+                                                    <div onClick={() => openModal(ingred.Name)} style={{"overflow":"hidden"}}>
                                                         {ingred.name}
                                                     </div>
                                                 </Col>
                                                 <Col className={styles.col}>
-                                                    <Button variant={"warning"} onClick={(e)=>markAsIncorrect(ingred._id, ingred.name)}>Not right?</Button>
+                                                    <Button variant={"warning"} onClick={(e)=>markAsIncorrect(ingred._id, ingred.name)}>x</Button>
                                                 </Col>
                                                 <Col className={styles.col}>
                                                     ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}
@@ -251,7 +251,7 @@ export default function Home() {
 
                                                                 </Col> */}
                                             </Row>
-                                        </div>
+                                        // </div>
                                     )
                                 })}
 

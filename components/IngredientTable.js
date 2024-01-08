@@ -177,17 +177,19 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
                   </div>
                 </Col>
                 <Col className={styles.col}></Col>
-                <Col className={styles.col}></Col>
+                {ingred.loading ? <Col className={styles.col}><object type="image/svg+xml" data="/loading.svg"></object> </Col> : <Col className={styles.col}></Col>}
+
+                
                 {/* <Col className={styles.col}><Button variant="warning" onClick={(e) => alert("bryn to implement")}></Button></Col> */}
 
               </>
           }
-          
-          {ingred.loading ?
-            <Col className={styles.col}><object type="image/svg+xml" data="/loading.svg"></object> </Col>
-            :<></>
-            }
-            {/* <Col className={styles.col}><Button variant="danger" onClick={(e) => alert("bryn to implement")}>x</Button></Col> */}
+
+          {/* {ingred.loading ?
+            
+            :<Col className={styles.col}></Col>
+            } */}
+          {/* <Col className={styles.col}><Button variant="danger" onClick={(e) => alert("bryn to implement")}>x</Button></Col> */}
 
         </Row>
 

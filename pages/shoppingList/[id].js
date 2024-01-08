@@ -228,15 +228,14 @@ export default function Home() {
                     <link rel="icon" href="/avo.ico" />
                 </Head>
                 <main className={styles.main}>
-
+                    
                     <Container className={styles.centered}>
-                        <Row>
-                            <Col>
-                                <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
-                            </Col>
-                            <Col>
+                    
+                        <Row className={styles.Row}>
 
-                            </Col>
+                                <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
+
+
 
                             <Col>
                                 
@@ -261,7 +260,7 @@ export default function Home() {
                             (createNewIngredOpen ? <AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getRecipeDetails}></AddShoppingItem> : <></>)
                         }
 
-                        <h2>List</h2>
+                        
 
 
 
