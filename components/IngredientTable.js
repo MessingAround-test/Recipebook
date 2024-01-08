@@ -187,7 +187,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
             <Col className={styles.col}><object type="image/svg+xml" data="/loading.svg"></object> </Col>
             :<></>
             }
-            <Col className={styles.col}><Button variant="danger" onClick={(e) => alert("bryn to implement")}>x</Button></Col>
+            {/* <Col className={styles.col}><Button variant="danger" onClick={(e) => alert("bryn to implement")}>x</Button></Col> */}
 
         </Row>
 
