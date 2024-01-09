@@ -31,8 +31,9 @@ export default function Home() {
     const [matchedListIngreds, setMatchedListIngreds] = useState([])
     const [isLoading, setLoading] = useState(false)
     const [createNewIngredOpen, setCreateNewIngredOpen] = useState(false)
-    const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA"])
-
+    const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA", "Aldi"])
+    const modifyColumnOptions = ["", "Incorrect", "Remove"]
+    const [modifyColumnIndex, setModifyColumnIndex] = useState(0)
 
     useEffect(() => {
         if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
@@ -150,6 +151,37 @@ export default function Home() {
         }
     };
 
+    async function handleDeleteItem(e, id) {
+        e.preventDefault();
+
+        try {
+            const response = await fetch(`/api/ShoppingListItem/${id}?EDGEtoken=${localStorage.getItem('Token')}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (response.ok) {
+
+                // e.resetForm()
+                console.log(e)
+                getRecipeDetails()
+                // alert(response)
+                // Handle success, e.g., show a success message or redirect
+            } else {
+                // console.log()
+                let error = await response.json()
+                console.log(error)
+                alert(error.message)
+                // Handle errors, e.g., show an error message
+            }
+        } catch (error) {
+            alert(error)
+            // Handle network or other errors
+        }
+    };
+
     async function searchForIndex(value, key, list) {
         return new Promise((resolve, reject) => {
             try {
@@ -228,9 +260,9 @@ export default function Home() {
                     <link rel="icon" href="/avo.ico" />
                 </Head>
                 <main className={styles.main}>
-                    
+
                     <Container className={styles.centered}>
-                    
+
                         <Row className={styles.Row}>
                             <Col>
                                 <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
@@ -238,7 +270,7 @@ export default function Home() {
 
 
                             <Col>
-                                
+
                                 {
                                     (createNewIngredOpen ?
                                         <div>
@@ -260,22 +292,22 @@ export default function Home() {
                             (createNewIngredOpen ? <AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getRecipeDetails}></AddShoppingItem> : <></>)
                         }
 
-                        
+
 
 
 
 
 
                         <Row>
-                            <IngredientTable reload={() => reloadAllIngredients()} ingredients={matchedListIngreds.map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange}></IngredientTable>
+                            <IngredientTable reload={() => reloadAllIngredients()} ingredients={matchedListIngreds.map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} modifyColumnName={modifyColumnOptions[modifyColumnIndex%modifyColumnOptions.length]}></IngredientTable>
                         </Row>
 
                         {/* <Button onClick={() => console.log(matchedListIngreds)} >
                             see state
                         </Button> */}
                         <div>
-                                    <Button variant={"danger"} style={{}} onClick={() => setCreateNewIngredOpen(true)}>Enable Mass Delete</Button>
-                                </div>
+                            <Button variant={"warning"} style={{}} onClick={() => setModifyColumnIndex(modifyColumnIndex+1)}>Edit Items</Button>
+                        </div>
                         <p>ID = {id}</p>
 
                     </Container>
