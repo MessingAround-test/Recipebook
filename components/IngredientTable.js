@@ -102,7 +102,8 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
 
   return (
     <div>
-      <Row className={[styles.Row]} style={{"backgroundColor": "black", "borderRadius": "20%"}}>
+      
+      <Row className={[styles.Row]} style={{"backgroundColor": "grey"}}>
 
         <Col className={styles.col}><strong>Bought</strong></Col>
         <Col className={styles.col}><strong>Amount</strong></Col>
