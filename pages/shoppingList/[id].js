@@ -261,7 +261,7 @@ export default function Home() {
                 </Head>
                 <main className={styles.main}>
 
-                    <Container className={styles.centered}>
+                    <div className={styles.centered}>
 
                         <Row className={styles.Row}>
                             <Col>
@@ -310,7 +310,7 @@ export default function Home() {
                         </div>
                         <p>ID = {id}</p>
 
-                    </Container>
+                    </div>
 
 
                 </main>
