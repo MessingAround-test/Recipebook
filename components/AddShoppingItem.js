@@ -3,29 +3,29 @@ import styles from '../styles/Home.module.css'; // Import CSS module
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button'
 import { quantity_unit_conversions } from "../lib/conversion"
+import SearchableImageDropdown from './SearchableImageDropdown';
 import SearchableDropdown from './SearchableDropdown';
 let categories = [
-    "Fresh Produce",
-    "Dairy and Eggs",
-    "Bakery",
-    "Meat and Seafood",
-    "Canned Goods",
-    "Pasta and Grains",
-    "Condiments and Sauces",
-    "Snacks",
-    "Beverages",
-    "Frozen Foods",
-    "Cereal and Breakfast Foods",
-    "Baking Supplies",
-    "Household and Cleaning",
-    "Personal Care",
-    "Baby Care",
-    "Pet Supplies",
-    "Health and Wellness",
-    "International Foods",
-    "Deli and Prepared Foods",
-    "Home and Garden"
+    { name: 'Fresh Produce', image: 'FreshProduce.png' },
+    { name: 'Dairy and Eggs', image: 'DairyandEggs.png' },
+    { name: 'Bakery', image: 'Bakery.png' },
+    { name: 'Meat and Seafood', image: 'MeatandSeafood.png' },
+    { name: 'Canned Goods', image: 'CannedGoods.png' },
+    { name: 'Pasta and Grains', image: 'PastaandGrains.png' },
+    { name: 'Condiments and Sauces', image: 'CondimentsandSauces.png' },
+    { name: 'Snacks', image: 'Snacks.png' },
+    { name: 'Beverages', image: 'Beverages.png' },
+    { name: 'Frozen Foods', image: 'FrozenFoods.png' },
+    { name: 'Cereal and Breakfast Foods', image: 'CerealandBreakfastFoods.png' },
+    { name: 'Baking Supplies', image: 'BakingSupplies.png' },
+    { name: 'Household and Cleaning', image: 'HouseholdandCleaning.png' },
+    { name: 'Personal Care', image: 'PersonalCare.png' },
+    { name: 'Health and Wellness', image: 'HealthandWellness.png' },
+    { name: 'International Foods', image: 'InternationalFoods.png' },
+    { name: 'Deli and Prepared Foods', image: 'DeliandPreparedFoods.png' },
+    { name: 'Home and Garden', image: 'HomeandGarden.png' }
   ]
+  
 
 function AddShoppingItem({shoppingListId, handleSubmit}) {
     const [formData, setFormData] = useState({
@@ -115,7 +115,7 @@ function AddShoppingItem({shoppingListId, handleSubmit}) {
                     <Form.Control name="note" id="ingredNote" type="text" placeholder="(optional note)" onChange={handleChange} value={formData.note}/>
                 </Form.Group>
                 <Form.Group className="mb-3" id="formCategory">
-                    <SearchableDropdown options={categories} placeholder={"Category"} onChange={handleChange} name={"category"} value={formData.category}></SearchableDropdown>
+                    <SearchableImageDropdown options={categories} placeholder={"Category"} onChange={handleChange} name={"category"} value={formData.category}></SearchableImageDropdown>
                 </Form.Group>
 
 

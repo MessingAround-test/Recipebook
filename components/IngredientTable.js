@@ -110,7 +110,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
         <Col className={styles.col}><strong>Search Term</strong></Col>
         <Col className={styles.col}><strong>Product</strong></Col>
         <Col className={styles.col}><strong>Source</strong></Col>
-
+        <Col className={styles.col}><strong>Category</strong></Col>
         <Col className={styles.col}><strong>Total Price</strong></Col>
 
         {/* <Col className={styles.col}><strong>Unit Price</strong></Col> */}
@@ -157,6 +157,11 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
 
                   </a>
                 </Col>
+                <Col className={styles.col} name={"category"}>{(ingred.category)}
+                {
+                  ingred.category?<img src={`/categories/${ingred.category.replace(/\s/g, '')}.png`} style={{"maxWidth": "40%"}}  />:<></>
+                }
+                </Col>
                 <Col className={styles.col}>{(ingred.options[0].unit_price * ingred.quantity).toFixed(2)}</Col>
                 {/* <Col className={styles.col}>{ingred.options[0].unit_price}</Col> */}
                 
@@ -193,7 +198,11 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
                 </Col>
                 }
                 
-
+                <Col className={styles.col} name={"category"}>{(ingred.category)}
+                {
+                  ingred.category?<img src={`/categories/${ingred.category.replace(/\s/g, '')}.png`} style={{"maxWidth": "40%"}} />:<></>
+                }
+                </Col>
                 <Col className={styles.col}></Col>
                 {
                   modifyColumnName==="Incorrect"?
@@ -237,7 +246,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
         </a>
       </Modal>
       <h1>Total: ${calculateTotalOfList()}</h1>
-      {/* <Button variant="primary" onClick={(e) => console.log(ingredientData)}>show state</Button> */}
+      <Button variant="primary" onClick={(e) => console.log(ingredientData)}>show state</Button>
     </div>
   );
 }
