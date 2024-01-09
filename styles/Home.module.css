@@ -20,7 +20,7 @@
   height: 4vw;
   margin: 8px;
   border-radius: 50%;
-  background: #fff;
+  background:#171f34;
   animation: lds_circle 2.4s cubic-bezier(0, 0.2, 0.8, 1) infinite;
 }
 
