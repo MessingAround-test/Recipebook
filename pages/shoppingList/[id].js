@@ -274,20 +274,19 @@ export default function Home() {
                                 {
                                     (createNewIngredOpen ?
                                         <>
-                                            asdasd
                                             <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(false)}>Hide</Button>
 
                                         </>
                                         :
                                         <>
-                                            <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(true)}>Add Ingredient</Button>
+                                            <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(true)}>Add</Button>
                                         </>
                                     )
                                 }
                             </Col>
                             <Col >
                                 <div>
-                                    <Button variant={"warning"} style={{}} onClick={() => setModifyColumnIndex(modifyColumnIndex + 1)}>Edit Ingredients</Button>
+                                    <Button variant={"warning"} style={{}} onClick={() => setModifyColumnIndex(modifyColumnIndex + 1)}>Edit</Button>
                                 </div>
                             </Col>
 
