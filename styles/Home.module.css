@@ -22,9 +22,9 @@
 
 .curvedEdge {
   border-radius :20px;
-  width: 10vw;
-  min-width: 10vw;
-  max-width: 10vw;
+  width: 15%;
+  min-width: 15%;
+  max-width: 15%;
 }
 
 .modal {
@@ -240,9 +240,9 @@
   align-items: center;
   justify-content: center;
   display: flex;
-  width: 10vw;
-  min-width: 10vw;
-  max-width: 10vw;
+  width: 15%;
+  min-width: 15%;
+  max-width: 15%;
   font-size: 1em;
 }
 
