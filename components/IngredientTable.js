@@ -153,7 +153,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
                 <Col className={[styles.col, styles.curvedEdge]} style={{ background: "" }}>{ingred.options[0].name}</Col>
                 <Col className={styles.col}>
                   <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
-                    <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/${ingred.options[0].source ? `${ingred.options[0].source}.png` : "loading.svg"}`} />
+                    <img style={{ maxWidth: "40%", borderRadius: "15%" }} src={`/${ingred.options[0].source ? `${ingred.options[0].source}.png` : "broken.svg"}`} />
 
                   </a>
                 </Col>
@@ -182,11 +182,12 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
                   </div>
                 </Col>
                 <Col className={[styles.col, styles.curvedEdge]} style={{ background: "" }}>{ingred.name}</Col>
-                {ingred.loading ? <Col className={styles.col}><object type="image/svg+xml" data="/loading.svg"></object> </Col> 
+                {/* Change the below to an <object> instead of <img> to get animation working */}
+                {ingred.loading ? <Col className={styles.col}><div className={styles.lds_circle}><div></div></div></Col> 
                 : 
                 <Col className={styles.col}>
                   <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
-                    <img style={{ maxWidth: "32px", borderRadius: "5px" }} src={`/cross.png`} />
+                    <img style={{maxWidth: "40%",  borderRadius: "15%" }} src={`/cross.png`} />
                     {/* <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} /> */}
                   </a>
                 </Col>
