@@ -61,9 +61,13 @@ function SearchableImageDropdown({ options, placeholder, onChange,name,value}) {
   };
 
   useEffect(() => {
+    // Use both click and touch events to close the dropdown
     document.addEventListener('click', closeDropdown);
+    document.addEventListener('touchstart', closeDropdown);
+
     return () => {
       document.removeEventListener('click', closeDropdown);
+      document.removeEventListener('touchstart', closeDropdown);
     };
   }, []);
 
@@ -78,6 +82,7 @@ function SearchableImageDropdown({ options, placeholder, onChange,name,value}) {
         onClick={toggleDropdown}
         placeholder={placeholder}
         className={styles.input}
+        onTouchStart={toggleDropdown}
         autocomplete="off"
       />
       {isOpen && (
