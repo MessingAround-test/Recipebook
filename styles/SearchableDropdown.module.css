@@ -5,6 +5,15 @@
   position: relative;
 }
 
+.input-container {
+  display: flex;
+  align-items: center;
+}
+
+.clear-button {
+  margin-left: 8px; /* Adjust the margin as needed */
+  cursor: pointer;
+}
 /* Input field styling */
 .searchable-dropdown input {
     display: block;

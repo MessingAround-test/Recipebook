@@ -49,11 +49,13 @@ function SearchableImageDropdown({ options, placeholder, onChange,name,value}) {
   const filteredOptions = filterOptions();
 
   const closeDropdown = (e) => {
-    if (dropdownRef.current === null){
+    if (dropdownRef.current === null) {
       setIsOpen(false);
-      return
+      return;
     }
-    if (!dropdownRef.current.contains(e.target)) {
+  
+    // Check if the click occurred inside the input
+    if (!dropdownRef.current.contains(e.target) && e.target !== document.querySelector(`input[name=${name}]`)) {
       setIsOpen(false);
     }
   };
