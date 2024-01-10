@@ -76,14 +76,14 @@ function SearchableImageDropdown({ options, placeholder, onChange,name,value}) {
     <div className={styles['searchable-dropdown']}>
       <input
         type="text"
-        value={inputValue?inputValue.name:undefined}
+        value={inputValue ? inputValue.name : undefined}
         onChange={handleInputChange}
         name={name}
         onClick={toggleDropdown}
+        onTouchStart={toggleDropdown} // Handle touch events
         placeholder={placeholder}
         className={styles.input}
-        onTouchStart={toggleDropdown}
-        autocomplete="off"
+        autoComplete="off" // Corrected attribute name
       />
       {isOpen && (
         <ul className={styles['dropdown-list']} ref={dropdownRef}>
