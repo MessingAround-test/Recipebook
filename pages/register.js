@@ -34,7 +34,7 @@ export default function signup() {
             // console.log(await data)
         } else if (data.success === true){
             localStorage.setItem('Token', data.data.token);
-            Router.push('/')
+            Router.push('/login')
         }
         
     };
