@@ -38,7 +38,7 @@ export default async function handler(req, res) {
             // let IngredData = []
             let search_query = { search_term: search_term }
             // 
-            let companies = ["WW", "IGA",  "PanettaGG", "Aldi"]
+            let companies = ["WW", "IGA",  "PanettaGG", "Aldi", "Coles"]
             const supplierParam = req.query.supplier;
 
             if (supplierParam === undefined) {

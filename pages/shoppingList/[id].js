@@ -31,7 +31,7 @@ export default function Home() {
     const [matchedListIngreds, setMatchedListIngreds] = useState([])
     const [isLoading, setLoading] = useState(false)
     const [createNewIngredOpen, setCreateNewIngredOpen] = useState(false)
-    const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA", "Aldi"])
+    const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA", "Aldi", "Coles"])
     const modifyColumnOptions = ["", "Incorrect", "Remove"]
     const [modifyColumnIndex, setModifyColumnIndex] = useState(0)
 
@@ -265,7 +265,7 @@ export default function Home() {
 
                         <Row className={styles.Row}>
                             <Col>
-                                <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
+                                <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
                             </Col>
 
 
