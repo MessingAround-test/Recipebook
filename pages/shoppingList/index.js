@@ -137,7 +137,7 @@ export default function Home() {
                             <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black", "borderStyle": "solid", "borderColor": "green", "borderWidth": "0.5rem", "alignItems": "center", "justifyContent": "center" }} onClick={() => (redirect("/shoppingList/create/"))}>
                                 <Card.Body style={{ overflow: "hidden" }}>
                                     <Card.Title>{String("New List")}</Card.Title>
-                                    <Card.Img style={{ maxHeight: "10rem", maxWidth: "10rem" }} variant="top" src={"add-128.png"} />
+                                    <Card.Img style={{ maxHeight: "10rem", maxWidth: "10rem" }} variant="top" src={"add.jpg"} />
                                 </Card.Body>
 
                             </Card>
