@@ -45,6 +45,11 @@ export default async function handler(req, res) {
                                 if (ingredData === undefined){
                                     continue
                                 }
+                                
+                                // only include the first 10 coles results... they get wacky after that
+                                if (ingredData > 10){
+                                    break
+                                }
                                 let filteredData = newIngredData.data.pageProps.searchResults.results[ingredData]
                                 
     
