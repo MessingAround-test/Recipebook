@@ -19,12 +19,46 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
 
   }
 
-  function sortIngredients(ingredientList) {
+  function sortIngredientsDynamic(ingredientList, sortList) {
     let sortedIngreds = ingredientList
     sortedIngreds.sort((a, b) => {
       // Check if one item is complete and the other is not
       if (a.complete && !b.complete) return 1;
       if (!a.complete && b.complete) return -1;
+
+      // for for
+      
+
+      // Extract "source" from the first option (if available)
+      const sourceA = a.category ? a.category.toLowerCase() : '';
+      const sourceB = b.category ? b.category.toLowerCase() : '';
+
+      // Compare based on "source" property
+      if (sourceA < sourceB) return -1;
+      if (sourceA > sourceB) return 1;
+
+      // If "source" properties are equal and both items are complete or incomplete, maintain current order
+      const searchTermA = a.name ? a.name.toLowerCase() : '';
+      const searchTermB = b.name ? b.name.toLowerCase() : '';
+
+      if (searchTermA < searchTermB) return -1;
+      if (searchTermA > searchTermB) return 1;
+
+      return 0;
+    });
+
+    return sortedIngreds
+
+  }
+
+  function sortIngredients(ingredientList, sortList) {
+    let sortedIngreds = ingredientList
+    sortedIngreds.sort((a, b) => {
+      // Check if one item is complete and the other is not
+      if (a.complete && !b.complete) return 1;
+      if (!a.complete && b.complete) return -1;
+
+      // for for
 
       // Extract "source" from the first option (if available)
       const sourceA = a.options.length > 0 ? a.options[0].source.toLowerCase() : '';
@@ -84,7 +118,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
   }
 
   useEffect(() => {
-    setIngredientData(sortIngredients(ingredients));
+    setIngredientData(sortIngredientsDynamic(ingredients, ["Category", "Search Term"]));
   }, [ingredients]);
 
 
@@ -284,7 +318,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
         </a>
       </Modal>
       <h1>Total: ${calculateTotalOfList()}</h1>
-      {/* <Button variant="primary" onClick={(e) => console.log(ingredientData)}>show state</Button> */}
+      <Button variant="primary" onClick={(e) => console.log(ingredientData)}>show state</Button>
 
       <Button onClick={(e) => toggleEssentials()}>Hide Crap</Button>
     </div>
