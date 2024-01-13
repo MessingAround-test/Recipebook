@@ -55,3 +55,12 @@ https://app.woolworthsonline.com.au/apis/v2/swagger-ui/index.html
 1.  Startup the DB docker-compose up
 
 2.  Startup the web app cd chart_test npm run dev
+
+
+WHen you go into Woolworths what is the order: 
+- Fruit and Veg
+- Bread
+- Dairy and Deli
+- Snacks and Beverages
+- International Section
+- Personal Care

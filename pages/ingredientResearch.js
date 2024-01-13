@@ -10,7 +10,7 @@ import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Router from 'next/router'
 import Card from 'react-bootstrap/Card'
-import {IngredientList} from "../components/IngredientList"
+import {IngredientSearchList} from "../components/IngredientSearchList"
 
 
 export default function Home() {
@@ -142,7 +142,7 @@ export default function Home() {
                 </Head>
                 <main className={styles.main}>
                     {/* style={{width: "50%", "left": "50%", "right": "50%"}} */}
-                    <IngredientList></IngredientList>
+                    <IngredientSearchList></IngredientSearchList>
                 </main>
 
                 <footer className={styles.footer}>

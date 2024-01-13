@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import styles from '../styles/Home.module.css';
 import { Button } from 'react-bootstrap';
 import Modal from 'react-modal';
-import { IngredientList } from './IngredientList'
+import { IngredientSearchList } from './IngredientSearchList'
 
 function IngredientTable({ ingredients, handleCheckboxChange, reload, availableColumns, handleDeleteItem, modifyColumnName, sortFunction}) {
   const [ingredientData, setIngredientData] = useState(ingredients);
@@ -337,7 +337,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
         <a>
           <button style={{ float: "right", "borderRadius": "5px" }} onClick={closeModal}><img style={{ "maxWidth": "32px", "maxHeight": "32px" }} src={"/cross.png"}></img></button>
           <h2>Ingredient Research</h2>
-          <IngredientList search_term={selectedIngred}></IngredientList>
+          <IngredientSearchList search_term={selectedIngred}></IngredientSearchList>
         </a>
       </Modal>
       <h1>Total: ${calculateTotalOfList()}</h1>

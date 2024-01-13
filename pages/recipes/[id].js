@@ -11,7 +11,7 @@ import Router from 'next/router'
 import Card from 'react-bootstrap/Card'
 import { useRouter } from 'next/router'
 import Container from 'react-bootstrap/Container'
-import { IngredientList } from '../../components/IngredientList'
+import { IngredientSearchList } from '../../components/IngredientSearchList'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Modal from 'react-modal';
@@ -300,7 +300,7 @@ export default function Home() {
                                 <a>
                                 <button style={{ float: "right", "borderRadius": "5px" }} onClick={closeModal}><img style={{ "maxWidth": "32px", "maxHeight": "32px" }} src={"/cross.png"}></img></button>
                                 <h2>Ingredient Research</h2>
-                                <IngredientList search_term={selectedIngred}></IngredientList>
+                                <IngredientSearchList search_term={selectedIngred}></IngredientSearchList>
                                 </a>
                             </Modal>
                             <Button onClick={() => getIngredDetails(ingreds)}>Get Grocery Store Data</Button>

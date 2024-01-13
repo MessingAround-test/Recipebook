@@ -11,7 +11,7 @@ import Router from 'next/router'
 import Card from 'react-bootstrap/Card'
 import { useRouter } from 'next/router'
 import Container from 'react-bootstrap/Container'
-import { IngredientList } from '../../components/IngredientList'
+import { IngredientSearchList } from '../../components/IngredientSearchList'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Modal from 'react-modal';

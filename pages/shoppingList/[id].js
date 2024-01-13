@@ -11,7 +11,6 @@ import Router from 'next/router'
 import Card from 'react-bootstrap/Card'
 import { useRouter } from 'next/router'
 import Container from 'react-bootstrap/Container'
-import { IngredientList } from '../../components/IngredientList'
 import ImageList from '../../components/ImageList'
 
 import Row from 'react-bootstrap/Row'

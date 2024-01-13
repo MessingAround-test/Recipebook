@@ -11,7 +11,7 @@ import Router from 'next/router'
 
 
 
-export function IngredientList(props) {
+export function IngredientSearchList(props) {
     const [allIngreds, setAllIngreds] = useState([])
     const [filteredIngreds, setFilteredIngreds] = useState([])
     const [Headers, setHeaders] = useState([])
