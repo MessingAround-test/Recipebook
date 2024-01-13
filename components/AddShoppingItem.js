@@ -63,8 +63,10 @@ function AddShoppingItem({ shoppingListId, handleSubmit }) {
     };
 
     const handleNameSubmit = async function(e) {
-        let category = await determineCategory(formData.name)
-        setFormData({ ...formData, "category": {"name": category }});
+        if (formData.name !== undefined && formData.name !== ""){
+            await determineDefaults(formData.name)
+        }
+        
     };
 
     const handleSubmitLocal = async (e) => {
@@ -73,32 +75,22 @@ function AddShoppingItem({ shoppingListId, handleSubmit }) {
         handleSubmit(e)
     };
 
-    async function determineCategory(name) {
+    async function determineDefaults(name) {
         try {
-            let response = await (await fetch(`/api/ShoppingListItem?search_term=${name}&field=category&EDGEtoken=` + localStorage.getItem('Token'))).json()
+            let response = await (await fetch(`/api/ShoppingListItem/options?search_term=${name}&EDGEtoken=` + localStorage.getItem('Token'))).json()
 
             console.log(response)
 
             if (response.success) {
                 const values = response.data
-                const valueCount = {};
-                values.forEach((value) => {
-                    valueCount[value] = (valueCount[value] || 0) + 1;
-                });
 
-                // Step 3: Find the most occurring element
-                let mostOccurringElement;
-                let maxCount = 0;
-
-                for (const value in valueCount) {
-                    if (valueCount[value] > maxCount) {
-                        maxCount = valueCount[value];
-                        mostOccurringElement = value;
-                    }
-                }
-                return mostOccurringElement
+                let category = values.category[0]?{"name": values.category[0].value}:formData.category
+                let quantity = values.quantity[0]?values.quantity[0].value:formData.quantity
+                let quantity_type = values.quantity_type[0]?values.quantity_type[0].value:formData.quantity_type
                 
-
+                setFormData({ ...formData, category: category, quantity: quantity, quantity_type: quantity_type });
+                
+                
                 // alert(response)
                 // Handle success, e.g., show a success message or redirect
             } else {
@@ -120,7 +112,7 @@ function AddShoppingItem({ shoppingListId, handleSubmit }) {
     const getKnownIngredients = async (e) => {
         // e.preventDefault();
         try {
-            let response = await (await fetch(`/api/Ingredients/Categories?EDGEtoken=` + localStorage.getItem('Token'))).json()
+            let response = await (await fetch(`/api/Ingredients/defaults?EDGEtoken=` + localStorage.getItem('Token'))).json()
 
             console.log(response)
 

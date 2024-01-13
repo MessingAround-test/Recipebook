@@ -3,7 +3,7 @@ import Ingredients from '../../../models/Ingredients'
 
 
 export default async function handler(req, res) {
-    let search_term = req.query.name
+    let search_term = req.query.search_term
     if (search_term !== undefined) {
         search_term = search_term.toLowerCase()
     }
