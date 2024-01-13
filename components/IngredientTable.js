@@ -318,7 +318,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
         </a>
       </Modal>
       <h1>Total: ${calculateTotalOfList()}</h1>
-      <Button variant="primary" onClick={(e) => console.log(ingredientData)}>show state</Button>
+      {/* <Button variant="primary" onClick={(e) => console.log(ingredientData)}>show state</Button> */}
 
       <Button onClick={(e) => toggleEssentials()}>Hide Crap</Button>
     </div>
