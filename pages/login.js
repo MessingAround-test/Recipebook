@@ -20,7 +20,7 @@ export default function login() {
         
         
 
-        var data = await(await fetch("/api/login", {
+        let data = await(await fetch("/api/login", {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',

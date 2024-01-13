@@ -19,21 +19,21 @@ export default async function handler(req, res) {
                 await dbConnect()
 
                 console.log(decoded)
-                var db_id = decoded.id
-                var userData = await User.findOne({ id: db_id });
+                let db_id = decoded.id
+                let userData = await User.findOne({ id: db_id });
                 if (userData._id === undefined) {
                     res.status(400).json({ res: "user not found, please relog" })
                 } else {
 
-                    var ShoppingListData = await ShoppingList.find({})
+                    let ShoppingListData = await ShoppingList.find({})
                     res.status(200).json({ res: ShoppingListData })
                 }
             } else if (req.method === "POST") {
                 // console.log(req.body)
                 try {
                     await dbConnect()
-                    var db_id = decoded.id
-                    var userData = await User.findOne({ id: db_id });
+                    let db_id = decoded.id
+                    let userData = await User.findOne({ id: db_id });
                     console.log(req.query)
                     console.log(req.body)
                     

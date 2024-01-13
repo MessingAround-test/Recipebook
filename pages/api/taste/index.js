@@ -8,7 +8,7 @@ function removeHtmlTags(input) {
 
 export default async function handler(req, res) {
     if (req.method === "GET") {
-        var url = req.query.url
+        let url = req.query.url
         const regexPattern = /<div\s+class="ingredient-description"\s+data-raw-ingredient="([^"]+)"\s*>([^<]+)<\/div>/gs;
 
         let response = await axios({

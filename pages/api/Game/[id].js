@@ -11,7 +11,7 @@ import Game from '../../../models/Game'
 
 export default async function handler(req, res) {
     console.log(req.query)
-   var recipe_id= req.query.id
+   let recipe_id= req.query.id
     
   verify(req.query.EDGEtoken, secret, async function (err, decoded) {
     if (err) {
@@ -22,13 +22,13 @@ export default async function handler(req, res) {
         await dbConnect()
 
         console.log(decoded)
-        var db_id = decoded.id
-        var userData = await User.findOne({ id: db_id });
+        let db_id = decoded.id
+        let userData = await User.findOne({ id: db_id });
         if (userData === {}) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
 
-          var RecipeData = await Recipe.findOne({_id: recipe_id})
+          let RecipeData = await Recipe.findOne({_id: recipe_id})
           res.status(200).json({ res: RecipeData})
         }
       
@@ -37,14 +37,14 @@ export default async function handler(req, res) {
         await dbConnect()
 
         console.log(decoded)
-        var db_id = decoded.id
-        var userData = await User.findOne({ id: db_id });
+        let db_id = decoded.id
+        let userData = await User.findOne({ id: db_id });
         if (userData === {}) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
 
             // Create one here....
-        //   var RecipeData = await Recipe.deleteOne({_id: recipe_id})
+        //   let RecipeData = await Recipe.deleteOne({_id: recipe_id})
         //   res.status(200).json({ success: true, data: [], message: "Success"})
         }
       }else {

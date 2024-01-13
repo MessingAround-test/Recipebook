@@ -206,12 +206,12 @@ export default async function handler(req, res) {
 
 
     //console.log(req.query)
-    var ingredient_name = req.query.name
+    let ingredient_name = req.query.name
 
     verify(req.query.EDGEtoken, secret, async function (err, decoded) {
 
         try {
-            var search_term = req.query.name
+            let search_term = req.query.name
             if (err) {
                 return res.status(400).json({ res: "error: " + String(err) })
             } else {
@@ -255,13 +255,13 @@ export default async function handler(req, res) {
                     await dbConnect()
 
                     //console.log(decoded)
-                    var db_id = decoded.id
-                    var userData = await User.findOne({ id: db_id });
+                    let db_id = decoded.id
+                    let userData = await User.findOne({ id: db_id });
                     if (userData == {}) {
                         return res.status(400).json({ res: "user not found, please relog" })
                     } else {
 
-                        var RecipeData = await AldiIngredient.deleteMany({})
+                        let RecipeData = await AldiIngredient.deleteMany({})
                         return res.status(200).json({ success: true, data: RecipeData, message: "Success" })
                     }
                     return res.status(400).json({ success: false, data: [], message: "Not supported request" })
@@ -274,7 +274,7 @@ export default async function handler(req, res) {
                         //console.log(search_term)
                         let matchedProducts = findMatches(search_term, allIngreds);
                         //console.log("Matches:", matchedProducts);
-                        var filteredDataArray = []
+                        let filteredDataArray = []
                         let source = "Aldi"
                         //console.log(matchedProducts)
                         // filteredDataArray = newIngredData
@@ -290,7 +290,7 @@ export default async function handler(req, res) {
                             let price = filteredData.price
                             let quantity = filteredData.quantity
 
-                            var filteredObj = {
+                            let filteredObj = {
                                 "id": source + "-" + name + "-" + internal_id,
                                 "name": name,
                                 "price": price,

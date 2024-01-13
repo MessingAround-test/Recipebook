@@ -36,13 +36,13 @@ export default function Home() {
     const [imageData, setImageData] = useState()
 
     async function getUserDetails() {
-        var data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
         setUserData(data.res)
     }
 
     async function getRecipeDetails() {
-        var data = await (await fetch("/api/Recipe?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let data = await (await fetch("/api/Recipe?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
         setRecipes(data.res)
     }

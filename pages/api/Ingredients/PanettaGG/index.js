@@ -16,7 +16,7 @@ export default async function handler(req, res) {
         const array = [...searchStr.matchAll(regexp)];
         return array
     }
-    var search_term = req.query.name
+    let search_term = req.query.name
     verify(req.query.EDGEtoken, secret, async function (err, decoded) {
         try {
             if (err) {
@@ -27,8 +27,8 @@ export default async function handler(req, res) {
                     await dbConnect()
 
 
-                    var db_id = decoded.id
-                    var userData = await User.findOne({ id: db_id });
+                    let db_id = decoded.id
+                    let userData = await User.findOne({ id: db_id });
                     if (userData.id === undefined) {
                         return res.status(400).json({ res: "user not found, please relog" })
                     } else {
@@ -36,20 +36,20 @@ export default async function handler(req, res) {
                             method: 'get',
                             url: `https://panettamercato.com.au/?s=${search_term}&post_type=product`
                         })
-                        var filteredDataArray = []
+                        let filteredDataArray = []
                         let source = "Panetta"
 
-                        let startIndex = newIngredData.data.indexOf("/var pysOptions =/g")
+                        let startIndex = newIngredData.data.indexOf("/let pysOptions =/g")
                         // let finishIndex = newIngredData.data.indexOf("/* ]]> */")
 
-                        let matchedIngredData = getIndicesOf(String(newIngredData.data), "var pysOptions =.*", true)
-                        let json_data = JSON.parse(String(matchedIngredData).replace("var pysOptions =", "").replace(";", ""))
+                        let matchedIngredData = getIndicesOf(String(newIngredData.data), "let pysOptions =.*", true)
+                        let json_data = JSON.parse(String(matchedIngredData).replace("let pysOptions =", "").replace(";", ""))
 
                         json_data = json_data.staticEvents.ga.woo_view_item_list_search
 
                         if (json_data.length > 0) {
                             let item_list = json_data[0].params.items
-                            for (var ingredData in item_list) {
+                            for (let ingredData in item_list) {
                                 try {
                                     if (ingredData === undefined) {
                                         continue
@@ -92,7 +92,7 @@ export default async function handler(req, res) {
                                         }
                                     }
                                     let unit_price =  parseFloat((price/quantity).toFixed(3))
-                                    var filteredObj = {
+                                    let filteredObj = {
                                         "id": source + "-" + name + "-" + internal_id,
                                         "name": name,
                                         "price": price,
@@ -148,13 +148,13 @@ export default async function handler(req, res) {
                     // await dbConnect()
 
                     // console.log(decoded)
-                    // var db_id = decoded.id
-                    // var userData = await User.findOne({ id: db_id });
+                    // let db_id = decoded.id
+                    // let userData = await User.findOne({ id: db_id });
                     // if (userData === {}) {
                     //     return res.status(400).json({ res: "user not found, please relog" })
                     // } else {
 
-                    //     var RecipeData = await Recipe.deleteOne({ _id: recipe_id })
+                    //     let RecipeData = await Recipe.deleteOne({ _id: recipe_id })
                     //     return res.status(200).json({ success: true, data: RecipeData, message: "Success" })
                     // }
                     return res.status(400).json({ success: false, data: [], message: "Not supported request" })

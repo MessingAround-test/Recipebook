@@ -16,14 +16,14 @@ export default function Home() {
     const [userData, setUserData] = useState({})
 
     async function getUserDetails() {
-        var data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
         setUserData(data.res)
     }
 
     async function ExtractFromAldi(e) {
         e.preventDefault();
-        var data = await (await fetch("/api/Ingredients/Aldi?EDGEtoken=" + localStorage.getItem('Token'), {
+        let data = await (await fetch("/api/Ingredients/Aldi?EDGEtoken=" + localStorage.getItem('Token'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

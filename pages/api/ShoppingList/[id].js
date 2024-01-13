@@ -10,7 +10,7 @@ import ShoppingList from '../../../models/ShoppingList'
 
 
 export default async function handler(req, res) {
-   var id= req.query.id
+   let id= req.query.id
     
   verify(req.query.EDGEtoken, secret, async function (err, decoded) {
     if (err) {
@@ -21,13 +21,13 @@ export default async function handler(req, res) {
         await dbConnect()
 
         console.log(decoded)
-        var db_id = decoded.id
-        var userData = await User.findOne({ id: db_id });
+        let db_id = decoded.id
+        let userData = await User.findOne({ id: db_id });
         if (userData === undefined) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
 
-          var DbData = await ShoppingList.findOne({_id: id})
+          let DbData = await ShoppingList.findOne({_id: id})
           res.status(200).json({ res:DbData})
         }
       
@@ -36,13 +36,13 @@ export default async function handler(req, res) {
         await dbConnect()
 
         console.log(decoded)
-        var db_id = decoded.id
-        var userData = await User.findOne({ id: db_id });
+        let db_id = decoded.id
+        let userData = await User.findOne({ id: db_id });
         if (userData === undefined) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
 
-          var DbData = await ShoppingList.deleteOne({_id: id})
+          let DbData = await ShoppingList.deleteOne({_id: id})
           res.status(200).json({ success: true, data: DbData, message: "Success"})
         }
       }else {

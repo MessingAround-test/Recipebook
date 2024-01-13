@@ -16,7 +16,7 @@ export default function signup() {
         
         console.log(e.target)
 
-        var data = await(await fetch("/api/signup", {
+        let data = await(await fetch("/api/signup", {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',

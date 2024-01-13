@@ -20,7 +20,7 @@ export default async function handler (req, res) {
         await dbConnect()
         // const users = await User.find({email: req.email})
         try {
-            var status = await loginUser(req.body);
+            let status = await loginUser(req.body);
             if (status) {
                 // generate a access token
                 const accessToken = await sign(
@@ -76,7 +76,7 @@ export default async function handler (req, res) {
 
 // app.get('/', async(req, res) => {
 //   // await connect()
-//   var item = await find()
+//   let item = await find()
 //   // console.log(item)
 //   res.send(item)
 // })
@@ -90,7 +90,7 @@ export default async function handler (req, res) {
 //     // req.assert('email', 'A valid email is required').isEmail()
 //     // req.assert('password', 'Password is required').notEmpty();
 
-//     var status = await createUser(req.body);
+//     let status = await createUser(req.body);
 //     res.send({ success: status });
 //   } catch (error) {
 //     console.log(error);
@@ -102,7 +102,7 @@ export default async function handler (req, res) {
 
 // app.post("/login", async (req, res) => {
 //   try {
-//     var status = await loginUser(req.body);
+//     let status = await loginUser(req.body);
 //     if (status) {
 //       // generate a access token
 //       console.log("STATIS");
@@ -144,14 +144,14 @@ export default async function handler (req, res) {
 // });
 
 // app.put("/adminUpdateUser", async (req, res) => {
-//   var token = req.query.token;
+//   let token = req.query.token;
 //   if (token) {
-//     var userInfo = await verifyToken(token);
+//     let userInfo = await verifyToken(token);
 //     console.log(userInfo);
 //     if (userInfo) {
 //       if (userInfo.role === "admin") {
 //         // {} empty filter gets ALL results
-//         var updated = await updateUser(
+//         let updated = await updateUser(
 //           { _id: req.body.data.id },
 //           req.body.data.update
 //         );
@@ -250,7 +250,7 @@ async function loginUser(body) {
 // async function verifyToken(token) {
 //   // return await
 //   try {
-//     var decoded = await jwt.verify(token, accessTokenSecret);
+//     let decoded = await jwt.verify(token, accessTokenSecret);
 //     return decoded;
 //   } catch (err) {
 //     return err;
@@ -265,7 +265,7 @@ async function loginUser(body) {
 // app.get('/transactions', async(req, res) => {
 //   // await connect()
 //   console.log(req.query)
-//   var item = await get_user_transactions(req.query.email)
+//   let item = await get_user_transactions(req.query.email)
 //   // console.log(item)
 //   res.send(item)
 // })
@@ -275,7 +275,7 @@ async function loginUser(body) {
 // app.post('/transactions', async(req, res) => {
 //   // await connect()
 //   console.log(req.body)
-//   var item = await create_transaction(req.body.parent_id, req.body.Description, req.body.amount, req.body.payed, req.body.split, req.body.user)
+//   let item = await create_transaction(req.body.parent_id, req.body.Description, req.body.amount, req.body.payed, req.body.split, req.body.user)
 //   // console.log(item)
 //   res.send(item[0])
 // })
@@ -285,7 +285,7 @@ async function loginUser(body) {
    
 //   console.log(req.query)
 //   // await connect()
-//   var item = await get_user_sub_transactions(req.query.email)
+//   let item = await get_user_sub_transactions(req.query.email)
 //   // console.log(item)
 //   res.send(item)
 // })
@@ -321,13 +321,13 @@ async function loginUser(body) {
 
 
 // async function create_transaction(parent_id, Description, amount, payed, split, user) {
-//   var newtran  = [{parent_id: parent_id, Description: Description, amount: amount, payed: payed, split: split, user: user}]
+//   let newtran  = [{parent_id: parent_id, Description: Description, amount: amount, payed: payed, split: split, user: user}]
 //   return transactions.insertMany(newtran)
 // }
 
 
 // async function create_sub_transaction(parent_id, Description, split, user){
-//   var doc = await find_tran_by_id(parent_id)
+//   let doc = await find_tran_by_id(parent_id)
 //   if (doc !== undefined){
 //     create_transaction(parent_id, Description, doc.amount/split, false, split, user)
 //   }
@@ -338,7 +338,7 @@ async function loginUser(body) {
 
 
 // // async function create_user(name, age, email, password) {
-// //   var newuser  = [{name:name, age:age, email:email, password:password}]
+// //   let newuser  = [{name:name, age:age, email:email, password:password}]
 // //   users.insertMany(newuser)
 // // }
 
@@ -349,13 +349,13 @@ async function loginUser(body) {
 // }
 
 // async function get_user_sub_transactions(email){
-//   var doc = await transactions.find({user: email});
-//   var allsubdocs = []
+//   let doc = await transactions.find({user: email});
+//   let allsubdocs = []
 
-//   for (var tran in doc){
+//   for (let tran in doc){
 //     console.log(doc[tran])
 //     // console.log(tran)
-//     var subdoc = await transactions.find({parent_id: doc[tran]._id});
+//     let subdoc = await transactions.find({parent_id: doc[tran]._id});
 //     allsubdocs = allsubdocs.concat(subdoc)
 //   }
 //   return allsubdocs
@@ -366,9 +366,9 @@ async function loginUser(body) {
 //   userModel.find({}).remove().exec();
 
 //   createUser({"username": "Bryn","email": "lombryn@gmail.com", "password": "asdasd"})
-//   var data= await create_transaction(null, "TestTran", 10, false, 1, "lombryn@gmail.com")
-//   var data= await create_transaction(null, "TestTran2", 20, false, 1, "lombryn@gmail.com")
-//   var parent_id = data[0].id 
+//   let data= await create_transaction(null, "TestTran", 10, false, 1, "lombryn@gmail.com")
+//   let data= await create_transaction(null, "TestTran2", 20, false, 1, "lombryn@gmail.com")
+//   let parent_id = data[0].id 
 //   create_sub_transaction(parent_id, "SubTran", 3, "test123@gmail.com")
   
 

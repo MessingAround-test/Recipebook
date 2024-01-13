@@ -105,7 +105,7 @@ export default function Home() {
     }
 
     async function getUserDetails() {
-        var data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
         setUserData(data.res)
     }
@@ -144,7 +144,7 @@ export default function Home() {
     async function getIngredDetailsImproved(){
         const newItems = ingreds;
         
-        for (var ingredients in newItems) {
+        for (let ingredients in newItems) {
             let data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].name}&qType=${newItems[ingredients].quantity_unit}&returnN=1&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${localStorage.getItem('Token')}`)).json()
             console.log(data)
             if (data.loadedSource) {
@@ -174,7 +174,7 @@ export default function Home() {
         const newItems = [...recipe];
         console.log(newItems)
         console.log(enabledSuppliers)
-        for (var ingredients in newItems) {
+        for (let ingredients in newItems) {
             let data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].name}&qType=${newItems[ingredients].quantity_unit}&returnN=1&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${localStorage.getItem('Token')}`)).json()
             console.log(data)
             if (data.loadedSource) {
@@ -201,7 +201,7 @@ export default function Home() {
 
     const deleteItem = async function (e) {
 
-        var data = await (await fetch("/api/ShoppingList/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'), {
+        let data = await (await fetch("/api/ShoppingList/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'), {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json'
@@ -223,7 +223,7 @@ export default function Home() {
     }
 
     async function getRecipeDetails() {
-        var data = await (await fetch("/api/ShoppingList/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let data = await (await fetch("/api/ShoppingList/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'))).json()
         // setRecipe(data.res)
 
 
@@ -243,7 +243,7 @@ export default function Home() {
 
     // TJOS ISNT WORKING AGAGAG
     const getAproxTotalRecipeCost = () => {
-        var total = 0
+        let total = 0
         for (let ingredient in ingreds) {
             let current = ingreds[ingredient]
             if (current.unit_price !== undefined) {
@@ -269,7 +269,7 @@ export default function Home() {
         (async () => {
             console.log(recipe)
             if (recipe != {} && recipe!== undefined && id !== undefined) {
-                var data = await (await fetch(`/api/ShoppingListItem/?shoppingListId=${id}&EDGEtoken=${localStorage.getItem('Token')}`)).json()
+                let data = await (await fetch(`/api/ShoppingListItem/?shoppingListId=${id}&EDGEtoken=${localStorage.getItem('Token')}`)).json()
                 setIngreds(data.res)
             }       
         })();

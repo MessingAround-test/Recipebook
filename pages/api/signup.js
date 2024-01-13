@@ -23,7 +23,7 @@ async function createUser(body) {
     const role = "user";
     const approved = false;
     console.log(username + ": " + password + ": " + email);
-    var hashval = hash(password, 10)
+    let hashval = hash(password, 10)
     
     try {
         const res = User.create({
@@ -43,7 +43,7 @@ async function createUser(body) {
     
     
 
-    // var response = hash(password, 10, async function (err, hash) {
+    // let response = hash(password, 10, async function (err, hash) {
     //     try {
     //         const res = User.create({
     //             username: username,

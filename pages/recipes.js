@@ -19,13 +19,13 @@ export default function Home() {
     const [allowDelete, setAllowDelete] = useState(false)
 
     async function getUserDetails() {
-        var data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
         setUserData(data.res)
     }
 
     async function getRecipeDetails() {
-        var data = await (await fetch("/api/Recipe?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let data = await (await fetch("/api/Recipe?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
         setRecipes(data.res)
     }
@@ -51,7 +51,7 @@ export default function Home() {
 
     const deleteRecipe = async function (id) {
 
-        var data = await (await fetch("/api/Recipe/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'), {
+        let data = await (await fetch("/api/Recipe/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'), {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json'

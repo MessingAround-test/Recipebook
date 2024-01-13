@@ -41,14 +41,14 @@ export default function Home() {
     };
 
     async function getUserDetails() {
-        var data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
         setUserData(data.res)
     }
 
     async function getRecipeDetails() {
         console.log("SHOPPING LIST INIT")
-        var data = await (await fetch("/api/ShoppingList?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let data = await (await fetch("/api/ShoppingList?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
         setRecipes(data.res)
     }
@@ -81,7 +81,7 @@ export default function Home() {
 
     const deleteRecipe = async function (id) {
 
-        var data = await (await fetch("/api/ShoppingList/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'), {
+        let data = await (await fetch("/api/ShoppingList/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'), {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json'

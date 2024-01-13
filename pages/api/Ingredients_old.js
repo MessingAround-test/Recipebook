@@ -16,24 +16,24 @@ export default async function handler(req, res) {
             if (req.method === "GET") {
                 await dbConnect()
                 try {
-                    var ingredientName = req.query.ingredient
-                    var ingredientMeasure = req.query.measurement
+                    let ingredientName = req.query.ingredient
+                    let ingredientMeasure = req.query.measurement
                     
-                    var ingredientMeasureMapping = {
+                    let ingredientMeasureMapping = {
                         "x": "EA",
                         "g": "KG",
                         "c": "KG",
                         "ml": "ML"
                     }
 
-                    var ingredientMeasureMapped = ingredientMeasureMapping[ingredientMeasure]
+                    let ingredientMeasureMapped = ingredientMeasureMapping[ingredientMeasure]
 
-                    var IngredientsData = await Ingredients.find({ name: ingredientName })
+                    let IngredientsData = await Ingredients.find({ name: ingredientName })
                     if (ingredientName !== undefined) {
                         // We want to load the ingredient from woolworths 
                         console.log(ingredientName)
                         
-                        var newIngredData= await axios({
+                        let newIngredData= await axios({
                             method: 'get',
                             url: 'https://www.woolworths.com.au/apis/ui/v2/Search/products?searchTerm=' + ingredientName,
                             
@@ -41,11 +41,11 @@ export default async function handler(req, res) {
                             
                         
                         // console.log(newIngredData.data)
-                        var filteredDataArray = []
-                        var backupDataArray = []
-                        for (var ingredData in newIngredData.data.Products){
-                            var filteredData = newIngredData.data.Products[ingredData].Products[0]
-                            var filteredObj = {
+                        let filteredDataArray = []
+                        let backupDataArray = []
+                        for (let ingredData in newIngredData.data.Products){
+                            let filteredData = newIngredData.data.Products[ingredData].Products[0]
+                            let filteredObj = {
                                 "WW_Name": filteredData.Name,
                                 "price": filteredData.CupPrice,
                                 "measure": filteredData.CupMeasure,

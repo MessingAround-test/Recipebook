@@ -18,21 +18,21 @@ export default async function handler(req, res) {
         await dbConnect()
 
         console.log(decoded)
-        var db_id = decoded.id
-        var userData = await User.findOne({ id: db_id });
+        let db_id = decoded.id
+        let userData = await User.findOne({ id: db_id });
         if (userData === {}) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
 
-          var RecipeData = await Recipe.find({})
+          let RecipeData = await Recipe.find({})
           res.status(200).json({ res: RecipeData})
         }
       } else if (req.method === "POST") {
         // console.log(req.body)
         try {
         await dbConnect()
-        var db_id = decoded.id
-        var userData = await User.findOne({ id: db_id });
+        let db_id = decoded.id
+        let userData = await User.findOne({ id: db_id });
         console.log(req.query)
         console.log(req.body)
         const response = Recipe.create({

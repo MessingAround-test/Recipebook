@@ -18,8 +18,8 @@ export default async function handler(req, res) {
                     await dbConnect()
 
                     console.log(decoded)
-                    var db_id = decoded.id
-                    var userData = await User.findOne({ id: db_id });
+                    let db_id = decoded.id
+                    let userData = await User.findOne({ id: db_id });
                     if (userData._id === undefined) {
                         res.status(400).json({ res: "user not found, please relog" })
                     } else {
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
                             throw "shoppingListId is required"
                         }
 
-                        var ShoppingListItemData = await ShoppingListItem.find({shoppingListId: req.query.shoppingListId })
+                        let ShoppingListItemData = await ShoppingListItem.find({shoppingListId: req.query.shoppingListId })
                         res.status(200).json({ res: ShoppingListItemData })
                     }
                 } catch (error) {
@@ -40,11 +40,9 @@ export default async function handler(req, res) {
                 // console.log(req.body)
                 try {
                     await dbConnect()
-                    var db_id = decoded.id
-                    console.log("HERE")
+                    let db_id = decoded.id
 
-
-                    var userData = await User.findOne({ id: db_id });
+                    let userData = await User.findOne({ id: db_id });
                     console.log(req.query)
                     console.log(req.body)
                     // if (req.body.ingredientId === undefined){
@@ -55,14 +53,14 @@ export default async function handler(req, res) {
                         throw "shoppingListId is required"
                     }
 
-                    // var ingredient = await Ingredient.findOne({id: req.body.ingredientId})
+                    // let ingredient = await Ingredient.findOne({id: req.body.ingredientId})
 
                     // if (ingredient === null ||ingredient.id === undefined){
                     //     throw "Ingredient does not exist"
                     // }
 
 
-                    var shoppingList = await ShoppingList.findOne({ _id: req.body.shoppingListId })
+                    let shoppingList = await ShoppingList.findOne({ _id: req.body.shoppingListId })
                     console.log(shoppingList)
                     console.log(req.body.shoppingListId)
                     if (shoppingList === null || shoppingList._id === undefined) {

@@ -66,7 +66,7 @@ export default async function handler(req, res) {
                             }
                         }
                         let unit_price =  parseFloat((price/quantity).toFixed(3))
-                        var filteredObj = {
+                        let filteredObj = {
                             "id": source + "-" + name + "-" + internal_id,
                             "name": name,
                             "price": price,

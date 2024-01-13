@@ -22,12 +22,12 @@ export default async function handler(req, res) {
         await dbConnect()
 
         console.log(decoded)
-        var db_id = decoded.id
-        var userData = await User.findOne({ id: db_id });
+        let db_id = decoded.id
+        let userData = await User.findOne({ id: db_id });
         if (userData === undefined) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
-          var TransactionData = await Transactions.find({user_id: userData._id}) //_id: transaction_id, 
+          let TransactionData = await Transactions.find({user_id: userData._id}) //_id: transaction_id, 
           res.status(200).json({ res: TransactionData})
         }
       
@@ -36,13 +36,13 @@ export default async function handler(req, res) {
         await dbConnect()
 
         console.log(decoded)
-        var db_id = decoded.id
-        var userData = await Transac.findOne({ id: db_id });
+        let db_id = decoded.id
+        let userData = await Transac.findOne({ id: db_id });
         if (userData === undefined) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
 
-          var TransactionData = await Transactions.deleteOne({_id: transaction_id})
+          let TransactionData = await Transactions.deleteOne({_id: transaction_id})
           res.status(200).json({ success: true, data: TransactionData, message: "Success"})
         }
       }else {

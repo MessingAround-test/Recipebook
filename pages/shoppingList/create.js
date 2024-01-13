@@ -38,7 +38,7 @@ export default function Home() {
         console.log(e)
         console.log(e.value)
 
-        var data = await (await fetch("/api/ShoppingList/" + "?EDGEtoken=" + localStorage.getItem('Token'), {
+        let data = await (await fetch("/api/ShoppingList/" + "?EDGEtoken=" + localStorage.getItem('Token'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -61,7 +61,7 @@ export default function Home() {
 
     const deleteRecipe = async function (e) {
 
-        var data = await (await fetch("/api/ShoppingList/" + String(router.query.id) + "?EDGEtoken=" + localStorage.getItem('Token'), {
+        let data = await (await fetch("/api/ShoppingList/" + String(router.query.id) + "?EDGEtoken=" + localStorage.getItem('Token'), {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json'

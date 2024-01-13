@@ -7,7 +7,7 @@ import { Button } from 'react-bootstrap';
 import Modal from 'react-modal';
 import { IngredientList } from './IngredientList'
 
-function IngredientTable({ ingredients, handleCheckboxChange, reload, availableColumns, handleDeleteItem, modifyColumnName }) {
+function IngredientTable({ ingredients, handleCheckboxChange, reload, availableColumns, handleDeleteItem, modifyColumnName, sortFunction}) {
   const [ingredientData, setIngredientData] = useState(ingredients);
   const [modalIsOpen, setIsOpen] = useState(false);
   const [selectedIngred, setSelectedIngred] = useState("")
@@ -16,10 +16,14 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
 
   function toggleEssentials() {
     setEssential(!essential)
-
+    if (essential){
+      setIngredientData(sortIngredients(ingredients));
+    } else {
+      setIngredientData(sortIngredientsSimple(ingredients));
+    }
   }
 
-  function sortIngredientsDynamic(ingredientList, sortList) {
+  function sortIngredientsSimple(ingredientList) {
     let sortedIngreds = ingredientList
     sortedIngreds.sort((a, b) => {
       // Check if one item is complete and the other is not
@@ -51,7 +55,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
 
   }
 
-  function sortIngredients(ingredientList, sortList) {
+  function sortIngredients(ingredientList) {
     let sortedIngreds = ingredientList
     sortedIngreds.sort((a, b) => {
       // Check if one item is complete and the other is not
@@ -67,6 +71,20 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
       // Compare based on "source" property
       if (sourceA < sourceB) return -1;
       if (sourceA > sourceB) return 1;
+
+      const catA = a.category ? a.category.toLowerCase() : '';
+      const catB = b.category ? b.category.toLowerCase() : '';
+
+      // Compare based on "source" property
+      if (catA < catB) return -1;
+      if (catA > catB) return 1;
+
+      const searchTermA = a.name ? a.name.toLowerCase() : '';
+      const searchTermB = b.name ? b.name.toLowerCase() : '';
+
+      if (searchTermA < searchTermB) return -1;
+      if (searchTermA > searchTermB) return 1;
+
 
       // If "source" properties are equal and both items are complete or incomplete, maintain current order
       return 0;
@@ -94,7 +112,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
 
 
   const markAsIncorrect = async function (ingredientId, ingredName) {
-    var data = await (await fetch("/api/Ingredients/?id=" + ingredientId + "&EDGEtoken=" + localStorage.getItem('Token'), {
+    let data = await (await fetch("/api/Ingredients/?id=" + ingredientId + "&EDGEtoken=" + localStorage.getItem('Token'), {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json'
@@ -118,7 +136,12 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
   }
 
   useEffect(() => {
-    setIngredientData(sortIngredientsDynamic(ingredients, ["Category", "Search Term"]));
+    if (sortFunction === undefined) {
+      setIngredientData(sortIngredientsSimple(ingredients));
+    } else {
+      sortFunction(ingredients)
+    }
+    
   }, [ingredients]);
 
 

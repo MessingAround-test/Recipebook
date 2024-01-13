@@ -115,7 +115,7 @@ export default function Home() {
         data.data.ingredients.forEach(function (ingred) {
             if (ingred.converted !== undefined) {
 
-                var IngredObj = {
+                let IngredObj = {
                     "Name": ingred.converted.name,
                     "Amount": ingred.converted.quantity,
                     "AmountType": ingred.converted.quantity_unit,
@@ -130,7 +130,7 @@ export default function Home() {
         let tasteInstructionList = []
         data.data.instructions.forEach(function (instruction) {
 
-            var InstructObj = {
+            let InstructObj = {
                 "Text": instruction.instruction,
                 "Note": instruction.stepNumber
             }
@@ -145,7 +145,7 @@ export default function Home() {
     const onSubmitIngred = async function (e) {
         e.preventDefault();
 
-        var IngredObj = {
+        let IngredObj = {
             "Name": e.target.ingredName.value,
             "Amount": e.target.ingredAmount.value,
             "AmountType": e.target.ingredAmountType.value,
@@ -161,7 +161,7 @@ export default function Home() {
         e.preventDefault();
 
 
-        var InstructObj = {
+        let InstructObj = {
             "Text": e.target.instructText.value,
             "Note": e.target.instructNote.value
         }

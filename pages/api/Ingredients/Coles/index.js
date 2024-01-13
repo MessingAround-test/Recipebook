@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
 
     console.log(req.query)
-    var search_term = req.query.name
+    let search_term = req.query.name
 
     verify(req.query.EDGEtoken, secret, async function (err, decoded) {
         try {
@@ -25,8 +25,8 @@ export default async function handler(req, res) {
                     await dbConnect()
 
                     console.log(decoded)
-                    var db_id = decoded.id
-                    var userData = await User.findOne({ id: db_id });
+                    let db_id = decoded.id
+                    let userData = await User.findOne({ id: db_id });
                     if (userData.id === undefined) {
                         return res.status(400).json({ res: "user not found, please relog" })
                     } else if (search_term === "" || search_term === undefined){
@@ -36,11 +36,11 @@ export default async function handler(req, res) {
                             method: 'get',
                             url: `https://www.coles.com.au/_next/data/20231219.01_v3.62.0/en/search.json?q=${search_term}`
                         })
-                        var filteredDataArray = []
+                        let filteredDataArray = []
                         let source = "Coles"
                         // console.log(newIngredData.data)
                         // filteredDataArray = newIngredData
-                        for (var ingredData in newIngredData.data.pageProps.searchResults.results) {
+                        for (let ingredData in newIngredData.data.pageProps.searchResults.results) {
                             try {
                                 if (ingredData === undefined){
                                     continue
@@ -85,7 +85,7 @@ export default async function handler(req, res) {
                                     }
                                 }
                                 let unit_price =  parseFloat((price/quantity).toFixed(3))
-                                var filteredObj = {
+                                let filteredObj = {
                                     "id": source + "-" + name + "-" + internal_id,
                                     "name": name,
                                     "price": price,
@@ -131,13 +131,13 @@ export default async function handler(req, res) {
                     // await dbConnect()
 
                     // console.log(decoded)
-                    // var db_id = decoded.id
-                    // var userData = await User.findOne({ id: db_id });
+                    // let db_id = decoded.id
+                    // let userData = await User.findOne({ id: db_id });
                     // if (userData === {}) {
                     //     return res.status(400).json({ res: "user not found, please relog" })
                     // } else {
 
-                    //     var RecipeData = await Recipe.deleteOne({ _id: recipe_id })
+                    //     let RecipeData = await Recipe.deleteOne({ _id: recipe_id })
                     //     return res.status(200).json({ success: true, data: RecipeData, message: "Success" })
                     // }
                     return res.status(400).json({ success: false, data: [], message: "Not supported request" })

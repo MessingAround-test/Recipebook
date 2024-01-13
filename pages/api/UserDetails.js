@@ -5,7 +5,7 @@ import dbConnect from '../../lib/dbConnect'
 import User from '../../models/User'
 async function matchKeys(obj1, obj2) {
   console.log(obj2)
-  var newObj = {}
+  let newObj = {}
   for (const [key, value] of Object.entries(obj1)) {
     for (const [matchKey, matchValue] of Object.entries(obj2)) {
       console.log(key + " : " + matchKey)
@@ -33,23 +33,23 @@ export default async function handler(req, res) {
         await dbConnect()
 
         console.log(decoded)
-        var db_id = decoded.id
-        var userData = await User.findOne({ id: db_id });
+        let db_id = decoded.id
+        let userData = await User.findOne({ id: db_id });
         if (userData === {}) {
           res.status(400).json({ res: "user not found, please relog" })
         } else {
 
-          var userdataTemplate = { username: 'test', email: 'test', test123: "asd"}
+          let userdataTemplate = { username: 'test', email: 'test', test123: "asd"}
           console.log(userData)
-          var newobj = {}
-          // var newObj = matchKeys(userdataTemplate, userData)
-          for (var key in userData){
+          let newobj = {}
+          // let newObj = matchKeys(userdataTemplate, userData)
+          for (let key in userData){
             if (key in userdataTemplate){
               newobj[key] = userData[key]
             }
           }  
           
-          for (var key in userdataTemplate){
+          for (let key in userdataTemplate){
             if (!(key in newobj)){
               newobj[key] = userdataTemplate[key]
               // console.log("hi there")
@@ -66,7 +66,7 @@ export default async function handler(req, res) {
       } else if (req.method === "PUT") {
         // console.log(req.body)
         try {
-          var updateRes = User.findOneAndUpdate({ id: req.body._id }, { "$set": req.body })
+          let updateRes = User.findOneAndUpdate({ id: req.body._id }, { "$set": req.body })
           console.log(await updateRes)
           res.status(200).json({ success: true, res: "allgood" })
         } catch (error) {

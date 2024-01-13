@@ -21,7 +21,7 @@ export function TransactionList(props) {
 
     async function getAllIngredients() {
         if (props.search_term === undefined) {
-            var data = await (await fetch(`/api/Transactions/?EDGEtoken=` + localStorage.getItem('Token'))).json()
+            let data = await (await fetch(`/api/Transactions/?EDGEtoken=` + localStorage.getItem('Token'))).json()
             setAllIngreds(data.res)
             setFilteredIngreds(data.res)
         } else {
@@ -35,7 +35,7 @@ export function TransactionList(props) {
     }
 
     async function deleteAllIngredients() {
-        var data = await (await fetch(`/api/Transactions/?EDGEtoken=` + localStorage.getItem('Token'), { method: "DELETE" })).json()
+        let data = await (await fetch(`/api/Transactions/?EDGEtoken=` + localStorage.getItem('Token'), { method: "DELETE" })).json()
         setAllIngreds([])
     }
 

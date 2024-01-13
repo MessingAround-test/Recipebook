@@ -23,19 +23,19 @@ export default function Home() {
     const [filtersObj, setFiltersObj] = useState({"name": "", "supplier": ""})
 
     async function getUserDetails() {
-        var data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
         setUserData(data.res)
     }
 
     async function getRecipeDetails() {
-        var data = await (await fetch("/api/Recipe?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let data = await (await fetch("/api/Recipe?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
         setRecipes(data.res)
     }
 
     async function getAllIngredients() {
-        var data = await (await fetch(`/api/Ingredients/?EDGEtoken=` + localStorage.getItem('Token'))).json()
+        let data = await (await fetch(`/api/Ingredients/?EDGEtoken=` + localStorage.getItem('Token'))).json()
         setAllIngreds(data.res)
         setFilteredIngreds(data.res)
         // console.log(data)
@@ -43,7 +43,7 @@ export default function Home() {
     }
 
     async function deleteAllIngredients() {
-        var data = await (await fetch(`/api/Ingredients/?EDGEtoken=` + localStorage.getItem('Token'), {method:"DELETE"})).json()
+        let data = await (await fetch(`/api/Ingredients/?EDGEtoken=` + localStorage.getItem('Token'), {method:"DELETE"})).json()
         setAllIngreds([])
     }
 
