@@ -23,12 +23,20 @@ export default async function handler(req, res) {
                     if (userData._id === undefined) {
                         res.status(400).json({ res: "user not found, please relog" })
                     } else {
-                        if (req.query.shoppingListId === undefined) {
-                            throw "shoppingListId is required"
-                        }
+                        if (req.query.search_term !== undefined && req.query.field !== undefined) {
+                            // Provide the search term and search for occurances of that item in the lists
+                            let ShoppingListItemData = await ShoppingListItem.find({ name: req.query.search_term })
+                            let response = ShoppingListItemData.map((item)=>item[req.query.field]).filter((value) => value !== null && value !== undefined);
+                            res.status(200).json({ success: true , data: response })
+                        } else {
+                            // Provide the shopping list id and return the shopping list
+                            if (req.query.shoppingListId === undefined) {
+                                throw "shoppingListId is required"
+                            }
 
-                        let ShoppingListItemData = await ShoppingListItem.find({shoppingListId: req.query.shoppingListId })
-                        res.status(200).json({ res: ShoppingListItemData })
+                            let ShoppingListItemData = await ShoppingListItem.find({ shoppingListId: req.query.shoppingListId })
+                            res.status(200).json({ res: ShoppingListItemData })
+                        }
                     }
                 } catch (error) {
                     console.log(error.line)

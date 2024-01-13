@@ -24,31 +24,33 @@ let categories = [
     { name: 'International Foods', image: 'InternationalFoods.png' },
     { name: 'Deli and Prepared Foods', image: 'DeliandPreparedFoods.png' },
     { name: 'Home and Garden', image: 'HomeandGarden.png' }
-  ]
-  
+]
 
-function AddShoppingItem({shoppingListId, handleSubmit}) {
+
+function AddShoppingItem({ shoppingListId, handleSubmit }) {
     const [formData, setFormData] = useState({
         name: "",
         quantity: 1,
         quantity_type: "any",
         note: "",
-        "shoppingListId": shoppingListId
+        "shoppingListId": shoppingListId,
+        category: ""
     });
 
     const resetForm = () => {
         console.log("HAPPENED")
         setFormData({
-          name: "",
-          quantity: 1,
-          quantity_type: "any",
-          note: "",
-          shoppingListId: shoppingListId,
+            name: "",
+            quantity: 1,
+            quantity_type: "any",
+            note: "",
+            shoppingListId: shoppingListId,
+            category: ""
         });
-      };
-      
+    };
 
-    
+
+
     const [knownIngredients, setKnownIngredients] = useState([])
 
     const handleChange = (e) => {
@@ -57,7 +59,12 @@ function AddShoppingItem({shoppingListId, handleSubmit}) {
         console.log(formData)
         console.log(name)
         console.log(value)
-        setFormData({ ...formData, [name]: value });  
+        setFormData({ ...formData, [name]: value });
+    };
+
+    const handleNameSubmit = async function(e) {
+        let category = await determineCategory(formData.name)
+        setFormData({ ...formData, "category": {"name": category }});
     };
 
     const handleSubmitLocal = async (e) => {
@@ -66,17 +73,59 @@ function AddShoppingItem({shoppingListId, handleSubmit}) {
         handleSubmit(e)
     };
 
-    
+    async function determineCategory(name) {
+        try {
+            let response = await (await fetch(`/api/ShoppingListItem?search_term=${name}&field=category&EDGEtoken=` + localStorage.getItem('Token'))).json()
+
+            console.log(response)
+
+            if (response.success) {
+                const values = response.data
+                const valueCount = {};
+                values.forEach((value) => {
+                    valueCount[value] = (valueCount[value] || 0) + 1;
+                });
+
+                // Step 3: Find the most occurring element
+                let mostOccurringElement;
+                let maxCount = 0;
+
+                for (const value in valueCount) {
+                    if (valueCount[value] > maxCount) {
+                        maxCount = valueCount[value];
+                        mostOccurringElement = value;
+                    }
+                }
+                return mostOccurringElement
+                
+
+                // alert(response)
+                // Handle success, e.g., show a success message or redirect
+            } else {
+                console.log(response.data)
+                return 
+                // alert(response.data)
+                // Handle errors, e.g., show an error message
+            }
+        } catch (error) {
+            console.log(error)
+            return 
+            // alert(error)
+            // Handle network or other errors
+        }
+    }
+
+
 
     const getKnownIngredients = async (e) => {
         // e.preventDefault();
         try {
             let response = await (await fetch(`/api/Ingredients/Categories?EDGEtoken=` + localStorage.getItem('Token'))).json()
-            
+
             console.log(response)
 
             if (response.success) {
-                
+
                 setKnownIngredients(response.data)
                 // alert(response)
                 // Handle success, e.g., show a success message or redirect
@@ -92,7 +141,7 @@ function AddShoppingItem({shoppingListId, handleSubmit}) {
 
     useEffect(() => {
         getKnownIngredients({})
-      }, []);
+    }, []);
 
     return (
         <div className={styles['centered']}>
@@ -102,17 +151,17 @@ function AddShoppingItem({shoppingListId, handleSubmit}) {
                     <Form.Control name="name" id="ingredName" type="text" placeholder={shoppingListId} disabled hidden />
                 </Form.Group>
                 <Form.Group className="mb-3" id="formIngredName">
-                    <SearchableDropdown options={knownIngredients} placeholder={"Enter Ingredient Name"} onChange={handleChange} name={"name"} value={formData.name} ></SearchableDropdown>
+                    <SearchableDropdown options={knownIngredients} placeholder={"Enter Ingredient Name"} onChange={handleChange} name={"name"} value={formData.name} onComplete={handleNameSubmit}></SearchableDropdown>
                 </Form.Group>
                 <Form.Group className="mb-3" id="formBasicEmail">
-                    <Form.Control name="quantity" id="ingredAmount" type="text" placeholder="Enter Amount" required onChange={handleChange} value={formData.quantity}/>
+                    <Form.Control name="quantity" id="ingredAmount" type="text" placeholder="Enter Amount" required onChange={handleChange} value={formData.quantity} />
                     <Form.Select aria-label="Default select example" name="quantity_type" id="quantity_type" onChange={handleChange} value={formData.quantity_type} required>
-                    <option value="any">any</option>
+                        <option value="any">any</option>
                         {Object.keys(quantity_unit_conversions).map((item) => <option value={item}>{item}</option>)}
                     </Form.Select>
                 </Form.Group>
                 <Form.Group className="mb-3" id="formBasicPassword">
-                    <Form.Control name="note" id="ingredNote" type="text" placeholder="(optional note)" onChange={handleChange} value={formData.note}/>
+                    <Form.Control name="note" id="ingredNote" type="text" placeholder="(optional note)" onChange={handleChange} value={formData.note} />
                 </Form.Group>
                 <Form.Group className="mb-3" id="formCategory">
                     <SearchableImageDropdown options={categories} placeholder={"Category"} onChange={handleChange} name={"category"} value={formData.category}></SearchableImageDropdown>
@@ -122,9 +171,9 @@ function AddShoppingItem({shoppingListId, handleSubmit}) {
                 <Button variant="success" type="submit">
                     Submit
                 </Button>
-                {/* <Button variant="primary" onClick={()=>console.log(formData)}>
+                <Button variant="primary" onClick={()=>console.log(formData)}>
                     show state
-                </Button> */}
+                </Button>
             </Form>
         </div>
     );

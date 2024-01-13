@@ -234,10 +234,10 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
                     <Col className={styles.col} name="Source">
                       <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
                         <img style={{ maxWidth: "40%", borderRadius: "15%" }} src={`/${ingred.options[0].source ? `${ingred.options[0].source}.png` : "broken.svg"}`} />
-
                       </a>
                     </Col>
                 }
+                {ingred.openFilter?<></>:<></>}
 
                 <Col className={styles.col} name="category">{(ingred.category)}
                   {

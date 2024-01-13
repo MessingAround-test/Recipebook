@@ -4,7 +4,7 @@ import styles from '../styles/SearchableDropdown.module.css'
 
 function SearchableImageDropdown({ options, placeholder, onChange,name,value}) {
   const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState(value);
+  const [inputValue, setInputValue] = useState('');
   const [selectedOption, setSelectedOption] = useState(null);
   const dropdownRef = useRef(null);
 
@@ -16,7 +16,7 @@ function SearchableImageDropdown({ options, placeholder, onChange,name,value}) {
         }
         console.log(inputValue)
         if (!inputValue.name){
-            return (option.name.toLowerCase().includes(inputValue.toLowerCase()))    
+            return (option.name.toLowerCase().includes(""))    
         } else {
             return (option.name.toLowerCase().includes(inputValue.name.toLowerCase()))
         }
@@ -62,6 +62,7 @@ function SearchableImageDropdown({ options, placeholder, onChange,name,value}) {
 
   useEffect(() => {
     // Use both click and touch events to close the dropdown
+    setInputValue(value || '');
     document.addEventListener('click', closeDropdown);
     document.addEventListener('touchstart', closeDropdown);
 
@@ -69,53 +70,47 @@ function SearchableImageDropdown({ options, placeholder, onChange,name,value}) {
       document.removeEventListener('click', closeDropdown);
       document.removeEventListener('touchstart', closeDropdown);
     };
-  }, []);
+  }, [value]);
 
   
   return (
     <div className={styles['searchable-dropdown']}>
       <input
         type="text"
-        value={inputValue ? inputValue.name : undefined}
+        value={inputValue.name || ''}
         onChange={handleInputChange}
         name={name}
         onClick={toggleDropdown}
         onTouchStart={toggleDropdown} // Handle touch events
         placeholder={placeholder}
         className={styles.input}
-        autoComplete="off" // Corrected attribute name
+        autoComplete="off"
       />
       {isOpen && (
         <ul className={styles['dropdown-list']} ref={dropdownRef}>
-          {filteredOptions.map((option, index) => (
-            <>
-            
+          {filteredOptions.map((option) => (
             <li
-              key={index}
-              onClick={(e) => selectOption(option)}
-              className={
-                option === selectedOption
-                  ? styles.selected
-                  : ''
-              }
+              key={option.id} // Assuming there's an 'id' property in the option
+              onClick={() => selectOption(option)}
+              className={option === selectedOption ? styles.selected : ''}
             >
-                <Row>
+              <Row>
                 <Col>
-                <img src={`/categories/${option.image}`} style={{"maxWidth": "48px"}}></img>
+                  <img
+                    src={`/categories/${option.image}`}
+                    alt={option.name} // Add alt attribute for accessibility
+                    style={{ maxWidth: "48px" }}
+                  />
                 </Col>
-                <Col>
-              {option.name}
-              </Col>
-              <Col></Col>
+                <Col>{option.name}</Col>
+                <Col></Col>
               </Row>
             </li>
-            </>
           ))}
         </ul>
       )}
     </div>
   );
-
 }
 
 export default SearchableImageDropdown;
