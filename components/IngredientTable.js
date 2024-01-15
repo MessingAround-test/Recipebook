@@ -209,7 +209,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
               onChange={() => handleCheckboxChange(ingred)}
             />
           </Col>
-          <Col className={styles.col} name="amount">
+          <Col className={styles.col} name="amount" style={{"font-size": "2em"}}>
             <div>
               {ingred.quantity + " " + ingred.quantity_type}
             </div>
