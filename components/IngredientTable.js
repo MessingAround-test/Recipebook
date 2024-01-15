@@ -220,9 +220,9 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
           {
             ingred.options[0] !== undefined ?
               <>
-                <Col className={[styles.col, styles.curvedEdge]} style={{ background: "#1C2640", "color": "white" }} name="Search Term">
+                <Col className={[styles.col, styles.curvedEdge]} style={{ background: "#1C2640", "color": "white"}} name="Search Term">
                   <div onClick={() => openModal(ingred.name)}>
-                    {ingred.complete ? <del>{ingred.name}</del> : ingred.name}
+                    {ingred.complete ? <del>{ingred.name}</del> : <div style={{"font-size": "2em"}}>{ingred.name}</div>}
                   </div>
                 </Col>
                 {
@@ -267,9 +267,9 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
               </>
               :
               <>
-                <Col className={[styles.col, styles.curvedEdge]} style={{ background: "#1C2640", "color": "white" }}>
+                <Col className={[styles.col, styles.curvedEdge]} style={{ background: "#1C2640", "color": "white"}}>
                   <div onClick={() => openModal(ingred.name)}>
-                    {ingred.complete ? <del>{ingred.name}</del> : ingred.name}
+                    {ingred.complete ? <del className={styles.bigtext}>{ingred.name}</del> : <div style={{"font-size": "2em"}}>{ingred.name}</div>}
                   </div>
                 </Col>
                 {
