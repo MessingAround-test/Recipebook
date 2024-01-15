@@ -199,6 +199,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
       </Row>
 
       {ingredientData.map((ingred, index) => (
+        <>
         <Row key={index} className={styles.Row} style={{ filter: ingred.complete ? 'grayscale(100%)' : 'none' }} name="bought">
           <Col className={styles.col}>
             <input
@@ -323,8 +324,10 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
             :<Col className={styles.col}></Col>
             } */}
 
-
+            
         </Row>
+        <br></br>
+        </>
 
       ))}
       <Modal
