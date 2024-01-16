@@ -41,6 +41,26 @@ export default function Home() {
         }
     }
 
+    async function ExtractNutritionInfo(e, requestType) {
+        e.preventDefault();
+        let data = await (await fetch("/api/Nutrition/?EDGEtoken=" + localStorage.getItem('Token'), {
+            method: requestType,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify([])
+        })).json()
+        console.log(data)
+        if (data.success === false || data.success === undefined){
+            if (data.message !== undefined){
+                alert(data.message)
+            } else {
+                alert("failed, unexpected error")
+            }
+            
+        }
+    }
+
 
     useEffect(() => {
         if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
@@ -77,7 +97,9 @@ export default function Home() {
                 <main className={styles.main}>
 
                 <Button onClick={(e)=>ExtractFromAldi(e)}> Extract Aldi </Button>
-
+                <Button onClick={(e)=>ExtractNutritionInfo(e, "POST")}> Extract Nutrition Info </Button>
+                <Button onClick={(e)=>ExtractNutritionInfo(e, "DELETE")}> Delete Nutrition Info </Button>
+                ExtractNutritionInfo
 
                 </main>
 
