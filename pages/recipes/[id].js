@@ -32,7 +32,11 @@ export default function Home() {
     const [ingredientData, setIngredientData] = useState([])
     const [modalIsOpen, setIsOpen] = useState(false);
     const [selectedIngred, setSelectedIngred] = useState("")
-
+    const [selectedIngredient, setSelectedIngredient] = useState('');
+    const filteredIngredients = selectedIngredient? ingreds.filter(ingredient => ingredient.Name === selectedIngredient): ingreds;
+    const handleDropdownChange = (event) => {
+        setSelectedIngredient(event.target.value);
+    };
 
     async function openModal(ingredName) {
         setIsOpen(true);
@@ -216,42 +220,42 @@ export default function Home() {
                                 {ingreds.map((ingred) => {
                                     return (
                                         // <div style={{ padding: "1rem",  }} >
-                                            <Row>
-                                                <Col className={styles.col}>
-                                                    {ingred.Amount} {ingred.AmountType}
-                                                </Col>
-                                                <Col className={styles.col}> {ingred.Name}</Col>
-                                                <Col className={styles.col}>
-                                                    
-                                                    <a onClick={((ingred.source)) ? console.log("nothing") : ()=>alert("hi there")}>
+                                        <Row>
+                                            <Col className={styles.col}>
+                                                {ingred.Amount} {ingred.AmountType}
+                                            </Col>
+                                            <Col className={styles.col}> {ingred.Name}</Col>
+                                            <Col className={styles.col}>
+
+                                                <a onClick={((ingred.source)) ? console.log("nothing") : () => alert("hi there")}>
                                                     <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} />
-                                                    </a>
-                                                    
-                                                </Col>
-                                                <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
-                                                    <div onClick={() => openModal(ingred.Name)} style={{"overflow":"hidden"}}>
-                                                        {ingred.name}
-                                                    </div>
-                                                </Col>
-                                                <Col className={styles.col}>
-                                                    <Button variant={"warning"} onClick={(e)=>markAsIncorrect(ingred._id, ingred.name)}>x</Button>
-                                                </Col>
-                                                <Col className={styles.col}>
-                                                    ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}
-                                                </Col>
+                                                </a>
+
+                                            </Col>
+                                            <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
+                                                <div onClick={() => openModal(ingred.Name)} style={{ "overflow": "hidden" }}>
+                                                    {ingred.name}
+                                                </div>
+                                            </Col>
+                                            <Col className={styles.col}>
+                                                <Button variant={"warning"} onClick={(e) => markAsIncorrect(ingred._id, ingred.name)}>x</Button>
+                                            </Col>
+                                            <Col className={styles.col}>
+                                                ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}
+                                            </Col>
 
 
 
-                                                {/* <Image src={ingred.source}></Image> */}
-                                                {/* <div className="w-full h-64 rounded-b-lg bg-cover bg-center" style={{ backgroundImage: `url(${ingred.source})` }}>hi there</div> */}
-                                                {/* <Col>
+                                            {/* <Image src={ingred.source}></Image> */}
+                                            {/* <div className="w-full h-64 rounded-b-lg bg-cover bg-center" style={{ backgroundImage: `url(${ingred.source})` }}>hi there</div> */}
+                                            {/* <Col>
                                                                     {<>${(ingred.unit_price)}</>}
                                                                 </Col> */}
-                                                {/* <Col>
+                                            {/* <Col>
                                                                     {<>${(ingred.unit_price * ingred.Amount).toFixed(2)}</>}
 
                                                                 </Col> */}
-                                            </Row>
+                                        </Row>
                                         // </div>
                                     )
                                 })}
@@ -281,14 +285,34 @@ export default function Home() {
 
                                 </Col>
                             </Row>
-                            
-                            <IngredientNutrientGraph ingredients={ingreds}></IngredientNutrientGraph>
+                            <div>
+                                <label htmlFor="ingredientDropdown">Select Ingredient:</label>
+                                <select
+                                    id="ingredientDropdown"
+                                    value={selectedIngredient}
+                                    onChange={handleDropdownChange}
+                                >
+                                    <option value="">Select an ingredient</option>
+
+                                    {ingreds.map((ingredient, index) => (
+                                        <option key={index} value={ingredient.Name}>
+                                            {ingredient.Name}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                {/* Display the selected ingredient */}
+                                {selectedIngredient && (
+                                    <p>Selected Ingredient: {selectedIngredient}</p>
+                                )}
+                            </div>
+                            <IngredientNutrientGraph ingredients={filteredIngredients}></IngredientNutrientGraph>
                             <Row>
 
                                 <Col className={styles.Col}>
                                     {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
                                     <Card >
-                                        <img src={imageData} style={{ width: "auto", height: "auto"}} />
+                                        <img src={imageData} style={{ width: "auto", height: "auto" }} />
                                     </Card>
 
                                 </Col>
@@ -301,9 +325,9 @@ export default function Home() {
                                 className={styles.modal}
                             >
                                 <a>
-                                <button style={{ float: "right", "borderRadius": "5px" }} onClick={closeModal}><img style={{ "maxWidth": "32px", "maxHeight": "32px" }} src={"/cross.png"}></img></button>
-                                <h2>Ingredient Research</h2>
-                                <IngredientSearchList search_term={selectedIngred}></IngredientSearchList>
+                                    <button style={{ float: "right", "borderRadius": "5px" }} onClick={closeModal}><img style={{ "maxWidth": "32px", "maxHeight": "32px" }} src={"/cross.png"}></img></button>
+                                    <h2>Ingredient Research</h2>
+                                    <IngredientSearchList search_term={selectedIngred}></IngredientSearchList>
                                 </a>
                             </Modal>
                             <Button onClick={() => getIngredDetails(ingreds)}>Get Grocery Store Data</Button>
@@ -311,8 +335,8 @@ export default function Home() {
                             <Button variant="danger" onClick={() => deleteRecipe()}>
                                 Delete Recipe
                             </Button>
-                        
-                            
+
+
                             <p>RECIPEID = {id}</p>
                         </Container>
 
