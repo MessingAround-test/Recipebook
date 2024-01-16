@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Col, Row } from 'react-bootstrap';
 import styles from '../styles/Home.module.css'
 import 'chart.js/auto';
-import { Doughnut, Line, Radar } from 'react-chartjs-2';
+import { Doughnut, Line, Radar, Bar } from 'react-chartjs-2';
 
 function IngredientNutrientGraph({ ingredients }) {
     const chartRef = useRef(null);
@@ -54,11 +54,11 @@ function IngredientNutrientGraph({ ingredients }) {
                 // these are amount / 100 becuase the API returns in 100 g always
                 setTotalNutrient(prevState => ({
                     ...prevState,
-                    "protein": prevState.protein + (amount/100 * parseFloat(nutrientInfo["Protein (g)"])),
-                    fat: prevState.fat + (amount/100 * parseFloat(nutrientInfo["Fat, total (g)"])),
-                    carbohydrates: prevState.carbohydrates + (amount/100 * parseFloat(nutrientInfo["Available carbohydrate, with sugar alcohols (g)"])),
-                    fiber: prevState.fiber + (amount/100 *parseFloat(nutrientInfo["Total dietary fibre (g)"])),
-                    iron: prevState.iron + (amount/100 *parseFloat(nutrientInfo["Iron (Fe) (mg)"])),
+                    "protein": prevState.protein + (amount / 100 * parseFloat(nutrientInfo["Protein (g)"])),
+                    fat: prevState.fat + (amount / 100 * parseFloat(nutrientInfo["Fat, total (g)"])),
+                    carbohydrates: prevState.carbohydrates + (amount / 100 * parseFloat(nutrientInfo["Available carbohydrate, with sugar alcohols (g)"])),
+                    fiber: prevState.fiber + (amount / 100 * parseFloat(nutrientInfo["Total dietary fibre (g)"])),
+                    iron: prevState.iron + (amount / 100 * parseFloat(nutrientInfo["Iron (Fe) (mg)"])),
                 }))
             } else {
                 setIngredientNutrient(prevState => ({
@@ -73,12 +73,20 @@ function IngredientNutrientGraph({ ingredients }) {
     }
 
     useEffect(() => {
+        // Reset it...
+        setTotalNutrient({
+            protein: 0,   // in grams (for muscle repair and maintenance)
+            fat: 0,       // in grams (for energy and hormonal balance)
+            carbohydrates: 0,  // in grams (for energy)
+            fiber: 0,     // in grams (for digestive health)
+            iron: 0,         // in milligrams (vital for oxygen transport in the blood));
+        })
         Object.keys(ingredients).forEach(element => {
             console.log(ingredients[element])
-            if (ingredients[element].AmountType == "gram" || ingredients[element].AmountType == "g"){
+            if (ingredients[element].AmountType == "gram" || ingredients[element].AmountType == "g") {
                 getNutrientData(ingredients[element].Name, ingredients[element].Amount);
             }
-            
+
         });
 
 
@@ -98,12 +106,19 @@ function IngredientNutrientGraph({ ingredients }) {
                 )
             })}
 
-            
+            {Object.keys(ingredientNutrient).map((nutrientKey) => {
+                ingredientNutrient[nutrientKey].length > 0 ? <Row className={styles.Row}>
+                </Row> : <Row className={styles.Row}>
+
+                </Row>
+
+            })}
 
 
-            <Radar data={data} />
-            {JSON.stringify(ingredientNutrient)}
-            
+            <Bar data={data} />
+
+            {/* {JSON.stringify(ingredientNutrient)} */}
+
 
         </div>
     );
