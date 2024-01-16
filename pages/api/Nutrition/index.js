@@ -52,7 +52,7 @@ export default async function handler(req, res) {
                 } else {
                     let NutritionalInfoData
                     if (search_term){
-                        NutritionalInfoData= await NutritionalInfo.find({name: search_term})
+                        NutritionalInfoData= await NutritionalInfo.find({name: search_term.toLowerCase()})
                     } else {
                         NutritionalInfoData= await NutritionalInfo.find({})
                     }
