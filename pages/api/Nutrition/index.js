@@ -57,7 +57,7 @@ export default async function handler(req, res) {
                         NutritionalInfoData= await NutritionalInfo.find({})
                     }
                      
-                    res.status(200).json({ res: NutritionalInfoData })
+                    res.status(200).json({ success: true, data: NutritionalInfoData })
                 }
             } else if (req.method === "POST") {
                 // console.log(req.body)

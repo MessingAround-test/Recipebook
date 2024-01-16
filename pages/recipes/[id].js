@@ -15,6 +15,7 @@ import { IngredientSearchList } from '../../components/IngredientSearchList'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Modal from 'react-modal';
+import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
 import { set } from 'mongoose'
 
 
@@ -210,7 +211,7 @@ export default function Home() {
                     <main className={styles.main}>
                         <Container className={styles.centered}>
                             <h1 className={styles.centered}>{recipeName}</h1>
-                            <h2>Ingredients</h2>
+                            <h2 className={styles.header}>Ingredients</h2>
                             <Row>
                                 {ingreds.map((ingred) => {
                                     return (
@@ -257,7 +258,7 @@ export default function Home() {
 
                             </Row>
                             <h2>Total {getAproxTotalRecipeCost()}</h2>
-                            <h2>Instructions</h2>
+                            <h2 className={styles.header}>Instructions</h2>
                             <Row >
                                 <Col>
 
@@ -280,11 +281,13 @@ export default function Home() {
 
                                 </Col>
                             </Row>
-                            <Row style={{ paddingBottom: "1vw", display: "flex" }}>
+                            
+                            <IngredientNutrientGraph ingredients={ingreds}></IngredientNutrientGraph>
+                            <Row>
 
-                                <Col className={styles.centered}>
+                                <Col className={styles.Col}>
                                     {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
-                                    <Card style={{ maxWidth: '30vw', color: "black", "backgroundColor": "rgba(76, 175, 80, 0.0)" }}>
+                                    <Card >
                                         <img src={imageData} style={{ width: "auto", height: "auto"}} />
                                     </Card>
 
@@ -308,8 +311,8 @@ export default function Home() {
                             <Button variant="danger" onClick={() => deleteRecipe()}>
                                 Delete Recipe
                             </Button>
-
-
+                        
+                            
                             <p>RECIPEID = {id}</p>
                         </Container>
 

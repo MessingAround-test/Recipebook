@@ -83,6 +83,12 @@
   border-style: solid;
 }
 
+
+.header {
+  background-color: #171f34;
+  border-radius :20px;
+}
+
 .centered {
   text-align: center;
   align-items: center;
