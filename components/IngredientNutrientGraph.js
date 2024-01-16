@@ -97,7 +97,7 @@ function IngredientNutrientGraph({ ingredients }) {
 
     return (
         <div>
-            <h2 className={styles.header}>Ingredient Nutrients</h2>
+            
             {Object.keys(dailyNutrientRequirements).map((nutrientKey) => {
                 return (
                     <Row className={styles.Row}>

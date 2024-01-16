@@ -285,6 +285,7 @@ export default function Home() {
 
                                 </Col>
                             </Row>
+                            <h2 className={styles.header}>Ingredient Nutrients</h2>
                             <div>
                                 <label htmlFor="ingredientDropdown">Select Ingredient:</label>
                                 <select
@@ -306,6 +307,7 @@ export default function Home() {
                                     <p>Selected Ingredient: {selectedIngredient}</p>
                                 )}
                             </div>
+                            
                             <IngredientNutrientGraph ingredients={filteredIngredients}></IngredientNutrientGraph>
                             <Row>
 
