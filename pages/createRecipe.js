@@ -267,69 +267,45 @@ export default function Home() {
 
                                 {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                 <Card.Body>
-                                    {/* <Card.Title>Add ingredient</Card.Title> */}
-
 
                                     <AddShoppingItem handleSubmit={(e) => onSubmitIngred(e)} hideCategories={true}></AddShoppingItem>
-                                    {/* <Form.Group className="mb-3" id="formBasicEmail">
-
-                                            <Form.Control name="ingredName" id="ingredName" type="text" placeholder="Enter ingredient Name" required />
-
-                                        </Form.Group>
-
-                                        <Form.Group className="mb-3" id="formBasicEmail">
-
-                                            <Form.Control name="ingredAmount" id="ingredAmount" type="text" placeholder="Enter Amount" required />
-
-                                            <Form.Select aria-label="Default select example" name="ingredAmountType" id="ingredAmountType" required>
-                                                {Object.keys(quantity_unit_conversions).map((item) => <option value={item}>{item}</option>)}
-                                            </Form.Select>
-                                        </Form.Group>
-
-
-
-                                        <Form.Group className="mb-3" id="formBasicPassword">
-                                            <Form.Control name="ingredNote" id="ingredNote" type="text" placeholder="(optional note)" />
-                                        </Form.Group>
-                                        <Button variant="primary" type="submit">
-                                            Submit
-                                        </Button> */}
 
                                 </Card.Body>
 
                             </Col>
-                            <Col>
+                            { ingreds.length > 0 ? <Col>
 
                                 <div style={{ right: "0px", float: "right", "background-color": "rgba(245, 245, 245, 0.0)" }}>
                                     {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                     <Card.Body>
 
-                                        <Container>
 
-                                            {ingreds.map((ingred) => {
-                                                return (
-                                                    <Row>
-                                                        <Col className={styles.col}>
-                                                            <a>-{ingred.Amount} / {ingred.AmountType} {ingred.Name}</a>
-                                                        </Col>
-                                                        <Col className={styles.col}>
-                                                            <Button onClick={() => setIngreds(ingreds.filter(function (ingredItem) { return ingredItem.Name !== ingred.Name }))}><RiDeleteBin7Line></RiDeleteBin7Line></Button>
-                                                        </Col>
-                                                    </Row>
-                                                )
-                                            })}
-                                        </Container>
+
+                                        {ingreds.map((ingred) => {
+                                            return (
+                                                <Row>
+                                                    <Col className={styles.col}>
+                                                        <a style={{ "font-size": "2em" }}>-{ingred.Amount} x {ingred.AmountType} {ingred.Name}</a>
+                                                    </Col>
+                                                    <Col className={styles.col}>
+                                                        <Button onClick={() => setIngreds(ingreds.filter(function (ingredItem) { return ingredItem.Name !== ingred.Name }))}><RiDeleteBin7Line></RiDeleteBin7Line></Button>
+                                                    </Col>
+                                                </Row>
+                                            )
+                                        })}
+
 
                                     </Card.Body>
                                 </div>
 
-                            </Col>
+                            </Col> : <></>}
+
                         </Row>
                         <Row>
                             <h1 className={styles.header}>Instructions</h1>
                             <Col className={styles.col}>
 
-                                <Card style={{ maxWidth: '20em', color: "black" }}>
+                                <Card style={{ color: "black" }}>
                                     {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                     <Card.Body>
                                         {/* <Card.Title>Add ingredient</Card.Title> */}
@@ -362,60 +338,61 @@ export default function Home() {
 
 
                             </Col>
-
-                            <Card style={{ color: "black", right: "0px", float: "right" }}>
+                            {instructions.length > 0 ? <Card style={{ color: "black", right: "0px", float: "right" }}>
                                 {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                 <Card.Body>
                                     <Card.Title>Instructions Summary</Card.Title>
-                                    <Container>
-                                        <ol>
-                                            {instructions.map((instruction) => {
-                                                return (
-                                                    <div>
-                                                        <Row>
-                                                            <Col className={styles.col}>
-                                                                <li>{instruction.Text} </li>
-                                                            </Col>
-                                                            <Col className={styles.col}>
-                                                                <Button onClick={() => setInstructions(instructions.filter(function (ingredItem) { return ingredItem.Text !== instruction.Text }))}><RiDeleteBin7Line></RiDeleteBin7Line></Button>
-                                                            </Col>
-                                                        </Row>
-                                                    </div>
-                                                )
-                                            })}
-                                        </ol>
-                                    </Container>
+
+                                    <ol>
+                                        {instructions.map((instruction) => {
+                                            return (
+                                                <div>
+                                                    <Row>
+                                                        <Col className={styles.col}>
+                                                            <li>{instruction.Text} </li>
+                                                        </Col>
+                                                        <Col className={styles.col}>
+                                                            <Button onClick={() => setInstructions(instructions.filter(function (ingredItem) { return ingredItem.Text !== instruction.Text }))}><RiDeleteBin7Line></RiDeleteBin7Line></Button>
+                                                        </Col>
+                                                    </Row>
+                                                </div>
+                                            )
+                                        })}
+                                    </ol>
+
 
                                 </Card.Body>
-                            </Card>
+                            </Card> : <></>}
+
 
                         </Row>
                         <Row>
-                        <h1 className={styles.header}>Add Image</h1>
+                            <h1 className={styles.header}>Add Image</h1>
+                            <h6>Or don't and one will be generated...</h6>
                             <Col className={styles.col}>
-                                
-                                <input accept="image/*" type="file" onChange={(e) => {e.target.files? getBase64(e.target.files[0], (data) => setImageData(data)): undefined }} />
-                                
+
+                                <input accept="image/*" type="file" onChange={(e) => { e.target.files ? getBase64(e.target.files[0], (data) => setImageData(data)) : undefined }} />
+
                                 {/* <Button onClick={() => generateImage(recipeName)}>Generate Image</Button> */}
                             </Col>
-                            {imageData?<Col className={styles.col}>
-                            <Button variant={"danger"} onClick={setImageData()}>x</Button>
-                            </Col>: <></>}
-                            
-                            
-                            
+                            {imageData ? <Col className={styles.col}>
+                                <Button variant={"danger"} onClick={setImageData()}>x</Button>
+                            </Col> : <></>}
+
+
+
                         </Row>
                         <Col className={styles.col}>
-                                {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
-                                <Card style={{ maxWidth: '20em', color: "black", right: "0px", float: "right" }}>
-                                    <img src={imageData} style={{ maxWidth: "20em", maxHeight: "20em" }} />
-                                </Card>
+                            {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
+                            <Card style={{ maxWidth: '20em', color: "black", right: "0px", float: "right" }}>
+                                <img src={imageData} style={{ maxWidth: "20em", maxHeight: "20em" }} />
+                            </Card>
 
-                            </Col>
+                        </Col>
                         <Row>
-                                            
+
                             <Button onClick={() => onSubmitRecipe()}> Save </Button>
-                            {loading?<>loading...<object type="image/svg+xml" data="/loading.svg">svg-animation</object></>:<></>}
+                            {loading ? <>loading...<object type="image/svg+xml" data="/loading.svg">svg-animation</object></> : <></>}
                         </Row>
 
                     </Container>
