@@ -279,7 +279,7 @@ export default function Home() {
                                                         return (
                                                             <div>
                                                                 <Row>
-                                                                    <Col>
+                                                                    <Col style={{ "font-size": "2em" }}>
                                                                         <p> Step:  {index + 1}: {instruction.Text} </p>
                                                                     </Col>
 
