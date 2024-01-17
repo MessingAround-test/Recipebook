@@ -114,10 +114,10 @@ export default function Home() {
                     </Container>
                     <div className={styles.cardGroup}>
                         {/* <div style={{ padding: "0.5vh" }}>
-                            <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black", "borderStyle": "solid", "borderColor": "green", "borderWidth": "0.5rem", "alignItems": "center", "justifyContent": "center" }} onClick={() => (redirect("/createRecipe"))}>
+                            <Card style={{ maxWidth: '45vw', minWidth: "45vw", maxHeight: "45vw", minHeight: "45vw", color: "black", "borderStyle": "solid", "borderColor": "green", "borderWidth": "0.5rem", "alignItems": "center", "justifyContent": "center" }} onClick={() => (redirect("/createRecipe"))}>
                                 <Card.Body style={{ overflow: "hidden" }}>
                                     <Card.Title>{String("New Recipe")}</Card.Title>
-                                    <Card.Img style={{ maxHeight: "15rem", maxWidth: "15rem" }} variant="top" src={"add.jpg"} />
+                                    <Card.Img style={{ maxHeight: "45vw", maxWidth: "45vw" }} variant="top" src={"add.jpg"} />
                                 </Card.Body>
 
                             </Card>
@@ -125,7 +125,7 @@ export default function Home() {
                         {recipes.map((recipe) => {
                             return (
                                 <div style={{ padding: "0.5vh" }}>
-                                    <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black", "alignItems": "center", "justifyContent": "center" }} >
+                                    <Card style={{ maxWidth: '45vw', minWidth: "45vw", maxHeight: "45vw", minHeight: "45vw", color: "black", "alignItems": "center", "justifyContent": "center" }} >
 
                                         {(allowDelete) ? (<>
                                             <Button variant="danger" onClick={() => deleteRecipe(recipe._id)} style={{ "float": "right" }}>x </Button>

@@ -44,7 +44,7 @@ export default function Home() {
             {pages.map((recipe) => {
               return (
                 <div style={{ padding: "0.5vh" }}>
-                  <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black" }} onClick={() => (redirect("/" + recipe._id))}>
+                  <Card style={{ maxWidth: '45vw', minWidth: "45vw", maxHeight: "45vw", minHeight: "45vw", color: "black" }} onClick={() => (redirect("/" + recipe._id))}>
                     <Card.Body style={{ overflow: "hidden" }}>
                       <Card.Title>{String(recipe.name)}</Card.Title>
                       <Card.Img variant="top" src={recipe.image} />
