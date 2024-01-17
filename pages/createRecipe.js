@@ -139,6 +139,10 @@ export default function Home() {
 
         })
         setInstructions(tasteInstructionList)
+
+        if (data.data.name !== undefined){
+            setRecipeName(data.data.name)
+        }
     }
 
 
@@ -214,8 +218,9 @@ export default function Home() {
 
 
                 <main className={styles.main}>
-
+                
                     <Container>
+                    <h2 className={styles.header}>General</h2>
                         <Row>
                             <Col>
 
@@ -227,7 +232,7 @@ export default function Home() {
 
                                         <Form.Group className="mb-3" id="formBasicEmail">
 
-                                            <Form.Control name="recipeName" id="recipeName" type="text" placeholder="Enter Recipe Name" onChange={(e) => setRecipeName(e.target.value)} />
+                                            <Form.Control name="recipeName" id="recipeName" type="text" placeholder="Enter Recipe Name" value={recipeName} onChange={(e) => setRecipeName(e.target.value)} />
 
                                         </Form.Group>
 
@@ -248,10 +253,11 @@ export default function Home() {
                             </Button>
                         </Form>
 
-                        <h1>Ingredients</h1>
+                        <h1 className={[styles.header]}>Ingredients</h1>
+                        
                         <Row>
 
-                            <Col>
+                            <Col className={styles.col}>
 
                                 {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                 <Card.Body>
@@ -295,10 +301,14 @@ export default function Home() {
 
                                             {ingreds.map((ingred) => {
                                                 return (
-                                                    <div>
+                                                    <Row>
+                                                        <Col className={styles.col}>
                                                         <a>-{ingred.Amount} / {ingred.AmountType} {ingred.Name}</a>
+                                                        </Col>
+                                                        <Col className={styles.col}>
                                                         <Button onClick={() => setIngreds(ingreds.filter(function (ingredItem) { return ingredItem.Name !== ingred.Name }))}><RiDeleteBin7Line></RiDeleteBin7Line></Button>
-                                                    </div>
+                                                        </Col>
+                                                    </Row>
                                                 )
                                             })}
                                         </Container>
@@ -309,8 +319,8 @@ export default function Home() {
                             </Col>
                         </Row>
                         <Row>
-                            <h1>Instructions</h1>
-                            <Col>
+                            <h1 className={styles.header}>Instructions</h1>
+                            <Col className={styles.col}>
 
                                 <Card style={{ maxWidth: '20em', color: "black" }}>
                                     {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
@@ -345,8 +355,8 @@ export default function Home() {
 
 
                             </Col>
-                            <Col>
-                                <Card style={{ maxWidth: '20em', color: "black", right: "0px", float: "right" }}>
+                            
+                                <Card style={{ color: "black", right: "0px", float: "right" }}>
                                     {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                     <Card.Body>
                                         <Card.Title>Instructions Summary</Card.Title>
@@ -356,10 +366,10 @@ export default function Home() {
                                                     return (
                                                         <div>
                                                             <Row>
-                                                                <Col>
+                                                                <Col className={styles.col}>
                                                                     <li>{instruction.Text} </li>
                                                                 </Col>
-                                                                <Col>
+                                                                <Col className={styles.col}>
                                                                     <Button onClick={() => setInstructions(instructions.filter(function (ingredItem) { return ingredItem.Text !== instruction.Text }))}><RiDeleteBin7Line></RiDeleteBin7Line></Button>
                                                                 </Col>
                                                             </Row>
@@ -371,7 +381,7 @@ export default function Home() {
 
                                     </Card.Body>
                                 </Card>
-                            </Col>
+                            
                         </Row>
                         <Row>
                             <Col>

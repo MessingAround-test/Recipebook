@@ -42,10 +42,16 @@ export default async function handler(req, res) {
         // Regex pattern to extract instructions
         const instructionPattern = /<div class="recipe-method-step-content[^>]*?">(.*?)<\/div>/gs;
 
+        const namePattern = /<h1[^>]*?>(.*?)<\/h1>/gs;
+
         // Find all step numbers and instructions using regex
         const stepNumbers = Array.from(htmlContent.matchAll(stepNumberPattern), match => match[1].trim());
         const instructions = Array.from(htmlContent.matchAll(instructionPattern), match => match[1].trim());
-
+        const nameList = Array.from(htmlContent.matchAll(namePattern), match => match[1].trim());
+        let name = ""
+        if (nameList.length > 0){
+            name = nameList[0]
+        }
         // Clean up the extracted data (remove extra spaces and newlines)
         const cleanedInstructions = instructions.map(instruction => instruction.replace(/\s+/g, ' '));
 
@@ -56,8 +62,10 @@ export default async function handler(req, res) {
             // console.log(`Step ${stepNumbers[i]}: ${cleanedInstructions[i]}\n`);
             instructionsAsJson.push({ "stepNumber": stepNumbers[i], "instruction": removeHtmlTags(cleanedInstructions[i]) })
         }
+        
 
         let responseObject = {
+            "name": name,
             "ingredients": ingredients,
             "instructions": instructionsAsJson
         }

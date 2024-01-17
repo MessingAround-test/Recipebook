@@ -87,6 +87,9 @@
 .header {
   background-color: #171f34;
   border-radius :20px;
+   text-align: center;
+  align-items: center;
+  justify-content: center;
 }
 
 .centered {

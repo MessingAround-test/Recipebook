@@ -6,6 +6,7 @@ import User from '../../../models/User'
 import NutritionalInfo from '../../../models/NutritionalInfo'
 import { promises as fs } from 'fs';
 import { parse } from 'csv-parse';
+import { convertMetricReading, convertKitchenMetrics, extractProduct } from '../../../lib/conversion'
 
 function convertCSVToJson(csv) {
     let jsonList = []
@@ -32,6 +33,18 @@ function convertCSVToJson(csv) {
     }
 }
 
+function convertNumbersToFloat(obj, ratio) {
+    for (const key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            if (!isNaN(parseFloat(obj[key])) && isFinite(obj[key])) {
+                // Convert the value to a floating-point number
+                obj[key] = parseFloat(obj[key]) * ratio;
+            }
+        }
+    }
+    return obj
+}
+
 export default async function handler(req, res) {
 
 
@@ -51,13 +64,56 @@ export default async function handler(req, res) {
                     res.status(400).json({ res: "user not found, please relog" })
                 } else {
                     let NutritionalInfoData
-                    if (search_term){
-                        NutritionalInfoData= await NutritionalInfo.find({name: search_term.toLowerCase()})
+                    let search_term = req.query.search_term
+                    let qType = req.query.qType
+                    let quantity = req.query.quantity
+
+                    if (search_term !== undefined && qType !== undefined && quantity !== undefined) {
+                        qType = convertMetricReading(qType).quantity_unit
+
+                        // Convert the quantity type if it is not in grams, the current nutrient information is majorly in grams... 
+                        if (qType !== "gram") {
+                            let conversion = convertKitchenMetrics(qType, quantity)
+                            qType = "gram"
+                            quantity = conversion.gram
+                        }
+                        console.log(search_term)
+
+                        if (quantity === null || quantity === undefined) {
+                            res.status(400).json({ success: false, data: [], message: String("Bad quantity passed") })
+                        } else {
+
+
+                            NutritionalInfoData = await NutritionalInfo.find({ name: search_term.toLowerCase() })
+                            if (NutritionalInfoData.length === 0) {
+                                // Try simplifying the search
+                                let new_term = extractProduct(search_term)
+                                NutritionalInfoData = await NutritionalInfo.find({ name: new_term.toLowerCase() })
+                            }
+
+                            if (NutritionalInfoData.length > 0) {
+                                let nutrition_quantity = NutritionalInfoData[0].quantity
+                                let nutrition_quantity_type = convertMetricReading(NutritionalInfoData[0].quantity_unit).quantity_unit
+
+                                let quantity_ratio = quantity / nutrition_quantity
+                                NutritionalInfoData = NutritionalInfoData[0]
+                                NutritionalInfoData.quantity = quantity
+
+                                NutritionalInfoData.nutrition_info = convertNumbersToFloat(NutritionalInfoData.nutrition_info, quantity_ratio);
+                            }
+
+
+                            res.status(200).json({ success: true, data: [NutritionalInfoData], conversion: { qType: qType, quantity: quantity } })
+                        }
                     } else {
-                        NutritionalInfoData= await NutritionalInfo.find({})
+                        res.status(400).json({ success: false, data: [], message: String("Missing query parameters: search_term, qType and quantity are required") })
+
+                        // NutritionalInfoData= await NutritionalInfo.find({})
                     }
-                     
-                    res.status(200).json({ success: true, data: NutritionalInfoData })
+
+
+
+
                 }
             } else if (req.method === "POST") {
                 // console.log(req.body)

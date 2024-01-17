@@ -33,7 +33,7 @@ export default function Home() {
     const [modalIsOpen, setIsOpen] = useState(false);
     const [selectedIngred, setSelectedIngred] = useState("")
     const [selectedIngredient, setSelectedIngredient] = useState('');
-    const filteredIngredients = selectedIngredient? ingreds.filter(ingredient => ingredient.Name === selectedIngredient): ingreds;
+    const filteredIngredients = selectedIngredient ? ingreds.filter(ingredient => ingredient.Name === selectedIngredient) : ingreds;
     const handleDropdownChange = (event) => {
         setSelectedIngredient(event.target.value);
     };
@@ -214,7 +214,8 @@ export default function Home() {
                     </Head>
                     <main className={styles.main}>
                         <Container className={styles.centered}>
-                            <h1 className={styles.centered}>{recipeName}</h1>
+                            <Row>
+                            <h1 className={styles.header} style={{"backgroundColor": "white", "color": "black"}}>{recipeName}</h1>
                             <h2 className={styles.header}>Ingredients</h2>
                             <Row>
                                 {ingreds.map((ingred) => {
@@ -262,38 +263,47 @@ export default function Home() {
 
                             </Row>
                             <h2>Total {getAproxTotalRecipeCost()}</h2>
-                            <h2 className={styles.header}>Instructions</h2>
-                            <Row >
-                                <Col>
-
-                                    {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
-
-                                    <ol>
-                                        {instructions.map((instruction, index) => {
-                                            return (
-                                                <div>
-                                                    <Row>
-                                                        <Col>
-                                                            <p> Step:  {index + 1}: {instruction.Text} </p>
-                                                        </Col>
-
-                                                    </Row>
-                                                </div>
-                                            )
-                                        })}
-                                    </ol>
-
-                                </Col>
                             </Row>
-                            <h2 className={styles.header}>Ingredient Nutrients</h2>
+                            {/* If no instructions then dont show */}
+                            {
+                                instructions.length > 0 ?
+                                    <div>
+                                        <h2 className={styles.header}>Instructions</h2>
+                                        <Row >
+                                            <Col>
+
+                                                {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
+
+                                                <ol>
+                                                    {instructions.map((instruction, index) => {
+                                                        return (
+                                                            <div>
+                                                                <Row>
+                                                                    <Col>
+                                                                        <p> Step:  {index + 1}: {instruction.Text} </p>
+                                                                    </Col>
+
+                                                                </Row>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </ol>
+
+                                            </Col>
+                                        </Row>
+                                    </div>
+                                    : <></>
+                            }
+
+                            <h2 className={styles.header}>Nutrients</h2>
                             <div>
-                                <label htmlFor="ingredientDropdown">Select Ingredient:</label>
+                                {/* <label htmlFor="ingredientDropdown">Select Ingredient:</label> */}
                                 <select
                                     id="ingredientDropdown"
                                     value={selectedIngredient}
                                     onChange={handleDropdownChange}
                                 >
-                                    <option value="">Select an ingredient</option>
+                                    <option value="">Select an ingredient to filter graph</option>
 
                                     {ingreds.map((ingredient, index) => (
                                         <option key={index} value={ingredient.Name}>
@@ -303,11 +313,11 @@ export default function Home() {
                                 </select>
 
                                 {/* Display the selected ingredient */}
-                                {selectedIngredient && (
+                                {/* {selectedIngredient && (
                                     <p>Selected Ingredient: {selectedIngredient}</p>
-                                )}
+                                )} */}
                             </div>
-                            
+
                             <IngredientNutrientGraph ingredients={filteredIngredients}></IngredientNutrientGraph>
                             <Row>
 

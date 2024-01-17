@@ -1,0 +1,180 @@
+{
+    "fruits": [
+      {
+        "name": "apple",
+        "type": "Pome",
+        "category": "Tree fruit",
+        "weight_min": 150,
+        "weight_max": 200
+      },
+      {
+        "name": "apricot",
+        "type": "Drupes",
+        "category": "Stone fruit",
+        "weight_min": 35,
+        "weight_max": 50
+      },
+      {
+        "name": "avocado",
+        "type": "Berry",
+        "category": "Tropical fruit",
+        "weight_min": 150,
+        "weight_max": 200
+      },
+      {
+        "name": "banana",
+        "type": "Berry",
+        "category": "Tropical fruit",
+        "weight_min": 120,
+        "weight_max": 150
+      },
+      {
+        "name": "blackberry",
+        "type": "Aggregate",
+        "category": "Berry fruit",
+        "weight_min": 5,
+        "weight_max": 10
+      },
+      {
+        "name": "blueberry",
+        "type": "Berry",
+        "category": "Berry fruit",
+        "weight_min": 0.5,
+        "weight_max": 1
+      },
+      {
+        "name": "cantaloupe",
+        "type": "Melon",
+        "category": "Melon",
+        "weight_min": 800,
+        "weight_max": 1000
+      },
+      {
+        "name": "cherry",
+        "type": "Drupes",
+        "category": "Stone fruit",
+        "weight_min": 5,
+        "weight_max": 10
+      },
+      {
+        "name": "coconut",
+        "type": "Drupe",
+        "category": "Tropical fruit",
+        "weight_min": null,
+        "weight_max": null
+      },
+      {
+        "name": "cranberry",
+        "type": "Berry",
+        "category": "Berry fruit",
+        "weight_min": 5,
+        "weight_max": 10
+      },
+      {
+        "name": "dragon fruit",
+        "type": "Berry",
+        "category": "Tropical fruit",
+        "weight_min": 150,
+        "weight_max": 200
+      },
+      {
+        "name": "fig",
+        "type": "Multiple",
+        "category": "Multiple fruit",
+        "weight_min": 35,
+        "weight_max": 50
+      },
+      {
+        "name": "grape",
+        "type": "Berry",
+        "category": "Berry fruit",
+        "weight_min": 5,
+        "weight_max": 10
+      },
+      {
+        "name": "guava",
+        "type": "Berry",
+        "category": "Tropical fruit",
+        "weight_min": 100,
+        "weight_max": 150
+      },
+      {
+        "name": "kiwi",
+        "type": "Berry",
+        "category": "Tropical fruit",
+        "weight_min": 100,
+        "weight_max": 150
+      },
+      {
+        "name": "lemon",
+        "type": "Berry",
+        "category": "Citrus fruit",
+        "weight_min": 80,
+        "weight_max": 100
+      },
+      {
+        "name": "mango",
+        "type": "Drupe",
+        "category": "Tropical fruit",
+        "weight_min": 200,
+        "weight_max": 300
+      },
+      {
+        "name": "orange",
+        "type": "Berry",
+        "category": "Citrus fruit",
+        "weight_min": 150,
+        "weight_max": 200
+      },
+      {
+        "name": "papaya",
+        "type": "Berry",
+        "category": "Tropical fruit",
+        "weight_min": 500,
+        "weight_max": 800
+      },
+      {
+        "name": "peach",
+        "type": "Drupes",
+        "category": "Stone fruit",
+        "weight_min": 150,
+        "weight_max": 200
+      },
+      {
+        "name": "pear",
+        "type": "Pome",
+        "category": "Tree fruit",
+        "weight_min": 150,
+        "weight_max": 200
+      },
+      {
+        "name": "pineapple",
+        "type": "Multiple",
+        "category": "Tropical fruit",
+        "weight_min": 1000,
+        "weight_max": 1500
+      },
+      {
+        "name": "raspberry",
+        "type": "Aggregate",
+        "category": "Berry fruit",
+        "weight_min": 3,
+        "weight_max": 6
+      },
+      {
+        "name": "strawberry",
+        "type": "Aggregate",
+        "category": "Berry fruit",
+        "weight_min": 10,
+        "weight_max": 20
+      },
+      {
+        "name": "watermelon",
+        "type": "Melon",
+        "category": "Melon",
+        "weight_min": 5000,
+        "weight_max": 8000
+      }
+    ]
+  }
+  

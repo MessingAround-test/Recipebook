@@ -34,14 +34,14 @@ function IngredientNutrientGraph({ ingredients }) {
     };
 
 
-    async function getNutrientData(ingredientName, amount) {
+    async function getNutrientData(ingredientName, amount, qType) {
         if (ingredientName === undefined) {
             return;
         }
 
         try {
             let data = await (
-                await fetch(`/api/Nutrition?search_term=${ingredientName}&EDGEtoken=${localStorage.getItem('Token')}`)
+                await fetch(`/api/Nutrition?search_term=${ingredientName}&quantity=${amount}&qType=${qType}&EDGEtoken=${localStorage.getItem('Token')}`)
             ).json();
 
             if (data.data.length > 0) {
@@ -51,14 +51,19 @@ function IngredientNutrientGraph({ ingredients }) {
                 }));
 
                 let nutrientInfo = data.data[0].nutrition_info
+                let protein = parseFloat(nutrientInfo["Protein (g)"])
+                let fat = parseFloat(nutrientInfo["Fat, total (g)"])
+                let carbohydrates = parseFloat(nutrientInfo["Available carbohydrate, with sugar alcohols (g)"])
+                let fiber = parseFloat(nutrientInfo["Total dietary fibre (g)"])
+                let iron = parseFloat(nutrientInfo["Iron (Fe) (mg)"])
                 // these are amount / 100 becuase the API returns in 100 g always
                 setTotalNutrient(prevState => ({
                     ...prevState,
-                    "protein": prevState.protein + (amount / 100 * parseFloat(nutrientInfo["Protein (g)"])),
-                    fat: prevState.fat + (amount / 100 * parseFloat(nutrientInfo["Fat, total (g)"])),
-                    carbohydrates: prevState.carbohydrates + (amount / 100 * parseFloat(nutrientInfo["Available carbohydrate, with sugar alcohols (g)"])),
-                    fiber: prevState.fiber + (amount / 100 * parseFloat(nutrientInfo["Total dietary fibre (g)"])),
-                    iron: prevState.iron + (amount / 100 * parseFloat(nutrientInfo["Iron (Fe) (mg)"])),
+                    "protein": prevState.protein + protein,
+                    fat: prevState.fat + fat,
+                    carbohydrates: prevState.carbohydrates + carbohydrates,
+                    fiber: prevState.fiber + fiber,
+                    iron: prevState.iron + iron,
                 }))
             } else {
                 setIngredientNutrient(prevState => ({
@@ -83,10 +88,7 @@ function IngredientNutrientGraph({ ingredients }) {
         })
         Object.keys(ingredients).forEach(element => {
             console.log(ingredients[element])
-            if (ingredients[element].AmountType == "gram" || ingredients[element].AmountType == "g") {
-                getNutrientData(ingredients[element].Name, ingredients[element].Amount);
-            }
-
+            getNutrientData(ingredients[element].Name, ingredients[element].Amount, ingredients[element].AmountType);
         });
 
 
@@ -97,7 +99,7 @@ function IngredientNutrientGraph({ ingredients }) {
 
     return (
         <div>
-            
+
             {Object.keys(dailyNutrientRequirements).map((nutrientKey) => {
                 return (
                     <Row className={styles.Row}>
