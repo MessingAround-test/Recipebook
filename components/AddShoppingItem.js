@@ -27,7 +27,7 @@ let categories = [
 ]
 
 
-function AddShoppingItem({ shoppingListId, handleSubmit }) {
+function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false }) {
     const [formData, setFormData] = useState({
         name: "",
         quantity: 1,
@@ -62,11 +62,11 @@ function AddShoppingItem({ shoppingListId, handleSubmit }) {
         setFormData({ ...formData, [name]: value });
     };
 
-    const handleNameSubmit = async function(e) {
-        if (formData.name !== undefined && formData.name !== ""){
+    const handleNameSubmit = async function (e) {
+        if (formData.name !== undefined && formData.name !== "") {
             await determineDefaults(formData.name)
         }
-        
+
     };
 
     const handleSubmitLocal = async (e) => {
@@ -84,24 +84,24 @@ function AddShoppingItem({ shoppingListId, handleSubmit }) {
             if (response.success) {
                 const values = response.data
 
-                let category = values.category[0]?{"name": values.category[0].value}:formData.category
-                let quantity = values.quantity[0]?values.quantity[0].value:formData.quantity
-                let quantity_type = values.quantity_type[0]?values.quantity_type[0].value:formData.quantity_type
-                
+                let category = values.category[0] ? { "name": values.category[0].value } : formData.category
+                let quantity = values.quantity[0] ? values.quantity[0].value : formData.quantity
+                let quantity_type = values.quantity_type[0] ? values.quantity_type[0].value : formData.quantity_type
+
                 setFormData({ ...formData, category: category, quantity: quantity, quantity_type: quantity_type });
-                
-                
+
+
                 // alert(response)
                 // Handle success, e.g., show a success message or redirect
             } else {
                 console.log(response.data)
-                return 
+                return
                 // alert(response.data)
                 // Handle errors, e.g., show an error message
             }
         } catch (error) {
             console.log(error)
-            return 
+            return
             // alert(error)
             // Handle network or other errors
         }
@@ -137,11 +137,12 @@ function AddShoppingItem({ shoppingListId, handleSubmit }) {
 
     return (
         <div className={styles['centered']}>
-            <h2>Add New Ingredient</h2>
+
             <Form onSubmit={(e) => handleSubmitLocal(e)}>
-                <Form.Group className="mb-3" id="formBasicEmail">
+                <Form.Group className="mb-3" id="ingredName">
                     <Form.Control name="name" id="ingredName" type="text" placeholder={shoppingListId} disabled hidden />
                 </Form.Group>
+
                 <Form.Group className="mb-3" id="formIngredName">
                     <SearchableDropdown options={knownIngredients} placeholder={"Enter Ingredient Name"} onChange={handleChange} name={"name"} value={formData.name} onComplete={handleNameSubmit}></SearchableDropdown>
                 </Form.Group>
@@ -155,17 +156,18 @@ function AddShoppingItem({ shoppingListId, handleSubmit }) {
                 <Form.Group className="mb-3" id="formBasicPassword">
                     <Form.Control name="note" id="ingredNote" type="text" placeholder="(optional note)" onChange={handleChange} value={formData.note} />
                 </Form.Group>
-                <Form.Group className="mb-3" id="formCategory">
+                {hideCategories ? <></> : <><Form.Group className="mb-3" id="formCategory">
                     <SearchableImageDropdown options={categories} placeholder={"Category"} onChange={handleChange} name={"category"} value={formData.category}></SearchableImageDropdown>
-                </Form.Group>
+                </Form.Group></>}
+
 
 
                 <Button variant="success" type="submit">
                     Submit
                 </Button>
-                <Button variant="primary" onClick={()=>console.log(formData)}>
+                {/* <Button variant="primary" onClick={() => console.log(formData)}>
                     show state
-                </Button>
+                </Button> */}
             </Form>
         </div>
     );

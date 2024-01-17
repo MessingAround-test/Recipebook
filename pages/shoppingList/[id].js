@@ -295,7 +295,7 @@ export default function Home() {
 
 
                         {
-                            (createNewIngredOpen ?<AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getRecipeDetails}></AddShoppingItem>: <></>)
+                            (createNewIngredOpen ?<><h2>Add New Ingredient</h2><AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getRecipeDetails}></AddShoppingItem></>: <></>)
                         }
 
 
