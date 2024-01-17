@@ -32,6 +32,8 @@ export default function Home() {
     const [ingredientData, setIngredientData] = useState([])
     const [modalIsOpen, setIsOpen] = useState(false);
     const [selectedIngred, setSelectedIngred] = useState("")
+
+    const [loading, setLoading] = useState(false)
     const [selectedIngredient, setSelectedIngredient] = useState('');
     const filteredIngredients = selectedIngredient ? ingreds.filter(ingredient => ingredient.Name === selectedIngredient) : ingreds;
     const handleDropdownChange = (event) => {
@@ -56,6 +58,7 @@ export default function Home() {
     }
 
     async function getIngredDetails(ingredients) {
+        setLoading(true)
         const newItems = [...ingredients];
         console.log(newItems)
         for (let ingredients in newItems) {
@@ -69,6 +72,7 @@ export default function Home() {
                 newItems[ingredients] = { ...newItems[ingredients], ...data.res[0] }
             }
         }
+        setLoading(false)
         setIngreds(newItems)
     }
 
@@ -215,54 +219,55 @@ export default function Home() {
                     <main className={styles.main}>
                         <Container className={styles.centered}>
                             <Row>
-                            <h1 className={styles.header} style={{"backgroundColor": "white", "color": "black"}}>{recipeName}</h1>
-                            <h2 className={styles.header}>Ingredients</h2>
-                            <Row>
-                                {ingreds.map((ingred) => {
-                                    return (
-                                        // <div style={{ padding: "1rem",  }} >
-                                        <Row>
-                                            <Col className={styles.col}>
-                                                {ingred.Amount} {ingred.AmountType}
-                                            </Col>
-                                            <Col className={styles.col}> {ingred.Name}</Col>
-                                            <Col className={styles.col}>
+                                <h1 className={styles.header} style={{ "backgroundColor": "white", "color": "black" }}>{recipeName}</h1>
+                                <h2 className={styles.header}>Ingredients</h2>
+                                <Row>
+                                    {loading ? <>loading...<object type="image/svg+xml" data="/loading.svg">svg-animation</object></> : <></>}
+                                    {ingreds.map((ingred) => {
+                                        return (
+                                            // <div style={{ padding: "1rem",  }} >
+                                            <Row>
+                                                <Col className={styles.col}>
+                                                    {ingred.Amount} {ingred.AmountType}
+                                                </Col>
+                                                <Col className={styles.col}> {ingred.Name}</Col>
+                                                <Col className={styles.col}>
 
-                                                <a onClick={((ingred.source)) ? console.log("nothing") : () => alert("hi there")}>
-                                                    <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} />
-                                                </a>
+                                                    <a onClick={((ingred.source)) ? console.log("nothing") : () => alert("hi there")}>
+                                                        <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} />
+                                                    </a>
 
-                                            </Col>
-                                            <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
-                                                <div onClick={() => openModal(ingred.Name)} style={{ "overflow": "hidden" }}>
-                                                    {ingred.name}
-                                                </div>
-                                            </Col>
-                                            <Col className={styles.col}>
-                                                <Button variant={"warning"} onClick={(e) => markAsIncorrect(ingred._id, ingred.name)}>x</Button>
-                                            </Col>
-                                            <Col className={styles.col}>
-                                                ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}
-                                            </Col>
+                                                </Col>
+                                                <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
+                                                    <div onClick={() => openModal(ingred.Name)} style={{ "overflow": "hidden" }}>
+                                                        {ingred.name}
+                                                    </div>
+                                                </Col>
+                                                <Col className={styles.col}>
+                                                    <Button variant={"warning"} onClick={(e) => markAsIncorrect(ingred._id, ingred.name)}>x</Button>
+                                                </Col>
+                                                <Col className={styles.col}>
+                                                    ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}
+                                                </Col>
 
 
 
-                                            {/* <Image src={ingred.source}></Image> */}
-                                            {/* <div className="w-full h-64 rounded-b-lg bg-cover bg-center" style={{ backgroundImage: `url(${ingred.source})` }}>hi there</div> */}
-                                            {/* <Col>
+                                                {/* <Image src={ingred.source}></Image> */}
+                                                {/* <div className="w-full h-64 rounded-b-lg bg-cover bg-center" style={{ backgroundImage: `url(${ingred.source})` }}>hi there</div> */}
+                                                {/* <Col>
                                                                     {<>${(ingred.unit_price)}</>}
                                                                 </Col> */}
-                                            {/* <Col>
+                                                {/* <Col>
                                                                     {<>${(ingred.unit_price * ingred.Amount).toFixed(2)}</>}
 
                                                                 </Col> */}
-                                        </Row>
-                                        // </div>
-                                    )
-                                })}
+                                            </Row>
+                                            // </div>
+                                        )
+                                    })}
 
-                            </Row>
-                            <h2>Total {getAproxTotalRecipeCost()}</h2>
+                                </Row>
+                                <h2>Total {getAproxTotalRecipeCost()}</h2>
                             </Row>
                             {/* If no instructions then dont show */}
                             {
@@ -296,27 +301,19 @@ export default function Home() {
                             }
 
                             <h2 className={styles.header}>Nutrients</h2>
-                            <div>
-                                {/* <label htmlFor="ingredientDropdown">Select Ingredient:</label> */}
-                                <select
-                                    id="ingredientDropdown"
-                                    value={selectedIngredient}
-                                    onChange={handleDropdownChange}
-                                >
-                                    <option value="">Select an ingredient to filter graph</option>
+                            <select
+                                id="ingredientDropdown"
+                                value={selectedIngredient}
+                                onChange={handleDropdownChange}
+                            >
+                                <option value="">Select an ingredient to filter graph</option>
 
-                                    {ingreds.map((ingredient, index) => (
-                                        <option key={index} value={ingredient.Name}>
-                                            {ingredient.Name}
-                                        </option>
-                                    ))}
-                                </select>
-
-                                {/* Display the selected ingredient */}
-                                {/* {selectedIngredient && (
-                                    <p>Selected Ingredient: {selectedIngredient}</p>
-                                )} */}
-                            </div>
+                                {ingreds.map((ingredient, index) => (
+                                    <option key={index} value={ingredient.Name}>
+                                        {ingredient.Name}
+                                    </option>
+                                ))}
+                            </select>
 
                             <IngredientNutrientGraph ingredients={filteredIngredients}></IngredientNutrientGraph>
                             <Row>

@@ -95,10 +95,17 @@ export default function Home() {
 
 
                 <main className={styles.main}>
-
+                <div>
                 <Button onClick={(e)=>ExtractFromAldi(e)}> Extract Aldi </Button>
+                </div>
+                <div>
                 <Button onClick={(e)=>ExtractNutritionInfo(e, "POST")}> Extract Nutrition Info </Button>
-                <Button onClick={(e)=>ExtractNutritionInfo(e, "DELETE")}> Delete Nutrition Info </Button>
+                </div>
+                <div>
+                <Button onClick={(e)=>ExtractNutritionInfo(e, "PATCH")}> Get US Nutrition Info </Button>
+                </div>
+                <Button variant={"warning"} onClick={(e)=>ExtractNutritionInfo(e, "DELETE")}> Delete Nutrition Info </Button>
+                
                 ExtractNutritionInfo
 
                 </main>

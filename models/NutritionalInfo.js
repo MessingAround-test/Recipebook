@@ -4,7 +4,7 @@ const NutritionalInfo = new mongoose.Schema(
     {
         id: {type: mongoose.ObjectId, unique: true, dropDups: true , index: true},
         name: {type: String, required: true, index: true},
-        extra_info: {type: String, required: false},
+        extra_info: {type: Array, required: false},
         source: {type: String, required: true}, 
         quantity: {type: Number, required: false},
         quantity_type: {type: String, required: false},
