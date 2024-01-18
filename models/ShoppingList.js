@@ -9,6 +9,7 @@ const ShoppingList = new mongoose.Schema(
         deleted: {type: Boolean, required: false},
         note: {type: String, required: false},
         complete: {type: Boolean, required: true},
+        image: {type: String}
     },
     { timestamps: { createdAt: "created_at", updatedAt: "updated_at" }, autoIndex: false }
 )

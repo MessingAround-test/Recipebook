@@ -24,8 +24,18 @@ export default function Home() {
     const [userData, setUserData] = useState({})
     const router = useRouter()
     const { id } = router.query
+    const [loading, setLoading] = useState(false)
 
+    const blobToBase64 = blob => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
 
+    const convertBlobToBase64 = async (blob) => {
+        return await blobToBase64(blob);
+    }
 
 
     async function closeModal() {
@@ -33,10 +43,31 @@ export default function Home() {
     }
 
 
+    async function generateImage(prompt) {
+        setLoading(true)
+
+        let promptImage = await (await fetch(`https://image.pollinations.ai/prompt/${prompt} realistic`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })).blob();
+
+        let resData = await convertBlobToBase64(promptImage)
+        
+        setLoading(false)
+        return resData
+
+    }
+
+
     async function handleSubmit(e) {
 
         console.log(e)
         console.log(e.value)
+
+        let imageData = await generateImage(`Fruit and vegetables ${Math.random()*100000}`)
+        e.value.image = imageData
 
         let data = await (await fetch("/api/ShoppingList/" + "?EDGEtoken=" + localStorage.getItem('Token'), {
             method: 'POST',
@@ -112,6 +143,7 @@ export default function Home() {
                     <Container className={styles.centered}>
                         <h1>Create a new List</h1>
                         <GenericForm formInitialState={{ "name": { "value": "" }, "note": { "value": "" } }} handleSubmitProp={(e) => handleSubmit(e)}>hi</GenericForm>
+                        {loading ? <>loading...<object type="image/svg+xml" data="/loading.svg">svg-animation</object></> : <></>}
                     </Container>
                 </main>
                 <footer className={styles.footer}>

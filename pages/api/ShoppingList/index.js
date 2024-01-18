@@ -43,6 +43,7 @@ export default async function handler(req, res) {
                         deleted: false,
                         note: req.body.note,
                         complete: false,
+                        image: req.body.image
                     });
                     console.log(await response);
 

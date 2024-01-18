@@ -92,6 +92,19 @@
   justify-content: center;
 }
 
+.centered_horizontal {
+  text-align: center;
+  align-items: center;
+  /* justify-content: center; */
+  /* display: grid; */
+  /* width: 100vw; */
+  /* This margin auto is what makes the huge gap */
+  /* margin: auto; */
+  /* margin-left: 0%;
+  margin-right: 0%; */
+  flex-grow: 1;
+}
+
 .centered {
   text-align: center;
   align-items: center;

@@ -101,7 +101,7 @@ export default function Home() {
                     <Container>
                         <Row>
                             <Col>
-                            <div style={{ padding: "0.5vh" }}>
+                                <div style={{ padding: "0.5vh" }}>
                                     <Button variant="success" onClick={() => redirect("/createRecipe")} >Add recipe</Button>
                                 </div>
                             </Col>
@@ -114,35 +114,40 @@ export default function Home() {
                     </Container>
                     <div className={styles.cardGroup}>
                         {/* <div style={{ padding: "0.5vh" }}>
-                            <Card style={{ maxWidth: '45vw', minWidth: "45vw", maxHeight: "45vw", minHeight: "45vw", color: "black", "borderStyle": "solid", "borderColor": "green", "borderWidth": "0.5rem", "alignItems": "center", "justifyContent": "center" }} onClick={() => (redirect("/createRecipe"))}>
+                            <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black", "borderStyle": "solid", "borderColor": "green", "borderWidth": "0.5rem", "alignItems": "center", "justifyContent": "center" }} onClick={() => (redirect("/createRecipe"))}>
                                 <Card.Body style={{ overflow: "hidden" }}>
                                     <Card.Title>{String("New Recipe")}</Card.Title>
-                                    <Card.Img style={{ maxHeight: "45vw", maxWidth: "45vw" }} variant="top" src={"add.jpg"} />
+                                    <Card.Img style={{ maxHeight: "15rem", maxWidth: "15rem" }} variant="top" src={"add.jpg"} />
                                 </Card.Body>
 
                             </Card>
                         </div> */}
-                        {recipes.map((recipe) => {
-                            return (
-                                <div style={{ padding: "0.5vh" }}>
-                                    <Card style={{ maxWidth: '45vw', minWidth: "45vw", maxHeight: "45vw", minHeight: "45vw", color: "black", "alignItems": "center", "justifyContent": "center" }} >
+                        <Row xl={5} lg={4} md={3} sm={2} xs={1}>
+                            {recipes.map((recipe) => {
+                                return (
+                                    <Col>
+                                        <div style={{ padding: "0.5vh" }}>
+                                            <Card style={{color: "black", "alignItems": "center", "justifyContent": "center" }} >
 
-                                        {(allowDelete) ? (<>
-                                            <Button variant="danger" onClick={() => deleteRecipe(recipe._id)} style={{ "float": "right" }}>x </Button>
-                                        </>) : (<></>)}
-                                        <Card.Body style={{ overflow: "hidden" }} onClick={() => (redirect("/recipes/" + recipe._id))}>
+                                                {(allowDelete) ? (<>
+                                                    <Button variant="danger" onClick={() => deleteRecipe(recipe._id)} style={{ "float": "right" }}>x </Button>
+                                                </>) : (<></>)}
+                                                <Card.Body style={{ overflow: "hidden" }} onClick={() => (redirect("/recipes/" + recipe._id))}>
 
 
-                                            <Card.Title>{String(recipe.name)}</Card.Title>
-                                            <Card.Img variant="top" src={recipe.image} />
-                                        </Card.Body>
+                                                    <Card.Title>{String(recipe.name)}</Card.Title>
+                                                    <Card.Img variant="top" src={recipe.image}/>
+                                                </Card.Body>
 
-                                    </Card>
-                                </div>
-                            )
+                                            </Card>
+                                        </div>
+                                    </Col>
+                                )
 
-                        })}
+                            })}
+                        </Row>
                     </div>
+
                     {/* <Button onClick={() => console.log(recipes)}> show Recipes</Button> */}
                 </main>
 

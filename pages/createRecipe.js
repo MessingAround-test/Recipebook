@@ -40,6 +40,8 @@ export default function Home() {
         return await blobToBase64(blob);
     }
 
+    
+
     async function generateImage(prompt) {
         if (recipeName !== undefined && recipeName !== "") {
             let promptImage = await (await fetch(`https://image.pollinations.ai/prompt/${prompt} realistic`, {
@@ -224,46 +226,55 @@ export default function Home() {
 
 
                 <main className={styles.main}>
-
                     <Container>
-                        <h2 className={styles.header}>General</h2>
-                        <Row>
+                        <Row >
+
                             <Col>
+                                <h2 className={styles.header}>General</h2>
+                                <Row>
+                                    <Col>
 
-                                {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
-                                <Card.Body>
-                                    {/* <Card.Title>Add ingredient</Card.Title> */}
+                                        {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
+                                        <Card.Body>
+                                            {/* <Card.Title>Add ingredient</Card.Title> */}
 
-                                    <Form>
+                                            <Form>
 
-                                        <Form.Group className="mb-3" id="formBasicEmail">
+                                                <Form.Group className="mb-3" id="formBasicEmail">
 
-                                            <Form.Control name="recipeName" id="recipeName" type="text" placeholder="Enter Recipe Name" value={recipeName} onChange={(e) => setRecipeName(e.target.value)} />
+                                                    <Form.Control name="recipeName" id="recipeName" type="text" placeholder="Enter Recipe Name" value={recipeName} onChange={(e) => setRecipeName(e.target.value)} />
 
-                                        </Form.Group>
+                                                </Form.Group>
 
-                                    </Form>
+                                            </Form>
 
 
 
-                                </Card.Body>
+                                        </Card.Body>
+
+                                    </Col>
+                                </Row>
+                                <Form onSubmit={(e) => onSubmitTasteImport(e)}>
+                                    <Form.Group className="mb-3" id="formBasicEmail">
+                                        <Form.Control name="tasteURL" id="tasteURL" type="text" placeholder="Taste.com url" />
+                                    </Form.Group>
+                                    <Button variant="primary" type="submit">
+                                        Import
+                                    </Button>
+
+                                </Form>
 
                             </Col>
+
+
                         </Row>
-                        <Form onSubmit={(e) => onSubmitTasteImport(e)}>
-                            <Form.Group className="mb-3" id="formBasicEmail">
-                                <Form.Control name="tasteURL" id="tasteURL" type="text" placeholder="Taste.com url" />
-                            </Form.Group>
-                            <Button variant="primary" type="submit">
-                                Import
-                            </Button>
-                        </Form>
+                        <Row xxl={2} xl={2} md={1} sm={1} xs={1}>
+                            <Col className={styles.centered_horizontal}>
+                                <h1 className={[styles.header]}>Add Ingredients</h1>
 
-                        <h1 className={[styles.header]}>Ingredients</h1>
 
-                        <Row>
 
-                            <Col className={styles.col}>
+
 
                                 {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
                                 <Card.Body>
@@ -271,39 +282,44 @@ export default function Home() {
                                     <AddShoppingItem handleSubmit={(e) => onSubmitIngred(e)} hideCategories={true}></AddShoppingItem>
 
                                 </Card.Body>
+                            </Col>
+                            <Col className={styles.centered_horizontal}>
+                                <h1 className={[styles.header]}>CurrentIngredients</h1>
+
+
+                                {ingreds.length > 0 ? <Col>
+
+                                    <div style={{ "background-color": "rgba(245, 245, 245, 0.0)" }}>
+                                        {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
+                                        <Card.Body>
+
+
+
+                                            {ingreds.map((ingred) => {
+                                                return (
+                                                    <Row>
+                                                        <Col >
+                                                            <a style={{ fontSize: "1rem" }}>-{ingred.Amount} x {ingred.AmountType} {ingred.Name}</a>
+                                                        </Col>
+                                                        <Col >
+                                                            <Button onClick={() => setIngreds(ingreds.filter(function (ingredItem) { return ingredItem.Name !== ingred.Name }))}><RiDeleteBin7Line></RiDeleteBin7Line></Button>
+                                                        </Col>
+                                                    </Row>
+                                                )
+                                            })}
+
+
+                                        </Card.Body>
+                                    </div>
+
+                                </Col> : <></>}
+
 
                             </Col>
-                            { ingreds.length > 0 ? <Col>
+                            <Col className={styles.centered_horizontal}>
 
-                                <div style={{ right: "0px", float: "right", "background-color": "rgba(245, 245, 245, 0.0)" }}>
-                                    {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
-                                    <Card.Body>
+                                <h1 className={styles.header}>Instructions</h1>
 
-
-
-                                        {ingreds.map((ingred) => {
-                                            return (
-                                                <Row>
-                                                    <Col className={styles.col}>
-                                                        <a style={{ "font-size": "2em" }}>-{ingred.Amount} x {ingred.AmountType} {ingred.Name}</a>
-                                                    </Col>
-                                                    <Col className={styles.col}>
-                                                        <Button onClick={() => setIngreds(ingreds.filter(function (ingredItem) { return ingredItem.Name !== ingred.Name }))}><RiDeleteBin7Line></RiDeleteBin7Line></Button>
-                                                    </Col>
-                                                </Row>
-                                            )
-                                        })}
-
-
-                                    </Card.Body>
-                                </div>
-
-                            </Col> : <></>}
-
-                        </Row>
-                        <Row>
-                            <h1 className={styles.header}>Instructions</h1>
-                            <Col className={styles.col}>
 
                                 <Card style={{ color: "black" }}>
                                     {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
@@ -321,9 +337,7 @@ export default function Home() {
                                             <Form.Group className="mb-3" id="formBasicPassword">
                                                 <Form.Control name="instructNote" id="instructNote" type="text" placeholder="(optional note)" />
                                             </Form.Group>
-                                            {/* <Form.Group className="mb-3" controlId="formBasicCheckbox">
-                                <Form.Check type="checkbox" label="Check me out" />
-                            </Form.Group> */}
+
                                             <Button variant="primary" type="submit">
                                                 Submit
                                             </Button>
@@ -334,69 +348,75 @@ export default function Home() {
 
                                     </Card.Body>
                                 </Card>
-
-
-
                             </Col>
-                            {instructions.length > 0 ? <Card style={{ color: "black", right: "0px", float: "right" }}>
+                            <Col className={styles.centered_horizontal} style={{ fontSize: "1rem" }}>
+
+
+
+
+
                                 {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
-                                <Card.Body>
-                                    <Card.Title>Instructions Summary</Card.Title>
-
-                                    <ol>
-                                        {instructions.map((instruction) => {
-                                            return (
-                                                <div>
-                                                    <Row>
-                                                        <Col className={styles.col}>
-                                                            <li>{instruction.Text} </li>
-                                                        </Col>
-                                                        <Col className={styles.col}>
-                                                            <Button onClick={() => setInstructions(instructions.filter(function (ingredItem) { return ingredItem.Text !== instruction.Text }))}><RiDeleteBin7Line></RiDeleteBin7Line></Button>
-                                                        </Col>
-                                                    </Row>
-                                                </div>
-                                            )
-                                        })}
-                                    </ol>
 
 
-                                </Card.Body>
-                            </Card> : <></>}
+                                <ol>
+                                    {instructions.map((instruction) => {
+                                        return (
+                                            <div>
+                                                <Row>
+                                                    <Col>
+                                                        <li>{instruction.Text} </li>
+                                                    </Col>
+                                                    <Col >
+                                                        <Button onClick={() => setInstructions(instructions.filter(function (ingredItem) { return ingredItem.Text !== instruction.Text }))}><RiDeleteBin7Line></RiDeleteBin7Line></Button>
+                                                    </Col>
+                                                </Row>
+                                            </div>
+                                        )
+                                    })}
+                                </ol>
 
 
-                        </Row>
-                        <Row>
-                            <h1 className={styles.header}>Add Image</h1>
-                            <h6>Or don't and one will be generated...</h6>
-                            <Col className={styles.col}>
 
-                                <input accept="image/*" type="file" onChange={(e) => { e.target.files ? getBase64(e.target.files[0], (data) => setImageData(data)) : undefined }} />
 
-                                {/* <Button onClick={() => generateImage(recipeName)}>Generate Image</Button> */}
+
+
                             </Col>
-                            {imageData ? <Col className={styles.col}>
-                                <Button variant={"danger"} onClick={setImageData()}>x</Button>
-                            </Col> : <></>}
+                            <Col className={styles.centered_horizontal}>
+
+                                <h1 className={styles.header}>Add Image</h1>
+                                <h6>Or don't and one will be generated...</h6>
+                                <Col>
+
+                                    <input accept="image/*" type="file" onChange={(e) => { e.target.files ? getBase64(e.target.files[0], (data) => setImageData(data)) : undefined }} />
+
+                                    {/* <Button onClick={() => generateImage(recipeName)}>Generate Image</Button> */}
+                                </Col>
+                                {imageData ? <Col>
+                                    <Button variant={"danger"} onClick={setImageData()}>x</Button>
+                                </Col> : <></>}
 
 
+
+
+                                <Col>
+                                    {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
+
+                                    <img src={imageData} />
+
+
+                                </Col>
+                            </Col>
 
                         </Row>
-                        <Col className={styles.col}>
-                            {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
-                            <Card style={{ maxWidth: '20em', color: "black", right: "0px", float: "right" }}>
-                                <img src={imageData} style={{ maxWidth: "20em", maxHeight: "20em" }} />
-                            </Card>
-
-                        </Col>
                         <Row>
-
-                            <Button onClick={() => onSubmitRecipe()}> Save </Button>
-                            {loading ? <>loading...<object type="image/svg+xml" data="/loading.svg">svg-animation</object></> : <></>}
+                            <Col className={styles.centered_horizontal}>
+                                <Button onClick={() => onSubmitRecipe()} variant="success"> Save and Submit </Button>
+                                {loading ? <>loading...<object type="image/svg+xml" data="/loading.svg">svg-animation</object></> : <></>}
+                            </Col>
                         </Row>
-
                     </Container>
-                    {/* <Button onClick={()=>console.log(recipeName)}>recipe name</Button> */}
+
+                    {/* <Button onClick={()=>console.log(imageData)}>recipe name</Button> */}
                 </main>
 
                 <footer className={styles.footer}>

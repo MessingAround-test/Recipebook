@@ -217,137 +217,133 @@ export default function Home() {
                         <link rel="icon" href="/avo.ico" />
                     </Head>
                     <main className={styles.main}>
-                        <Container className={styles.centered}>
-                            <Row>
-                                <h1 className={styles.header} style={{ "backgroundColor": "white", "color": "black" }}>{recipeName}</h1>
-                                <h2 className={styles.header}>Ingredients</h2>
-                                <Row>
-                                    {loading ? <>loading...<object type="image/svg+xml" data="/loading.svg">svg-animation</object></> : <></>}
-                                    {ingreds.map((ingred) => {
-                                        return (
-                                            // <div style={{ padding: "1rem",  }} >
-                                            <Row>
-                                                <Col className={styles.col}>
-                                                    {ingred.Amount} {ingred.AmountType}
-                                                </Col>
-                                                <Col className={styles.col}> {ingred.Name}</Col>
-                                                <Col className={styles.col}>
+                        <Row>
+                            <h1 className={styles.header} style={{ "backgroundColor": "white", "color": "black" }}>{recipeName}</h1>
+                            <h2 className={styles.header}>Ingredients</h2>
 
-                                                    <a onClick={((ingred.source)) ? console.log("nothing") : () => alert("hi there")}>
-                                                        <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} />
-                                                    </a>
+                            {loading ? <>loading...<object type="image/svg+xml" data="/loading.svg">svg-animation</object></> : <></>}
+                            {ingreds.map((ingred) => {
+                                return (
+                                    // <div style={{ padding: "1rem",  }} >
+                                    <Row>
+                                        <Col className={styles.col}>
+                                            {ingred.Amount} {ingred.AmountType}
+                                        </Col>
+                                        <Col className={styles.col}> {ingred.Name}</Col>
+                                        <Col className={styles.col}>
 
-                                                </Col>
-                                                <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
-                                                    <div onClick={() => openModal(ingred.Name)} style={{ "overflow": "hidden" }}>
-                                                        {ingred.name}
-                                                    </div>
-                                                </Col>
-                                                <Col className={styles.col}>
-                                                    <Button variant={"warning"} onClick={(e) => markAsIncorrect(ingred._id, ingred.name)}>x</Button>
-                                                </Col>
-                                                <Col className={styles.col}>
-                                                    ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}
-                                                </Col>
+                                            <a onClick={((ingred.source)) ? console.log("nothing") : () => alert("hi there")}>
+                                                <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} />
+                                            </a>
 
+                                        </Col>
+                                        <Col className={[styles.curvedEdge, styles.centered]} style={{ background: "grey" }}>
+                                            <div onClick={() => openModal(ingred.Name)} style={{ "overflow": "hidden" }}>
+                                                {ingred.name}
+                                            </div>
+                                        </Col>
+                                        <Col className={styles.col}>
+                                            <Button variant={"warning"} onClick={(e) => markAsIncorrect(ingred._id, ingred.name)}>x</Button>
+                                        </Col>
+                                        <Col className={styles.col}>
+                                            ${ingred.price} / {ingred.quantity} {ingred.quantity_unit} = ${(ingred.unit_price * ingred.Amount).toFixed(2)}
+                                        </Col>
 
 
-                                                {/* <Image src={ingred.source}></Image> */}
-                                                {/* <div className="w-full h-64 rounded-b-lg bg-cover bg-center" style={{ backgroundImage: `url(${ingred.source})` }}>hi there</div> */}
-                                                {/* <Col>
+
+                                        {/* <Image src={ingred.source}></Image> */}
+                                        {/* <div className="w-full h-64 rounded-b-lg bg-cover bg-center" style={{ backgroundImage: `url(${ingred.source})` }}>hi there</div> */}
+                                        {/* <Col>
                                                                     {<>${(ingred.unit_price)}</>}
                                                                 </Col> */}
-                                                {/* <Col>
+                                        {/* <Col>
                                                                     {<>${(ingred.unit_price * ingred.Amount).toFixed(2)}</>}
 
                                                                 </Col> */}
-                                            </Row>
-                                            // </div>
-                                        )
-                                    })}
-
-                                </Row>
-                                <h2>Total {getAproxTotalRecipeCost()}</h2>
-                            </Row>
-                            {/* If no instructions then dont show */}
-                            {
-                                instructions.length > 0 ?
-                                    <div>
-                                        <h2 className={styles.header}>Instructions</h2>
-                                        <Row >
-                                            <Col>
-
-                                                {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
-
-                                                <ol>
-                                                    {instructions.map((instruction, index) => {
-                                                        return (
-                                                            <div>
-                                                                <Row>
-                                                                    <Col style={{ "font-size": "2em" }}>
-                                                                        <p> Step:  {index + 1}: {instruction.Text} </p>
-                                                                    </Col>
-
-                                                                </Row>
-                                                            </div>
-                                                        )
-                                                    })}
-                                                </ol>
-
-                                            </Col>
-                                        </Row>
-                                    </div>
-                                    : <></>
-                            }
-
-                            <h2 className={styles.header}>Nutrients</h2>
-                            <select
-                                id="ingredientDropdown"
-                                value={selectedIngredient}
-                                onChange={handleDropdownChange}
-                            >
-                                <option value="">Select an ingredient to filter graph</option>
-
-                                {ingreds.map((ingredient, index) => (
-                                    <option key={index} value={ingredient.Name}>
-                                        {ingredient.Name}
-                                    </option>
-                                ))}
-                            </select>
-
-                            <IngredientNutrientGraph ingredients={filteredIngredients}></IngredientNutrientGraph>
-                            <Row>
-
-                                <Col className={styles.Col}>
-                                    {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
-                                    <Card >
-                                        <img src={imageData} style={{ width: "auto", height: "auto" }} />
-                                    </Card>
-
-                                </Col>
-                            </Row>
-                            <Modal
-                                isOpen={modalIsOpen}
-                                onRequestClose={closeModal}
-                                style={customStyles}
-                                contentLabel="Example Modal"
-                                className={styles.modal}
-                            >
-                                <a>
-                                    <button style={{ float: "right", "borderRadius": "5px" }} onClick={closeModal}><img style={{ "maxWidth": "32px", "maxHeight": "32px" }} src={"/cross.png"}></img></button>
-                                    <h2>Ingredient Research</h2>
-                                    <IngredientSearchList search_term={selectedIngred}></IngredientSearchList>
-                                </a>
-                            </Modal>
-                            <Button onClick={() => getIngredDetails(ingreds)}>Get Grocery Store Data</Button>
-                            <br></br>
-                            <Button variant="danger" onClick={() => deleteRecipe()}>
-                                Delete Recipe
-                            </Button>
+                                    </Row>
+                                    // </div>
+                                )
+                            })}
 
 
-                            <p>RECIPEID = {id}</p>
-                        </Container>
+                            <h2>Total {getAproxTotalRecipeCost()}</h2>
+                        </Row>
+                        {/* If no instructions then dont show */}
+                        {
+                            instructions.length > 0 ?
+                                <div>
+                                    <h2 className={styles.header}>Instructions</h2>
+                                    <Row xs={1} md={2} lg={3} xl={4} xxl={5}>
+
+                                        {instructions.map((instruction, index) => {
+                                            return (
+                                                <div>
+
+                                                    <Col style={{ "font-size": "1rem" }}>
+                                                        <div className={styles.header}> Step {index + 1} </div>
+                                                        <p> {instruction.Text}</p>
+                                                    </Col>
+
+
+                                                </div>
+                                            )
+                                        })}
+
+
+
+                                    </Row>
+                                </div>
+                                : <></>
+                        }
+
+                        <h2 className={styles.header}>Nutrients</h2>
+                        <select
+                            id="ingredientDropdown"
+                            value={selectedIngredient}
+                            onChange={handleDropdownChange}
+                        >
+                            <option value="">Select an ingredient to filter graph</option>
+
+                            {ingreds.map((ingredient, index) => (
+                                <option key={index} value={ingredient.Name}>
+                                    {ingredient.Name}
+                                </option>
+                            ))}
+                        </select>
+
+                        <IngredientNutrientGraph ingredients={filteredIngredients}></IngredientNutrientGraph>
+                        <Row>
+
+                            <Col className={styles.Col}>
+                                {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
+                                <Card >
+                                    <img src={imageData} style={{ width: "auto", height: "auto" }} />
+                                </Card>
+
+                            </Col>
+                        </Row>
+                        <Modal
+                            isOpen={modalIsOpen}
+                            onRequestClose={closeModal}
+                            style={customStyles}
+                            contentLabel="Example Modal"
+                            className={styles.modal}
+                        >
+                            <a>
+                                <button style={{ float: "right", "borderRadius": "5px" }} onClick={closeModal}><img style={{ "maxWidth": "32px", "maxHeight": "32px" }} src={"/cross.png"}></img></button>
+                                <h2>Ingredient Research</h2>
+                                <IngredientSearchList search_term={selectedIngred}></IngredientSearchList>
+                            </a>
+                        </Modal>
+                        <Button onClick={() => getIngredDetails(ingreds)}>Get Grocery Store Data</Button>
+                        <br></br>
+                        <Button variant="danger" onClick={() => deleteRecipe()}>
+                            Delete Recipe
+                        </Button>
+
+
+                        <p>RECIPEID = {id}</p>
+
 
 
                     </main>
