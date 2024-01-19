@@ -2,6 +2,10 @@ import Ingredients from '../../../models/Ingredients'
 import axios from 'axios';
 import { filter } from '../../../lib/filtering'
 import { convertMetricReading } from '../../../lib/conversion'
+import dbConnect from '../../../lib/dbConnect'
+import { verify } from "jsonwebtoken";
+import { secret } from "../../../lib/dbsecret"
+import User from '../../../models/User'
 
 
 export default async function handler(req, res) {
@@ -38,7 +42,7 @@ export default async function handler(req, res) {
             // let IngredData = []
             let search_query = { search_term: search_term }
             // 
-            let companies = ["WW", "IGA",  "PanettaGG", "Aldi", "Coles"]
+            let companies = ["WW", "IGA", "PanettaGG", "Aldi", "Coles"]
             const supplierParam = req.query.supplier;
 
             if (supplierParam === undefined) {
@@ -98,24 +102,40 @@ export default async function handler(req, res) {
             }
         }
     } else if (req.method === "DELETE") {
+        verify(req.query.EDGEtoken, secret, async function (err, decoded) {
 
-        let id = req.query.id
-        let IngredData;
+            let id = req.query.id
+            let IngredData;
+            await dbConnect()
 
-        if (id !== undefined && id !== "") {
-            IngredData = await Ingredients.deleteOne({ _id: id }).exec()
-        } else if (search_term !== undefined && search_term !== "") {
-            IngredData = await Ingredients.deleteMany({ search_term: search_term }).exec()
-        } else {
-            IngredData = await Ingredients.deleteMany({}).exec()
-            // throw new Error("Please provide either a search term or id")
+            console.log(decoded)
+            let db_id = decoded.id
+            let userData = await User.findOne({ id: db_id });
+            if (userData._id === undefined) {
+                res.status(400).json({ res: "user not found, please relog" })
+            } else if (userData.role !== "admin") {
+                res.status(400).json({ message: "Insufficient Privileges" })
+            } else {
+
+                if (id !== undefined && id !== "") {
+                    IngredData = await Ingredients.deleteOne({ _id: id }).exec()
+                } else if (search_term !== undefined && search_term !== "") {
+                    IngredData = await Ingredients.deleteMany({ search_term: search_term }).exec()
+                } else {
+                    IngredData = await Ingredients.deleteMany({}).exec()
+                    // throw new Error("Please provide either a search term or id")
+                }
+
+                // let IngredData = await Ingredients.deleteMany({}).exec()
+                res.status(200).json({ success: true, data: IngredData, message: "Success" })
+            }
+
         }
-
-        // let IngredData = await Ingredients.deleteMany({}).exec()
-        res.status(200).json({ success: true, data: IngredData, message: "Success" })
+        )
     } else {
         res.status(400).json({ success: false, data: [], message: "Not supported request" })
     }
+
 }
 
 

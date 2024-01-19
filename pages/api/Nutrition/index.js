@@ -248,6 +248,8 @@ export default async function handler(req, res) {
                 let userData = await User.findOne({ id: db_id });
                 if (userData._id === undefined) {
                     res.status(400).json({ res: "user not found, please relog" })
+                } else if (userData.role !== "admin"){
+                    res.status(400).json({ message: "Insufficient Privileges" })
                 } else {
 
                     let NutritionalInfoData = await NutritionalInfo.deleteMany({})

@@ -39,7 +39,9 @@ export default async function handler(req, res) {
         let db_id = decoded.id
         let userData = await User.findOne({ id: db_id });
         if (userData === undefined) {
-          res.status(400).json({ res: "user not found, please relog" })
+          res.status(400).json({ message: "user not found, please relog" })
+        } else if (userData.role !== "admin"){
+          res.status(400).json({ message: "Insufficient Privileges" })
         } else {
 
           let DbData = await ShoppingListItem.deleteOne({ _id: id })
