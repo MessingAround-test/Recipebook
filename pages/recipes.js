@@ -105,11 +105,15 @@ export default function Home() {
                                     <Button variant="success" onClick={() => redirect("/createRecipe")} >Add recipe</Button>
                                 </div>
                             </Col>
-                            <Col>
-                                <div style={{ padding: "0.5vh" }}>
-                                    <Button variant="danger" onClick={() => toggleMassDelete()} >Allow Mass Delete</Button>
-                                </div>
-                            </Col>
+                            {userData.role === "admin" ?
+                                <Col>
+                                    <div style={{ padding: "0.5vh" }}>
+                                        <Button variant="danger" onClick={() => toggleMassDelete()} >Allow Mass Delete</Button>
+                                    </div>
+                                </Col> : <></>
+
+                            }
+
                         </Row>
                     </Container>
                     <div className={styles.cardGroup}>
@@ -127,7 +131,7 @@ export default function Home() {
                                 return (
                                     <Col>
                                         <div style={{ padding: "0.5vh" }}>
-                                            <Card style={{color: "black", "alignItems": "center", "justifyContent": "center" }} >
+                                            <Card style={{ color: "black", "alignItems": "center", "justifyContent": "center" }} >
 
                                                 {(allowDelete) ? (<>
                                                     <Button variant="danger" onClick={() => deleteRecipe(recipe._id)} style={{ "float": "right" }}>x </Button>
@@ -136,7 +140,7 @@ export default function Home() {
 
 
                                                     <Card.Title>{String(recipe.name)}</Card.Title>
-                                                    <Card.Img variant="top" src={recipe.image}/>
+                                                    <Card.Img variant="top" src={recipe.image} />
                                                 </Card.Body>
 
                                             </Card>

@@ -126,11 +126,15 @@ export default function Home() {
                     <Col className={styles.col}>
                         <Button variant="success" onClick={() => (redirect("/shoppingList/create/"))} style={{}}>Create New List</Button>
                     </Col>
-                    <Col className={styles.col}>
+                    {userData.role === "admin" ?
+                        <Col>
+                            <div style={{ padding: "0.5vh" }}>
+                                <Button variant="danger" onClick={() => toggleMassDelete()} >Allow Mass Delete</Button>
+                            </div>
+                        </Col> : <></>
 
-                        <Button variant="danger" onClick={() => toggleMassDelete()} style={{}}>Allow Mass Delete</Button>
+                    }
 
-                    </Col>
                 </Row>
                 <main className={styles.main}>
 

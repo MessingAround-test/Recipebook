@@ -40,7 +40,7 @@ export default function Home() {
         return await blobToBase64(blob);
     }
 
-    
+
 
     async function generateImage(prompt) {
         if (recipeName !== undefined && recipeName !== "") {
@@ -284,35 +284,38 @@ export default function Home() {
                                 </Card.Body>
                             </Col>
                             <Col className={styles.centered_horizontal}>
-                                <h1 className={[styles.header]}>CurrentIngredients</h1>
-
-
-                                {ingreds.length > 0 ? <Col>
-
-                                    <div style={{ "background-color": "rgba(245, 245, 245, 0.0)" }}>
-                                        {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
-                                        <Card.Body>
 
 
 
-                                            {ingreds.map((ingred) => {
-                                                return (
-                                                    <Row>
-                                                        <Col >
-                                                            <a style={{ fontSize: "1rem" }}>-{ingred.Amount} x {ingred.AmountType} {ingred.Name}</a>
-                                                        </Col>
-                                                        <Col >
-                                                            <Button onClick={() => setIngreds(ingreds.filter(function (ingredItem) { return ingredItem.Name !== ingred.Name }))}><RiDeleteBin7Line></RiDeleteBin7Line></Button>
-                                                        </Col>
-                                                    </Row>
-                                                )
-                                            })}
+                                {ingreds.length > 0 ?
+                                    <><h1 className={[styles.header]}>Current Ingredients</h1>
+                                        <Col>
+
+                                            <div style={{ "background-color": "rgba(245, 245, 245, 0.0)" }}>
+                                                {/* <Card.Img variant="top" src="/edge_login_image.png" /> */}
+                                                <Card.Body>
 
 
-                                        </Card.Body>
-                                    </div>
 
-                                </Col> : <></>}
+                                                    {ingreds.map((ingred) => {
+                                                        return (
+                                                            <Row>
+                                                                <Col >
+                                                                    <a style={{ fontSize: "1rem" }}>-{ingred.Amount} x {ingred.AmountType} {ingred.Name}</a>
+                                                                </Col>
+                                                                <Col >
+                                                                    <Button onClick={() => setIngreds(ingreds.filter(function (ingredItem) { return ingredItem.Name !== ingred.Name }))}><RiDeleteBin7Line></RiDeleteBin7Line></Button>
+                                                                </Col>
+                                                            </Row>
+                                                        )
+                                                    })}
+
+
+                                                </Card.Body>
+                                            </div>
+
+                                        </Col>
+                                    </> : <></>}
 
 
                             </Col>

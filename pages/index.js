@@ -4,6 +4,7 @@ import styles from '../styles/Home.module.css'
 import { useEffect, useState } from 'react'
 import { AiFillPlusCircle } from "react-icons/ai";
 import Card from 'react-bootstrap/Card'
+import {Row, Col} from 'react-bootstrap'
 
 import { Toolbar } from './Toolbar'
 
@@ -15,7 +16,7 @@ import Button from 'react-bootstrap/Button';
 export default function Home() {
 
   // , { "name": "Game", "_id": "/game" }
-  const [pages, setPages] = useState([{ "name": "Recipes", "_id": "/recipes", "image": "cookbook.png" }, {"name": "Shopping List", "_id": "/shoppingList", "image": "shop_list_realistic.png"}, {"name": "One Off Extracts", "_id": "/oneOffExtracts", "image": "extract.png"}])
+  const [pages, setPages] = useState([{ "name": "Recipes", "_id": "/recipes", "image": "cookbook.png" }, { "name": "Shopping List", "_id": "/shoppingList", "image": "shop_list_realistic.png" }, { "name": "One Off Extracts", "_id": "/oneOffExtracts", "image": "extract.png" }])
 
   useEffect(() => {
     if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
@@ -41,7 +42,29 @@ export default function Home() {
         {/* sudo useradd -m edgeApp vgx3I5Q0cfMH0_oBw2rkry9nE */}
         <main className={styles.main}>
           <div className={styles.cardGroup}>
-            {pages.map((recipe) => {
+            <Row xl={5} lg={4} md={3} sm={2} xs={1}>
+              {pages.map((page) => {
+                return (
+                  <Col>
+                    <div style={{ padding: "0.5vh" }}>
+                      <Card style={{ color: "black", "alignItems": "center", "justifyContent": "center" }} >
+
+
+                        <Card.Body style={{ overflow: "hidden" }} onClick={() => (redirect("/" + page._id))}>
+
+
+                          <Card.Title>{String(page.name)}</Card.Title>
+                          <Card.Img variant="top" src={page.image} />
+                        </Card.Body>
+
+                      </Card>
+                    </div>
+                  </Col>
+                )
+
+              })}
+            </Row>
+            {/* {pages.map((recipe) => {
               return (
                 <div style={{ padding: "0.5vh" }}>
                   <Card style={{ maxWidth: '45vw', minWidth: "45vw", maxHeight: "45vw", minHeight: "45vw", color: "black" }} onClick={() => (redirect("/" + recipe._id))}>
@@ -54,7 +77,7 @@ export default function Home() {
                 </div>
               )
 
-            })}
+            })} */}
           </div>
           {/* <Button onClick={() => console.log(pages)}> show pages</Button> */}
         </main>
