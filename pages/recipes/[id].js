@@ -219,8 +219,8 @@ export default function Home() {
                     <main className={styles.main}>
                         <h1 className={styles.header} style={{ "backgroundColor": "white", "color": "black" }}>{recipeName}</h1>
                         <h2 className={styles.header}>Ingredients</h2>
-                        <Button>Hide Ingreds</Button>
-                        
+                        {/* <Button>Hide Ingreds</Button> */}
+
                         <Container>
                             <Row xs={1} md={2} lg={2} xl={3} xxl={4} >
 
@@ -248,35 +248,41 @@ export default function Home() {
                                         </Row>
                                         <Row>
                                             <Col xs={12} className={styles.centered} style={{ fontSize: "1.2rem", marginBottom: "0.5rem" }}>
-                                                {`${ingred.Amount} ${ingred.AmountType} - $${(ingred.unit_price * ingred.Amount).toFixed(2)}`}
+                                                {ingred.unit_price ? `${ingred.Amount} ${ingred.AmountType} - $${(ingred.unit_price * ingred.Amount).toFixed(2)}` : `${ingred.Amount} ${ingred.AmountType}`}
+
                                             </Col>
                                         </Row>
-                                        
-                                        <Row>
-                                            <Col xs={12} className={styles.centered} style={{ marginBottom: "0.5rem" }}>
-                                                <div style={{ fontSize: "1rem" }}>
-                                                    {ingred.name}
-                                                </div>
-                                            </Col>
-                                            <Col xs={12} className={styles.centered} style={{ marginBottom: "1rem" }}>
-                                                <img
-                                                    style={{
-                                                        maxWidth: "10%",
-                                                        height: "auto",
-                                                        borderRadius: "5px",
-                                                    }}
-                                                    src={`/${ingred.source ? ingred.source : "cross"}.png`}
-                                                    alt={ingred.Name}
-                                                />
-                                            </Col>
-                                        </Row>
-                                        <Row>
-                                            <Col xs={12} className={styles.centered}>
-                                                <Button variant="warning" onClick={(e) => markAsIncorrect(ingred._id, ingred.name)}>
-                                                    Wrong Product
-                                                </Button>
-                                            </Col>
-                                        </Row>
+                                        {ingred.unit_price ?
+                                            <>
+                                                <Row>
+                                                    <Col xs={12} className={styles.centered} style={{ marginBottom: "0.5rem" }}>
+                                                        <div style={{ fontSize: "1rem" }}>
+                                                            {ingred.name}
+                                                        </div>
+                                                    </Col>
+                                                    <Col xs={12} className={styles.centered} style={{ marginBottom: "1rem" }}>
+                                                        <img
+                                                            style={{
+                                                                maxWidth: "10%",
+                                                                height: "auto",
+                                                                borderRadius: "5px",
+                                                            }}
+                                                            src={`/${ingred.source ? ingred.source : "cross"}.png`}
+                                                            alt={ingred.Name}
+                                                        />
+                                                    </Col>
+                                                </Row>
+                                                <Row>
+                                                    <Col xs={12} className={styles.centered}>
+                                                        <Button variant="warning" onClick={(e) => markAsIncorrect(ingred._id, ingred.name)}>
+                                                            Wrong Product
+                                                        </Button>
+                                                    </Col>
+                                                </Row>
+                                            </>
+                                            : <></>
+                                        }
+
                                     </Col>
                                 ))}
 
