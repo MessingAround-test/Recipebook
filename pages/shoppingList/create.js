@@ -66,8 +66,8 @@ export default function Home() {
         console.log(e)
         console.log(e.value)
 
-        let imageData = await generateImage(`Fruit and vegetables ${Math.random()*100000}`)
-        e.value.image = imageData
+        // let imageData = await generateImage(`Fruit and vegetables ${Math.random()*100000}`)
+        // e.value.image = imageData
 
         let data = await (await fetch("/api/ShoppingList/" + "?EDGEtoken=" + localStorage.getItem('Token'), {
             method: 'POST',
