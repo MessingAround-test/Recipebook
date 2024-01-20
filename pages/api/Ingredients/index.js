@@ -111,24 +111,24 @@ export default async function handler(req, res) {
             console.log(decoded)
             let db_id = decoded.id
             let userData = await User.findOne({ id: db_id });
-            if (userData._id === undefined) {
-                res.status(400).json({ res: "user not found, please relog" })
-            } else if (userData.role !== "admin") {
-                res.status(400).json({ message: "Insufficient Privileges" })
-            } else {
 
-                if (id !== undefined && id !== "") {
-                    IngredData = await Ingredients.deleteOne({ _id: id }).exec()
-                } else if (search_term !== undefined && search_term !== "") {
-                    IngredData = await Ingredients.deleteMany({ search_term: search_term }).exec()
+
+            if (id !== undefined && id !== "") {
+                IngredData = await Ingredients.deleteOne({ _id: id }).exec()
+            } else if (search_term !== undefined && search_term !== "") {
+                IngredData = await Ingredients.deleteMany({ search_term: search_term }).exec()
+            } else {
+                if (userData.role !== "admin") {
+                    res.status(400).json({ message: "Insufficient Privileges" })
                 } else {
                     IngredData = await Ingredients.deleteMany({}).exec()
-                    // throw new Error("Please provide either a search term or id")
                 }
-
-                // let IngredData = await Ingredients.deleteMany({}).exec()
-                res.status(200).json({ success: true, data: IngredData, message: "Success" })
+                // throw new Error("Please provide either a search term or id")
             }
+
+            // let IngredData = await Ingredients.deleteMany({}).exec()
+            res.status(200).json({ success: true, data: IngredData, message: "Success" })
+
 
         }
         )
