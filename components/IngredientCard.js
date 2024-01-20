@@ -1,141 +1,102 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
-import PropTypes from 'prop-types';
-import styles from '../styles/Home.module.css';
-import { Button } from 'react-bootstrap';
+import Button from 'react-bootstrap/Button';
 import Modal from 'react-modal';
-import { IngredientSearchList } from './IngredientSearchList'
+import styles from '../styles/Home.module.css';
+import { IngredientSearchList } from './IngredientSearchList';
 
-function ingredientCard({ ingredient, essential }) {
-    const [ingredientData, setIngredientData] = useState(ingredient);
+function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect }) {
     const [modalIsOpen, setIsOpen] = useState(false);
-    const [selectedIngred, setSelectedIngred] = useState("")
-    // const [availableOptionalColumns, setAvailableOptionalColumns] = useState(availableColumns)
-
-
+    const [selectedIngred, setSelectedIngred] = useState("");
 
 
     return (
-        <div>
-            <Row key={ingredient.id} className={styles.Row} style={{ filter: ingredient.complete ? 'grayscale(100%)' : 'none' }} name="bought">
-                <Col className={styles.col}>
-                    <input
-                        type="checkbox"
-                        checked={ingredient.complete}
-                        value={ingredient.complete}
-                        onChange={() => handleCheckboxChange(ingred)}
-                    />
-                </Col>
-                <Col className={styles.col} name="amount">
-                    <div>
-                        {ingredient.quantity + " " + ingredient.quantity_type}
-                    </div>
-                </Col>
+        <div style={{ filter: ingredient.complete ? 'grayscale(100%)' : 'none' }}>
+            <Col
+                key={ingredient._id}
+                style={{
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    margin: '0.2rem 0',
+                    padding: '1rem',
+                    backgroundColor: '#171f34',
+                }}
+            >
+                <Row>
+                    <Col xs={2} className={styles.centered_vertical}>
+
+                        <input
+                            type="checkbox"
+                            checked={ingredient.complete}
+                            value={ingredient.complete}
+                            onChange={() => handleCheckboxChange(ingredient)}
+                            style={{ width: '2rem', height: '2rem' }}
+                        />
+
+                    </Col>
+                    <Col>
+
+                        <div onClick={() => openModal(ingredient.name)} style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
+                            {`${ingredient.name} - ${ingredient.quantity} ${ingredient.quantity_type}`}
+                        </div>
 
 
 
 
-                {
-                    ingredient.options[0] !== undefined ?
-                        <>
-                            <Col className={[styles.col, styles.curvedEdge]} style={{ background: "#1C2640", "color": "white" }} name="Search Term">
-                                <div onClick={() => openModal(ingredient.name)}>
-                                    {ingredient.complete ? <del>{ingredient.name}</del> : <div style={{ "font-size": "2em" }}>{ingredient.name}</div>}
-                                </div>
-                            </Col>
-                            {
-                                essential ? <></> : <Col className={[styles.col, styles.curvedEdge]} style={{ background: "" }} name="Product">{ingredient.options[0].name}</Col>
-                            }
-                            {
-                                essential ? <></>
-                                    :
-                                    <Col className={styles.col} name="Source">
-                                        <a onClick={ingredient.source ? () => console.log("nothing") : () => alert("hi there")}>
-                                            <img style={{ maxWidth: "40%", borderRadius: "15%" }} src={`/${ingredient.options[0].source ? `${ingredient.options[0].source}.png` : "broken.svg"}`} />
-                                        </a>
+                        {
+                            ingredient.category ? <></> : <></>
+                        }
+                        {ingredient.loading ? <div className={styles.lds_circle}><div></div></div> : <></>}
+                        {ingredient.options[0] !== undefined && (
+                            <>
+                                <Row>
+
+                                    <Col xs={12} className={styles.centered} style={{ marginBottom: '1rem' }}>
+                                        <img
+                                            style={{
+                                                maxWidth: '10%',
+                                                height: 'auto',
+                                                borderRadius: '5px',
+                                            }}
+                                            src={`/${ingredient.options[0].source ? ingredient.options[0].source : 'cross'}.png`}
+                                            alt={ingredient.options[0].name}
+                                        />
                                     </Col>
-                            }
-                            {ingredient.openFilter ? <></> : <></>}
-
-                            <Col className={styles.col} name="category">{(ingredient.category)}
-                                {
-                                    ingredient.category ? <img src={`/categories/${ingredient.category.replace(/\s/g, '')}.png`} style={{ "maxWidth": "40%" }} /> : <></>
-                                }
-                            </Col>
-                            {
-                                essential ? <></>
-                                    :
-                                    <Col className={styles.col}>{(ingredient.options[0].unit_price * ingredient.quantity).toFixed(2)}</Col>
-                            }
-
-
-
-                            {/* <Col className={styles.col}><Button variant="warning" onClick={(e) => markAsIncorrect(ingredient.options[0]._id, ingredient.name)}>x</Button></Col>
-
-                            <Col className={styles.col}><Button variant="danger" onClick={(e) => handleDeleteItem(e, ingredient._id)}>x</Button></Col>
- */}
-
-
-                        </>
-                        :
-                        <>
-                            <Col className={[styles.col, styles.curvedEdge]} style={{ background: "#1C2640", "color": "white" }}>
-                                <div onClick={() => openModal(ingredient.name)}>
-                                    {ingredient.complete ? <del className={styles.bigtext}>{ingredient.name}</del> : <div style={{ "font-size": "2em" }}>{ingredient.name}</div>}
-                                </div>
-                            </Col>
-                            {
-                                essential ? <></> : <Col className={[styles.col, styles.curvedEdge]} style={{ background: "" }} name="Product">{ingredient.name}</Col>
-                            }
-                            {/* Change the below to an <object> instead of <img> to get animation working */}
-                            {
-                                essential ?
-                                    <></>
-                                    :
-                                    ingredient.loading ? <Col className={styles.col}><div className={styles.lds_circle}><div></div></div></Col>
-                                        :
-                                        <Col className={styles.col}>
-                                            <a onClick={ingredient.source ? () => console.log("nothing") : () => alert("hi there")}>
-                                                <img style={{ maxWidth: "40%", borderRadius: "15%" }} src={`/cross.png`} />
-                                                {/* <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingredient.source)) ? ingredient.source : "cross"}.png`} /> */}
-                                            </a>
-                                        </Col>
-                            }
-
-                            <Col className={styles.col} name={"category"}>{(ingredient.category)}
-                                {
-                                    ingredient.category ? <img src={`/categories/${ingredient.category.replace(/\s/g, '')}.png`} style={{ "maxWidth": "40%" }} /> : <></>
-                                }
-                            </Col>
-                            {
-                                essential ? <></> : <Col className={styles.col}></Col>
-                            }
-
-
-                            <Col className={styles.col}><Button variant="warning" onClick={(e) => markAsIncorrect(ingredient.options[0]._id, ingredient.name)}>x</Button></Col>
-
-
-                            <Col className={styles.col}><Button variant="danger" onClick={(e) => handleDeleteItem(e, ingredient._id)}>x</Button></Col>
-
-
-
-
-
-
-                        </>
-                }
-
-
-
-
-
-            </Row>
+                                    <Col xs={12} className={styles.centered} style={{ marginBottom: '0.5rem' }}>
+                                        <div style={{ fontSize: '1rem' }}>{ingredient.options[0] ? ingredient.options[0].name : ""}</div>
+                                    </Col>
+                                </Row>
+                                <Row>
+                                    <Col xs={12} className={styles.centered} style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
+                                        {ingredient.options[0] !== undefined ? `$${(ingredient.options[0].unit_price * ingredient.quantity).toFixed(2)}` : `${ingredient.quantity} ${ingredient.quantity_type}`}
+                                        {/* `${ingredient.options[0].price} ${ingredient.options[0].quantity_type} - $${(ingredient.options[0].unit_price * ingredient.quantity).toFixed(2)}` : `${ingredient.quantity} ${ingredient.quantity_type}` */}
+                                    </Col>
+                                </Row>
+                                <Row>
+                                    <Col xs={12} className={styles.centered}>
+                                        <Button variant="warning" onClick={(e) => markAsIncorrect(ingredient.options[0]._id, ingredient.name)}>
+                                            Wrong Product
+                                        </Button>
+                                    </Col>
+                                </Row>
+                            </>
+                        )}
+                    </Col>
+                </Row>
+            </Col>
         </div>
-
     );
 }
 
+IngredientCard.propTypes = {
+    ingredient: PropTypes.object.isRequired,
+    essential: PropTypes.bool.isRequired,
+    openModal: PropTypes.func.isRequired,
+    handleCheckboxChange: PropTypes.func.isRequired,
+    markAsIncorrect: PropTypes.func.isRequired,
+};
 
-
-export default ingredientCard;
+export default IngredientCard;

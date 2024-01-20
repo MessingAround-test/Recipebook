@@ -19,7 +19,6 @@ import Modal from 'react-modal';
 import { set } from 'mongoose'
 import AddShoppingItem from '../../components/AddShoppingItem'
 import NewIngredientTable from '../../components/NewIngredientTable'
-import IngredientTable from '../../components/IngredientTable'
 
 
 export default function Home() {
@@ -302,7 +301,7 @@ export default function Home() {
 
 
                         <Row>
-                            <IngredientTable reload={() => reloadAllIngredients()} ingredients={matchedListIngreds.map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} modifyColumnName={modifyColumnOptions[modifyColumnIndex % modifyColumnOptions.length]}></IngredientTable>
+                            <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={matchedListIngreds.map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} modifyColumnName={modifyColumnOptions[modifyColumnIndex % modifyColumnOptions.length]}></NewIngredientTable>
                         </Row>
 
                         {/* <Button onClick={() => console.log(matchedListIngreds)} >

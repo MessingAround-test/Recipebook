@@ -20,7 +20,7 @@
   height: 4vw;
   margin: 8px;
   border-radius: 50%;
-  background:#171f34;
+  background:#39435c;
   animation: lds_circle 2.4s cubic-bezier(0, 0.2, 0.8, 1) infinite;
 }
 
@@ -117,6 +117,21 @@
   margin-right: 0%; */
   flex-grow: 1;
 }
+
+.centered_vertical {
+  /* text-align: center;
+  align-items: center; */
+  justify-content: center;
+  /* display: grid; */
+  /* width: 100vw; */
+  /* This margin auto is what makes the huge gap */
+  margin: auto;
+  /* margin-left: 0%;
+  margin-right: 0%; */
+  /* flex-grow: 1; */
+}
+
+
 
 .cardGroup{
   display: -webkit-flex;

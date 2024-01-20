@@ -148,7 +148,7 @@ export default function Home() {
                                             {(allowDelete) ? (<>
                                                 <Button variant="danger" onClick={() => deleteRecipe(recipe._id)} style={{ "float": "right" }}>x </Button>
                                             </>) : (<></>)}
-                                            <Card.Body style={{ overflow: "hidden" }} onClick={() => (redirect("/shoppingList/" + recipe._id))}>
+                                            <Card.Body style={{ overflow: "hidden" }} onClick={() => (redirect("/newShoppingList/" + recipe._id))}>
                                                 <Card.Title>{String(recipe.name)}</Card.Title>
                                                 <Card.Img variant="top" src={recipe.image} />
                                             </Card.Body>

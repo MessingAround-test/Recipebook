@@ -108,7 +108,6 @@ export default async function handler(req, res) {
             let IngredData;
             await dbConnect()
 
-            console.log(decoded)
             let db_id = decoded.id
             let userData = await User.findOne({ id: db_id });
 
@@ -119,7 +118,8 @@ export default async function handler(req, res) {
                 IngredData = await Ingredients.deleteMany({ search_term: search_term }).exec()
             } else {
                 if (userData.role !== "admin") {
-                    res.status(400).json({ message: "Insufficient Privileges" })
+                    IngredData = {message: "Insufficient Privileges"}
+                    
                 } else {
                     IngredData = await Ingredients.deleteMany({}).exec()
                 }
