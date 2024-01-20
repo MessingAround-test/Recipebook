@@ -273,7 +273,7 @@ export default function Home() {
                                 {
                                     (createNewIngredOpen ?
                                         <>
-                                            <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(false)}>Hide</Button>
+                                            <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(false)} className={"w-100 h-100"}>Hide</Button>
 
                                         </>
                                         :
@@ -298,7 +298,7 @@ export default function Home() {
 
                         <br></br>
 
-
+                        {/* <h1>List 1</h1> */}
 
                         <Row>
                             <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={matchedListIngreds.map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} modifyColumnName={modifyColumnOptions[modifyColumnIndex % modifyColumnOptions.length]}></NewIngredientTable>

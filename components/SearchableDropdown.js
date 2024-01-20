@@ -9,8 +9,13 @@ function SearchableDropdown({ options, placeholder, onChange, name, value, onCom
   const dropdownRef = useRef(null);
 
   const filterOptions = () => {
-    return options.filter((option) =>
-      option.toLowerCase().includes(inputValue.toLowerCase())
+    return options.filter((option) => {
+      console.log(inputValue)
+      if (inputValue.name=== undefined){
+        return option.toLowerCase().includes(inputValue.toLowerCase())
+      }
+    }
+      
     );
   };
 

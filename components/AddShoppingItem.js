@@ -55,7 +55,7 @@ function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false 
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        console.log(e)
+        
         console.log(formData)
         console.log(name)
         console.log(value)
@@ -84,7 +84,7 @@ function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false 
             if (response.success) {
                 const values = response.data
 
-                let category = values.category[0] ? { "name": values.category[0].value } : formData.category
+                let category = values.category[0] ?  values.category[0].value  : formData.category
                 let quantity = values.quantity[0] ? values.quantity[0].value : formData.quantity
                 let quantity_type = values.quantity_type[0] ? values.quantity_type[0].value : formData.quantity_type
 
@@ -157,7 +157,7 @@ function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false 
                     <Form.Control name="note" id="ingredNote" type="text" placeholder="(optional note)" onChange={handleChange} value={formData.note} />
                 </Form.Group>
                 {hideCategories ? <></> : <><Form.Group className="mb-3" id="formCategory">
-                    <SearchableImageDropdown options={categories} placeholder={"Category"} onChange={handleChange} name={"category"} value={formData.category}></SearchableImageDropdown>
+                    <SearchableDropdown options={categories.map((cat)=>cat.name)} placeholder={"Category"} onChange={handleChange} name={"category"} value={formData.category}></SearchableDropdown>
                 </Form.Group></>}
 
 

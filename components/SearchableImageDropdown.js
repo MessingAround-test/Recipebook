@@ -4,7 +4,7 @@ import styles from '../styles/SearchableDropdown.module.css'
 
 function SearchableImageDropdown({ options, placeholder, onChange,name,value}) {
   const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState(value);
   const [selectedOption, setSelectedOption] = useState(null);
   const dropdownRef = useRef(null);
 
@@ -14,7 +14,7 @@ function SearchableImageDropdown({ options, placeholder, onChange,name,value}) {
         if (inputValue=== undefined){
           return false
         }
-        console.log(inputValue)
+        
         if (!inputValue.name){
             return (option.name.toLowerCase().includes(""))    
         } else {
@@ -27,9 +27,7 @@ function SearchableImageDropdown({ options, placeholder, onChange,name,value}) {
   };
 
   const toggleDropdown = () => {
-    // setIsOpen(!isOpen);
     setIsOpen(true);
-    console.log(isOpen)
   };
 
   const handleInputChange = (e) => {
@@ -62,6 +60,8 @@ function SearchableImageDropdown({ options, placeholder, onChange,name,value}) {
 
   useEffect(() => {
     // Use both click and touch events to close the dropdown
+    console.log(`VALUE = ${value}`)
+    
     setInputValue(value || '');
     document.addEventListener('click', closeDropdown);
     document.addEventListener('touchstart', closeDropdown);

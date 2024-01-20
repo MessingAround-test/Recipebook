@@ -75,6 +75,7 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                                         {/* `${ingredient.options[0].price} ${ingredient.options[0].quantity_type} - $${(ingredient.options[0].unit_price * ingredient.quantity).toFixed(2)}` : `${ingredient.quantity} ${ingredient.quantity_type}` */}
                                     </Col>
                                 </Row>
+                                {ingredient.category}
                                 <Row>
                                     <Col xs={12} className={styles.centered}>
                                         <Button variant="warning" onClick={(e) => markAsIncorrect(ingredient.options[0]._id, ingredient.name)}>
