@@ -11,26 +11,25 @@ function ingredientCard({ ingredient, essential }) {
     const [ingredientData, setIngredientData] = useState(ingredient);
     const [modalIsOpen, setIsOpen] = useState(false);
     const [selectedIngred, setSelectedIngred] = useState("")
-    const [availableOptionalColumns, setAvailableOptionalColumns] = useState(availableColumns)
-    
+    // const [availableOptionalColumns, setAvailableOptionalColumns] = useState(availableColumns)
+
 
 
 
     return (
         <div>
-HI AGAIN
-            <Row key={index} className={styles.Row} style={{ filter: ingred.complete ? 'grayscale(100%)' : 'none' }} name="bought">
+            <Row key={ingredient.id} className={styles.Row} style={{ filter: ingredient.complete ? 'grayscale(100%)' : 'none' }} name="bought">
                 <Col className={styles.col}>
                     <input
                         type="checkbox"
-                        checked={ingred.complete}
-                        value={ingred.complete}
+                        checked={ingredient.complete}
+                        value={ingredient.complete}
                         onChange={() => handleCheckboxChange(ingred)}
                     />
                 </Col>
                 <Col className={styles.col} name="amount">
                     <div>
-                        {ingred.quantity + " " + ingred.quantity_type}
+                        {ingredient.quantity + " " + ingredient.quantity_type}
                     </div>
                 </Col>
 
@@ -38,97 +37,87 @@ HI AGAIN
 
 
                 {
-                    ingred.options[0] !== undefined ?
+                    ingredient.options[0] !== undefined ?
                         <>
                             <Col className={[styles.col, styles.curvedEdge]} style={{ background: "#1C2640", "color": "white" }} name="Search Term">
-                                <div onClick={() => openModal(ingred.name)}>
-                                    {ingred.complete ? <del>{ingred.name}</del> : <div style={{ "font-size": "2em" }}>{ingred.name}</div>}
+                                <div onClick={() => openModal(ingredient.name)}>
+                                    {ingredient.complete ? <del>{ingredient.name}</del> : <div style={{ "font-size": "2em" }}>{ingredient.name}</div>}
                                 </div>
                             </Col>
                             {
-                                essential ? <></> : <Col className={[styles.col, styles.curvedEdge]} style={{ background: "" }} name="Product">{ingred.options[0].name}</Col>
+                                essential ? <></> : <Col className={[styles.col, styles.curvedEdge]} style={{ background: "" }} name="Product">{ingredient.options[0].name}</Col>
                             }
                             {
                                 essential ? <></>
                                     :
                                     <Col className={styles.col} name="Source">
-                                        <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
-                                            <img style={{ maxWidth: "40%", borderRadius: "15%" }} src={`/${ingred.options[0].source ? `${ingred.options[0].source}.png` : "broken.svg"}`} />
+                                        <a onClick={ingredient.source ? () => console.log("nothing") : () => alert("hi there")}>
+                                            <img style={{ maxWidth: "40%", borderRadius: "15%" }} src={`/${ingredient.options[0].source ? `${ingredient.options[0].source}.png` : "broken.svg"}`} />
                                         </a>
                                     </Col>
                             }
-                            {ingred.openFilter ? <></> : <></>}
+                            {ingredient.openFilter ? <></> : <></>}
 
-                            <Col className={styles.col} name="category">{(ingred.category)}
+                            <Col className={styles.col} name="category">{(ingredient.category)}
                                 {
-                                    ingred.category ? <img src={`/categories/${ingred.category.replace(/\s/g, '')}.png`} style={{ "maxWidth": "40%" }} /> : <></>
+                                    ingredient.category ? <img src={`/categories/${ingredient.category.replace(/\s/g, '')}.png`} style={{ "maxWidth": "40%" }} /> : <></>
                                 }
                             </Col>
                             {
                                 essential ? <></>
                                     :
-                                    <Col className={styles.col}>{(ingred.options[0].unit_price * ingred.quantity).toFixed(2)}</Col>
-                            }
-                            {/* <Col className={styles.col}>{ingred.options[0].unit_price}</Col> */}
-
-                            {
-                                modifyColumnName === "Incorrect" ?
-                                    <Col className={styles.col}><Button variant="warning" onClick={(e) => markAsIncorrect(ingred.options[0]._id, ingred.name)}>x</Button></Col>
-                                    :
-                                    modifyColumnName === "Remove" ?
-                                        <Col className={styles.col}><Button variant="danger" onClick={(e) => handleDeleteItem(e, ingred._id)}>x</Button></Col>
-                                        :
-                                        <></>
-
+                                    <Col className={styles.col}>{(ingredient.options[0].unit_price * ingredient.quantity).toFixed(2)}</Col>
                             }
 
-                            {/*  */}
+
+
+                            {/* <Col className={styles.col}><Button variant="warning" onClick={(e) => markAsIncorrect(ingredient.options[0]._id, ingredient.name)}>x</Button></Col>
+
+                            <Col className={styles.col}><Button variant="danger" onClick={(e) => handleDeleteItem(e, ingredient._id)}>x</Button></Col>
+ */}
+
 
                         </>
                         :
                         <>
                             <Col className={[styles.col, styles.curvedEdge]} style={{ background: "#1C2640", "color": "white" }}>
-                                <div onClick={() => openModal(ingred.name)}>
-                                    {ingred.complete ? <del className={styles.bigtext}>{ingred.name}</del> : <div style={{ "font-size": "2em" }}>{ingred.name}</div>}
+                                <div onClick={() => openModal(ingredient.name)}>
+                                    {ingredient.complete ? <del className={styles.bigtext}>{ingredient.name}</del> : <div style={{ "font-size": "2em" }}>{ingredient.name}</div>}
                                 </div>
                             </Col>
                             {
-                                essential ? <></> : <Col className={[styles.col, styles.curvedEdge]} style={{ background: "" }} name="Product">{ingred.name}</Col>
+                                essential ? <></> : <Col className={[styles.col, styles.curvedEdge]} style={{ background: "" }} name="Product">{ingredient.name}</Col>
                             }
                             {/* Change the below to an <object> instead of <img> to get animation working */}
                             {
                                 essential ?
                                     <></>
                                     :
-                                    ingred.loading ? <Col className={styles.col}><div className={styles.lds_circle}><div></div></div></Col>
+                                    ingredient.loading ? <Col className={styles.col}><div className={styles.lds_circle}><div></div></div></Col>
                                         :
                                         <Col className={styles.col}>
-                                            <a onClick={ingred.source ? () => console.log("nothing") : () => alert("hi there")}>
+                                            <a onClick={ingredient.source ? () => console.log("nothing") : () => alert("hi there")}>
                                                 <img style={{ maxWidth: "40%", borderRadius: "15%" }} src={`/cross.png`} />
-                                                {/* <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingred.source)) ? ingred.source : "cross"}.png`} /> */}
+                                                {/* <img style={{ "maxWidth": "32px", "borderRadius": "5px" }} src={`/${((ingredient.source)) ? ingredient.source : "cross"}.png`} /> */}
                                             </a>
                                         </Col>
                             }
 
-                            <Col className={styles.col} name={"category"}>{(ingred.category)}
+                            <Col className={styles.col} name={"category"}>{(ingredient.category)}
                                 {
-                                    ingred.category ? <img src={`/categories/${ingred.category.replace(/\s/g, '')}.png`} style={{ "maxWidth": "40%" }} /> : <></>
+                                    ingredient.category ? <img src={`/categories/${ingredient.category.replace(/\s/g, '')}.png`} style={{ "maxWidth": "40%" }} /> : <></>
                                 }
                             </Col>
                             {
                                 essential ? <></> : <Col className={styles.col}></Col>
                             }
 
-                            {
-                                modifyColumnName === "Incorrect" ?
-                                    <Col className={styles.col}><Button variant="warning" onClick={(e) => markAsIncorrect(ingred.options[0]._id, ingred.name)}>x</Button></Col>
-                                    :
-                                    modifyColumnName === "Remove" ?
-                                        <Col className={styles.col}><Button variant="danger" onClick={(e) => handleDeleteItem(e, ingred._id)}>x</Button></Col>
-                                        :
-                                        <></>
 
-                            }
+                            <Col className={styles.col}><Button variant="warning" onClick={(e) => markAsIncorrect(ingredient.options[0]._id, ingredient.name)}>x</Button></Col>
+
+
+                            <Col className={styles.col}><Button variant="danger" onClick={(e) => handleDeleteItem(e, ingredient._id)}>x</Button></Col>
+
 
 
 
@@ -138,10 +127,7 @@ HI AGAIN
                 }
 
 
-                {/* {ingred.loading ?
-            
-            :<Col className={styles.col}></Col>
-            } */}
+
 
 
             </Row>
