@@ -7,7 +7,7 @@ import Modal from 'react-modal';
 import styles from '../styles/Home.module.css';
 import { IngredientSearchList } from './IngredientSearchList';
 
-function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect }) {
+function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters }) {
     const [modalIsOpen, setIsOpen] = useState(false);
     const [selectedIngred, setSelectedIngred] = useState("");
 
@@ -53,7 +53,7 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
 
                         {ingredient.loading ? <div className={styles.lds_circle}><div></div></div> : <></>}
                         {/* {ingredient.options[0] !== undefined && ( */}
-                        {ingredient.asdasdasd !== undefined && (
+                        {ingredient.options[0] !== undefined && filters.includes("supplier") && (
                             <>
                                 <Row>
 

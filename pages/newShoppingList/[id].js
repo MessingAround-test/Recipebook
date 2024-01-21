@@ -401,9 +401,9 @@ export default function Home() {
 
                         </Row>
                         {
-                            filters.includes("supplier") ? <Row>
+                            filters.includes("supplier") ? <Container>
                                 <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
-                            </Row> : <></>
+                            </Container> : <></>
                         }
 
 
@@ -422,7 +422,7 @@ export default function Home() {
                                     <Row>
                                         <h3>{group}</h3>
                                         {/* <CategoryList categoryString={group}></CategoryList> */}
-                                        <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} modifyColumnName={modifyColumnOptions[modifyColumnIndex % modifyColumnOptions.length]}></NewIngredientTable>
+                                        <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} modifyColumnName={modifyColumnOptions[modifyColumnIndex % modifyColumnOptions.length]} filters={filters}></NewIngredientTable>
                                     </Row>
                                 </>
                             ))

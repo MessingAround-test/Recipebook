@@ -8,7 +8,7 @@ import Modal from 'react-modal';
 import { IngredientSearchList } from './IngredientSearchList'
 import IngredientCard from './IngredientCard'
 
-function IngredientTable({ ingredients, handleCheckboxChange, reload, availableColumns, handleDeleteItem, modifyColumnName, sortFunction }) {
+function IngredientTable({ ingredients, handleCheckboxChange, reload, availableColumns, handleDeleteItem, modifyColumnName, sortFunction, filters }) {
     const [ingredientData, setIngredientData] = useState(ingredients);
     const [modalIsOpen, setIsOpen] = useState(false);
     const [selectedIngred, setSelectedIngred] = useState("")
@@ -171,7 +171,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
 
                 {ingredientData.map((ingred, index) => (
                     <>
-                        <IngredientCard ingredient={ingred} openModal={openModal} handleCheckboxChange={handleCheckboxChange} markAsIncorrect={markAsIncorrect}></IngredientCard>
+                        <IngredientCard ingredient={ingred} openModal={openModal} handleCheckboxChange={handleCheckboxChange} markAsIncorrect={markAsIncorrect} filters={filters}></IngredientCard>
                     </>
 
                 ))}
