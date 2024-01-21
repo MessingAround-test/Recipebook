@@ -27,8 +27,6 @@ function ImageList({ images, onImageChange }) {
     borderRadius: '10px', // Set border radius to 10px
     background: '#1C2640', // Change the background color
     padding: '5px',
-    width: '40vw', // Set the width to 20vw
-    
     overflow: 'hidden',
   };
 

@@ -19,6 +19,8 @@ import Modal from 'react-modal';
 import { set } from 'mongoose'
 import AddShoppingItem from '../../components/AddShoppingItem'
 import NewIngredientTable from '../../components/NewIngredientTable'
+import ToggleList from '../../components/ToggleList'
+import CategoryList from '../../components/CategoryImage'
 
 
 export default function Home() {
@@ -32,6 +34,9 @@ export default function Home() {
     const [createNewIngredOpen, setCreateNewIngredOpen] = useState(false)
     const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA", "Aldi", "Coles"])
     const modifyColumnOptions = ["", "Incorrect", "Remove"]
+
+    const [filters, setFilters] = useState(["complete"])
+    const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type"]
     const [modifyColumnIndex, setModifyColumnIndex] = useState(0)
 
     useEffect(() => {
@@ -90,6 +95,22 @@ export default function Home() {
         }
     }, [listIngreds])
 
+    function determinePriceCategory(price) {
+        if (price === undefined) {
+            return ""
+        }
+
+        if (price < 5) {
+            return "Cheap"
+        }
+        if (price < 10) {
+            return "Reasonable"
+        }
+
+        return "Expensive"
+
+    }
+
     async function getGroceryStoreProducts(ingredient) {
         let data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=1&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${localStorage.getItem('Token')}`)).json()
         if (data.loadedSource) {
@@ -102,6 +123,13 @@ export default function Home() {
         if (data.success === true && data.res.length > 0) {
             // updatedIngredient = { ...ingredient, ...data.res[0] }
             updatedIngredient.options = data.res
+
+            updatedIngredient.supplier = data.res.length > 0 ? data.res[0].source : ""
+            updatedIngredient.price_category = determinePriceCategory(data.res[0].price)
+
+        } else {
+            updatedIngredient.supplier = ""
+            updatedIngredient.price_category = ""
         }
         return updatedIngredient
     }
@@ -243,6 +271,90 @@ export default function Home() {
 
     }
 
+    function generateKey(obj, keys) {
+        return keys.map(key => `${key}=${obj[key]}`).join('|');
+    }
+
+    function processEmptyKeyObjects(emptyKeyObjects, groupedLists) {
+        emptyKeyObjects.forEach(obj => {
+            const emptyKey = "";
+            const emptyGroupKey = generateKey(obj, [emptyKey]);
+
+            if (!groupedLists[emptyGroupKey]) {
+                groupedLists[emptyGroupKey] = [];
+            }
+
+            groupedLists[emptyGroupKey].push(obj);
+        });
+    }
+
+    function processRegularObjects(regularObjects, keysToGroupBy, groupedLists) {
+        regularObjects.forEach(obj => {
+            const key = generateKey(obj, keysToGroupBy.filter(key => key !== "complete"));
+
+            if (key === undefined) {
+                return;
+            }
+
+            if (!groupedLists[key]) {
+                groupedLists[key] = [];
+            }
+
+            groupedLists[key].push(obj);
+        });
+    }
+
+    function processCompleteObjects(completeObjects, groupedLists) {
+        completeObjects.forEach(obj => {
+            const completeKey = "complete";
+            const completeGroupKey = generateKey(obj, [completeKey]);
+
+            if (!groupedLists[completeGroupKey]) {
+                groupedLists[completeGroupKey] = [];
+            }
+
+            groupedLists[completeGroupKey].push(obj);
+        });
+    }
+
+    function groupByKeys(data, keysToGroupBy) {
+        const groupedLists = {
+            "": [] // Initialize an empty key for empty values
+        };
+
+        // Separate the objects into three arrays based on key conditions
+        const emptyKeyObjects = [];
+        const completeObjects = [];
+        const regularObjects = [];
+
+        // Iterate through each JSON object
+        data.forEach(obj => {
+            // Check for an empty key and add to the corresponding array
+            if (generateKey(obj, keysToGroupBy) === "") {
+                emptyKeyObjects.push(obj);
+            }
+            // Check for "complete" key and add to the corresponding array
+            else if (obj.complete === true) {
+                completeObjects.push(obj);
+            }
+            // Otherwise, add to the regular array
+            else {
+                regularObjects.push(obj);
+            }
+        });
+
+        // Process empty key objects first
+        processEmptyKeyObjects(emptyKeyObjects, groupedLists);
+
+        // Process regular objects next
+        processRegularObjects(regularObjects, keysToGroupBy, groupedLists);
+
+        // Process complete objects last
+        processCompleteObjects(completeObjects, groupedLists);
+
+
+        return groupedLists;
+    }
 
 
 
@@ -262,13 +374,13 @@ export default function Home() {
 
                     <div className={styles.centered}>
 
+
                         <Row className={styles.Row}>
+
+
+
+
                             <Col>
-                                <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
-                            </Col>
-
-
-                            <Col Col xs={12}>
 
                                 {
                                     (createNewIngredOpen ?
@@ -283,26 +395,45 @@ export default function Home() {
                                     )
                                 }
                             </Col>
-                            
-
+                            <Col>
+                                Group By
+                                <ToggleList inputList={availableFilters} onUpdateList={(currentState) => setFilters(currentState)} />
+                            </Col>
 
                         </Row>
-
+                        {
+                            filters.includes("supplier") ? <Row>
+                                <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
+                            </Row> : <></>
+                        }
 
 
                         {
-                            (createNewIngredOpen ?<><h2>Add New Ingredient</h2><AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getRecipeDetails}></AddShoppingItem></>: <></>)
+                            (createNewIngredOpen ? <><h2>Add New Ingredient</h2><AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getRecipeDetails}></AddShoppingItem></> : <></>)
                         }
 
 
 
                         <br></br>
+                        {/* <Button onClick={() => groupByKeys(matchedListIngreds, filters)}></Button> */}
+                        {
+                            Object.keys(groupByKeys(matchedListIngreds, filters)).map((group) => (
+                                <>
+
+                                    <Row>
+                                        <h1>{group}</h1>
+                                        {/* <CategoryList categoryString={group}></CategoryList> */}
+                                        <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} modifyColumnName={modifyColumnOptions[modifyColumnIndex % modifyColumnOptions.length]}></NewIngredientTable>
+                                    </Row>
+                                </>
+                            ))
+                        }
 
                         {/* <h1>List 1</h1> */}
 
-                        <Row>
+                        {/* <Row>
                             <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={matchedListIngreds.map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} modifyColumnName={modifyColumnOptions[modifyColumnIndex % modifyColumnOptions.length]}></NewIngredientTable>
-                        </Row>
+                        </Row> */}
 
                         {/* <Button onClick={() => console.log(matchedListIngreds)} >
                             see state

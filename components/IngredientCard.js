@@ -27,7 +27,6 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
             >
                 <Row>
                     <Col xs={2} className={styles.centered_vertical}>
-
                         <input
                             type="checkbox"
                             checked={ingredient.complete}
@@ -46,11 +45,15 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
 
 
 
-                        {
-                            ingredient.category ? <></> : <></>
-                        }
+                        {/* <Col>
+                            {
+                                ingredient.category ? <img src={`/categories/${ingredient.category.replace(/\s/g, '')}.png`} style={{ "maxWidth": "40%" }} /> : <></>
+                            }
+                        </Col>  */}
+
                         {ingredient.loading ? <div className={styles.lds_circle}><div></div></div> : <></>}
-                        {ingredient.options[0] !== undefined && (
+                        {/* {ingredient.options[0] !== undefined && ( */}
+                        {ingredient.asdasdasd !== undefined && (
                             <>
                                 <Row>
 
@@ -75,7 +78,7 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                                         {/* `${ingredient.options[0].price} ${ingredient.options[0].quantity_type} - $${(ingredient.options[0].unit_price * ingredient.quantity).toFixed(2)}` : `${ingredient.quantity} ${ingredient.quantity_type}` */}
                                     </Col>
                                 </Row>
-                                {ingredient.category}
+
                                 <Row>
                                     <Col xs={12} className={styles.centered}>
                                         <Button variant="warning" onClick={(e) => markAsIncorrect(ingredient.options[0]._id, ingredient.name)}>
@@ -87,8 +90,8 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                         )}
                     </Col>
                 </Row>
-            </Col>
-        </div>
+            </Col >
+        </div >
     );
 }
 
