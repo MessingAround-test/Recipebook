@@ -374,32 +374,33 @@ export default function Home() {
 
                     <div className={styles.centered}>
 
-
+                    
                         <Row className={styles.Row}>
+                            
 
 
 
+                                <Col>
 
-                            <Col>
+                                    {
+                                        (createNewIngredOpen ?
+                                            <>
+                                                <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(false)} className={"w-100 h-100"}>Hide</Button>
 
-                                {
-                                    (createNewIngredOpen ?
-                                        <>
-                                            <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(false)} className={"w-100 h-100"}>Hide</Button>
-
-                                        </>
-                                        :
-                                        <>
-                                            <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(true)} className={"w-100 h-100"}>Add</Button>
-                                        </>
-                                    )
-                                }
-                            </Col>
-                            <Col>
-                                <ToggleList inputList={availableFilters} onUpdateList={(currentState) => setFilters(currentState)} value={filters} text={"Group By"}/>
-                            </Col>
-
+                                            </>
+                                            :
+                                            <>
+                                                <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(true)} className={"w-100 h-100"}>Add</Button>
+                                            </>
+                                        )
+                                    }
+                                </Col>
+                                <Col>
+                                    <ToggleList inputList={availableFilters} onUpdateList={(currentState) => setFilters(currentState)} value={filters} text={"Group By"} />
+                                </Col>
+                            
                         </Row>
+                        
                         {
                             filters.includes("supplier") ? <Container>
                                 <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>

@@ -85,7 +85,7 @@ export default async function handler(req, res) {
                         quantity: req.body.quantity,
                         shoppingListId: req.body.shoppingListId,
                         ingredientId: req.body.ingredientId,
-                        category: req.body.category.name,
+                        category: req.body.category,
                     });
                     console.log(await response);
 
