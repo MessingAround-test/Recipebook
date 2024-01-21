@@ -104,6 +104,11 @@ function IngredientNutrientGraph({ ingredients }) {
 
     }, [ingredients]);
 
+    
+    useEffect(() => {
+
+    }, [filteredIngredients]);
+    
 
 
     return (

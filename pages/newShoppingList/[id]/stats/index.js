@@ -52,26 +52,28 @@ export default function Home() {
             options: [],
             loading: true,
         }));
-        setMatchedListIngreds(updatedListIngreds);
 
-        // Use a loop to update the state for each ingredient individually
-        for (let i = 0; i < updatedListIngreds.length; i++) {
-            try {
-                const updatedIngredient = await getGroceryStoreProducts(
-                    updatedListIngreds[i]
-                );
+        // Coommented out the loading of grocery store
+        // setMatchedListIngreds(updatedListIngreds);
 
-                // Update the state for the specific ingredient
-                updatedListIngreds[i] = {
-                    ...updatedIngredient,
-                    loading: false,
-                };
-                setMatchedListIngreds([...updatedListIngreds]);
-            } catch (error) {
-                // Handle errors if needed
-                console.error(`Error updating ingredient: ${error.message}`);
-            }
-        }
+        // // Use a loop to update the state for each ingredient individually
+        // for (let i = 0; i < updatedListIngreds.length; i++) {
+        //     try {
+        //         const updatedIngredient = await getGroceryStoreProducts(
+        //             updatedListIngreds[i]
+        //         );
+
+        //         // Update the state for the specific ingredient
+        //         updatedListIngreds[i] = {
+        //             ...updatedIngredient,
+        //             loading: false,
+        //         };
+        //         setMatchedListIngreds([...updatedListIngreds]);
+        //     } catch (error) {
+        //         // Handle errors if needed
+        //         console.error(`Error updating ingredient: ${error.message}`);
+        //     }
+        // }
     };
 
 
@@ -267,7 +269,7 @@ export default function Home() {
                 <main className={styles.main}>
 
                     <div className={styles.centered}>
-                        <IngredientNutrientGraph ingredients={convertIngredientToOldFormat(matchedListIngreds)}></IngredientNutrientGraph>
+                        <IngredientNutrientGraph ingredients={convertIngredientToOldFormat(listIngreds)}></IngredientNutrientGraph>
                     </div>
 
 
