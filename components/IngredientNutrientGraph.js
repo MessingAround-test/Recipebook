@@ -8,11 +8,22 @@ function IngredientNutrientGraph({ ingredients }) {
     const chartRef = useRef(null);
     const [ingredientNutrient, setIngredientNutrient] = useState({});
     const [selectedIngredient, setSelectedIngredient] = useState('');
-    const filteredIngredients = selectedIngredient ? ingredients.filter(ingredient => ingredient.Name === selectedIngredient) : ingredients;
+    let filteredIngredients = selectedIngredient ? ingredients.filter(ingredient => ingredient.Name === selectedIngredient) : ingredients;
 
-    const handleDropdownChange = (event) => {
+    const handleDropdownChange = async (event) => {
         setSelectedIngredient(event.target.value);
+        let filteredIngredientsLocal = event.target.value ? ingredients.filter(ingredient => ingredient.Name === event.target.value) : ingredients;
+
+        resetNutrientCount()
+        Object.keys(filteredIngredientsLocal).forEach(element => {
+            let ingredient = filteredIngredientsLocal[element]
+            let name = ingredient.Name ? ingredient.Name : ingredient.name
+            let quantity = ingredient.Amount ? ingredient.Amount : ingredient.quantity_type
+            let quantity_type = ingredient.AmountType ? ingredient.AmountType : ingredient.quantity_type
+            getNutrientData(name, quantity, quantity_type);
+        });
     };
+
     const [totalNutrient, setTotalNutrient] = useState({
         protein: 0,   // in grams (for muscle repair and maintenance)
         fat: 0,       // in grams (for energy and hormonal balance)
@@ -56,12 +67,12 @@ function IngredientNutrientGraph({ ingredients }) {
                     [ingredientName]: data.data[0],
                 }));
 
-                let nutrientInfo = data.data[0].nutrition_info
-                let protein = nutrientInfo.protein
-                let fat = nutrientInfo.fat
-                let carbohydrates = nutrientInfo.carbohydrates
-                let fiber = nutrientInfo.fiber
-                let iron = nutrientInfo.iron
+                let nutrientInfo = data.data[0].nutrition_info;
+                let protein = parseFloat(nutrientInfo.protein);  // Parse as float
+                let fat = parseFloat(nutrientInfo.fat);
+                let carbohydrates = parseFloat(nutrientInfo.carbohydrates);
+                let fiber = parseFloat(nutrientInfo.fiber);
+                let iron = parseFloat(nutrientInfo.iron);
                 // these are amount / 100 becuase the API returns in 100 g always
                 setTotalNutrient(prevState => ({
                     ...prevState,
@@ -70,11 +81,11 @@ function IngredientNutrientGraph({ ingredients }) {
                     carbohydrates: prevState.carbohydrates + carbohydrates,
                     fiber: prevState.fiber + fiber,
                     iron: prevState.iron + iron,
-                }))
+                }));
             } else {
                 setIngredientNutrient(prevState => ({
                     ...prevState,
-                    [ingredientName]: data.data,
+                    [ingredientName]: {},
                 }));
             }
 
@@ -83,8 +94,7 @@ function IngredientNutrientGraph({ ingredients }) {
         }
     }
 
-    useEffect(() => {
-        // Reset it...
+    function resetNutrientCount() {
         setTotalNutrient({
             protein: 0,   // in grams (for muscle repair and maintenance)
             fat: 0,       // in grams (for energy and hormonal balance)
@@ -92,6 +102,11 @@ function IngredientNutrientGraph({ ingredients }) {
             fiber: 0,     // in grams (for digestive health)
             iron: 0,         // in milligrams (vital for oxygen transport in the blood));
         })
+    }
+
+    useEffect(() => {
+        // Reset it...
+        resetNutrientCount()
         Object.keys(filteredIngredients).forEach(element => {
             let ingredient = filteredIngredients[element]
             let name = ingredient.Name ? ingredient.Name : ingredient.name
@@ -104,30 +119,35 @@ function IngredientNutrientGraph({ ingredients }) {
 
     }, [ingredients]);
 
-    
+
     useEffect(() => {
 
     }, [filteredIngredients]);
-    
+
 
 
     return (
         <div>
             <div>
 
-                {/* <select
+                <select
                     id="ingredientDropdown"
                     value={selectedIngredient}
                     onChange={handleDropdownChange}
                 >
                     <option value="">Select an ingredient to filter graph</option>
 
-                    {ingredients.map((ingredient, index) => (
-                        <option key={index} value={ingredient.Name}>
-                            {ingredient.Name}
-                        </option>
+                    {Object.keys(ingredientNutrient).map((ingredient, index) => (
+                        Object.keys(ingredientNutrient[ingredient]).length > 0  ?
+                            (
+                                <option key={index} value={ingredient}>
+                                    {ingredient}
+                                </option>
+                                
+                            ) : null
                     ))}
-                </select> */}
+
+                </select>
 
 
             </div>

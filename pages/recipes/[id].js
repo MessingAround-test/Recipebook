@@ -34,11 +34,6 @@ export default function Home() {
     const [selectedIngred, setSelectedIngred] = useState("")
 
     const [loading, setLoading] = useState(false)
-    const [selectedIngredient, setSelectedIngredient] = useState('');
-    const filteredIngredients = selectedIngredient ? ingreds.filter(ingredient => ingredient.Name === selectedIngredient) : ingreds;
-    const handleDropdownChange = (event) => {
-        setSelectedIngredient(event.target.value);
-    };
 
     async function openModal(ingredName) {
         setIsOpen(true);
@@ -327,21 +322,8 @@ export default function Home() {
                             }
 
                             <h2 className={styles.header}>Nutrients</h2>
-                            <select
-                                id="ingredientDropdown"
-                                value={selectedIngredient}
-                                onChange={handleDropdownChange}
-                            >
-                                <option value="">Select an ingredient to filter graph</option>
-
-                                {ingreds.map((ingredient, index) => (
-                                    <option key={index} value={ingredient.Name}>
-                                        {ingredient.Name}
-                                    </option>
-                                ))}
-                            </select>
-
-                            <IngredientNutrientGraph ingredients={filteredIngredients}></IngredientNutrientGraph>
+                            
+                            <IngredientNutrientGraph ingredients={ingreds}></IngredientNutrientGraph>
                             <Row>
 
                                 <Col className={styles.Col}>
