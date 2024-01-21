@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Dropdown, Form } from 'react-bootstrap';
 
-const ToggleList = ({ inputList, onUpdateList, value }) => {
+const ToggleList = ({ inputList, onUpdateList, value, text= "Select Option" }) => {
   const [activeItems, setActiveItems] = useState(value);
   const checkboxRefs = useRef({});
 
@@ -32,7 +32,7 @@ const ToggleList = ({ inputList, onUpdateList, value }) => {
       
       <Dropdown>
         <Dropdown.Toggle variant="success" id="dropdown-basic">
-          Select Items
+          {text}
         </Dropdown.Toggle>
         <Dropdown.Menu>
           {inputList.map((item) => (

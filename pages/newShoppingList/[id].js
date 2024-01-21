@@ -396,8 +396,7 @@ export default function Home() {
                                 }
                             </Col>
                             <Col>
-                                Group By
-                                <ToggleList inputList={availableFilters} onUpdateList={(currentState) => setFilters(currentState)} value={filters}/>
+                                <ToggleList inputList={availableFilters} onUpdateList={(currentState) => setFilters(currentState)} value={filters} text={"Group By"}/>
                             </Col>
 
                         </Row>
