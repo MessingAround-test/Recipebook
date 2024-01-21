@@ -93,8 +93,11 @@ function IngredientNutrientGraph({ ingredients }) {
             iron: 0,         // in milligrams (vital for oxygen transport in the blood));
         })
         Object.keys(filteredIngredients).forEach(element => {
-            console.log(filteredIngredients[element])
-            getNutrientData(filteredIngredients[element].Name, filteredIngredients[element].Amount, filteredIngredients[element].AmountType);
+            let ingredient = filteredIngredients[element]
+            let name = ingredient.Name ? ingredient.Name : ingredient.name
+            let quantity = ingredient.Amount ? ingredient.Amount : ingredient.quantity_type
+            let quantity_type = ingredient.AmountType ? ingredient.AmountType : ingredient.quantity_type
+            getNutrientData(name, quantity, quantity_type);
         });
 
 
@@ -106,7 +109,7 @@ function IngredientNutrientGraph({ ingredients }) {
     return (
         <div>
             <div>
-                
+
                 {/* <select
                     id="ingredientDropdown"
                     value={selectedIngredient}
@@ -121,12 +124,12 @@ function IngredientNutrientGraph({ ingredients }) {
                     ))}
                 </select> */}
 
-                
+
             </div>
 
             {Object.keys(dailyNutrientRequirements).map((nutrientKey) => {
                 return (
-                    <Row className={styles.Row} style={{"font-size": "1rem"}}>
+                    <Row className={styles.Row} style={{ "font-size": "1rem" }}>
                         {nutrientKey} : {totalNutrient[nutrientKey].toFixed(2)} / {dailyNutrientRequirements[nutrientKey]}
                     </Row>
                 )
@@ -141,7 +144,7 @@ function IngredientNutrientGraph({ ingredients }) {
             })}
 
 
-            <Bar data={data} options={{"color": "white"}} />
+            <Bar data={data} options={{ "color": "white" }} />
 
             {/* {JSON.stringify(ingredientNutrient)} */}
 

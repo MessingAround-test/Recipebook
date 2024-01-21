@@ -1,26 +1,26 @@
 
 import Head from 'next/head'
-import styles from '../../styles/Home.module.css'
+import styles from '../../../styles/Home.module.css'
 
 import Image from 'next/image'
 
-import { Toolbar } from '../Toolbar'
+import { Toolbar } from '../../Toolbar'
 import { useEffect, useState } from 'react'
 import Button from 'react-bootstrap/Button';
 import Router from 'next/router'
 import Card from 'react-bootstrap/Card'
 import { useRouter } from 'next/router'
 import Container from 'react-bootstrap/Container'
-import ImageList from '../../components/ImageList'
+import ImageList from '../../../components/ImageList'
 
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Modal from 'react-modal';
 import { set } from 'mongoose'
-import AddShoppingItem from '../../components/AddShoppingItem'
-import NewIngredientTable from '../../components/NewIngredientTable'
-import ToggleList from '../../components/ToggleList'
-import CategoryList from '../../components/CategoryImage'
+import AddShoppingItem from '../../../components/AddShoppingItem'
+import NewIngredientTable from '../../../components/NewIngredientTable'
+import ToggleList from '../../../components/ToggleList'
+import CategoryList from '../../../components/CategoryImage'
 
 
 export default function Home() {
@@ -87,6 +87,9 @@ export default function Home() {
         }
     };
 
+    const redirect = async function (page) {
+        Router.push(page)
+    };
 
 
     useEffect(() => {
@@ -374,33 +377,33 @@ export default function Home() {
 
                     <div className={styles.centered}>
 
-                    
+
                         <Row className={styles.Row}>
-                            
 
 
 
-                                <Col>
 
-                                    {
-                                        (createNewIngredOpen ?
-                                            <>
-                                                <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(false)} className={"w-100 h-100"}>Hide</Button>
+                            <Col>
 
-                                            </>
-                                            :
-                                            <>
-                                                <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(true)} className={"w-100 h-100"}>Add</Button>
-                                            </>
-                                        )
-                                    }
-                                </Col>
-                                <Col>
-                                    <ToggleList inputList={availableFilters} onUpdateList={(currentState) => setFilters(currentState)} value={filters} text={"Group By"} />
-                                </Col>
-                            
+                                {
+                                    (createNewIngredOpen ?
+                                        <>
+                                            <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(false)} className={"w-100 h-100"}>Hide</Button>
+
+                                        </>
+                                        :
+                                        <>
+                                            <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(true)} className={"w-100 h-100"}>Add</Button>
+                                        </>
+                                    )
+                                }
+                            </Col>
+                            <Col>
+                                <ToggleList inputList={availableFilters} onUpdateList={(currentState) => setFilters(currentState)} value={filters} text={"Group By"} />
+                            </Col>
+
                         </Row>
-                        
+
                         {
                             filters.includes("supplier") ? <Container>
                                 <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
@@ -435,10 +438,9 @@ export default function Home() {
                             <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={matchedListIngreds.map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} modifyColumnName={modifyColumnOptions[modifyColumnIndex % modifyColumnOptions.length]}></NewIngredientTable>
                         </Row> */}
 
-                        {/* <Button onClick={() => console.log(matchedListIngreds)} >
-                            see state
-                        </Button> */}
-
+                        <Button onClick={() => redirect(`${id}/stats`)} >
+                            see stats
+                        </Button>
                         <p>ID = {id}</p>
 
                     </div>
