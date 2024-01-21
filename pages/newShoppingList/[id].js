@@ -397,7 +397,7 @@ export default function Home() {
                             </Col>
                             <Col>
                                 Group By
-                                <ToggleList inputList={availableFilters} onUpdateList={(currentState) => setFilters(currentState)} />
+                                <ToggleList inputList={availableFilters} onUpdateList={(currentState) => setFilters(currentState)} value={filters}/>
                             </Col>
 
                         </Row>
@@ -421,7 +421,7 @@ export default function Home() {
                                 <>
 
                                     <Row>
-                                        <h1>{group}</h1>
+                                        <h3>{group}</h3>
                                         {/* <CategoryList categoryString={group}></CategoryList> */}
                                         <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} modifyColumnName={modifyColumnOptions[modifyColumnIndex % modifyColumnOptions.length]}></NewIngredientTable>
                                     </Row>

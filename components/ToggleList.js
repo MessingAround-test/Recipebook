@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Dropdown, Form } from 'react-bootstrap';
 
-const ToggleList = ({ inputList, onUpdateList }) => {
-  const [activeItems, setActiveItems] = useState([]);
+const ToggleList = ({ inputList, onUpdateList, value }) => {
+  const [activeItems, setActiveItems] = useState(value);
   const checkboxRefs = useRef({});
 
   const toggleItem = (item) => {
