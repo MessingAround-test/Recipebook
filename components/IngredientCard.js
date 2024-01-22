@@ -6,6 +6,7 @@ import Button from 'react-bootstrap/Button';
 import Modal from 'react-modal';
 import styles from '../styles/Home.module.css';
 import { IngredientSearchList } from './IngredientSearchList';
+import { ProgressBar } from 'react-bootstrap';
 
 function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters }) {
     const [modalIsOpen, setIsOpen] = useState(false);
@@ -76,6 +77,11 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                                     <Col xs={12} className={styles.centered} style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
                                         {ingredient.options[0] !== undefined ? `$${(ingredient.options[0].total_price).toFixed(2)}` : `${ingredient.quantity} ${ingredient.quantity_type}`}
                                         {/* `${ingredient.options[0].price} ${ingredient.options[0].quantity_type} - $${(ingredient.options[0].unit_price * ingredient.quantity).toFixed(2)}` : `${ingredient.quantity} ${ingredient.quantity_type}` */}
+                                    </Col>
+                                </Row>
+                                <Row>
+                                    <Col xs={12} className={styles.centered} style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
+                                        {ingredient.options[0] !== undefined ? ingredient.options[0].match_efficiency !== 100 ? <ProgressBar now={ingredient.options[0].match_efficiency} label={`${ingredient.options[0].match_efficiency}% efficiency`} variant="success"/> : <></> : <></>}
                                     </Col>
                                 </Row>
 
