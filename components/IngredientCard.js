@@ -74,7 +74,7 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                                 </Row>
                                 <Row>
                                     <Col xs={12} className={styles.centered} style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
-                                        {ingredient.options[0] !== undefined ? `$${(ingredient.options[0].unit_price * ingredient.quantity).toFixed(2)}` : `${ingredient.quantity} ${ingredient.quantity_type}`}
+                                        {ingredient.options[0] !== undefined ? `$${(ingredient.options[0].total_price).toFixed(2)}` : `${ingredient.quantity} ${ingredient.quantity_type}`}
                                         {/* `${ingredient.options[0].price} ${ingredient.options[0].quantity_type} - $${(ingredient.options[0].unit_price * ingredient.quantity).toFixed(2)}` : `${ingredient.quantity} ${ingredient.quantity_type}` */}
                                     </Col>
                                 </Row>

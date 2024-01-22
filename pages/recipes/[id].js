@@ -57,11 +57,11 @@ export default function Home() {
         const newItems = [...ingredients];
         console.log(newItems)
         for (let ingredients in newItems) {
-            let data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&returnN=1&EDGEtoken=${localStorage.getItem('Token')}`)).json()
+            let data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&quantity=${newItems[ingredients].Amount}&returnN=1&EDGEtoken=${localStorage.getItem('Token')}`)).json()
             console.log(data)
             if (data.loadedSource) {
                 // We extract again if the source was loaded... our response is returning some weird stuff... 
-                data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&returnN=1&extractLocation=DB&EDGEtoken=${localStorage.getItem('Token')}`)).json()
+                data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&quantity=${newItems[ingredients].Amount}&returnN=1&extractLocation=DB&EDGEtoken=${localStorage.getItem('Token')}`)).json()
             }
             if (data.success === true && data.res.length > 0) {
                 newItems[ingredients] = { ...newItems[ingredients], ...data.res[0] }

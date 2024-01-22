@@ -33,7 +33,9 @@ export default async function handler(req, res) {
             "optionSort": req.query.sort,
             "returnN": req.query.returnN,
             "quantity_unit": qType,
+            "quantity": req.query.quantity
         }
+        
 
         if (search_term === "" || search_term === undefined) {
             let IngredData = await Ingredients.find({}).exec()
@@ -93,6 +95,7 @@ export default async function handler(req, res) {
                 }
                 // Re-search at the end and get results
                 // allIngredData = await Ingredients.find(search_query).exec()
+                // qType, quantity
                 let IngredData = filter(allIngredData, filterDetails)
                 return res.status(200).send({ success: true, res: IngredData, "loadedSource": true })
             } else {

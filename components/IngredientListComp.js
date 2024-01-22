@@ -165,7 +165,6 @@ function IngredientListComp({ ingredients, handleCheckboxChange, reload, availab
 
   return (
     <div>
-      HI THERE............
 
       <Row className={[styles.Row]} style={{ "backgroundColor": "grey" }}>
 
