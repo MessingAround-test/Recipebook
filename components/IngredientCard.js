@@ -81,7 +81,7 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                                 </Row>
                                 <Row>
                                     <Col xs={12} className={styles.centered} style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
-                                        {ingredient.options[0] !== undefined ? ingredient.options[0].match_efficiency !== 100 ? <ProgressBar now={ingredient.options[0].match_efficiency} label={`${ingredient.options[0].match_efficiency}% efficiency`} variant="success"/> : <></> : <></>}
+                                        {ingredient.options[0] !== undefined ? ingredient.options[0].match_efficiency < 100 ? <ProgressBar now={ingredient.options[0].match_efficiency} label={`${ingredient.options[0].match_efficiency}% efficiency`} variant="success"/> : <></> : <></>}
                                     </Col>
                                 </Row>
 
