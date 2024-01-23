@@ -10,7 +10,6 @@ import { convertMetricReading } from '../../../../lib/conversion'
 
 
 export default async function handler(req, res) {
-
     function getIndicesOf(searchStr, str, caseSensitive) {
         const regexp = new RegExp(str, "g");
         const array = [...searchStr.matchAll(regexp)];
@@ -38,12 +37,10 @@ export default async function handler(req, res) {
                         })
                         let filteredDataArray = []
                         let source = "Panetta"
-
-                        let startIndex = newIngredData.data.indexOf("/let pysOptions =/g")
                         // let finishIndex = newIngredData.data.indexOf("/* ]]> */")
-
-                        let matchedIngredData = getIndicesOf(String(newIngredData.data), "let pysOptions =.*", true)
-                        let json_data = JSON.parse(String(matchedIngredData).replace("let pysOptions =", "").replace(";", ""))
+                        
+                        let matchedIngredData = getIndicesOf(String(newIngredData.data), "pysOptions =.*", true)
+                        let json_data = JSON.parse(String(matchedIngredData).replace("pysOptions =", "").replace(";", ""))
 
                         json_data = json_data.staticEvents.ga.woo_view_item_list_search
 

@@ -43,8 +43,8 @@ export default async function handler(req, res) {
         } else {
             // let IngredData = []
             let search_query = { search_term: search_term }
-            // 
-            let companies = ["WW", "IGA", "PanettaGG", "Aldi", "Coles"]
+            // , "Coles" disabled for now... 
+            let companies = ["WW", "IGA", "Panetta", "Aldi"]
             const supplierParam = req.query.supplier;
 
             if (supplierParam === undefined) {
@@ -73,7 +73,7 @@ export default async function handler(req, res) {
             if (IngredData.length == 0) {
                 let allIngredData = []
                 // Reset companies so we get from all"Aldi",
-                // companies = ["WW", "IGA", "PanettaGG", "Aldi"]
+                // companies = ["WW", "IGA", "Panetta", "Aldi"]
 
 
 
