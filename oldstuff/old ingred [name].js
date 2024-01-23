@@ -36,7 +36,7 @@ export default async function handler(req, res) {
             let IngredData = await Ingredients.find(search_query).exec()
             if (IngredData.length == 0) {
                 let allIngredData = []
-                let companies = ["WW", "IGA", "PanettaGG"]
+                let companies = ["WW", "IGA", "Panetta"]
                 if (supplier !== undefined) {
                     companies = [supplier]
                 }

@@ -6,12 +6,13 @@ import Button from 'react-bootstrap/Button';
 import Modal from 'react-modal';
 import styles from '../styles/Home.module.css';
 import { IngredientSearchList } from './IngredientSearchList';
-import { ProgressBar } from 'react-bootstrap';
+import { Card, ProgressBar } from 'react-bootstrap';
+import CardListModal from './CardListModal';
+import IngredientCardProduct from './IngredientCardProduct';
 
-function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters }) {
+function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion }) {
     const [modalIsOpen, setIsOpen] = useState(false);
     const [selectedIngred, setSelectedIngred] = useState("");
-
 
     return (
         <div style={{ filter: ingredient.complete ? 'grayscale(100%)' : 'none' }}>
@@ -39,7 +40,7 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                     </Col>
                     <Col>
 
-                        <div onClick={() => openModal(ingredient.name)} style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
+                        <div onClick={() => openModal(ingredient.name)} style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>
                             {`${ingredient.name} - ${ingredient.quantity} ${ingredient.quantity_type}`}
                         </div>
 
@@ -56,42 +57,9 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                         {/* {ingredient.options[0] !== undefined && ( */}
                         {ingredient.options[0] !== undefined && filters.includes("supplier") && (
                             <>
-                                <Row>
-
-                                    <Col xs={12} className={styles.centered} style={{ marginBottom: '1rem' }}>
-                                        <img
-                                            style={{
-                                                maxWidth: '10%',
-                                                height: 'auto',
-                                                borderRadius: '5px',
-                                            }}
-                                            src={`/${ingredient.options[0].source ? ingredient.options[0].source : 'cross'}.png`}
-                                            alt={ingredient.options[0].name}
-                                        />
-                                    </Col>
-                                    <Col xs={12} className={styles.centered} style={{ marginBottom: '0.5rem' }}>
-                                        <div style={{ fontSize: '1rem' }}>{ingredient.options[0] ? ingredient.options[0].name : ""}</div>
-                                    </Col>
-                                </Row>
-                                <Row>
-                                    <Col xs={12} className={styles.centered} style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
-                                        {ingredient.options[0] !== undefined ? `$${(ingredient.options[0].total_price).toFixed(2)}` : `${ingredient.quantity} ${ingredient.quantity_type}`}
-                                        {/* `${ingredient.options[0].price} ${ingredient.options[0].quantity_type} - $${(ingredient.options[0].unit_price * ingredient.quantity).toFixed(2)}` : `${ingredient.quantity} ${ingredient.quantity_type}` */}
-                                    </Col>
-                                </Row>
-                                <Row>
-                                    <Col xs={12} className={styles.centered} style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
-                                        {ingredient.options[0] !== undefined ? ingredient.options[0].match_efficiency < 100 ? <ProgressBar now={ingredient.options[0].match_efficiency} label={`${ingredient.options[0].match_efficiency}% efficiency`} variant="success"/> : <></> : <></>}
-                                    </Col>
-                                </Row>
-
-                                <Row>
-                                    <Col xs={12} className={styles.centered}>
-                                        <Button variant="warning" onClick={(e) => markAsIncorrect(ingredient.options[0]._id, ingredient.name)}>
-                                            Wrong Product
-                                        </Button>
-                                    </Col>
-                                </Row>
+                                <IngredientCardProduct ingredient={ingredient.options[0]}></IngredientCardProduct>
+                                <Button onClick={()=>setIsOpen(true)} variant={'warning'}>Other Options</Button>
+                                <CardListModal filters={filters} ingredient={ingredient} show={modalIsOpen} onHide={()=>setIsOpen(false) }></CardListModal>
                             </>
                         )}
                     </Col>

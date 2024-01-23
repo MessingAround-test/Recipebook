@@ -21,7 +21,7 @@ import AddShoppingItem from '../../../components/AddShoppingItem'
 import NewIngredientTable from '../../../components/NewIngredientTable'
 import ToggleList from '../../../components/ToggleList'
 import CategoryList from '../../../components/CategoryImage'
-
+import {getGroceryStoreProducts} from '../../../lib/commonAPIs'
 
 export default function Home() {
     const [userData, setUserData] = useState({})
@@ -71,7 +71,10 @@ export default function Home() {
         for (let i = 0; i < updatedListIngreds.length; i++) {
             try {
                 const updatedIngredient = await getGroceryStoreProducts(
-                    updatedListIngreds[i]
+                    updatedListIngreds[i],
+                    1,
+                    enabledSuppliers,
+                    localStorage.getItem('Token')
                 );
 
                 // Update the state for the specific ingredient
@@ -98,44 +101,9 @@ export default function Home() {
         }
     }, [listIngreds])
 
-    function determinePriceCategory(price) {
-        if (price === undefined) {
-            return ""
-        }
+    
 
-        if (price < 5) {
-            return "Cheap"
-        }
-        if (price < 10) {
-            return "Reasonable"
-        }
-
-        return "Expensive"
-
-    }
-
-    async function getGroceryStoreProducts(ingredient) {
-        let data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=1&quantity=${ingredient.quantity}&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${localStorage.getItem('Token')}`)).json()
-        if (data.loadedSource) {
-            //     // We extract again if the source was loaded... our response is returning some weird stuff... 
-            data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=1&quantity=${ingredient.quantity}&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${localStorage.getItem('Token')}`)).json()
-        }
-
-        let updatedIngredient = ingredient
-        updatedIngredient.options = []
-        if (data.success === true && data.res.length > 0) {
-            // updatedIngredient = { ...ingredient, ...data.res[0] }
-            updatedIngredient.options = data.res
-
-            updatedIngredient.supplier = data.res.length > 0 ? data.res[0].source : ""
-            updatedIngredient.price_category = determinePriceCategory(data.res[0].price)
-
-        } else {
-            updatedIngredient.supplier = ""
-            updatedIngredient.price_category = ""
-        }
-        return updatedIngredient
-    }
+    
 
 
     async function getShoppingListItems() {
@@ -405,9 +373,11 @@ export default function Home() {
                         </Row>
 
                         {
-                            filters.includes("supplier") ? <Container>
-                                <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
-                            </Container> : <></>
+                            filters.includes("supplier") ? <Row>
+                                <Col>
+                                    <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
+
+                                </Col></Row> : <></>
                         }
 
 
@@ -426,7 +396,7 @@ export default function Home() {
                                     <Row>
                                         <h3>{group}</h3>
                                         {/* <CategoryList categoryString={group}></CategoryList> */}
-                                        <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} modifyColumnName={modifyColumnOptions[modifyColumnIndex % modifyColumnOptions.length]} filters={filters}></NewIngredientTable>
+                                        <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} modifyColumnName={modifyColumnOptions[modifyColumnIndex % modifyColumnOptions.length]} filters={filters} ></NewIngredientTable>
                                     </Row>
                                 </>
                             ))
