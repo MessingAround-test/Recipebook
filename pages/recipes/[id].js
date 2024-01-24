@@ -220,7 +220,7 @@ export default function Home() {
 
                         <Container>
                             <Row xs={1} md={2} lg={2} xl={3} xxl={4} >
-                            <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(ingreds, filters)[group].map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} filters={filters} ></NewIngredientTable>
+                            {/* <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].map((ingred) => { return ingred })} modifyColumnName={modifyColumnOptions[modifyColumnIndex % modifyColumnOptions.length]} filters={filters} ></NewIngredientTable> */}
 
                                 {loading ? <>loading...<object type="image/svg+xml" data="/loading.svg">svg-animation</object></> : <></>}
                                 {ingreds.map((ingred) => (
