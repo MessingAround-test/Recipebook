@@ -1,17 +1,15 @@
 import Head from 'next/head'
 import Image from 'next/image'
-import styles from '../styles/Home.module.css'
+import styles from '../../styles/Home.module.css'
 
-import Container from 'react-bootstrap/Container'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 
-import { Toolbar } from './Toolbar'
+import { Toolbar } from '../Toolbar'
 import { useEffect, useState } from 'react'
-import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Router from 'next/router'
-import Card from 'react-bootstrap/Card'
+import ImageCard from '../../components/ImageCard'
 
 
 
@@ -83,6 +81,7 @@ export default function Home() {
         setAllowDelete(!allowDelete)
     }
 
+    const cardHeight = '15rem'
 
 
     return (
@@ -98,25 +97,25 @@ export default function Home() {
 
 
                 <main className={styles.main}>
-                    <Container>
-                        <Row>
+
+                    <Row>
+                        <Col>
+                            <div style={{ padding: "0.5vh" }}>
+                                <Button variant="success" onClick={() => redirect("/createRecipe")}>Add recipe</Button>
+                            </div>
+                        </Col>
+                        {userData.role === "admin" ?
                             <Col>
                                 <div style={{ padding: "0.5vh" }}>
-                                    <Button variant="success" onClick={() => redirect("/createRecipe")} >Add recipe</Button>
+                                    <Button variant="danger" onClick={() => toggleMassDelete()} >Allow Mass Delete</Button>
                                 </div>
-                            </Col>
-                            {userData.role === "admin" ?
-                                <Col>
-                                    <div style={{ padding: "0.5vh" }}>
-                                        <Button variant="danger" onClick={() => toggleMassDelete()} >Allow Mass Delete</Button>
-                                    </div>
-                                </Col> : <></>
+                            </Col> : <></>
 
-                            }
+                        }
 
-                        </Row>
-                    </Container>
-                    <div className={styles.cardGroup}>
+                    </Row>
+
+                    <div>
                         {/* <div style={{ padding: "0.5vh" }}>
                             <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black", "borderStyle": "solid", "borderColor": "green", "borderWidth": "0.5rem", "alignItems": "center", "justifyContent": "center" }} onClick={() => (redirect("/createRecipe"))}>
                                 <Card.Body style={{ overflow: "hidden" }}>
@@ -129,25 +128,14 @@ export default function Home() {
                         <Row xl={5} lg={4} md={3} sm={2} xs={1}>
                             {recipes.map((recipe) => {
                                 return (
-                                    <Col>
-                                        <div style={{ padding: "0.5vh" }}>
-                                            <Card style={{ color: "black", "alignItems": "center", "justifyContent": "center" }} >
-
-                                                {(allowDelete) ? (<>
-                                                    <Button variant="danger" onClick={() => deleteRecipe(recipe._id)} style={{ "float": "right" }}>x </Button>
-                                                </>) : (<></>)}
-                                                <Card.Body style={{ overflow: "hidden" }} onClick={() => (redirect("/recipes/" + recipe._id))}>
-
-
-                                                    <Card.Title>{String(recipe.name)}</Card.Title>
-                                                    <Card.Img variant="top" src={recipe.image} />
-                                                </Card.Body>
-
-                                            </Card>
-                                        </div>
+                                    <Col key={recipe._id}>
+                                        <ImageCard recipe={recipe}
+                                            allowDelete={allowDelete}
+                                            onDelete={deleteRecipe}
+                                            onRedirect={redirect}
+                                        ></ImageCard>
                                     </Col>
                                 )
-
                             })}
                         </Row>
                     </div>

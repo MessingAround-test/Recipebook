@@ -12,6 +12,8 @@ import Router from 'next/router'
 import Card from 'react-bootstrap/Card'
 import GenericForm from '../../components/GenericForm'
 import { Col, Row } from 'react-bootstrap'
+import ImageCard from '../../components/ImageCard'
+import { ShoppingListComponent } from '../../components/ShoppingListComponent'; // You need to adjust the import path based on your project structure
 
 
 
@@ -142,19 +144,13 @@ export default function Home() {
                         {recipes.map((recipe) => {
                             return (
                                 <Col>
-                                    <div style={{ padding: "0.5vh" }}>
-                                        <Card style={{ color: "black", "alignItems": "center", "justifyContent": "center" }} >
+                                    <ImageCard recipe={recipe}
+                                        allowDelete={allowDelete}
+                                        onDelete={deleteRecipe}
+                                        onRedirect={redirect}
+                                        cardHeight={'5rem'}
+                                    ></ImageCard>
 
-                                            {(allowDelete) ? (<>
-                                                <Button variant="danger" onClick={() => deleteRecipe(recipe._id)} style={{ "float": "right" }}>x </Button>
-                                            </>) : (<></>)}
-                                            <Card.Body style={{ overflow: "hidden" }} onClick={() => (redirect("/newShoppingList/" + recipe._id))}>
-                                                <Card.Title>{String(recipe.name)}</Card.Title>
-                                                <Card.Img variant="top" src={recipe.image} />
-                                            </Card.Body>
-
-                                        </Card>
-                                    </div>
                                 </Col>
                             )
 

@@ -17,6 +17,8 @@ import Col from 'react-bootstrap/Col'
 import Modal from 'react-modal';
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
 import { set } from 'mongoose'
+import NewIngredientTable from '../../components/NewIngredientTable'
+import { groupByKeys } from '../../lib/grouping'
 
 
 export default function Home() {
@@ -218,7 +220,7 @@ export default function Home() {
 
                         <Container>
                             <Row xs={1} md={2} lg={2} xl={3} xxl={4} >
-
+                            <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(ingreds, filters)[group].map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} filters={filters} ></NewIngredientTable>
 
                                 {loading ? <>loading...<object type="image/svg+xml" data="/loading.svg">svg-animation</object></> : <></>}
                                 {ingreds.map((ingred) => (

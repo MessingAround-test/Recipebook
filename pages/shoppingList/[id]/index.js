@@ -1,26 +1,28 @@
 
 import Head from 'next/head'
-import styles from '../../styles/Home.module.css'
+import styles from '../../../styles/Home.module.css'
 
 import Image from 'next/image'
 
-import { Toolbar } from '../Toolbar'
+import { Toolbar } from '../../Toolbar'
 import { useEffect, useState } from 'react'
 import Button from 'react-bootstrap/Button';
 import Router from 'next/router'
 import Card from 'react-bootstrap/Card'
 import { useRouter } from 'next/router'
 import Container from 'react-bootstrap/Container'
-import ImageList from '../../components/ImageList'
+import ImageList from '../../../components/ImageList'
 
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Modal from 'react-modal';
 import { set } from 'mongoose'
-import AddShoppingItem from '../../components/AddShoppingItem'
-import NewIngredientTable from '../../components/NewIngredientTable'
-import IngredientTable from '../../components/IngredientTable'
-
+import AddShoppingItem from '../../../components/AddShoppingItem'
+import NewIngredientTable from '../../../components/NewIngredientTable'
+import ToggleList from '../../../components/ToggleList'
+import CategoryList from '../../../components/CategoryImage'
+import {getGroceryStoreProducts} from '../../../lib/commonAPIs'
+import { groupByKeys } from '../../../lib/grouping'
 
 export default function Home() {
     const [userData, setUserData] = useState({})
@@ -33,6 +35,9 @@ export default function Home() {
     const [createNewIngredOpen, setCreateNewIngredOpen] = useState(false)
     const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA", "Aldi", "Coles"])
     const modifyColumnOptions = ["", "Incorrect", "Remove"]
+
+    const [filters, setFilters] = useState(["complete"])
+    const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type"]
     const [modifyColumnIndex, setModifyColumnIndex] = useState(0)
 
     useEffect(() => {
@@ -67,7 +72,10 @@ export default function Home() {
         for (let i = 0; i < updatedListIngreds.length; i++) {
             try {
                 const updatedIngredient = await getGroceryStoreProducts(
-                    updatedListIngreds[i]
+                    updatedListIngreds[i],
+                    1,
+                    enabledSuppliers,
+                    localStorage.getItem('Token')
                 );
 
                 // Update the state for the specific ingredient
@@ -83,6 +91,9 @@ export default function Home() {
         }
     };
 
+    const redirect = async function (page) {
+        Router.push(page)
+    };
 
 
     useEffect(() => {
@@ -91,21 +102,9 @@ export default function Home() {
         }
     }, [listIngreds])
 
-    async function getGroceryStoreProducts(ingredient) {
-        let data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=1&quantity=${ingredient.quantity}&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${localStorage.getItem('Token')}`)).json()
-        if (data.loadedSource) {
-            //     // We extract again if the source was loaded... our response is returning some weird stuff... 
-            data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=1&quantity=${ingredient.quantity}&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${localStorage.getItem('Token')}`)).json()
-        }
+    
 
-        let updatedIngredient = ingredient
-        updatedIngredient.options = []
-        if (data.success === true && data.res.length > 0) {
-            // updatedIngredient = { ...ingredient, ...data.res[0] }
-            updatedIngredient.options = data.res
-        }
-        return updatedIngredient
-    }
+    
 
 
     async function getShoppingListItems() {
@@ -239,11 +238,6 @@ export default function Home() {
         reloadAllIngredients();
     }, [enabledSuppliers]);
 
-    async function handleActiveSupplierChange(inputObject) {
-        await updateSupplierFromInputObject(inputObject)
-
-    }
-
 
 
 
@@ -263,18 +257,18 @@ export default function Home() {
 
                     <div className={styles.centered}>
 
+
                         <Row className={styles.Row}>
+
+
+
+
                             <Col>
-                                <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
-                            </Col>
-
-
-                            <Col Col xs={12}>
 
                                 {
                                     (createNewIngredOpen ?
                                         <>
-                                            <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(false)}>Hide</Button>
+                                            <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(false)} className={"w-100 h-100"}>Hide</Button>
 
                                         </>
                                         :
@@ -284,31 +278,43 @@ export default function Home() {
                                     )
                                 }
                             </Col>
-                            
-
+                            <Col>
+                                <ToggleList inputList={availableFilters} onUpdateList={(currentState) => setFilters(currentState)} value={filters} text={"Group By"} />
+                            </Col>
 
                         </Row>
 
+                        {
+                            filters.includes("supplier") ? <Row>
+                                <Col>
+                                    <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
+
+                                </Col></Row> : <></>
+                        }
 
 
                         {
-                            (createNewIngredOpen ?<><h2>Add New Ingredient</h2><AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getRecipeDetails}></AddShoppingItem></>: <></>)
+                            (createNewIngredOpen ? <><h2>Add New Ingredient</h2><AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getRecipeDetails}></AddShoppingItem></> : <></>)
                         }
 
 
 
                         <br></br>
+                        {
+                            Object.keys(groupByKeys(matchedListIngreds, filters)).map((group) => (
+                                <>
 
-
-
-                        <Row>
-                            <IngredientTable reload={() => reloadAllIngredients()} ingredients={matchedListIngreds.map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} modifyColumnName={modifyColumnOptions[modifyColumnIndex % modifyColumnOptions.length]}></IngredientTable>
-                        </Row>
-
-                        {/* <Button onClick={() => console.log(matchedListIngreds)} >
-                            see state
-                        </Button> */}
-
+                                    <Row>
+                                        <h3>{group}</h3>
+                                        {/* <CategoryList categoryString={group}></CategoryList> */}
+                                        <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} filters={filters} ></NewIngredientTable>
+                                    </Row>
+                                </>
+                            ))
+                        }
+                        <Button onClick={() => redirect(`${id}/stats`)} >
+                            see stats
+                        </Button>
                         <p>ID = {id}</p>
 
                     </div>
