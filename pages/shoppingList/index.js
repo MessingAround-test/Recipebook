@@ -13,7 +13,6 @@ import Card from 'react-bootstrap/Card'
 import GenericForm from '../../components/GenericForm'
 import { Col, Row } from 'react-bootstrap'
 import ImageCard from '../../components/ImageCard'
-import { ShoppingListComponent } from '../../components/ShoppingListComponent'; // You need to adjust the import path based on your project structure
 
 
 
