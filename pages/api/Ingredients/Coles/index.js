@@ -32,9 +32,10 @@ export default async function handler(req, res) {
                     } else if (search_term === "" || search_term === undefined){
                         return res.status(400).json({ res: "Search term cannot be empty" })
                     } else {
+                        
                         let newIngredData = await axios({
                             method: 'get',
-                            url: `https://www.coles.com.au/_next/data/20231219.01_v3.62.0/en/search.json?q=${search_term}`
+                            url: `https://www.coles.com.au/_next/data/20240119.01_v3.64.0/en/search.json?q=${search_term}`
                         })
                         let filteredDataArray = []
                         let source = "Coles"

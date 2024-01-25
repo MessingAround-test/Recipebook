@@ -39,7 +39,11 @@ export default function Home() {
     const [filters, setFilters] = useState(["complete"])
     const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type"]
     const [modifyColumnIndex, setModifyColumnIndex] = useState(0)
-
+    
+    async function handleActiveSupplierChange(inputObject) {
+        await updateSupplierFromInputObject(inputObject)
+    
+    }
     useEffect(() => {
         if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
             alert("please re-log in")
