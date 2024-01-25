@@ -5,15 +5,16 @@ import IngredientCard from './IngredientCard';
 import IngredientCardProduct from './IngredientCardProduct';
 import { Col } from 'react-bootstrap';
 import { getGroceryStoreProducts, handleDeleteIngredient } from '../lib/commonAPIs';
-const CardListModal = ({ ingredient, show, onHide, filters }) => {
+const CardListModal = ({ ingredient, show, onHide, filters, enabledSuppliers=[] }) => {
   const [selectableOptions, setselectableOptions] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        if (ingredient && show) {
+        if (ingredient && show === true) {
           // Assuming getGroceryStoreProducts is an asynchronous function
-          const response = await getGroceryStoreProducts(ingredient, 5, [], localStorage.getItem('Token'));
+          console.log(filters)
+          const response = await getGroceryStoreProducts(ingredient, 5, enabledSuppliers, localStorage.getItem('Token'));
           const resOptions = response.options;
           console.log(resOptions);
           setselectableOptions(resOptions);
@@ -76,7 +77,7 @@ const CardListModal = ({ ingredient, show, onHide, filters }) => {
                 backgroundColor: '#171f34',
               }}
             >
-              <IngredientCardProduct ingredient={option} handleDeleteIngredient={handleDeleteIngredient} handleDelete={handleDelete}></IngredientCardProduct>
+              <IngredientCardProduct ingredient={option} handleDeleteIngredient={handleDeleteIngredient} handleDelete={handleDelete} filters={filters}></IngredientCardProduct>
               {/* {index} {option} */}
               {/* <IngredientCard ingredient={selectableOptions[index]} modalVersion={true} filters={filters}></IngredientCard> */}
             </Col>

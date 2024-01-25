@@ -10,7 +10,7 @@ import { Card, ProgressBar } from 'react-bootstrap';
 import CardListModal from './CardListModal';
 import IngredientCardProduct from './IngredientCardProduct';
 
-function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion }) {
+function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion, enabledSuppliers=[] }) {
     const [modalIsOpen, setIsOpen] = useState(false);
     const [selectedIngred, setSelectedIngred] = useState("");
 
@@ -59,7 +59,7 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                             <>
                                 <IngredientCardProduct ingredient={ingredient.options[0]}></IngredientCardProduct>
                                 <Button onClick={()=>setIsOpen(true)} variant={'warning'}>Other Options</Button>
-                                <CardListModal filters={filters} ingredient={ingredient} show={modalIsOpen} onHide={()=>setIsOpen(false) }></CardListModal>
+                                <CardListModal filters={filters} ingredient={ingredient} show={modalIsOpen} onHide={()=>setIsOpen(false) } enabledSuppliers={enabledSuppliers}></CardListModal>
                             </>
                         )}
                     </Col>

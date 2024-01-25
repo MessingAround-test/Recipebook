@@ -311,7 +311,7 @@ export default function Home() {
                                     <Row>
                                         <h3>{group}</h3>
                                         {/* <CategoryList categoryString={group}></CategoryList> */}
-                                        <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} filters={filters} ></NewIngredientTable>
+                                        <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} filters={filters} enabledSuppliers={enabledSuppliers}></NewIngredientTable>
                                     </Row>
                                 </>
                             ))
