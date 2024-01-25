@@ -64,7 +64,7 @@ export default async function handler(req, res) {
                                 let quantity_type;
                                 let name = filteredData.name
                                 let price = filteredData.pricing.now
-                                let quantity = filteredData.pricing.unit.quantity
+                                let quantity = filteredData.pricing.unit.ofMeasureQuantity
                                 
                                 // If quantity type is not defined or null then extract from the name
                                 if (!(quantity_unit)) {
