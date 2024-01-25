@@ -85,7 +85,7 @@ const CardListModal = ({ ingredient, show, onHide, filters }) => {
         </div>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="primary" onClick={handleSelect}>Select</Button>
+        {/* <Button variant="primary" onClick={handleSelect}>Select</Button> */}
       </Modal.Footer>
     </Modal>
   );
