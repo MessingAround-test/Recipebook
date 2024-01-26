@@ -10,8 +10,10 @@ import { Card, ProgressBar } from 'react-bootstrap';
 import CardListModal from './CardListModal';
 import IngredientCardProduct from './IngredientCardProduct';
 
+
 function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion, enabledSuppliers=[] }) {
-    const [modalIsOpen, setIsOpen] = useState(false);
+    const [otherOptionsModalIsOpen, setOtherOptionsModalIsOpen] = useState(false);
+    const [moreInfoModalIsOpen, setMoreInfoModalIsOpen] = useState(false)
     const [selectedIngred, setSelectedIngred] = useState("");
 
     return (
@@ -58,8 +60,12 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                         {ingredient.options[0] !== undefined && filters.includes("supplier") && (
                             <>
                                 <IngredientCardProduct ingredient={ingredient.options[0]}></IngredientCardProduct>
-                                <Button onClick={()=>setIsOpen(true)} variant={'warning'}>Other Options</Button>
-                                <CardListModal filters={filters} ingredient={ingredient} show={modalIsOpen} onHide={()=>setIsOpen(false) } enabledSuppliers={enabledSuppliers}></CardListModal>
+                                <Button onClick={()=>setOtherOptionsModalIsOpen(true)} variant={'warning'}>Other Options</Button>
+                                {/* <BsFillInfoCircleFill onClick={()=>setMoreInfoModalIsOpen(true)}/> */}
+                                
+                                {/* <Button  variant={'info'}><BsFillInfoCircleFill /></Button> */}
+                                <CardListModal filters={filters} ingredient={ingredient} show={otherOptionsModalIsOpen} onHide={()=>setOtherOptionsModalIsOpen(false) } enabledSuppliers={enabledSuppliers}></CardListModal>
+                                {/* <IngredientDetailCard ingredient={ingredient} show={moreInfoModalIsOpen} onHide={()=>setMoreInfoModalIsOpen(false)}></IngredientDetailCard> */}
                             </>
                         )}
                     </Col>
