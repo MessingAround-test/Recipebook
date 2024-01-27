@@ -74,7 +74,7 @@ export default async function handler(req, res) {
                 let allIngredData = []
                 // Reset companies so we get from all"Aldi",
                 // companies = ["WW", "IGA", "Panetta", "Aldi"]
-
+                companies = ["WW", "IGA", "Panetta", "Aldi", "Coles"]
 
 
                 for (let supplierIndex in companies) {

@@ -75,6 +75,11 @@ export default function Home() {
         // Use a loop to update the state for each ingredient individually
         for (let i = 0; i < updatedListIngreds.length; i++) {
             try {
+                if (updatedListIngreds[i].complete === true){
+                    
+                    updatedListIngreds[i].loading = false
+                    continue
+                }
                 const updatedIngredient = await getGroceryStoreProducts(
                     updatedListIngreds[i],
                     1,
