@@ -19,6 +19,8 @@ import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
 import { set } from 'mongoose'
 import NewIngredientTable from '../../components/NewIngredientTable'
 import { groupByKeys } from '../../lib/grouping'
+import { getGroceryStoreProducts } from '../../lib/commonAPIs'
+import IngredientCard from '../../components/IngredientCard'
 
 
 export default function Home() {
@@ -27,13 +29,15 @@ export default function Home() {
     const router = useRouter()
     const { id } = router.query
 
-    const [ingreds, setIngreds] = useState([])
+    const [listIngreds, setlistIngreds] = useState([])
+    const [matchedListIngreds, setMatchedListIngreds] = useState([])
     const [instructions, setInstructions] = useState([])
     const [imageData, setImageData] = useState()
     const [recipeName, setRecipeName] = useState("")
     const [ingredientData, setIngredientData] = useState([])
     const [modalIsOpen, setIsOpen] = useState(false);
     const [selectedIngred, setSelectedIngred] = useState("")
+    const [filters, setFilters] = useState([])
 
     const [loading, setLoading] = useState(false)
 
@@ -54,24 +58,63 @@ export default function Home() {
         setUserData(data.res)
     }
 
-    async function getIngredDetails(ingredients) {
-        setLoading(true)
-        const newItems = [...ingredients];
-        console.log(newItems)
-        for (let ingredients in newItems) {
-            let data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&quantity=${newItems[ingredients].Amount}&returnN=1&EDGEtoken=${localStorage.getItem('Token')}`)).json()
-            console.log(data)
-            if (data.loadedSource) {
-                // We extract again if the source was loaded... our response is returning some weird stuff... 
-                data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&quantity=${newItems[ingredients].Amount}&returnN=1&extractLocation=DB&EDGEtoken=${localStorage.getItem('Token')}`)).json()
-            }
-            if (data.success === true && data.res.length > 0) {
-                newItems[ingredients] = { ...newItems[ingredients], ...data.res[0] }
+    // async function getIngredDetails(ingredients) {
+    //     setLoading(true)
+    //     const newItems = [...ingredients];
+    //     console.log(newItems)
+    //     for (let ingredients in newItems) {
+    //         let data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&quantity=${newItems[ingredients].Amount}&returnN=1&EDGEtoken=${localStorage.getItem('Token')}`)).json()
+    //         console.log(data)
+    //         if (data.loadedSource) {
+    //             // We extract again if the source was loaded... our response is returning some weird stuff... 
+    //             data = await (await fetch(`/api/Ingredients/?name=${newItems[ingredients].Name}&qType=${newItems[ingredients].AmountType}&quantity=${newItems[ingredients].Amount}&returnN=1&extractLocation=DB&EDGEtoken=${localStorage.getItem('Token')}`)).json()
+    //         }
+    //         if (data.success === true && data.res.length > 0) {
+    //             newItems[ingredients] = { ...newItems[ingredients], ...data.res[0] }
+    //         }
+    //     }
+    //     setLoading(false)
+    //     setMatchedListIngreds(newItems)
+    // }
+
+
+    // Loads all ingreds
+    const reloadAllIngredients = async () => {
+        // While loading...
+        let updatedListIngreds = listIngreds.map((ingred) => ({
+            ...ingred,
+            options: [],
+            loading: true,
+        }));
+        setMatchedListIngreds(updatedListIngreds);
+
+        // Use a loop to update the state for each ingredient individually
+        for (let i = 0; i < updatedListIngreds.length; i++) {
+            try {
+                if (updatedListIngreds[i].complete === true) {
+
+                    updatedListIngreds[i].loading = false
+                    continue
+                }
+                const updatedIngredient = await getGroceryStoreProducts(
+                    updatedListIngreds[i],
+                    1,
+                    [],
+                    localStorage.getItem('Token')
+                );
+
+                // Update the state for the specific ingredient
+                updatedListIngreds[i] = {
+                    ...updatedIngredient,
+                    loading: false,
+                };
+                setMatchedListIngreds([...updatedListIngreds]);
+            } catch (error) {
+                // Handle errors if needed
+                console.error(`Error updating ingredient: ${error.message}`);
             }
         }
-        setLoading(false)
-        setIngreds(newItems)
-    }
+    };
 
     const deleteRecipe = async function (e) {
 
@@ -100,27 +143,35 @@ export default function Home() {
         let data = await (await fetch("/api/Recipe/" + String(await router.query.id) + "?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
         setRecipe(data.res)
-        // setIngreds(data.res.ingredients)
+        setImageData(data.res.image)
+        setlistIngreds(data.res.ingredients.map((ingred) => ({ "name": ingred.Name, "quantity": ingred.Amount, "quantity_type": ingred.AmountType })))
+
         setInstructions(data.res.instructions)
         setImageData(data.res.image)
         setRecipeName(data.res.name)
-
-        getIngredDetails(data.res.ingredients)
     }
 
     // TJOS ISNT WORKING AGAGAG
     const getAproxTotalRecipeCost = () => {
         let total = 0
-        for (let ingredient in ingreds) {
-            let current = ingreds[ingredient]
-            if (current.unit_price !== undefined) {
-                total = total + current.unit_price * (current.Amount)
+        for (let ingredient in matchedListIngreds) {
+            let current = matchedListIngreds[ingredient].options[0]
+
+            if (current !== undefined) {
+                total = total + current.total_price
             }
         }
         return (<>{total.toFixed(2)}</>)
 
     }
 
+    useEffect(() => {
+        console.log(listIngreds)
+        if (listIngreds.length > 0) {
+
+            reloadAllIngredients()
+        }
+    }, [listIngreds])
 
 
     useEffect(() => {
@@ -216,71 +267,36 @@ export default function Home() {
                     <main className={styles.main}>
                         <h1 className={styles.header} style={{ "backgroundColor": "white", "color": "black" }}>{recipeName}</h1>
                         <h2 className={styles.header}>Ingredients</h2>
-                        {/* <Button>Hide Ingreds</Button> */}
+                        {/* <Button>Hide matchedListIngreds</Button> */}
+
+                        <Row>
+                            <Col className={styles.centered}>
+                                <h2>
+                                    <input
+                                        type="checkbox"
+                                        checked={filters.includes("supplier")}
+                                        value={filters}
+                                        onChange={() => filters.includes("supplier") ? setFilters([]) : setFilters(["supplier"])}
+                                        style={{ width: '2rem', height: '2rem' }}
+                                    ></input>
+                                    Show Grocery Products
+                                </h2>
+
+
+                            </Col>
+                        </Row>
 
                         <Container>
                             <Row xs={1} md={2} lg={2} xl={3} xxl={4} >
-                            {/* <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].map((ingred) => { return ingred })} modifyColumnName={modifyColumnOptions[modifyColumnIndex % modifyColumnOptions.length]} filters={filters} ></NewIngredientTable> */}
+                                {/* <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListmatchedListIngreds, filters)[group].map((ingred) => { return ingred })} modifyColumnName={modifyColumnOptions[modifyColumnIndex % modifyColumnOptions.length]} filters={filters} ></NewIngredientTable> */}
+
 
                                 {loading ? <>loading...<object type="image/svg+xml" data="/loading.svg">svg-animation</object></> : <></>}
-                                {ingreds.map((ingred) => (
-                                    <Col
-                                        key={ingred._id}
-                                        style={{
-                                            border: "1px solid #ddd",
-                                            borderRadius: "8px",
-                                            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                                            margin: "0.2rem 0",  // Adjusted margin for better spacing
-                                            padding: "1rem",
-                                            backgroundColor: "#171f34",
-                                        }}
-                                    >
+                                {matchedListIngreds.map((ingred) => (
 
-                                        <Row>
-                                            <Col xs={12} className={styles.centered} style={{ marginBottom: "0.5rem" }}>
-                                                <div onClick={() => openModal(ingred.Name)} style={{ fontSize: "1.5rem", fontWeight: "bold" }}>
-                                                    {ingred.Name}
-                                                </div>
-                                            </Col>
-                                        </Row>
-                                        <Row>
-                                            <Col xs={12} className={styles.centered} style={{ fontSize: "1.2rem", marginBottom: "0.5rem" }}>
-                                                {ingred.unit_price ? `${ingred.Amount} ${ingred.AmountType} - $${(ingred.unit_price * ingred.Amount).toFixed(2)}` : `${ingred.Amount} ${ingred.AmountType}`}
+                                    <IngredientCard ingredient={ingred} filters={filters} openModal={openModal}></IngredientCard>
 
-                                            </Col>
-                                        </Row>
-                                        {ingred.unit_price ?
-                                            <>
-                                                <Row>
-                                                    <Col xs={12} className={styles.centered} style={{ marginBottom: "0.5rem" }}>
-                                                        <div style={{ fontSize: "1rem" }}>
-                                                            {ingred.name}
-                                                        </div>
-                                                    </Col>
-                                                    <Col xs={12} className={styles.centered} style={{ marginBottom: "1rem" }}>
-                                                        <img
-                                                            style={{
-                                                                maxWidth: "10%",
-                                                                height: "auto",
-                                                                borderRadius: "5px",
-                                                            }}
-                                                            src={`/${ingred.source ? ingred.source : "cross"}.png`}
-                                                            alt={ingred.Name}
-                                                        />
-                                                    </Col>
-                                                </Row>
-                                                <Row>
-                                                    <Col xs={12} className={styles.centered}>
-                                                        <Button variant="warning" onClick={(e) => markAsIncorrect(ingred._id, ingred.name)}>
-                                                            Wrong Product
-                                                        </Button>
-                                                    </Col>
-                                                </Row>
-                                            </>
-                                            : <></>
-                                        }
 
-                                    </Col>
                                 ))}
 
 
@@ -324,8 +340,8 @@ export default function Home() {
                             }
 
                             <h2 className={styles.header}>Nutrients</h2>
-                            
-                            <IngredientNutrientGraph ingredients={ingreds}></IngredientNutrientGraph>
+
+                            <IngredientNutrientGraph ingredients={matchedListIngreds}></IngredientNutrientGraph>
                             <Row>
 
                                 <Col className={styles.Col}>
@@ -349,7 +365,7 @@ export default function Home() {
                                     <IngredientSearchList search_term={selectedIngred}></IngredientSearchList>
                                 </a>
                             </Modal>
-                            <Button onClick={() => getIngredDetails(ingreds)}>Get Grocery Store Data</Button>
+                            <Button onClick={() => reloadAllIngredients()}>Get Grocery Store Data</Button>
                             <br></br>
                             <Button variant="danger" onClick={() => deleteRecipe()}>
                                 Delete Recipe

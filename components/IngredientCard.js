@@ -11,7 +11,7 @@ import CardListModal from './CardListModal';
 import IngredientCardProduct from './IngredientCardProduct';
 
 
-function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion, enabledSuppliers=[] }) {
+function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion, enabledSuppliers = [] }) {
     const [otherOptionsModalIsOpen, setOtherOptionsModalIsOpen] = useState(false);
     const [moreInfoModalIsOpen, setMoreInfoModalIsOpen] = useState(false)
     const [selectedIngred, setSelectedIngred] = useState("");
@@ -30,7 +30,7 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                 }}
             >
                 <Row>
-                    <Col xs={2} className={styles.centered_vertical}>
+                    {handleCheckboxChange !== undefined ? <Col xs={2} className={styles.centered_vertical}>
                         <input
                             type="checkbox"
                             checked={ingredient.complete}
@@ -39,8 +39,10 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                             style={{ width: '2rem', height: '2rem' }}
                         />
 
-                    </Col>
-                    <Col>
+                    </Col> : <></>
+                    }
+
+                    <Col className={styles.centered}>
 
                         <div onClick={() => openModal(ingredient.name)} style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>
                             {`${ingredient.name} - ${ingredient.quantity} ${ingredient.quantity_type}`}
@@ -60,11 +62,11 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                         {ingredient.options[0] !== undefined && filters.includes("supplier") && (
                             <>
                                 <IngredientCardProduct ingredient={ingredient.options[0]}></IngredientCardProduct>
-                                <Button onClick={()=>setOtherOptionsModalIsOpen(true)} variant={'warning'}>Other Options</Button>
+                                <Button onClick={() => setOtherOptionsModalIsOpen(true)} variant={'warning'}>Other Options</Button>
                                 {/* <BsFillInfoCircleFill onClick={()=>setMoreInfoModalIsOpen(true)}/> */}
-                                
+
                                 {/* <Button  variant={'info'}><BsFillInfoCircleFill /></Button> */}
-                                <CardListModal filters={filters} ingredient={ingredient} show={otherOptionsModalIsOpen} onHide={()=>setOtherOptionsModalIsOpen(false) } enabledSuppliers={enabledSuppliers}></CardListModal>
+                                <CardListModal filters={filters} ingredient={ingredient} show={otherOptionsModalIsOpen} onHide={() => setOtherOptionsModalIsOpen(false)} enabledSuppliers={enabledSuppliers}></CardListModal>
                                 {/* <IngredientDetailCard ingredient={ingredient} show={moreInfoModalIsOpen} onHide={()=>setMoreInfoModalIsOpen(false)}></IngredientDetailCard> */}
                             </>
                         )}

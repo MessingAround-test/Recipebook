@@ -39,9 +39,9 @@ function joinRecords(sourceData, joinedData, sourceKeyToMatch, joinedKeyToMatch,
 }
 
 
-async function fileToJson(filename){
+async function fileToJson(filename) {
     const file = await fs.readFile(process.cwd() + filename, 'utf8');
-    
+
     let result = parse(file, {
     })
     let records = []
@@ -49,7 +49,7 @@ async function fileToJson(filename){
         // Work with each record
         records.push(record);
     }
-    let json = await convertCSVToJson(records)    
+    let json = await convertCSVToJson(records)
     return json
 }
 
@@ -120,8 +120,11 @@ export default async function handler(req, res) {
                         // Convert the quantity type if it is not in grams, the current nutrient information is majorly in grams... 
                         if (qType !== "gram") {
                             let conversion = convertKitchenMetrics(qType, quantity)
-                            qType = "gram"
-                            quantity = conversion.gram
+                            if (conversion !== null) {
+                                qType = "gram"
+                                quantity = conversion.gram
+                            }
+
                         }
                         console.log(search_term)
 
@@ -222,9 +225,9 @@ export default async function handler(req, res) {
                             name: record["Food Name"].split(",")[0].toLowerCase(),
                             extra_info: record["Food Name"].split(",").map(function test(item) {
                                 if (item[0] === " ") {
-                                    item = item.slice(1); 
+                                    item = item.slice(1);
                                 }
-                                return item.trim().toLowerCase(); 
+                                return item.trim().toLowerCase();
                             }),
                             source: "Aus Gov",
                             quantity: 100,
@@ -248,7 +251,7 @@ export default async function handler(req, res) {
                 let userData = await User.findOne({ id: db_id });
                 if (userData._id === undefined) {
                     res.status(400).json({ res: "user not found, please relog" })
-                } else if (userData.role !== "admin"){
+                } else if (userData.role !== "admin") {
                     res.status(400).json({ message: "Insufficient Privileges" })
                 } else {
 
@@ -261,7 +264,7 @@ export default async function handler(req, res) {
                     let db_id = decoded.id
                     let userData = await User.findOne({ id: db_id });
 
-                    
+
                     const food_groups = await fileToJson('/public/nutrients/USDA-SR26/FD_GROUP.csv')
                     const food_des = await fileToJson('/public/nutrients/USDA-SR26/FOOD_DES.csv')
                     const food_nutrients = await fileToJson('/public/nutrients/USDA-SR26/NUT_DATA.csv')
@@ -271,31 +274,31 @@ export default async function handler(req, res) {
 
                     let joinedInNutrientNames = joinRecords(food_nutrients, food_nutrients_names, "Nutr_No", "Nutr_No", "record", false)
 
-                    
+
                     let joinedInNutrients = joinRecords(joinedInCategories, joinedInNutrientNames, "NDB_No", "NDB_No", "nutrients", true)
-                    
+
                     let joinedWeight = joinRecords(joinedInNutrients, food_weight, "NDB_No", "NDB_No", "weight", true)
 
-                    
+
                     let allInserts = []
                     for (const record of joinedWeight) {
                         // Search the list of nutrients
                         let protein = record.nutrients.filter(instance => instance.record && instance.record.NutrDesc === "Protein");
 
                         // deal with no match
-                        protein = protein.length>0?parseFloat(protein[0].Nutr_Val):undefined
+                        protein = protein.length > 0 ? parseFloat(protein[0].Nutr_Val) : undefined
 
                         let fat = record.nutrients.filter(instance => instance.record && instance.record.NutrDesc === "Total lipid (fat)");
-                        fat =  fat.length>0?parseFloat(fat[0].Nutr_Val):undefined
+                        fat = fat.length > 0 ? parseFloat(fat[0].Nutr_Val) : undefined
 
                         let carbohydrates = record.nutrients.filter(instance => instance.record && instance.record.NutrDesc === "Carbohydrate, by difference");
-                        carbohydrates =  carbohydrates.length>0?parseFloat(carbohydrates[0].Nutr_Val):undefined
+                        carbohydrates = carbohydrates.length > 0 ? parseFloat(carbohydrates[0].Nutr_Val) : undefined
 
                         let fiber = record.nutrients.filter(instance => instance.record && instance.record.NutrDesc === "Fiber, total dietary");
-                        fiber =  fiber.length>0?parseFloat(fiber[0].Nutr_Val):undefined
+                        fiber = fiber.length > 0 ? parseFloat(fiber[0].Nutr_Val) : undefined
 
                         let iron = record.nutrients.filter(instance => instance.record && instance.record.NutrDesc === "Iron, Fe");
-                        iron =  iron.length>0?parseFloat(iron[0].Nutr_Val):undefined
+                        iron = iron.length > 0 ? parseFloat(iron[0].Nutr_Val) : undefined
 
                         let nutrition_info = {
                             protein: protein,
@@ -309,9 +312,9 @@ export default async function handler(req, res) {
                             name: record["Long_Desc"].split(",")[0].toLowerCase(),
                             extra_info: record["Long_Desc"].split(",").map(function test(item) {
                                 if (item[0] === " ") {
-                                    item = item.slice(1); 
+                                    item = item.slice(1);
                                 }
-                                return item.trim().toLowerCase(); 
+                                return item.trim().toLowerCase();
                             }),
                             source: "US Gov",
                             quantity: 100,
@@ -322,7 +325,7 @@ export default async function handler(req, res) {
                     }
 
                     // .map(item => item.Long_Desc)
-                    res.status(200).json({ success: true, data: {"inserted": joinedWeight.length}, message: "Allgood" })
+                    res.status(200).json({ success: true, data: { "inserted": joinedWeight.length }, message: "Allgood" })
                 } catch (error) {
                     console.log(error)
                     res.status(400).json({ success: false, data: [], message: String(error) })
