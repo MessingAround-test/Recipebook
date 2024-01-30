@@ -10,7 +10,7 @@ import { ProgressBar } from 'react-bootstrap';
 import IngredientDetailCard from './IngredientDetailCard';
 import { BsFillInfoCircleFill } from "react-icons/bs";
 
-function IngredientCardProduct({ ingredient, handleDeleteIngredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion, handleDelete }) {
+function IngredientCardProduct({ ingredient, handleDeleteIngredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion, handleDelete, showSupplierImage = true }) {
     const [modalIsOpen, setIsOpen] = useState(false);
     const [selectedIngred, setSelectedIngred] = useState("");
 
@@ -19,20 +19,23 @@ function IngredientCardProduct({ ingredient, handleDeleteIngredient, essential, 
     return (
         <div style={{ filter: ingredient.complete ? 'grayscale(100%)' : 'none' }}>
             <Row>
+                {
+                    showSupplierImage ?
+                        <Col xs={12} className={styles.centered} style={{ marginBottom: '1rem' }}>
+                            <img
+                                style={{
+                                    maxWidth: '10%',
+                                    height: 'auto',
+                                    borderRadius: '5px',
+                                }}
+                                src={`/${ingredient.source ? ingredient.source : 'cross'}.png`}
+                                alt={ingredient.name}
+                            />
+                        </Col> : <></>
+                }
 
-                <Col xs={12} className={styles.centered} style={{ marginBottom: '1rem' }}>
-                    <img
-                        style={{
-                            maxWidth: '10%',
-                            height: 'auto',
-                            borderRadius: '5px',
-                        }}
-                        src={`/${ingredient.source ? ingredient.source : 'cross'}.png`}
-                        alt={ingredient.name}
-                    />
-                </Col>
                 <Col xs={12} className={styles.centered} style={{ marginBottom: '0.5rem', 'color': 'white' }}>
-                {/* <BsFillInfoCircleFill onClick={() => setIsOpen(true)} /> */}
+                    {/* <BsFillInfoCircleFill onClick={() => setIsOpen(true)} /> */}
                     <IngredientDetailCard ingredient={ingredient} show={modalIsOpen} onHide={() => setIsOpen(false)}></IngredientDetailCard>
                     <div style={{ fontSize: '1rem' }} onClick={() => setIsOpen(true)}>{ingredient ? ingredient.name : ""}</div>
                 </Col>
@@ -49,7 +52,7 @@ function IngredientCardProduct({ ingredient, handleDeleteIngredient, essential, 
                     {/* {JSON.stringify(ingredient)} */}
                 </Col>
             </Row>
-            
+
 
 
             <Row>

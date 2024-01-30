@@ -1,4 +1,5 @@
 import React from 'react';
+import { JSONImageList } from './JSONImageList';
 
 function convertStringToJSON(inputString) {
   // Split the input string into key-value pairs
@@ -61,11 +62,14 @@ const HighlightedTitles = ({ data, order, current }) => {
         convertStringToJSON(keyData)
       );
 
-      return <>{JSON.stringify(newKeys)}</>;
+      
+      return <JSONImageList data={newKeys}></JSONImageList>;
     }
   }
-
-  return <>{JSON.stringify(current)}</>;
+  if (current === ""){
+    return <></>
+  }
+  return <JSONImageList data={current}></JSONImageList >;
 };
 
 export default HighlightedTitles;

@@ -142,15 +142,20 @@ export default function Home() {
                     <Row xl={5} lg={4} md={3} sm={2} xs={1}>
                         {recipes.map((recipe) => {
                             return (
-                                <Col>
-                                    <ImageCard recipe={recipe}
-                                        allowDelete={allowDelete}
-                                        onDelete={deleteRecipe}
-                                        onRedirect={redirect}
-                                        cardHeight={'5rem'}
-                                    ></ImageCard>
+                                <>
+                                    <Col>
 
-                                </Col>
+                                        <ImageCard recipe={recipe}
+                                            allowDelete={allowDelete}
+                                            onDelete={deleteRecipe}
+                                            onRedirect={redirect}
+                                            cardHeight={'5rem'}
+                                        ></ImageCard>
+                                        {recipe.complete ? <h1>Complete</h1> : <>Incomplete</>}
+
+
+                                    </Col>
+                                </>
                             )
 
                         })}

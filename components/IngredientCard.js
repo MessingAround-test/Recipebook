@@ -61,7 +61,7 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                         {/* {ingredient.options[0] !== undefined && ( */}
                         {ingredient.options[0] !== undefined && filters.includes("supplier") && (
                             <>
-                                <IngredientCardProduct ingredient={ingredient.options[0]}></IngredientCardProduct>
+                                <IngredientCardProduct ingredient={ingredient.options[0]} showSupplierImage={false}></IngredientCardProduct>
                                 <Button onClick={() => setOtherOptionsModalIsOpen(true)} variant={'warning'}>Other Options</Button>
                                 {/* <BsFillInfoCircleFill onClick={()=>setMoreInfoModalIsOpen(true)}/> */}
 
