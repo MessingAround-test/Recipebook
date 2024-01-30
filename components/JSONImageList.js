@@ -7,6 +7,7 @@ const imageMapping = {
         IGA: '/IGA.png',
         Panetta: '/Panetta.png',
         WW: '/WW.png',
+        Aldi: '/Aldi.png',
         '': '/unknown.jpg'
 
         // Add more suppliers if needed
@@ -51,7 +52,7 @@ export const JSONImageList = ({ data }) => {
         return keys.map((key) => {
             const subKey = data[key];
             const subKeyMapping = imageMapping[key];
-            if (key === "complete"){
+            if (key === "complete") {
                 return (
                     <div key={key} className={styles.banner}>
                         <div
@@ -75,7 +76,10 @@ export const JSONImageList = ({ data }) => {
                             <div className={styles.overlayContainer}>
                                 <p className={styles.overlayText}>{subKey}</p>
                             </div>
+                            
+
                         </div>
+
                     </div>
                 );
             }
