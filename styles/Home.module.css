@@ -371,14 +371,12 @@
 
 .overlayText {
   margin: 0;
-  color: #fafafa; /* White text color */
-  font-weight: bold;
-  font-size: 0.7rem;
+  /* color: #fafafa; */
+  
+  font-size: 0.8rem;
   /* background-color: #eaeaea; */
   border-radius: 0.5rem;
-  /* color: black;
-  font-weight: bold;
-  font-size: 1.1rem;
-  background-color: #eaeaea; */
+  color: black;
+  background-color: #eaeaea;
 }
 
