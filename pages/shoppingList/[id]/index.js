@@ -23,6 +23,7 @@ import ToggleList from '../../../components/ToggleList'
 import CategoryList from '../../../components/CategoryImage'
 import {getGroceryStoreProducts} from '../../../lib/commonAPIs'
 import { groupByKeys } from '../../../lib/grouping'
+import CategoryImage from '../../../components/CategoryImage'
 
 export default function Home() {
     const [userData, setUserData] = useState({})
@@ -242,6 +243,20 @@ export default function Home() {
         setEnabledSuppliers(formattedResultArray)
     };
 
+    function sortFunction(a, b) {
+        // Custom sorting logic
+        const aIsComplete = a.includes("complete=true");
+        const bIsComplete = b.includes("complete=true");
+    
+        if (aIsComplete && !bIsComplete) {
+          return 1; // 'a' goes after 'b'
+        } else if (!aIsComplete && bIsComplete) {
+          return -1; // 'a' goes before 'b'
+        } else {
+          return a.localeCompare(b); // Default alphabetical sorting
+        }
+      }
+
     useEffect(() => {
         // This code will run after the component renders and whenever enabledSuppliers changes
         reloadAllIngredients();
@@ -310,11 +325,13 @@ export default function Home() {
 
                         <br></br>
                         {
-                            Object.keys(groupByKeys(matchedListIngreds, filters)).map((group) => (
+                            Object.keys(groupByKeys(matchedListIngreds, filters))
+                            .sort(sortFunction).map((group) => (
                                 <>
 
                                     <Row>
-                                        <h3>{group}</h3>
+                                        {/* <h3>{group}</h3> */}
+                                        <CategoryImage data={groupByKeys(matchedListIngreds, filters)} order={Object.keys(groupByKeys(matchedListIngreds, filters)).sort(sortFunction)} current={group}></CategoryImage>
                                         {/* <CategoryList categoryString={group}></CategoryList> */}
                                         <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} filters={filters} enabledSuppliers={enabledSuppliers}></NewIngredientTable>
                                     </Row>

@@ -1,27 +1,71 @@
 import React from 'react';
 
-const CategoryList = ({ categoryString }) => {
-  const categoryArray = categoryString.split('|').map((item) => {
-    const [key, value] = item.split('=');
-    return { [key]: value };
+function convertStringToJSON(inputString) {
+  // Split the input string into key-value pairs
+  const keyValuePairs = inputString.split('|');
+
+  // Initialize an empty object to store the key-value pairs
+  const jsonObject = {};
+
+  // Iterate over each key-value pair
+  keyValuePairs.forEach(pair => {
+    // Split each pair into key and value
+    const [key, value] = pair.split('=');
+
+    // Trim any extra whitespace from key and value
+    const trimmedKey = key.trim();
+    const trimmedValue = value !== undefined ? value.trim() : undefined;
+
+    // Add the key-value pair to the object
+    jsonObject[trimmedKey] = trimmedValue;
   });
 
-  // Extract unique categories
-  const uniqueCategories = Array.from(
-    new Set(categoryArray.map((category) => Object.values(category)[0]))
-  );
+  return jsonObject;
+}
 
-  if (uniqueCategories.length === 0) {
-    // No unique categories, don't render anything
-    return null;
+function compareJSONKeysAndValues(obj1, obj2) {
+  // Get the entries (key-value pairs) of each object
+  const entries1 = Object.entries(obj1);
+  const entries2 = Object.entries(obj2);
+
+  console.log(entries1, entries2)
+
+  // Use the filter method to find entries in obj2 that are not in obj1
+  const differenceEntries = entries2.filter(([key, value]) => {
+    const matchingEntry = entries1.find(([key1, value1]) => key === key1 && value === value1);
+    return !matchingEntry;
+  });
+
+  // Convert the result back to an object
+  const resultObject = {};
+  differenceEntries.forEach(([key, value]) => {
+    resultObject[key] = value;
+  });
+
+  return resultObject;
+}
+
+const HighlightedTitles = ({ data, order, current }) => {
+  const keyDataArray = order;
+  console.log(order)
+  // console.log(data)
+
+  for (let i = 0; i < order.length; i++) {
+
+    const keyData = order[i];
+
+    if (keyData === current && i - 1 >= 0) {
+      const previousEntry = order[i - 1];
+      const newKeys = compareJSONKeysAndValues(
+        convertStringToJSON(previousEntry),
+        convertStringToJSON(keyData)
+      );
+
+      return <>{JSON.stringify(newKeys)}</>;
+    }
   }
 
-  return (
-    <div>
-      
-      <h3>{uniqueCategories[0]}</h3>
-    </div>
-  );
+  return <>{JSON.stringify(current)}</>;
 };
 
-export default CategoryList;
+export default HighlightedTitles;

@@ -26,7 +26,8 @@ const RecipeSchema = new mongoose.Schema(
         name: {type: String, required: true},
         ingredients : [ingredsSchema],
         instructions: [instructionsSchema],
-        image: {type: String}
+        image: {type: String},
+        cost: {type: Number}
     },
     { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 )
