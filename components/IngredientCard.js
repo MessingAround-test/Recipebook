@@ -45,7 +45,7 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                     <Col className={styles.centered}>
 
                         <div onClick={() => openModal(ingredient.name)} style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>
-                            {`${ingredient.name} - ${ingredient.quantity} ${ingredient.quantity_type}`}
+                            {`${ingredient.name} - ${ingredient.quantity} ${ingredient.quantity_type_shorthand}`}
                         </div>
 
 

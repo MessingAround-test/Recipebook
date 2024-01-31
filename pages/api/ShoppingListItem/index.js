@@ -7,6 +7,22 @@ import ShoppingListItem from '../../../models/ShoppingListItem'
 
 import ShoppingList from '../../../models/ShoppingList'
 import Ingredient from '../../../models/Ingredients'
+import { getShorthandForMeasure } from '../../../lib/conversion'
+
+function addShorthandToIngredients(ingredients) {
+    return ingredients.map((ingredient) =>  {
+        const quantityType = ingredient.quantity_type;
+        const shorthand = getShorthandForMeasure(quantityType);
+
+        if (shorthand !== undefined) {
+            return { ...ingredient.toObject(), "quantity_type_shorthand": shorthand };
+        } else {
+            // console.log(`No shorthand found for ${quantityType}`);
+            return ingredient.toObject()
+        }
+    });
+}
+
 
 export default async function handler(req, res) {
     verify(req.query.EDGEtoken, secret, async function (err, decoded) {
@@ -27,15 +43,18 @@ export default async function handler(req, res) {
                             // Provide the search term and search for occurances of that item in the lists
                             let ShoppingListItemData = await ShoppingListItem.find({ name: req.query.search_term })
                             let response = ShoppingListItemData.map((item)=>item[req.query.field]).filter((value) => value !== null && value !== undefined);
-                            res.status(200).json({ success: true , data: response })
+                            let completeRes = await addShorthandToIngredients(response)    
+                            // let completeRes = addShorthandToIngredients(response)
+                            res.status(200).json({ success: true , data: completeRes})
                         } else {
                             // Provide the shopping list id and return the shopping list
                             if (req.query.shoppingListId === undefined) {
                                 throw "shoppingListId is required"
                             }
-
+                            
                             let ShoppingListItemData = await ShoppingListItem.find({ shoppingListId: req.query.shoppingListId })
-                            res.status(200).json({ res: ShoppingListItemData })
+                            let completeRes = await addShorthandToIngredients(ShoppingListItemData)
+                            res.status(200).json({ res:  completeRes })
                         }
                     }
                 } catch (error) {
