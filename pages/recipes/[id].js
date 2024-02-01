@@ -144,7 +144,7 @@ export default function Home() {
         console.log(data)
         setRecipe(data.res)
         setImageData(data.res.image)
-        setlistIngreds(data.res.ingredients.map((ingred) => ({ "name": ingred.Name, "quantity": ingred.Amount, "quantity_type": ingred.AmountType })))
+        setlistIngreds(data.res.ingredients)
 
         setInstructions(data.res.instructions)
         setImageData(data.res.image)

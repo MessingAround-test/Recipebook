@@ -4,9 +4,19 @@ import { verify } from "jsonwebtoken";
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
 import Recipe from '../../../models/Recipe'
+import { getShorthandForMeasure } from '../../../lib/conversion'
 
-
-
+function convertIngredients(originalObject){
+  
+  return originalObject.map(item => ({
+    "_id": item._id,
+    "name": item.Name,
+    "quantity": item.Amount,
+    "quantity_type": item.AmountType,
+    "quantity_type_shorthand": getShorthandForMeasure(item.AmountType)
+  }));
+  
+}
 
 
 export default async function handler(req, res) {
@@ -29,7 +39,11 @@ export default async function handler(req, res) {
         } else {
 
           let RecipeData = await Recipe.findOne({_id: recipe_id})
-          res.status(200).json({ res: RecipeData})
+          const responseData = {
+            ...RecipeData.toObject(),
+            ingredients:  convertIngredients(RecipeData.ingredients)
+          }
+          res.status(200).json({ res: responseData})
         }
       
       
