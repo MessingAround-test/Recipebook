@@ -152,7 +152,7 @@ export default function Home() {
     }
 
     // TJOS ISNT WORKING AGAGAG
-    const getAproxTotalRecipeCost = () => {
+    const getAproxTotalRecipeCostUnit = () => {
         let total = 0
         for (let ingredient in matchedListIngreds) {
             let current = matchedListIngreds[ingredient].options[0]
@@ -161,7 +161,20 @@ export default function Home() {
                 total = total + current.total_price
             }
         }
-        return (<>{total.toFixed(2)}</>)
+        return total.toFixed(2)
+
+    }
+
+    const getAproxTotalRecipeCost = () => {
+        let total = 0
+        for (let ingredient in matchedListIngreds) {
+            let current = matchedListIngreds[ingredient].options[0]
+
+            if (current !== undefined) {
+                total = total + current.total_price/current.match_efficiency*100
+            }
+        }
+        return total.toFixed(2)
 
     }
 
@@ -308,7 +321,8 @@ export default function Home() {
                             </Row>
                             <Row>
                                 <Col className={styles.col}>
-                                    <h2>Total {getAproxTotalRecipeCost()}</h2>
+                                    <h2>Total Cost ${getAproxTotalRecipeCost()}</h2>
+                                    <h2>You will use: ${getAproxTotalRecipeCostUnit()}</h2>
                                 </Col>
                             </Row>
                             {/* If no instructions then dont show */}

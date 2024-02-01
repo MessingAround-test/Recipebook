@@ -47,8 +47,8 @@ function IngredientCardProduct({ ingredient, handleDeleteIngredient, essential, 
                 {`${ingredient.quantity} ${ingredient.quantity_unit} - $${(ingredient.unit_price * ingredient.quantity).toFixed(2)}`}
                 </Col> */}
                 <Col xs={12} className={styles.centered} style={{ fontSize: '1.2rem', marginBottom: '0.5rem', 'color': 'white' }}>
-                    {`$${(ingredient.total_price).toFixed(2)}`}
-
+                    {`$${(ingredient.total_price).toFixed(2)}/`}
+                    {`$${((ingredient.total_price/ingredient.match_efficiency*100)).toFixed(2)}`}
                     {/* {JSON.stringify(ingredient)} */}
                 </Col>
             </Row>
