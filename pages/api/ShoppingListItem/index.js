@@ -7,7 +7,7 @@ import ShoppingListItem from '../../../models/ShoppingListItem'
 
 import ShoppingList from '../../../models/ShoppingList'
 import Ingredient from '../../../models/Ingredients'
-import { getShorthandForMeasure } from '../../../lib/conversion'
+import { getShorthandForMeasure, addCalculatedFields } from '../../../lib/conversion'
 
 function addShorthandToIngredients(ingredients) {
     return ingredients.map((ingredient) =>  {
@@ -43,9 +43,10 @@ export default async function handler(req, res) {
                             // Provide the search term and search for occurances of that item in the lists
                             let ShoppingListItemData = await ShoppingListItem.find({ name: req.query.search_term })
                             let response = ShoppingListItemData.map((item)=>item[req.query.field]).filter((value) => value !== null && value !== undefined);
-                            let completeRes = await addShorthandToIngredients(response)    
+                            let shorthandRes = await addShorthandToIngredients(response)    
+                            let dataRes = addCalculatedFields(shorthandRes)
                             // let completeRes = addShorthandToIngredients(response)
-                            res.status(200).json({ success: true , data: completeRes})
+                            res.status(200).json({ success: true , data: dataRes})
                         } else {
                             // Provide the shopping list id and return the shopping list
                             if (req.query.shoppingListId === undefined) {
@@ -53,8 +54,9 @@ export default async function handler(req, res) {
                             }
                             
                             let ShoppingListItemData = await ShoppingListItem.find({ shoppingListId: req.query.shoppingListId })
-                            let completeRes = await addShorthandToIngredients(ShoppingListItemData)
-                            res.status(200).json({ res:  completeRes })
+                            let shorthandRes = await addShorthandToIngredients(ShoppingListItemData)
+                            let dataRes = addCalculatedFields(shorthandRes)
+                            res.status(200).json({ res:  dataRes })
                         }
                     }
                 } catch (error) {

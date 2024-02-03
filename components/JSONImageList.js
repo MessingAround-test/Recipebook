@@ -36,6 +36,14 @@ const imageMapping = {
         'undefined': '/unknown.jpg'
         // Add more categories if needed
     },
+    category_simple: {
+        'Fresh Produce': '/categories2/FreshProduce.jpg',
+        'Staple Food': '/categories2/InternationalFoods.jpg',
+        'Fridge': '/categories2/DeliandPreparedFoods.jpg',
+        'Freezer': '/categories2/FrozenFoods.jpg',
+        'Staple Other': '/categories2/PersonalCare.jpg',
+        'undefined': '/unknown.jpg'
+    },
     complete: {
         "true": "/complete.jpg"
     }

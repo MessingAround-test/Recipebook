@@ -38,7 +38,7 @@ export default function Home() {
     const modifyColumnOptions = ["", "Incorrect", "Remove"]
 
     const [filters, setFilters] = useState(["complete"])
-    const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type"]
+    const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type", "category_simple"]
     const [modifyColumnIndex, setModifyColumnIndex] = useState(0)
     
     async function handleActiveSupplierChange(inputObject) {
