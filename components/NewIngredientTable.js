@@ -32,24 +32,6 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
             if (a.complete && !b.complete) return 1;
             if (!a.complete && b.complete) return -1;
 
-            // for for
-
-
-            // Extract "source" from the first option (if available)
-            const sourceA = a.category ? a.category.toLowerCase() : '';
-            const sourceB = b.category ? b.category.toLowerCase() : '';
-
-            // Compare based on "source" property
-            if (sourceA < sourceB) return -1;
-            if (sourceA > sourceB) return 1;
-
-            // If "source" properties are equal and both items are complete or incomplete, maintain current order
-            const searchTermA = a.name ? a.name.toLowerCase() : '';
-            const searchTermB = b.name ? b.name.toLowerCase() : '';
-
-            if (searchTermA < searchTermB) return -1;
-            if (searchTermA > searchTermB) return 1;
-
             return 0;
         });
 
@@ -65,29 +47,6 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
             if (!a.complete && b.complete) return -1;
 
             // for for
-
-            // Extract "source" from the first option (if available)
-            const sourceA = a.options.length > 0 ? a.options[0].source.toLowerCase() : '';
-            const sourceB = b.options.length > 0 ? b.options[0].source.toLowerCase() : '';
-
-            // Compare based on "source" property
-            if (sourceA < sourceB) return -1;
-            if (sourceA > sourceB) return 1;
-
-            const catA = a.category ? a.category.toLowerCase() : '';
-            const catB = b.category ? b.category.toLowerCase() : '';
-
-            // Compare based on "source" property
-            if (catA < catB) return -1;
-            if (catA > catB) return 1;
-
-            const searchTermA = a.name ? a.name.toLowerCase() : '';
-            const searchTermB = b.name ? b.name.toLowerCase() : '';
-
-            if (searchTermA < searchTermB) return -1;
-            if (searchTermA > searchTermB) return 1;
-
-
             // If "source" properties are equal and both items are complete or incomplete, maintain current order
             return 0;
         });

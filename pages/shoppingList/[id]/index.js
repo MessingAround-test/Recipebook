@@ -266,7 +266,6 @@ export default function Home() {
         // Custom sorting logic
         const aIsComplete = a.includes("complete=true");
         const bIsComplete = b.includes("complete=true");
-
         if (aIsComplete && !bIsComplete) {
             return 1; // 'a' goes after 'b'
         } else if (!aIsComplete && bIsComplete) {
@@ -274,6 +273,12 @@ export default function Home() {
         } else {
             return a.localeCompare(b); // Default alphabetical sorting
         }
+    }
+    function ingredientSortFunction(a,b){
+        console.log(a, b)
+        const nameA = a.name.toLowerCase();
+        const nameB = b.name.toLowerCase();
+        return nameA.localeCompare(nameB);
     }
 
     useEffect(() => {
@@ -385,7 +390,7 @@ export default function Home() {
                                                 <h5>{showTotalOfList(groupByKeys(matchedListIngreds, filters)[group])}</h5>
                                             </CategoryImage>
                                             {/* <CategoryList categoryString={group}></CategoryList> */}
-                                            <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} filters={filters} enabledSuppliers={enabledSuppliers}></NewIngredientTable>
+                                            <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].sort(ingredientSortFunction).map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} filters={filters} enabledSuppliers={enabledSuppliers}></NewIngredientTable>
                                         </Row>
                                     </>
                                 ))

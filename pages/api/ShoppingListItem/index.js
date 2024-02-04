@@ -45,6 +45,11 @@ export default async function handler(req, res) {
                             let response = ShoppingListItemData.map((item)=>item[req.query.field]).filter((value) => value !== null && value !== undefined);
                             let shorthandRes = await addShorthandToIngredients(response)    
                             let dataRes = addCalculatedFields(shorthandRes)
+                            dataRes.sort((a, b) => {
+                                const nameA = a.name.toLowerCase();
+                                const nameB = b.name.toLowerCase();
+                                return nameA.localeCompare(nameB);
+                              });
                             // let completeRes = addShorthandToIngredients(response)
                             res.status(200).json({ success: true , data: dataRes})
                         } else {
@@ -56,6 +61,11 @@ export default async function handler(req, res) {
                             let ShoppingListItemData = await ShoppingListItem.find({ shoppingListId: req.query.shoppingListId })
                             let shorthandRes = await addShorthandToIngredients(ShoppingListItemData)
                             let dataRes = addCalculatedFields(shorthandRes)
+                            dataRes.sort((a, b) => {
+                                const nameA = a.name.toLowerCase();
+                                const nameB = b.name.toLowerCase();
+                                return nameA.localeCompare(nameB);
+                              });
                             res.status(200).json({ res:  dataRes })
                         }
                     }
