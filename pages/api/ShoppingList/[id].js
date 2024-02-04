@@ -31,7 +31,18 @@ export default async function handler(req, res) {
           res.status(200).json({ res:DbData})
         }
       
-      
+      }if (req.method === "PUT") {
+        
+          await dbConnect()
+          let db_id = decoded.id
+          let userData = await User.findOne({ id: db_id });
+          if (userData === undefined) {
+            res.status(400).json({ message: "user not found, please relog" })
+          } else {
+            let complete = req.body.complete === "true"?true:false
+            let updateRes = await ShoppingList.updateOne({ _id: req.body._id }, { $set: {"_id": req.body._id ,"complete" : complete} });
+            res.status(200).json({ res:updateRes})
+          }
       } else if (req.method === "DELETE") {
         await dbConnect()
 

@@ -128,6 +128,25 @@ export default function Home() {
         setlist(data.res)
     }
 
+    async function markListAsComplete() {
+        const response = await fetch(`/api/ShoppingList/${String(id)}/?EDGEtoken=${localStorage.getItem('Token')}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({"complete": "true", "_id": String(id)}),
+        });
+
+        if (response.ok) {
+        } else {
+            // console.log()
+            let error = await response.json()
+            console.log(error)
+            alert(error.message)
+            // Handle errors, e.g., show an error message
+        }
+    }
+
     async function handleSubmitCreateNewItem(e) {
         e.preventDefault();
 
@@ -374,6 +393,7 @@ export default function Home() {
                         <Button onClick={() => redirect(`${id}/stats`)} >
                             see stats
                         </Button>
+                        <Button onClick={()=>markListAsComplete()}>Mark as Complete</Button>
                         <p>ID = {id}</p>
 
                     </div>

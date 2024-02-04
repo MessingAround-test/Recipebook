@@ -47,7 +47,15 @@ export default function Home() {
         console.log("SHOPPING LIST INIT")
         let data = await (await fetch("/api/ShoppingList?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
-        setRecipes(data.res)
+        let localRecipes = data.res
+        // localRecipes = localRecipes.map((recipe)=>({
+        //     ... recipe,
+        //     "image": recipe.complete?"/tick.jpg":""
+        // }))
+        localRecipes = localRecipes.filter((recipe)=>(
+            recipe.complete === false
+        ))
+        setRecipes(localRecipes)
     }
 
     async function handleSubmit(e) {
@@ -143,7 +151,7 @@ export default function Home() {
                         {recipes.map((recipe) => {
                             return (
                                 <>
-                                    <Col>
+                                    <Col style={{backgroundColor: recipe.complete?"green": ""}}>
 
                                         <ImageCard recipe={recipe}
                                             allowDelete={allowDelete}
@@ -151,7 +159,7 @@ export default function Home() {
                                             onRedirect={redirect}
                                             cardHeight={'5rem'}
                                         ></ImageCard>
-                                        {recipe.complete ? <h1>Complete</h1> : <>Incomplete</>}
+                                        {/* {recipe.complete ? <h1>Complete</h1> : <>Incomplete</>} */}
 
 
                                     </Col>
