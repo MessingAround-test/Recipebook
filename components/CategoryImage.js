@@ -46,7 +46,7 @@ function compareJSONKeysAndValues(obj1, obj2) {
   return resultObject;
 }
 
-const HighlightedTitles = ({ data, order, current }) => {
+const HighlightedTitles = ({ children, data, order, current }) => {
   const keyDataArray = order;
   console.log(order)
   // console.log(data)
@@ -63,7 +63,7 @@ const HighlightedTitles = ({ data, order, current }) => {
       );
 
       
-      return <JSONImageList data={newKeys}></JSONImageList>;
+      return <JSONImageList data={newKeys}>{children}</JSONImageList>;
     }
   }
   if (current === ""){

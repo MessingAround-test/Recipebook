@@ -50,7 +50,7 @@ const imageMapping = {
     // Add more main keys and subkeys as needed
 };
 
-export const JSONImageList = ({ data }) => {
+export const JSONImageList = ({ children, data }) => {
     const renderImages = () => {
         if (data === undefined) {
             return <></>
@@ -83,6 +83,7 @@ export const JSONImageList = ({ data }) => {
                         >
                             <div className={styles.overlayContainer}>
                                 <p className={styles.overlayText}>{subKey}</p>
+                                {children}
                             </div>
                             
 

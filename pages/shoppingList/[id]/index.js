@@ -21,7 +21,7 @@ import AddShoppingItem from '../../../components/AddShoppingItem'
 import NewIngredientTable from '../../../components/NewIngredientTable'
 import ToggleList from '../../../components/ToggleList'
 import CategoryList from '../../../components/CategoryImage'
-import {getGroceryStoreProducts} from '../../../lib/commonAPIs'
+import { getGroceryStoreProducts } from '../../../lib/commonAPIs'
 import { groupByKeys } from '../../../lib/grouping'
 import CategoryImage from '../../../components/CategoryImage'
 
@@ -40,10 +40,10 @@ export default function Home() {
     const [filters, setFilters] = useState(["complete"])
     const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type", "category_simple"]
     const [modifyColumnIndex, setModifyColumnIndex] = useState(0)
-    
+
     async function handleActiveSupplierChange(inputObject) {
         await updateSupplierFromInputObject(inputObject)
-    
+
     }
     useEffect(() => {
         if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
@@ -76,8 +76,8 @@ export default function Home() {
         // Use a loop to update the state for each ingredient individually
         for (let i = 0; i < updatedListIngreds.length; i++) {
             try {
-                if (updatedListIngreds[i].complete === true){
-                    
+                if (updatedListIngreds[i].complete === true) {
+
                     updatedListIngreds[i].loading = false
                     continue
                 }
@@ -112,9 +112,9 @@ export default function Home() {
         }
     }, [listIngreds])
 
-    
 
-    
+
+
 
 
     async function getShoppingListItems() {
@@ -247,22 +247,53 @@ export default function Home() {
         // Custom sorting logic
         const aIsComplete = a.includes("complete=true");
         const bIsComplete = b.includes("complete=true");
-    
+
         if (aIsComplete && !bIsComplete) {
-          return 1; // 'a' goes after 'b'
+            return 1; // 'a' goes after 'b'
         } else if (!aIsComplete && bIsComplete) {
-          return -1; // 'a' goes before 'b'
+            return -1; // 'a' goes before 'b'
         } else {
-          return a.localeCompare(b); // Default alphabetical sorting
+            return a.localeCompare(b); // Default alphabetical sorting
         }
-      }
+    }
 
     useEffect(() => {
         // This code will run after the component renders and whenever enabledSuppliers changes
         reloadAllIngredients();
     }, [enabledSuppliers]);
 
+    function calculateTotalOfList(items) {
 
+        let efficientTotal = 0
+        let total = 0
+        items.forEach((item) => {
+            if (item.options.length > 0) {
+                efficientTotal += item.options[0].total_price
+                total += (item.options[0].total_price / item.options[0].match_efficiency * 100)
+            }
+        }
+        )
+        return {
+            "total": total.toFixed(2),
+            "efficient_total": efficientTotal.toFixed(2)
+        }
+    }
+
+    function showTotalOfList(items) {
+
+        let res = calculateTotalOfList(items)
+        if (res.efficient_total === res.total) {
+            return (
+            <>
+                ${res.total}
+            </>
+            )
+        }
+        // ${res.efficient_total} /
+        return <>
+            ${res.total}
+        </>
+    }
 
 
 
@@ -326,17 +357,19 @@ export default function Home() {
                         <br></br>
                         {
                             Object.keys(groupByKeys(matchedListIngreds, filters))
-                            .sort(sortFunction).map((group) => (
-                                <>
+                                .sort(sortFunction).map((group) => (
+                                    <>
 
-                                    <Row>
-                                        {/* <h3>{group}</h3> */}
-                                        <CategoryImage data={groupByKeys(matchedListIngreds, filters)} order={Object.keys(groupByKeys(matchedListIngreds, filters)).sort(sortFunction)} current={group}></CategoryImage>
-                                        {/* <CategoryList categoryString={group}></CategoryList> */}
-                                        <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} filters={filters} enabledSuppliers={enabledSuppliers}></NewIngredientTable>
-                                    </Row>
-                                </>
-                            ))
+                                        <Row>
+                                            {/* <h3>{group}</h3> */}
+                                            <CategoryImage data={groupByKeys(matchedListIngreds, filters)} order={Object.keys(groupByKeys(matchedListIngreds, filters)).sort(sortFunction)} current={group}>
+                                                <h5>{showTotalOfList(groupByKeys(matchedListIngreds, filters)[group])}</h5>
+                                            </CategoryImage>
+                                            {/* <CategoryList categoryString={group}></CategoryList> */}
+                                            <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} filters={filters} enabledSuppliers={enabledSuppliers}></NewIngredientTable>
+                                        </Row>
+                                    </>
+                                ))
                         }
                         <Button onClick={() => redirect(`${id}/stats`)} >
                             see stats
