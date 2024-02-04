@@ -46,6 +46,9 @@ const imageMapping = {
     },
     complete: {
         "true": "/complete.jpg"
+    },
+    "": {
+        "undefined": "/.jpg"
     }
     // Add more main keys and subkeys as needed
 };
