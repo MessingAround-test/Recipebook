@@ -134,7 +134,7 @@ export default function Home() {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({"complete": "true", "_id": String(id)}),
+            body: JSON.stringify({ "complete": "true", "_id": String(id) }),
         });
 
         if (response.ok) {
@@ -274,7 +274,7 @@ export default function Home() {
             return a.localeCompare(b); // Default alphabetical sorting
         }
     }
-    function ingredientSortFunction(a,b){
+    function ingredientSortFunction(a, b) {
         console.log(a, b)
         const nameA = a.name.toLowerCase();
         const nameB = b.name.toLowerCase();
@@ -308,9 +308,9 @@ export default function Home() {
         let res = calculateTotalOfList(items)
         if (res.efficient_total === res.total) {
             return (
-            <>
-                ${res.total}
-            </>
+                <>
+                    ${res.total}
+                </>
             )
         }
         // ${res.efficient_total} /
@@ -398,7 +398,16 @@ export default function Home() {
                         <Button onClick={() => redirect(`${id}/stats`)} >
                             see stats
                         </Button>
-                        <Button onClick={()=>markListAsComplete()}>Mark as Complete</Button>
+                        <Button onClick={() => markListAsComplete()}>Mark as Complete</Button>
+                        <Button
+                            onClick={() => navigator.clipboard.writeText(
+                                listIngreds.map((ingred) => (
+                                    !ingred.complete ? `[] ${ingred.quantity} ${ingred.quantity_type_shorthand} ${ingred.name}\n` : ''
+                                )).join('')
+                            )}
+                        >
+                            Copy to Clipboard
+                        </Button>
                         <p>ID = {id}</p>
 
                     </div>
