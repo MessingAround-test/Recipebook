@@ -12,6 +12,7 @@ import Card from 'react-bootstrap/Card'
 import { useRouter } from 'next/router'
 import Container from 'react-bootstrap/Container'
 import ImageList from '../../../components/ImageList'
+import CopyToClipboard from '../../../components/CopyToClipboard'
 
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
@@ -24,6 +25,7 @@ import CategoryList from '../../../components/CategoryImage'
 import { getGroceryStoreProducts } from '../../../lib/commonAPIs'
 import { groupByKeys } from '../../../lib/grouping'
 import CategoryImage from '../../../components/CategoryImage'
+import ClipboardJS from 'clipboard';
 
 export default function Home() {
     const [userData, setUserData] = useState({})
@@ -399,15 +401,16 @@ export default function Home() {
                             see stats
                         </Button>
                         <Button onClick={() => markListAsComplete()}>Mark as Complete</Button>
-                        <Button
+                        <CopyToClipboard textToCopy={listIngreds.map((ingred) => (
+                            !ingred.complete ? `[] ${ingred.quantity} ${ingred.quantity_type_shorthand} ${ingred.name}\n` : ''
+                        )).join('')}></CopyToClipboard>
+                        {/* <Button
                             onClick={() => navigator.clipboard.writeText(
-                                listIngreds.map((ingred) => (
-                                    !ingred.complete ? `[] ${ingred.quantity} ${ingred.quantity_type_shorthand} ${ingred.name}\n` : ''
-                                )).join('')
+                                
                             )}
                         >
                             Copy to Clipboard
-                        </Button>
+                        </Button> */}
                         <p>ID = {id}</p>
 
                     </div>
