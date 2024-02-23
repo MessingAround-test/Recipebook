@@ -402,8 +402,8 @@ export default function Home() {
                         </Button>
                         <Button onClick={() => markListAsComplete()}>Mark as Complete</Button>
                         <CopyToClipboard textToCopy={listIngreds.map((ingred) => (
-                            !ingred.complete ? `[] ${ingred.quantity} ${ingred.quantity_type_shorthand} ${ingred.name}\n` : ''
-                        )).join('')}></CopyToClipboard>
+                            !ingred.complete ? `[ ] ${ingred.quantity} ${ingred.quantity_type_shorthand} ${ingred.name}` : ''
+                        )).join('<br>')}></CopyToClipboard>
                         {/* <Button
                             onClick={() => navigator.clipboard.writeText(
                                 
