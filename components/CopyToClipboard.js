@@ -21,6 +21,7 @@ const CopyToClipboard = ({ listIngreds }) => {
     return (
       <>
         {ingredients
+        
           .filter((ingred) => !ingred.complete)
           .map((ingred, index) => (
             <li key={index}>
