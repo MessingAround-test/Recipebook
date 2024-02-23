@@ -21,11 +21,11 @@ const CopyToClipboard = ({ listIngreds }) => {
     return (
       <>
         {ingredients
-        
+
           .filter((ingred) => !ingred.complete)
           .map((ingred, index) => (
             <li key={index}>
-              {ingred.quantity} {ingred.quantity_type_shorthand} {ingred.name} \n
+              - {ingred.quantity} {ingred.quantity_type_shorthand} {ingred.name}
             </li>
           ))}
       </>
