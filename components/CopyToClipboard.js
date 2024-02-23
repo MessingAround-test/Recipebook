@@ -24,7 +24,7 @@ const CopyToClipboard = ({ listIngreds }) => {
           .filter((ingred) => !ingred.complete)
           .map((ingred, index) => (
             <li key={index}>
-              o {ingred.quantity} {ingred.quantity_type_shorthand} {ingred.name}
+              - {ingred.quantity} {ingred.quantity_type_shorthand} {ingred.name} \n
             </li>
           ))}
       </>
