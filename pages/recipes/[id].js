@@ -171,12 +171,59 @@ export default function Home() {
             let current = matchedListIngreds[ingredient].options[0]
 
             if (current !== undefined) {
-                total = total + current.total_price/current.match_efficiency*100
+                total = total + current.total_price / current.match_efficiency * 100
             }
         }
         return total.toFixed(2)
 
     }
+
+    const handleFileChange = async (event) => {
+        const file = event.target.files[0];
+    
+        if (file) {
+          try {
+            // Convert the selected file to a Base64-encoded string
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+    
+            reader.onload = async () => {
+                
+              const base64String = reader.result;
+
+    
+              // Your PUT API logic to update the associated image
+              try {
+                const response = await fetch(`/api/Recipe/${encodeURIComponent(String(await router.query.id))}?EDGEtoken=${localStorage.getItem('Token')}`, {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    image: base64String,
+                  }),
+                });
+    
+                // Check the response status and handle accordingly
+                if (response.ok) {
+                    window.location.reload();
+                  // Handle success, e.g., update state or trigger a re-fetch
+                } else {
+                  console.error('Failed to update the image');
+                }
+              } catch (error) {
+                console.error('Error updating image:', error);
+              }
+            };
+    
+            reader.onerror = (error) => {
+              console.error('Error reading the file:', error);
+            };
+          } catch (error) {
+            console.error('Error converting file to Base64:', error);
+          }
+        }
+      };
 
     useEffect(() => {
         console.log(listIngreds)
@@ -206,6 +253,10 @@ export default function Home() {
     const redirect = async function (page) {
         Router.push(page)
     };
+
+    const handleClick = () => {
+        document.querySelector('input[type="file"]').click();
+      };
 
     const markAsIncorrect = async function (ingredientId, ingredName) {
         let data = await (await fetch("/api/Ingredients/?id=" + ingredientId + "&EDGEtoken=" + localStorage.getItem('Token'), {
@@ -361,7 +412,16 @@ export default function Home() {
                                 <Col className={styles.Col}>
                                     {/* {image!==undefined?<Image src={image}></Image>: <h4>no image</h4>} */}
                                     <Card >
-                                        <img src={imageData} style={{ width: "auto", height: "auto" }} />
+
+                                        <input
+                                            type="file"
+                                            style={{ display: 'none' }}
+                                            onChange={handleFileChange}
+                                            accept="image/*"
+                                        />                                            
+                                        <img src={imageData} style={{ width: "auto", height: "auto" }} onClick={handleClick} />
+                                        
+
                                     </Card>
 
                                 </Col>
