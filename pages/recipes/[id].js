@@ -178,6 +178,49 @@ export default function Home() {
 
     }
 
+    const compressImage = async (base64String) => {
+        return new Promise((resolve, reject) => {
+          const img = new window.Image();
+      
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxResolution = 800; // Set your desired maximum resolution
+      
+            let width = img.width;
+            let height = img.height;
+      
+            // Resize the image if necessary
+            if (width > maxResolution || height > maxResolution) {
+              const aspectRatio = width / height;
+      
+              if (width > height) {
+                width = maxResolution;
+                height = width / aspectRatio;
+              } else {
+                height = maxResolution;
+                width = height * aspectRatio;
+              }
+            }
+      
+            canvas.width = width;
+            canvas.height = height;
+      
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+      
+            const compressedBase64String = canvas.toDataURL('image/jpeg');
+            resolve(compressedBase64String);
+          };
+      
+          img.onerror = (error) => {
+            reject(error);
+          };
+      
+          img.src = base64String;
+        });
+      };
+      
+
     const handleFileChange = async (event) => {
         const file = event.target.files[0];
     
@@ -190,6 +233,10 @@ export default function Home() {
             reader.onload = async () => {
                 
               const base64String = reader.result;
+              if (file.size > 1024 * 1024) {
+                // Compress the image resolution
+                base64String = await compressImage(reader.result);
+              }
 
     
               // Your PUT API logic to update the associated image
