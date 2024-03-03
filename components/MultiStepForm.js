@@ -105,7 +105,7 @@ const MultiStepForm = () => {
   return (
     <div className={styles.centeredContainer}>
       <div className={styles.multistepFormContainer}>
-        <h2>Question {currentQuestion + 1}</h2>
+        {/* <h2>Question {currentQuestion + 1}</h2> */}
         <p>{questions[currentQuestion].text}</p>
         {questions[currentQuestion].type === 'text' && (
           <input
