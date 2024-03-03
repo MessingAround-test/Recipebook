@@ -1,90 +1,100 @@
 /* MultiStepForm.module.css */
 
 .centeredContainer {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100vh; /* Adjust as needed */
-  }
-  
-  .multistepFormContainer {
-    max-width: 400px;
-    margin: 20px; /* Adjust as needed */
-    padding: 20px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  }
-  
-  .inputField {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-  }
-  
- /* MultiStepForm.module.css */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
 
-.navigationButtons {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 20px;
-  }
-  
-  .goBackButton,
-  .nextButton {
-    background-color: #4caf50;
-    color: white;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 16px;
-  }
-  
-  .goBackButton:hover,
-  .nextButton:hover {
-    background-color: #45a049;
-  }
-  
-  .goBackButton {
-    background-color: #2196f3;
-    margin-right: 10px;
-  }
-  
-  .goBackButton:hover {
-    background-color: #0b7dda;
-  }
-  
-  
-  /* MultiStepForm.module.css */
+.multistepFormContainer {
+  max-width: 400px;
+  margin: 20px;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.inputField {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 1rem;
+}
 
 .carousel {
-    display: flex;
-    overflow-x: auto; /* Enable horizontal scrolling */
-    padding: 10px;
+  display: flex;
+  overflow-x: auto;
+  padding: 10px;
+}
+
+.carouselItem {
+  flex: 0 0 auto;
+  width: 150px;
+  margin-right: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  font-size:  1rem;
+}
+
+.selected {
+  background-color: #4caf50;
+  border-color: #66bfff;
+}
+
+.checkbox {
+  margin-top: 5px;
+}
+
+.navigationButtons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.goBackButton,
+.nextButton {
+  font-size:  1rem;
+  background-color: #4caf50;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.goBackButton:hover,
+.nextButton:hover {
+  background-color: #45a049;
+}
+
+.goBackButton {
+  background-color: #2196f3;
+  margin-right: 10px;
+}
+
+.goBackButton:hover {
+  background-color: #0b7dda;
+}
+
+/* Media query for smaller screens (mobile) */
+@media (max-width: 600px) {
+  .multistepFormContainer {
+    max-width: 100%;
   }
-  
-  .carouselItem {
-    flex: 0 0 auto;
-    width: 150px; /* Adjust the width of each card as needed */
-    margin-right: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 10px;
+
+  .inputField,
+  .carouselItem,
+  .goBackButton,
+  .nextButton {
+    font-size: 2rem;
   }
-  
-  .selected {
-    background-color: #45a049; /* Background color for the selected card */
-    border-color: #66bfff; /* Border color for the selected card */
-  }
-  
-  .checkbox {
-    margin-top: 5px;
-  }
-  
+}
