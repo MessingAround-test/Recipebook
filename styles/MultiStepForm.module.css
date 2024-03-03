@@ -94,6 +94,7 @@
   .inputField,
   .carouselItem,
   .goBackButton,
+  .multistepFormContainer,
   .nextButton {
     font-size: 2rem;
   }
