@@ -46,7 +46,7 @@ const MultiStepForm = () => {
         data[question.id] = question.answer || question.selectedOption;
         return data;
       }, {});
-      
+
       // Do something with the formData, for example, log it to the console
       console.log(formData);
     }
@@ -72,19 +72,35 @@ const MultiStepForm = () => {
     );
   };
   const renderNavigationButtons = () => {
+    const percentageComplete = calculatePercentageComplete();
     return (
-      <div className={styles.navigationButtons}>
-        {currentQuestion > 0 && (
-          <button onClick={handleGoBack} className={styles.goBackButton}>
-            Go Back
+      <>
+        <div className={styles.navigationButtons}>
+          {currentQuestion > 0 && (
+            <button onClick={handleGoBack} className={styles.goBackButton}>
+              Go Back
+            </button>
+          )}
+
+          <button onClick={handleNext} className={styles.nextButton}>
+            {currentQuestion < questions.length - 1 ? 'Next' : 'Submit'}
           </button>
-        )}
-        <button onClick={handleNext} className={styles.nextButton}>
-          {currentQuestion < questions.length - 1 ? 'Next' : 'Submit'}
-        </button>
-      </div>
+        </div>
+        <br></br>
+        <div className={styles.progressBarContainer}>
+          <div className={styles.progressBar} style={{ width: `${percentageComplete}%` }}>
+          </div>
+        </div>
+      </>
     );
   };
+
+  const calculatePercentageComplete = () => {
+    const totalQuestions = questions.length;
+    const answeredQuestions = questions.slice(0, currentQuestion + 1).filter(question => question.answer || question.selectedOption).length;
+    return Math.round((answeredQuestions / totalQuestions) * 100);
+  };
+  
 
   return (
     <div className={styles.centeredContainer}>
