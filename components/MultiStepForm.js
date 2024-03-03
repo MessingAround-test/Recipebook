@@ -4,9 +4,9 @@ import React, { useState } from 'react';
 import styles from '../styles/MultiStepForm.module.css'; // Import the CSS module
 
 
-const MultiStepForm = ({ questions }) => {
+const MultiStepForm = ({ questionList }) => {
 
-  const [questions, setQuestions] = useState(questions)
+  const [questions, setQuestions] = useState(questionList)
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const handleKeyPress = (e) => {

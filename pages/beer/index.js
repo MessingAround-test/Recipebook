@@ -214,7 +214,7 @@ export default function Home() {
 
 
                 <main className={styles.main}>
-                    <MultiStepForm questions={brewingQuestions}></MultiStepForm>
+                    <MultiStepForm questionList={brewingQuestions}></MultiStepForm>
                     <BigCarousel images={imageList}></BigCarousel>
                     {/* <Button onClick={() => console.log(recipes)}> show Recipes</Button> */}
                 </main>
