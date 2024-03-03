@@ -17,6 +17,7 @@ export default function Home() {
 
   // , { "name": "Game", "_id": "/game" }
   const [pages, setPages] = useState([{ "name": "Recipes", "_id": "/recipes", "image": "cookbook.png" }, { "name": "Shopping List", "_id": "/shoppingList", "image": "shop_list_realistic.png" }, { "name": "One Off Extracts", "_id": "/oneOffExtracts", "image": "extract.png" }])
+  // , {"name": "Beer Crap", "_id": "/beer", "image": "beers/LOUIS.jpg"}
 
   useEffect(() => {
     if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
