@@ -45,15 +45,6 @@ export function Toolbar(props) {
                     <Navbar.Toggle aria-controls="basic-navbar-nav" />
                     <Navbar.Collapse id="basic-navbar-nav">
                         <Nav className="me-auto">
-                            {/* <Nav.Link href="/">Home</Nav.Link> */}
-
-
-                            {/* <NavDropdown title="Tools" id="basic-nav-dropdown"> */}
-                            {/* <NavDropdown.Item href="/leaveGraph">Recipes</NavDropdown.Item> */}
-                            {/* <NavDropdown.Item href="/docGen">Form Generator</NavDropdown.Item> */}
-                            {/* <NavDropdown.Divider /> */}
-                            {/* <NavDropdown.Item href="#action/3.4">Separated link</NavDropdown.Item> */}
-                            {/* </NavDropdown> */}
                             <Nav.Link href="/recipes">Recipes</Nav.Link>
                             <Nav.Link href="/createRecipe"><AiFillPlusCircle /></Nav.Link>
                             <Nav.Link href="/ingredientResearch">Ingredient Research</Nav.Link>
@@ -63,7 +54,7 @@ export function Toolbar(props) {
                         </Nav>
                     </Navbar.Collapse>
                     <Navbar.Collapse className="justify-content-end" >
-                        <Nav.Link href="/profile" style={{"padding":"20px"}} >
+                        <Nav.Link href="/profile" >
                             <Navbar.Text>
                                 <CgProfile size={25} />
 

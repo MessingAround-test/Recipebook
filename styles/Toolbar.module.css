@@ -30,7 +30,7 @@
     background: linear-gradient(-45deg, #1C2640, #1C2321);
     background-size: 400% 400%;
     animation: gradient 60s ease infinite;
-
+    height:fit-content
   }
 
   .logo {
