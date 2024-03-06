@@ -10,12 +10,14 @@ import { useEffect, useState } from 'react'
 import Button from 'react-bootstrap/Button';
 import Router from 'next/router'
 import ImageCard from '../../components/ImageCard'
-
+import FormControl from 'react-bootstrap/FormControl';
 
 
 export default function Home() {
     const [userData, setUserData] = useState({})
     const [recipes, setRecipes] = useState([])
+
+    const [searchTerm, setSearchTerm] = useState()
     const [allowDelete, setAllowDelete] = useState(false)
 
     async function getUserDetails() {
@@ -43,10 +45,28 @@ export default function Home() {
         // console.log(await data)
     }, []) // <-- empty dependency array
 
+    useEffect(() => {
+        setFilteredRecipes(filterList(recipes, searchTerm))
+    }, [recipes, searchTerm])
+
 
     const redirect = async function (page) {
         Router.push(page)
     };
+
+    // Check all the keys values for the search term
+    function filterList(list, searchTerm) {
+        if (searchTerm) {
+            return list.filter(item =>
+                Object.values(item).some(value =>
+                    String(value).toLowerCase().includes(searchTerm.toLowerCase())
+                )
+            )
+        }
+        return list
+    };
+
+    const [filteredRecipes, setFilteredRecipes] = useState([])
 
 
     const deleteRecipe = async function (id) {
@@ -114,6 +134,14 @@ export default function Home() {
                         }
 
                     </Row>
+                    <FormControl
+                        placeholder="Search..."
+                        aria-label="Search"
+                        aria-describedby="basic-addon2"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+
 
                     <div>
                         {/* <div style={{ padding: "0.5vh" }}>
@@ -126,7 +154,7 @@ export default function Home() {
                             </Card>
                         </div> */}
                         <Row xl={5} lg={4} md={3} sm={2} xs={1}>
-                            {recipes.map((recipe) => {
+                            {filteredRecipes.map((recipe) => {
                                 return (
                                     <Col key={recipe._id}>
                                         <ImageCard recipe={recipe}
