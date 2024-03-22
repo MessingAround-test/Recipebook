@@ -10,108 +10,17 @@ import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Router from 'next/router'
 import Card from 'react-bootstrap/Card'
-import {IngredientSearchList} from "../components/IngredientSearchList"
+import { IngredientSearchList } from "../components/IngredientSearchList"
 
 
 export default function Home() {
     const [userData, setUserData] = useState({})
-    const [recipes, setRecipes] = useState([])
-    const [allIngreds, setAllIngreds] = useState([])
-    const [filteredIngreds, setFilteredIngreds] = useState([])
-    const [Headers, setHeaders] = useState([])
-    const [Suppliers, setSuppliers] = useState([])
-    const [filtersObj, setFiltersObj] = useState({"name": "", "supplier": ""})
-
+    const [searchTerm, setSearchTerm] = useState("")
     async function getUserDetails() {
         let data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
         console.log(data)
         setUserData(data.res)
     }
-
-    async function getRecipeDetails() {
-        let data = await (await fetch("/api/Recipe?EDGEtoken=" + localStorage.getItem('Token'))).json()
-        console.log(data)
-        setRecipes(data.res)
-    }
-
-    async function getAllIngredients() {
-        let data = await (await fetch(`/api/Ingredients/?EDGEtoken=` + localStorage.getItem('Token'))).json()
-        setAllIngreds(data.res)
-        setFilteredIngreds(data.res)
-        // console.log(data)
-        // setRecipes(data.res)
-    }
-
-    async function deleteAllIngredients() {
-        let data = await (await fetch(`/api/Ingredients/?EDGEtoken=` + localStorage.getItem('Token'), {method:"DELETE"})).json()
-        setAllIngreds([])
-    }
-
-    async function getIngredient(e) {
-        e.preventDefault();
-
-        console.log(e)
-        let IngredQuery = e.target.ingredName.value.toLowerCase()
-        let supplierName = e.target.supplierName.value
-
-
-        let data = await (await fetch(`/api/Ingredients?name=${IngredQuery}&supplier=${supplierName}&EDGEtoken=` + localStorage.getItem('Token'))).json()
-        console.log(data)
-        if (data.loadedSource === true){
-            data = await (await fetch(`/api/Ingredients?name=${IngredQuery}&supplier=${supplierName}&EDGEtoken=` + localStorage.getItem('Token'))).json()
-            console.log(data)
-        } 
-
-        setAllIngreds([...allIngreds.concat(data.res)])
-        
-        console.log(allIngreds)
-        // setRecipes(data.res)
-    }
-
-    async function updateIngredsListForFilter(filter){
-        let name = filter.name.toUpperCase()
-        let supplier = filter.supplier.toUpperCase()
-        console.log(supplier)
-        console.log(name)
-        
-
-        
-
-        let result = allIngreds.filter(function(ingred){
-            if (ingred.source.toUpperCase() !== supplier && supplier !== ""){
-                return false
-            } 
-
-            if (!(ingred.name.toUpperCase().includes(name)) && name !== ""){
-                return false
-            } 
-
-            return true
-        });
-
-        setFilteredIngreds(result)
-
-    }
-
-    async function updateFilteredIngreds(e){
-        let filter 
-        let newfilter
-        if (e.target.name === "ingredName"){
-            filter = e.target.value
-            newfilter= {...filtersObj, "name": filter}
-            await setFiltersObj(newfilter)
-        } else {
-            // filter = e.target.options[e.target.selectedIndex].text
-            filter = e.target.value
-            console.log(filter)
-            console.log('YESYES')
-            newfilter = {...filtersObj, "supplier": filter}
-            await setFiltersObj(newfilter)            
-        }
-        updateIngredsListForFilter(newfilter)
-    }
-
-
 
     useEffect(() => {
         if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
@@ -127,7 +36,14 @@ export default function Home() {
         Router.push(page)
     };
 
-    
+    async function handleGetIngredient(e){
+        let ingredient = {
+            "name": e.ingredName
+        }
+        let data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${results}&quantity=${ingredient.quantity}&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${Token}`)).json()
+    }
+
+
 
 
     return (
@@ -141,8 +57,24 @@ export default function Home() {
                     <link rel="icon" href="/avo.ico" />
                 </Head>
                 <main className={styles.main}>
-                    {/* style={{width: "50%", "left": "50%", "right": "50%"}} */}
-                    <IngredientSearchList></IngredientSearchList>
+                    <Form onSubmit={(e) => handleGetIngredient(e)}>
+                        <Form.Group className="mb-3" id="formBasicEmail">
+
+                            <Form.Control name="ingredName" id="ingredName" value={searchTerm} type="text" placeholder="Enter ingredient Name" onChange={(e) => setSearchTerm(e.value)} required />
+                            <Button variant="primary" type="submit">
+                                Submit
+                            </Button>
+                            {/* <Form.Select name="supplierName" id="supplierName" type="text" placeholder="Enter ingredient Name" onChange={(e) => (e)}>
+                                {
+                                    Suppliers.map((supplier) => {
+                                        return <option value={supplier}>{supplier}</option>
+                                    })
+                                }
+                            </Form.Select> */}
+
+                        </Form.Group>
+                    </Form>
+
                 </main>
 
                 <footer className={styles.footer}>

@@ -43,20 +43,22 @@ export default function Home() {
 
 
     async function generateImage(prompt) {
-        if (recipeName !== undefined && recipeName !== "") {
-            let promptImage = await (await fetch(`https://image.pollinations.ai/prompt/${prompt} realistic`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })).blob();
+        try {
+            if (prompt !== undefined && prompt !== "") {
+                let promptImage = await (await fetch(`https://image.pollinations.ai/prompt/${prompt}%20realistic`, {
+                    method: 'GET'
+                })).blob();
 
-            let resData = await convertBlobToBase64(promptImage)
-            setImageData(resData)
+                let resData = await convertBlobToBase64(promptImage)
+                setImageData(resData)
+                setLoading(false)
+                return resData
+            } else {
+                alert("Please set a Recipe Name")
+            }
+        } catch (e) {
+
             setLoading(false)
-            return resData
-        } else {
-            alert("Please set a Recipe Name")
         }
     }
 

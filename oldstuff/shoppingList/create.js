@@ -44,20 +44,24 @@ export default function Home() {
 
 
     async function generateImage(prompt) {
-        setLoading(true)
+        try {
+            setLoading(true)
 
-        let promptImage = await (await fetch(`https://image.pollinations.ai/prompt/${prompt} realistic`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })).blob();
+            let promptImage = await (await fetch(`https://image.pollinations.ai/p/${prompt} realistic`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })).blob();
 
-        let resData = await convertBlobToBase64(promptImage)
-        
-        setLoading(false)
-        return resData
+            let resData = await convertBlobToBase64(promptImage)
 
+            setLoading(false)
+            return resData
+        } catch (e) {
+
+            setLoading(false)
+        }
     }
 
 
