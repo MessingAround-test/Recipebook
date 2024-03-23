@@ -108,11 +108,21 @@ export default function Home() {
     };
 
 
-    const onSubmitTasteImport = async function (e) {
+    const onSubmitRecipeSiteImport = async function (e) {
         e.preventDefault();
 
         let tasteURL = e.target.tasteURL.value
-        const data = await (await fetch(`/api/taste?url=${tasteURL}&EDGEtoken=${localStorage.getItem('Token')}`, {
+        
+        let siteProvider = ""
+        if (tasteURL.includes("taste")) {
+            siteProvider = "taste";
+        } else if (tasteURL.includes("recipetineats")) {
+            siteProvider = "recipetineats";
+        } else {
+            alert("Site provider not implemented")
+            return 
+        }
+        const data = await (await fetch(`/api/recipeSiteExtract/${siteProvider}?url=${tasteURL}&EDGEtoken=${localStorage.getItem('Token')}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
@@ -256,9 +266,9 @@ export default function Home() {
 
                                     </Col>
                                 </Row>
-                                <Form onSubmit={(e) => onSubmitTasteImport(e)}>
+                                <Form onSubmit={(e) => onSubmitRecipeSiteImport(e)}>
                                     <Form.Group className="mb-3" id="formBasicEmail">
-                                        <Form.Control name="tasteURL" id="tasteURL" type="text" placeholder="Taste.com url" />
+                                        <Form.Control name="tasteURL" id="tasteURL" type="text" placeholder="Taste.com OR recipetineats.com url" />
                                     </Form.Group>
                                     <Button variant="primary" type="submit">
                                         Import
