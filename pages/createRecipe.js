@@ -112,15 +112,17 @@ export default function Home() {
         e.preventDefault();
 
         let tasteURL = e.target.tasteURL.value
-        
+
         let siteProvider = ""
         if (tasteURL.includes("taste")) {
             siteProvider = "taste";
         } else if (tasteURL.includes("recipetineats")) {
             siteProvider = "recipetineats";
+        } else if (tasteURL.includes("vegkit")) {
+            siteProvider = "vegKit";
         } else {
             alert("Site provider not implemented")
-            return 
+            return
         }
         const data = await (await fetch(`/api/recipeSiteExtract/${siteProvider}?url=${tasteURL}&EDGEtoken=${localStorage.getItem('Token')}`, {
             method: 'GET',
@@ -268,7 +270,7 @@ export default function Home() {
                                 </Row>
                                 <Form onSubmit={(e) => onSubmitRecipeSiteImport(e)}>
                                     <Form.Group className="mb-3" id="formBasicEmail">
-                                        <Form.Control name="tasteURL" id="tasteURL" type="text" placeholder="Taste.com OR recipetineats.com url" />
+                                        <Form.Control name="tasteURL" id="tasteURL" type="text" placeholder="Taste.com OR recipetineats.com or vegkit url" />
                                     </Form.Group>
                                     <Button variant="primary" type="submit">
                                         Import
