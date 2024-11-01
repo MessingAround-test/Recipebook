@@ -38,7 +38,7 @@ function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false 
     });
 
     const resetForm = () => {
-        console.log("HAPPENED")
+        // console.log("HAPPENED")
         setFormData({
             name: "",
             quantity: 1,
@@ -56,9 +56,9 @@ function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false 
     const handleChange = (e) => {
         const { name, value } = e.target;
         
-        console.log(formData)
-        console.log(name)
-        console.log(value)
+        // console.log(formData)
+        // console.log(name)
+        // console.log(value)
         setFormData({ ...formData, [name]: value });
     };
 
@@ -75,26 +75,50 @@ function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false 
         handleSubmit(e)
     };
 
+    function isValidCategory(categories, to_check) {
+        return categories.some(category => category.name === to_check);
+      }
+
     async function determineDefaults(name) {
         try {
             let response = await (await fetch(`/api/ShoppingListItem/options?search_term=${name}&EDGEtoken=` + localStorage.getItem('Token'))).json()
 
-            console.log(response)
+            // console.log(response)
 
             if (response.success) {
                 const values = response.data
 
-                let category = values.category[0] ?  values.category[0].value  : formData.category
-                let quantity = values.quantity[0] ? values.quantity[0].value : formData.quantity
-                let quantity_type = values.quantity_type[0] ? values.quantity_type[0].value : formData.quantity_type
+                if (values.category[0]){
+                    let category = values.category[0] ?  values.category[0].value  : formData.category
+                    let quantity = values.quantity[0] ? values.quantity[0].value : formData.quantity
+                    let quantity_type = values.quantity_type[0] ? values.quantity_type[0].value : formData.quantity_type
+                    setFormData({ ...formData, category: category, quantity: quantity, quantity_type: quantity_type });
+                } else {
+                    // USE ai to determine the category... 
+                    let response = await (await fetch(`/api/ai/determine_default_categories?search_term=${name}&EDGEtoken=` + localStorage.getItem('Token'))).json()
+                    if (!response.success) {
+                        console.error('Error fetching data:', response.statusText);
+                        // Handle the error, e.g., display an error message to the user
+                        return;
+                      }
+                      
+                      // Extract the category from the response
+                      console.log(response)
+                      
+                      const category = response.data;
 
-                setFormData({ ...formData, category: category, quantity: quantity, quantity_type: quantity_type });
-
-
+                      if (isValidCategory(categories, category)) {
+                        setFormData({ ...formData, category: category });
+                      } else {
+                        console.log("The response is not a valid category.");
+                      }
+                      
+                }
+                
                 // alert(response)
                 // Handle success, e.g., show a success message or redirect
             } else {
-                console.log(response.data)
+                // console.log(response.data)
                 return
                 // alert(response.data)
                 // Handle errors, e.g., show an error message
@@ -114,7 +138,7 @@ function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false 
         try {
             let response = await (await fetch(`/api/Ingredients/defaults?EDGEtoken=` + localStorage.getItem('Token'))).json()
 
-            console.log(response)
+            // console.log(response)
 
             if (response.success) {
 
@@ -165,7 +189,7 @@ function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false 
                 <Button variant="success" type="submit">
                     Submit
                 </Button>
-                {/* <Button variant="primary" onClick={() => console.log(formData)}>
+                {/* <Button variant="primary" onClick={() => // console.log(formData)}>
                     show state
                 </Button> */}
             </Form>
