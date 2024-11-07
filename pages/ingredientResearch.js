@@ -11,6 +11,7 @@ import Button from 'react-bootstrap/Button';
 import Router from 'next/router'
 import Card from 'react-bootstrap/Card'
 import { IngredientSearchList } from "../components/IngredientSearchList"
+import IngredientResearchComponent from './ingredientResearchComponent';
 
 
 export default function Home() {
@@ -57,23 +58,19 @@ export default function Home() {
                     <link rel="icon" href="/avo.ico" />
                 </Head>
                 <main className={styles.main}>
-                    <Form onSubmit={(e) => handleGetIngredient(e)}>
-                        <Form.Group className="mb-3" id="formBasicEmail">
-
-                            <Form.Control name="ingredName" id="ingredName" value={searchTerm} type="text" placeholder="Enter ingredient Name" onChange={(e) => setSearchTerm(e.value)} required />
-                            <Button variant="primary" type="submit">
-                                Submit
-                            </Button>
-                            {/* <Form.Select name="supplierName" id="supplierName" type="text" placeholder="Enter ingredient Name" onChange={(e) => (e)}>
-                                {
-                                    Suppliers.map((supplier) => {
-                                        return <option value={supplier}>{supplier}</option>
-                                    })
-                                }
-                            </Form.Select> */}
-
-                        </Form.Group>
-                    </Form>
+                <Card className="p-4" style={{ maxWidth: '80%', margin: '0 auto', borderRadius: '10px', boxShadow: '0 8px 16px rgba(0,0,0,0.2)' }}>
+          <Card.Body>
+            <h1 className="text-center mb-4" style={{ color: '#007bff' }}>Ingredient Explorer</h1>
+            <p className="text-center text-muted mb-4">
+              Check out how much shit costs at either, "Woolworths", "Aldi", "Panetta" or "IGA". 
+            </p>
+            
+            {/* Render Ingredient Research Component */}
+            <div className="mt-4">
+              <IngredientResearchComponent/>
+            </div>
+          </Card.Body>
+        </Card>
 
                 </main>
 

@@ -1,0 +1,31 @@
+/* SamplePage.css */
+
+.sample-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f7f9fc;
+}
+
+.search-container {
+    max-width: 500px;
+    width: 100%;
+    padding: 2rem;
+    border-radius: 8px;
+    background-color: #ffffff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.search-container h1 {
+    font-size: 1.8rem;
+    color: #007bff;
+    margin-bottom: 0.5rem;
+}
+
+.search-container p {
+    font-size: 1rem;
+    color: #6c757d;
+    margin-bottom: 1.5rem;
+}

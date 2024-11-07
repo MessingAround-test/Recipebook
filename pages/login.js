@@ -88,8 +88,11 @@ export default function login() {
                             <Button variant="primary" type="submit">
                                 Submit
                             </Button>
-                            <Button variant="secondary" style={{ "float": "right" }} onClick={()=>redirect("/register")}>
+                            {/* <Button variant="secondary" style={{ "float": "right" }} onClick={()=>redirect("/register")}>
                                 Register
+                            </Button> */}
+                            <Button variant="secondary" style={{ "float": "right" }} onClick={()=>redirect("/SamplePage")}>
+                                See Sample
                             </Button>
                         </Form>
 

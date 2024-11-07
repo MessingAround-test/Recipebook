@@ -67,3 +67,8 @@ WHen you go into Woolworths what is the order:
 
 
 https://shipfa.st/tools/logo-fast
+Gemini crap was done on brynsbrews@gmail.com
+
+
+Think about this... to compare prices better
+Provide an output for carrots with conversions between grams, milliliters, and each (whole units). respond with only this JSON format:{'item': {g: <grams>,ml: <milliliters>,each: <quantity>}}
