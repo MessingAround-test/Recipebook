@@ -1,11 +1,7 @@
 import Head from 'next/head';
-import Table from 'react-bootstrap/Table';
-import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
-import Spinner from 'react-bootstrap/Spinner'; // Import Spinner for loading
 import { useEffect, useState } from 'react';
-import Router from 'next/router';
-import { quantity_unit_conversions } from "../lib/conversion"
+import { Table, Form, Button, Spinner, Card, Row, Col } from 'react-bootstrap';
+import { quantity_unit_conversions } from "../lib/conversion";
 
 const categories = [
     { name: 'Fresh Produce' },
@@ -21,30 +17,19 @@ export default function IngredientResearchComponent() {
     const [quantity, setQuantity] = useState(1);
     const [quantityUnit, setQuantityUnit] = useState('any');
     const [category, setCategory] = useState('');
-    const [loading, setLoading] = useState(false); // Loading state
+    const [loading, setLoading] = useState(false);
 
     async function getUserDetails() {
         let data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json();
         setUserData(data.res);
     }
 
-    // useEffect(() => {
-    //     if (!localStorage.getItem('Token')) {
-    //         alert("Please re-log in");
-    //         Router.push("/login");
-    //     } else {
-    //         getUserDetails();
-    //     }
-    // }, []);
-
     async function handleGetIngredient(e) {
         e.preventDefault();
-        setLoading(true); // Start loading
-        
-
+        setLoading(true);
 
         const data = await (await fetch(`/api/Ingredients/?name=${searchTerm}&qType=${quantityUnit}&quantity=${quantity}&EDGEtoken=${localStorage.getItem('Token')}`)).json();
-        setLoading(false); // Stop loading
+        setLoading(false);
 
         if (data.loadedSource === true) {
             const data = await (await fetch(`/api/Ingredients/?name=${searchTerm}&qType=${quantityUnit}&quantity=${quantity}&EDGEtoken=${localStorage.getItem('Token')}`)).json();
@@ -52,6 +37,15 @@ export default function IngredientResearchComponent() {
         } else {
             setIngredientData(data.res);
         }
+    }
+
+    // Helper function to get the top 3 ranked products
+    function getTopProducts() {
+        // Sort all products by rank
+        const sortedProducts = [...ingredientData].sort((a, b) => a.rank - b.rank);
+
+        // Return the top 3 products (Gold, Silver, Bronze)
+        return sortedProducts.slice(0, 3);
     }
 
     return (
@@ -72,8 +66,6 @@ export default function IngredientResearchComponent() {
                 </Form.Group>
             </Form>
 
-            
-
             {/* Extra options to select quantity and category */}
             <Form.Group className="mb-3">
                 <Form.Label>Quantity</Form.Label>
@@ -87,43 +79,134 @@ export default function IngredientResearchComponent() {
                 <Form.Label>Unit</Form.Label>
                 <Form.Select aria-label="Default select example" name="quantity_type" id="quantity_type" onChange={(e) => setQuantityUnit(e.target.value)} value={quantityUnit} required>
                     <option value="any">any</option>
-                    {Object.keys(quantity_unit_conversions).map((item) => <option value={item}>{item}</option>)}
+                    {Object.keys(quantity_unit_conversions).map((item) => <option key={item} value={item}>{item}</option>)}
                 </Form.Select>
             </Form.Group>
 
             {/* Display loading spinner while data is being fetched */}
-            {loading && <Spinner animation="border" role="status"><span className="visually-hidden">Loading...</span></Spinner>}
+            {loading && <Spinner animation="border" role="status" style={{ color: 'black' }}><span className="visually-hidden">Loading...</span></Spinner>}
 
-            {/* Display the ingredient data in a table */}
+            {/* Display the top 3 ranked products (Gold, Silver, Bronze) */}
             {ingredientData.length > 0 && (
-                <Table striped bordered hover responsive>
+                <div>
+                    <h3>Top 3 Products</h3>
+                    <Row className="mb-5">
+                        {getTopProducts().map((product, index) => (
+                            <Col key={index} md={4}>
+                            <Card
+                              className="mb-3 text-black"
+                              style={{
+                                border: '1px solid #ccc',
+                                borderRadius: '8px',
+                                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                                position: 'relative', // for positioning the image in top-right corner
+                              }}
+                            >
+                              {/* Colored Bar at the Top */}
+                              <div
+                                style={{
+                                  height: '8px', // bar height
+                                  backgroundColor:
+                                    index === 0
+                                      ? '#FFD700' // Gold
+                                      : index === 1
+                                      ? '#C0C0C0' // Silver
+                                      : '#CD7F32', // Bronze
+                                  borderTopLeftRadius: '8px',
+                                  borderTopRightRadius: '8px',
+                                }}
+                              ></div>
+                          
+                              <Card.Body
+                                style={{
+                                  paddingTop: '1rem', // space for the bar
+                                  color: index === 0 || index === 2 ? 'black' : 'inherit', // Text color for Gold and Bronze
+                                }}
+                              >
+                                <Card.Title>
+                                  <span
+                                    style={{ fontSize: '1.2rem', fontWeight: 'bold' }}
+                                  >
+                                    {index === 0 ? '#1' : index === 1 ? '#2' : '#3'}
+                                  </span>
+                                  <h5 style={{ marginTop: '0.5rem' }}>{product.name}</h5>
+                                </Card.Title>
+                          
+                                {/* Supplier Image in the top right corner */}
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    top: '1rem',
+                                    right: '1rem',
+                                    width: '40px', // small size for the image
+                                    height: 'auto',
+                                  }}
+                                >
+                                  <img
+                                    src={`${product.source}.PNG`}
+                                    alt="Supplier"
+                                    style={{
+                                      maxWidth: '100%',
+                                      borderRadius: '8px',
+                                      border: '1px solid #ddd',
+                                    }}
+                                  />
+                                </div>
+                          
+                                <Card.Subtitle className="mb-2 text-muted text-center">{product.source}</Card.Subtitle>
+                          
+                                <Card.Text className="text-center" style={{ fontSize: '1rem', lineHeight: '1.5' }}>
+                                  <div>
+                                    <strong>Price:</strong> ${product.price.toFixed(2)}
+                                  </div>
+                                  <div>
+                                    <strong>Unit Price:</strong>{' '}
+                                    {product.unit_price_converted < 1
+                                      ? `${(product.unit_price_converted * 100).toFixed(2)}¢`
+                                      : `$${product.unit_price_converted.toFixed(2)}`}
+                                  </div>
+                                  <div>
+                                    <strong>Quantity:</strong> {product.quantity} {product.quantity_unit}
+                                  </div>
+                                  <div>
+                                    <strong>Percent:</strong> {/* Add percent logic here */}
+                                  </div>
+                                </Card.Text>
+                              </Card.Body>
+                            </Card>
+                          </Col>
+                          
+                          
+                                 
+
+                         
+                        ))}
+                    </Row>
+                </div>
+            )}
+
+            {/* Display the table for all products */}
+            {ingredientData.length > 0 && (
+                <Table striped bordered hover>
                     <thead>
                         <tr>
-                            <th>Rank</th>
-                            <th>Name</th>
-                            <th>Source</th>
+                            <th>Product Name</th>
                             <th>Price</th>
                             <th>Unit Price</th>
                             <th>Quantity</th>
-                            <th>Quantity Unit</th>
+                            <th>Source</th>
+                            <th>Rank</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {ingredientData.map((ingredient, index) => (
-                            <tr key={ingredient._id || index}>
-                                <td>{ingredient.rank}</td>
-                                <td>{ingredient.name}</td>
-                                <td>{ingredient.source}</td>
-                                <td>${ingredient.price.toFixed(2)}</td>
-                                <td>
-                                    {/* Code to show cents */}
-                                    {ingredient.unit_price_converted < 1
-                                        ? `${(ingredient.unit_price_converted * 100).toFixed(2)}¢ per ${ingredient.unit_price_converted_type}`
-                                        : `$${ingredient.unit_price_converted.toFixed(2)} per ${ingredient.unit_price_converted_type}`}
-                                </td>
-
-                                <td>{ingredient.quantity}</td>
-                                <td>{ingredient.quantity_unit}</td>
+                        {ingredientData.map((product, idx) => (
+                            <tr key={idx}>
+                                <td>{product.name}</td>
+                                <td>${product.price.toFixed(2)}</td>
+                                <td>{product.unit_price_converted < 1 ? `${(product.unit_price_converted * 100).toFixed(2)}¢` : `$${product.unit_price_converted.toFixed(2)}`}</td>
+                                <td>{product.quantity} {product.quantity_unit}</td>
+                                <td>{product.source}</td>
+                                <td>{product.rank}</td>
                             </tr>
                         ))}
                     </tbody>

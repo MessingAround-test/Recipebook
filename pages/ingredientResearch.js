@@ -37,13 +37,7 @@ export default function Home() {
         Router.push(page)
     };
 
-    async function handleGetIngredient(e){
-        let ingredient = {
-            "name": e.ingredName
-        }
-        let data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${results}&quantity=${ingredient.quantity}&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${Token}`)).json()
-    }
-
+   
 
 
 

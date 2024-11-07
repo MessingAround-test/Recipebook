@@ -6,6 +6,8 @@ import User from '../../../../models/User'
 import Ingredients from '../../../../models/Ingredients'
 import axios from 'axios';
 
+import {filterValidEntries} from '../../../../lib/commonAPIs'
+
 import { convertMetricReading } from '../../../../lib/conversion'
 
 
@@ -52,7 +54,7 @@ export default async function handler(req, res) {
                                         continue
                                     }
                                     let filteredData = item_list[ingredData]
-                                    console.log(filteredData)
+                                    
 
                                     let internal_id = filteredData.id
 
@@ -105,17 +107,17 @@ export default async function handler(req, res) {
 
                                     // Have a look at .MaxSupplyLimitMessage pretty weird
                                     //console.log(filteredObj)
-                                    let response = Ingredients.create({
-                                        "id": source + "-" + name + "-" + internal_id,
-                                        "name": name,
-                                        "price": price,
-                                        "unit_price": unit_price,
-                                        "quantity_unit": quantity_unit,
-                                        "quantity_type": quantity_type,
-                                        "quantity": quantity,
-                                        "search_term": search_term,
-                                        "source": source,
-                                    });
+                                    // let response = Ingredients.create({
+                                    //     "id": source + "-" + name + "-" + internal_id,
+                                    //     "name": name,
+                                    //     "price": price,
+                                    //     "unit_price": unit_price,
+                                    //     "quantity_unit": quantity_unit,
+                                    //     "quantity_type": quantity_type,
+                                    //     "quantity": quantity,
+                                    //     "search_term": search_term,
+                                    //     "source": source,
+                                    // });
 
                                     
                                     filteredDataArray.push(filteredObj)
@@ -126,6 +128,22 @@ export default async function handler(req, res) {
                             }
                         }
 
+                        
+                    let validatedEntries = await filterValidEntries(filteredDataArray, search_term, req.query.EDGEtoken)
+                    for (let ingredient of validatedEntries){
+                        let response = await Ingredients.create({
+                            "id": ingredient.id,
+                            "name": ingredient.name,
+                            "price": ingredient.price,
+                            "unit_price": ingredient.unit_price,
+                            "quantity_unit": ingredient.quantity_unit,
+                            "quantity_type": ingredient.quantity_type,
+                            "quantity": ingredient.quantity,
+                            "search_term": ingredient.search_term,
+                            "source": ingredient.source,
+                        });
+                    }
+
 
 
                         // newIngredData = newIngredData.data.substring(startIndex, finishIndex);
@@ -135,7 +153,7 @@ export default async function handler(req, res) {
 
 
 
-                        return res.status(200).send({ res: filteredDataArray, success: true })
+                        return res.status(200).send({ res: validatedEntries, success: true })
 
 
                     }

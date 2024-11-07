@@ -6,6 +6,7 @@ import User from '../../../../models/User'
 import Ingredients from '../../../../models/Ingredients'
 import axios from 'axios';
 import { convertMetricReading } from '../../../../lib/conversion'
+import {filterValidEntries} from '../../../../lib/commonAPIs'
 
 
 
@@ -45,8 +46,6 @@ export default async function handler(req, res) {
                         let quantity_unit = filteredData.measure || filteredData.CupMeasure
                         let quantity_type;
                         // With woolies they put the quantity type in here for some weird reason
-                        ////console.log(quantity)
-                        ////console.log(quantity_unit)
                         // If quantity type is not defined or null then extract from the name
                         if (!(quantity_unit)) {
                             let metricConversion = convertMetricReading(name)
@@ -78,30 +77,28 @@ export default async function handler(req, res) {
                             "source": source,
                             // "extraData": filteredData
 
-                        }
-                        //console.log("EHERE")
-                        //console.log(filteredObj)
-
-                        // Have a look at .MaxSupplyLimitMessage pretty weird
-                        ////console.log(filteredObj)
-                        let response = Ingredients.create({
-                            "id": source + "-" + name + "-" + internal_id,
-                            "name": name,
-                            "price": price,
-                            "unit_price": unit_price,
-                            "quantity_unit": quantity_unit,
-                            "quantity_type": quantity_type,
-                            "quantity": quantity,
-                            "search_term": search_term,
-                            "source": source,
-                        });
-                        // ////console.log(await response);
+                        }                        
 
                         filteredDataArray.push(filteredObj)
 
 
                     }
-                    return res.status(200).send({ "res": filteredDataArray, success: true })
+                    
+                    let validatedEntries = await filterValidEntries(filteredDataArray, search_term, req.query.EDGEtoken)
+                    for (let ingredient of validatedEntries){
+                        let response = await Ingredients.create({
+                            "id": ingredient.id,
+                            "name": ingredient.name,
+                            "price": ingredient.price,
+                            "unit_price": ingredient.unit_price,
+                            "quantity_unit": ingredient.quantity_unit,
+                            "quantity_type": ingredient.quantity_type,
+                            "quantity": ingredient.quantity,
+                            "search_term": ingredient.search_term,
+                            "source": ingredient.source,
+                        });
+                    }
+                    return res.status(200).send({ "res": validatedEntries, success: true })
                 }
 
 
