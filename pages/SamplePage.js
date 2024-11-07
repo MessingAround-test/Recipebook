@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Form, Button, Container, Card } from 'react-bootstrap';
 import Head from 'next/head';
-import IngredientResearchComponent from './ingredientResearchComponent';
+import IngredientResearchComponent from './IngredientResearchComponent';
 import styles from '../styles/Login.module.css';
 
 function SamplePage() {

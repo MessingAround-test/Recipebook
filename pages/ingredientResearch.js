@@ -11,7 +11,7 @@ import Button from 'react-bootstrap/Button';
 import Router from 'next/router'
 import Card from 'react-bootstrap/Card'
 import { IngredientSearchList } from "../components/IngredientSearchList"
-import IngredientResearchComponent from './ingredientResearchComponent';
+import IngredientResearchComponent from './IngredientResearchComponent';
 
 
 export default function Home() {
