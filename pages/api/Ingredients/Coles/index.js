@@ -70,7 +70,7 @@ export default async function handler(req, res) {
                                 if (!(quantity_unit)) {
 
                                     let metricConversion = convertMetricReading(name)
-                                    console.log(metricConversion)
+                                   
                                     quantity = metricConversion.quantity
                                     quantity_unit = metricConversion.quantity_unit
                                     quantity_type = metricConversion.quantity_type
@@ -79,7 +79,7 @@ export default async function handler(req, res) {
                                     let metricConversion = convertMetricReading(quantity_unit)
                                     quantity_unit = metricConversion.quantity_unit
                                     quantity_type = metricConversion.quantity_type
-                                    console.log(metricConversion)
+                                   
                                     // If the quantity returned is not 1, then multiply it by the quantity
                                     if (metricConversion.quantity !== 1) {
                                         quantity = quantity * metricConversion.quantity

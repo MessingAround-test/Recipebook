@@ -7,6 +7,8 @@ import Ingredients from '../../../../models/Ingredients'
 import axios from 'axios';
 import { convertMetricReading } from '../../../../lib/conversion'
 
+import {filterValidEntries} from '../../../../lib/commonAPIs'
+
 
 export default async function handler(req, res) {
 
@@ -57,7 +59,7 @@ export default async function handler(req, res) {
                                 if (!(quantity_unit)) {
 
                                     let metricConversion = convertMetricReading(name)
-                                    console.log(metricConversion)
+                                   
                                     quantity = metricConversion.quantity
                                     quantity_unit = metricConversion.quantity_unit
                                     quantity_type = metricConversion.quantity_type
@@ -66,7 +68,7 @@ export default async function handler(req, res) {
                                     let metricConversion = convertMetricReading(quantity_unit)
                                     quantity_unit = metricConversion.quantity_unit
                                     quantity_type = metricConversion.quantity_type
-                                    console.log(metricConversion)
+                                   
                                     // If the quantity returned is not 1, then multiply it by the quantity
                                     if (metricConversion.quantity !== 1) {
                                         quantity = quantity * metricConversion.quantity
@@ -86,18 +88,18 @@ export default async function handler(req, res) {
                                     // "extraData": filteredData
 
                                 }
-                                console.log(filteredObj)
-                                const response = Ingredients.create({
-                                    "id": source + "-" + name + "-" + internal_id,
-                                    "name": name,
-                                    "price": price,
-                                    "unit_price": unit_price,
-                                    "quantity_unit": quantity_unit,
-                                    "quantity_type": quantity_type,
-                                    "quantity": quantity,
-                                    "search_term": search_term,
-                                    "source": source,
-                                });
+                                // console.log(filteredObj)
+                                // const response = Ingredients.create({
+                                //     "id": source + "-" + name + "-" + internal_id,
+                                //     "name": name,
+                                //     "price": price,
+                                //     "unit_price": unit_price,
+                                //     "quantity_unit": quantity_unit,
+                                //     "quantity_type": quantity_type,
+                                //     "quantity": quantity,
+                                //     "search_term": search_term,
+                                //     "source": source,
+                                // });
                                 // console.log(await response);
 
                                 filteredDataArray.push(filteredObj)
@@ -106,10 +108,25 @@ export default async function handler(req, res) {
                             }
 
                         }
+                        
+                        
+                        let validatedEntries = await filterValidEntries(filteredDataArray, search_term, req.query.EDGEtoken)
+                        for (let ingredient of validatedEntries){
+                            let response = await Ingredients.create({
+                                "id": ingredient.id,
+                                "name": ingredient.name,
+                                "price": ingredient.price,
+                                "unit_price": ingredient.unit_price,
+                                "quantity_unit": ingredient.quantity_unit,
+                                "quantity_type": ingredient.quantity_type,
+                                "quantity": ingredient.quantity,
+                                "search_term": ingredient.search_term,
+                                "source": ingredient.source,
+                            });
+                        }
 
 
-
-                        return res.status(200).send({ res: filteredDataArray, success: true })
+                        return res.status(200).send({ res: validatedEntries, success: true })
 
 
                     }

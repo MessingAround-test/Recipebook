@@ -17,8 +17,10 @@ export default async function handler(req, res) {
 
         let qType = req.query.qType
 
-        if (qType !== undefined) {
+        if (qType !== undefined && qType !== "any") {
             qType = convertMetricReading(qType).quantity_unit
+        } else {
+            qType = undefined
         }
 
         let supplier = req.query.supplier
