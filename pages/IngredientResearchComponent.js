@@ -143,7 +143,7 @@ export default function IngredientResearchComponent() {
                                   }}
                                 >
                                   <img
-                                    src={`${product.source}.PNG`}
+                                    src={`${product.source}.png`}
                                     alt="Supplier"
                                     style={{
                                       maxWidth: '100%',
@@ -187,6 +187,7 @@ export default function IngredientResearchComponent() {
 
             {/* Display the table for all products */}
             {ingredientData.length > 0 && (
+                <div style={{ overflowX: 'auto' }}>
                 <Table striped bordered hover>
                     <thead>
                         <tr>
@@ -211,6 +212,8 @@ export default function IngredientResearchComponent() {
                         ))}
                     </tbody>
                 </Table>
+            </div>
+            
             )}
         </div>
     );
