@@ -22,7 +22,7 @@ function SamplePage() {
       </Head>
 
       <main className={styles.main_flex}>
-        <Card className="p-4" style={{ maxWidth: '80%', margin: '0 auto', borderRadius: '10px', boxShadow: '0 8px 16px rgba(0,0,0,0.2)' }}>
+        <Card className="p-4" style={{ maxWidth: '95%', margin: '0 auto', borderRadius: '10px', boxShadow: '0 8px 16px rgba(0,0,0,0.2)' }}>
           <Card.Body>
             <h1 className="text-center mb-4" style={{ color: '#007bff' }}>Ingredient Explorer</h1>
             <p className="text-center text-muted mb-4">
