@@ -14,7 +14,7 @@ export default async function handler(req, res) {
       res.status(400).json({ res: "error: " + String(err) })
     } else {
       if (req.method === "GET") {
-        
+
         await dbConnect()
 
         console.log(decoded)
@@ -25,32 +25,32 @@ export default async function handler(req, res) {
         } else {
 
           var RecipeData = await Recipe.find({})
-          res.status(200).json({ res: RecipeData})
+          res.status(200).json({ res: RecipeData })
         }
       } else if (req.method === "POST") {
         // console.log(req.body)
         try {
-        await dbConnect()
-        var db_id = decoded.id
-        var userData = await User.findOne({ id: db_id });
-        console.log(req.query)
-        console.log(req.body)
-        const response = Recipe.create({
-          creator_username: userData.username,
-          creator_email: userData.email,
-          ingredients : req.body.ingreds,
-          instructions: req.body.instructions,
-          image: req.body.image,
-          name: req.body.name
-      });
-      console.log(await response);
+          await dbConnect()
+          var db_id = decoded.id
+          var userData = await User.findOne({ id: db_id });
+          console.log(req.query)
+          console.log(req.body)
+          const response = Recipe.create({
+            creator_username: userData.username,
+            creator_email: userData.email,
+            ingredients: req.body.ingreds,
+            instructions: req.body.instructions,
+            image: req.body.image,
+            name: req.body.name
+          });
+          console.log(await response);
 
-        res.status(200).json({success: true, data: [], message: "Allgood"})
-      } catch (error)  {
-        res.status(400).json({success: false, data: [], message: String(error)})
-      }
+          res.status(200).json({ success: true, data: [], message: "Allgood" })
+        } catch (error) {
+          res.status(400).json({ success: false, data: [], message: String(error) })
+        }
       } else {
-        res.status(400).json({ success: false, data: [], message: "Not supported request"})
+        res.status(400).json({ success: false, data: [], message: "Not supported request" })
       }
     }
   });

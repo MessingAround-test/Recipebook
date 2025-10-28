@@ -76,7 +76,9 @@ export default async function handler(req, res) {
       } else {
         res.status(400).json({ res: "Not supported function" })
       }
+      
     }
+    
   });
 
 

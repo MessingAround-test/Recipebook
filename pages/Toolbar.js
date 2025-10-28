@@ -31,7 +31,9 @@ export function Toolbar(props) {
                             <Nav.Link href="/recipes">Recipes</Nav.Link>
                             <Nav.Link href="/createRecipe"><AiFillPlusCircle/></Nav.Link>
                             
+                            <Nav.Link href="/profilePic">Profile pic Game</Nav.Link>
                             <Nav.Link href="/profile">Profile</Nav.Link>
+                            
                             <Nav.Link href="/login" onClick={(e)=>clearCookie(e)}>Logout</Nav.Link>
                         </Nav>
                     </Navbar.Collapse>
