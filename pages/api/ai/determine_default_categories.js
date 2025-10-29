@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     }
 
     // Define Gemini API endpoint and prompt
-    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     const prompt = {
       "contents": [
         {

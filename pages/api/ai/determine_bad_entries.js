@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     }
 
     // Define Gemini API endpoint and prompt
-    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     const promptText = `Given the search term '${search_term}', return a JSON array of ingredient names that match the search term as closely as possible. Only include terms that are directly related to the search term and exclude anything irrelevant. If the search term refers to an unprocessed ingredient (e.g., 'potato'), **assume that processed or mixed products (e.g., 'Heinz Babyfood Pumpkin and Corn') should not be included**. In the case of the search term 'potato', and the returned terms ['Smith's Original Crinkle Cut Potato Chips', 'Smith's Crinkle Cut Salt & Vinegar Potato Chips', 'Smith's Double Crunch Potato Chips Original', 'Smith's Crinkle Cut Potato Chips'], the correct response should be ['potato']. For your case, with the returned terms ${returned_terms.map(term => `'${term}'`).toString()}, provide only the filtered list of relevant ingredient names in a valid JSON array format that can be parsed using JSON.parse without errors.`
 
     const prompt = {
