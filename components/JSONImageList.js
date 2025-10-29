@@ -77,7 +77,7 @@ export const JSONImageList = ({ children, data }) => {
                     </div>
                 );
             }
-            if (subKeyMapping && subKeyMapping[subKey]) {
+            if (subKeyMapping && subKeyMapping[subKey] && subKey !== undefined) {
                 return (
                     <div key={key} className={styles.banner}>
                         <div
@@ -86,7 +86,7 @@ export const JSONImageList = ({ children, data }) => {
                         >
                             <div className={styles.overlayContainer}>
                                 <p className={styles.overlayText}>{subKey}</p>
-                                {children}
+                                {/* {children} */}
                             </div>
                             
 

@@ -392,7 +392,7 @@ export default function Home() {
                                 >
 
                                     {/* 1. SMALL HEADER: Group Name */}
-                                    <Card.Header className={`d-flex justify-content-start align-items-center ${styles.cardHeader}`}>
+                                    <Card.Header className={`d-flex justify-content-start align-items-start h-100 ${styles.cardHeader}`}>
                                         <h6 className="mb-0 text-light">
                                             <CategoryImage
                                                 data={groupedIngredients}

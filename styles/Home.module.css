@@ -216,29 +216,31 @@
     flex-wrap: wrap;
 }
 
+
 .overlayContainer {
-    /* Add position: relative to establish a stacking context */
-    position: relative; 
-    
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: auto;
     display: flex;
-    justify-content: space-between;
-    padding-left: 1.5rem;
-    align-items: center;
     
-    /* Optional: Ensure the container itself doesn't obscure everything */
-    z-index: 1; 
+    
+    
+    
+    
+    /* Background Image/Shape properties (kept from your original CSS) */
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
 }
 
 .overlayText {
     margin: 0;
-    font-size: 0.8rem;
-    border-radius: 0.5rem;
+    font-size: 1rem;
+    border-radius: 0.25rem;
     color: black;
     background-color: #eaeaea;
+    justify-content: center;
+    padding-left: 1%;
+    padding-right: 1%;
     
     /* 💡 THE FIX: Lower the z-index and set position so it respects z-index */
     position: relative; 
