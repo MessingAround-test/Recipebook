@@ -201,7 +201,7 @@ export default function Home() {
 
     useEffect(() => {
         if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
-            alert("please re-log in")
+            
             Router.push("/login")
         }
         console.log(quantity_unit_conversions)
