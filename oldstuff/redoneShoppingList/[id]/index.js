@@ -64,14 +64,11 @@ export default function Home() {
       <Toolbar />
       <div className={styles.container}>
         {/* ... (rest of your JSX code) */}
-        <main className={styles.main}>
+        {/* <main className={styles.main}> */}
           {/* Use the ShoppingListComponent with ingredients as a prop */}
           <ShoppingListComponent ingredients={listIngreds} />
           {/* ... (rest of your JSX code) */}
-        </main>
-        <footer className={styles.footer}>
-          {/* ... (rest of your JSX code) */}
-        </footer>
+        {/* </main> */}
       </div>
     </div>
   );

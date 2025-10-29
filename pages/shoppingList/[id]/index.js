@@ -1,9 +1,5 @@
-
 import Head from 'next/head'
-import styles from '../../../styles/Home.module.css'
-
-import Image from 'next/image'
-
+import styles from '../../../styles/Home.module.css' // Assuming this provides global/container styles
 import { Toolbar } from '../../Toolbar'
 import { useEffect, useState } from 'react'
 import Button from 'react-bootstrap/Button';
@@ -11,21 +7,16 @@ import Router from 'next/router'
 import Card from 'react-bootstrap/Card'
 import { useRouter } from 'next/router'
 import Container from 'react-bootstrap/Container'
-import ImageList from '../../../components/ImageList'
-import CopyToClipboard from '../../../components/CopyToClipboard'
-
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
-import Modal from 'react-modal';
-import { set } from 'mongoose'
+import ImageList from '../../../components/ImageList'
+import CopyToClipboard from '../../../components/CopyToClipboard'
 import AddShoppingItem from '../../../components/AddShoppingItem'
 import NewIngredientTable from '../../../components/NewIngredientTable'
 import ToggleList from '../../../components/ToggleList'
-import CategoryList from '../../../components/CategoryImage'
+import CategoryImage from '../../../components/CategoryImage'
 import { getGroceryStoreProducts } from '../../../lib/commonAPIs'
 import { groupByKeys } from '../../../lib/grouping'
-import CategoryImage from '../../../components/CategoryImage'
-import ClipboardJS from 'clipboard';
 
 export default function Home() {
     const [userData, setUserData] = useState({})
@@ -45,15 +36,14 @@ export default function Home() {
 
     async function handleActiveSupplierChange(inputObject) {
         await updateSupplierFromInputObject(inputObject)
-
     }
+
     useEffect(() => {
         if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
             alert("please re-log in")
             Router.push("/login")
         }
         if (id) {
-
             getRecipeDetails()
         }
     }, [id])
@@ -78,11 +68,6 @@ export default function Home() {
         // Use a loop to update the state for each ingredient individually
         for (let i = 0; i < updatedListIngreds.length; i++) {
             try {
-                // if (updatedListIngreds[i].complete === true) {
-
-                //     updatedListIngreds[i].loading = false
-                //     continue
-                // }
                 const updatedIngredient = await getGroceryStoreProducts(
                     updatedListIngreds[i],
                     1,
@@ -131,6 +116,15 @@ export default function Home() {
     }
 
     async function markListAsComplete() {
+        // ⚠️ Added the confirmation dialog
+        const isConfirmed = confirm("Are you sure you want to mark this list as COMPLETE? This action cannot be easily undone.");
+
+        // If the user clicks 'Cancel', stop execution.
+        if (!isConfirmed) {
+            return;
+        }
+
+        // If the user clicks 'OK', proceed with the API call.
         const response = await fetch(`/api/ShoppingList/${String(id)}/?EDGEtoken=${localStorage.getItem('Token')}`, {
             method: 'PUT',
             headers: {
@@ -140,12 +134,12 @@ export default function Home() {
         });
 
         if (response.ok) {
+            // Assuming 'redirect' navigates the user away after completion
+            redirect("/shoppingList");
         } else {
-            // console.log()
-            let error = await response.json()
-            console.log(error)
-            alert(error.message)
-            // Handle errors, e.g., show an error message
+            let error = await response.json();
+            console.log(error);
+            alert(error.message);
         }
     }
 
@@ -166,18 +160,13 @@ export default function Home() {
                 e.resetForm()
                 console.log(e)
                 getRecipeDetails()
-                // alert(response)
-                // Handle success, e.g., show a success message or redirect
             } else {
-                // console.log()
                 let error = await response.json()
                 console.log(error)
                 alert(error.message)
-                // Handle errors, e.g., show an error message
             }
         } catch (error) {
             alert(error)
-            // Handle network or other errors
         }
     };
 
@@ -194,21 +183,15 @@ export default function Home() {
 
             if (response.ok) {
 
-                // e.resetForm()
                 console.log(e)
                 getRecipeDetails()
-                // alert(response)
-                // Handle success, e.g., show a success message or redirect
             } else {
-                // console.log()
                 let error = await response.json()
                 console.log(error)
                 alert(error.message)
-                // Handle errors, e.g., show an error message
             }
         } catch (error) {
             alert(error)
-            // Handle network or other errors
         }
     };
 
@@ -243,29 +226,24 @@ export default function Home() {
             console.log(response)
 
             if (!response.ok) {
-                // console.log()
                 let error = await response.json()
                 console.log(error)
                 alert(error.message)
-                // Handle errors, e.g., show an error message
             }
         } catch (error) {
             alert(error)
-            // Handle network or other errors
         }
     }
 
     async function updateSupplierFromInputObject(inputObject) {
         const resultArray = Object.keys(inputObject).filter(key => inputObject[key]);
-
         const formattedResultArray = resultArray.map(key => key.replace(/^\/|\.png$/g, ''));
-
         console.log(formattedResultArray);
         setEnabledSuppliers(formattedResultArray)
     };
 
     function sortFunction(a, b) {
-        // Custom sorting logic
+        // Custom sorting logic: "complete=true" goes last
         const aIsComplete = a.includes("complete=true");
         const bIsComplete = b.includes("complete=true");
         if (aIsComplete && !bIsComplete) {
@@ -276,8 +254,8 @@ export default function Home() {
             return a.localeCompare(b); // Default alphabetical sorting
         }
     }
+
     function ingredientSortFunction(a, b) {
-        console.log(a, b)
         const nameA = a.name.toLowerCase();
         const nameB = b.name.toLowerCase();
         return nameA.localeCompare(nameB);
@@ -289,11 +267,10 @@ export default function Home() {
     }, [enabledSuppliers]);
 
     function calculateTotalOfList(items) {
-
         let efficientTotal = 0
         let total = 0
         items.forEach((item) => {
-            if (item.options.length > 0) {
+            if (item.options && item.options.length > 0) {
                 efficientTotal += item.options[0].total_price
                 total += (item.options[0].total_price / item.options[0].match_efficiency * 100)
             }
@@ -306,126 +283,175 @@ export default function Home() {
     }
 
     function showTotalOfList(items) {
-
         let res = calculateTotalOfList(items)
-        if (res.efficient_total === res.total) {
-            return (
-                <>
-                    ${res.total}
-                </>
-            )
-        }
-        // ${res.efficient_total} /
-        return <>
-            ${res.total}
-        </>
+        return <h4 className="text-success my-0">Total: ${res.total}</h4>
     }
 
-
+    const groupedIngredients = groupByKeys(matchedListIngreds, filters);
+    const sortedGroups = Object.keys(groupedIngredients).sort(sortFunction);
 
     return (
-        <div>
-            <Toolbar>
-            </Toolbar>
+        <div className={styles.wrapper}>
+            <Toolbar />
 
-            <div className={styles.container}>
-                <Head>
-                    <title>Shopping List</title>
-                    <meta name="description" content="Generated by create next app" />
-                    <link rel="icon" href="/avo.ico" />
-                </Head>
+            <Head>
+                <title>Shopping List | {list.name || 'Loading...'}</title>
+                <meta name="description" content="Manage your smart shopping list" />
+                <link rel="icon" href="/avo.ico" />
+            </Head>
+
+            <Container className={`${styles.container} py-3 px-md-5`}>
                 <main className={styles.main}>
 
-                    <div className={styles.centered}>
+                    {/* 🛒 Shopping List Header & Stats 📊 */}
+                    <Row className="mb-4 align-items-center w-100">
+                        <Col xs={12} md={8}>
+                            <h1 className="mb-0">🛒 {list.name} <span className="text-secondary fs-5"></span></h1>
+                        </Col>
+                        <Col xs={12} md={4} className="text-md-end mt-2 mt-md-0">
+                            {showTotalOfList(matchedListIngreds)}
+                            <span className="text-muted small">({matchedListIngreds.length} items)</span>
+                        </Col>
+                    </Row>
+                    <hr className="mb-4 w-100" />
+
+                    {/* Top Action & Filter Row (Sticky on Mobile) */}
+                    <Row className={`${styles['sticky-top-controls']} g-2 w-100`}>
+
+                        {/* Add New Item (Left side, takes 6/12 width on mobile) */}
+                        <Col xs={6} md={3} className="order-1 order-md-1">
+                            <Button
+                                variant={createNewIngredOpen ? "outline-danger" : "primary"}
+                                onClick={() => setCreateNewIngredOpen(!createNewIngredOpen)}
+                                className="w-100"
+                            >
+                                {createNewIngredOpen ? 'Close Add' : '➕ Add New Item'}
+                            </Button>
+
+                        </Col>
+
+                        {/* Group By (Right side, takes 6/12 width on mobile) */}
+                        <Col xs={6} md={{ span: 3, offset: 6 }} className="order-2 order-md-2">
+                            <div className="w-100">
+                                <ToggleList
+                                    inputList={availableFilters}
+                                    onUpdateList={(currentState) => setFilters(currentState)}
+                                    value={filters}
+                                    text={"Group By"}
+                                    className="w-100"
+                                />
+                            </div>
+                        </Col>
+                        {createNewIngredOpen && (
+                            <Card className="mb-4 border-primary w-100">
+                                <Card.Body>
+                                    <h5 className="card-title text-primary">New Shopping Item</h5>
+                                    <AddShoppingItem
+                                        shoppingListId={id}
+                                        handleSubmit={handleSubmitCreateNewItem}
+                                        reload={getRecipeDetails}
+                                    />
+                                </Card.Body>
+                            </Card>
+                        )}
+                    </Row>
 
 
-                        <Row className={styles.Row}>
+                    {/* Add New Ingredient Form (Keep the standard look for input forms) */}
 
 
 
-
-                            <Col>
-
-                                {
-                                    (createNewIngredOpen ?
-                                        <>
-                                            <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(false)} className={"w-100 h-100"}>Hide</Button>
-
-                                        </>
-                                        :
-                                        <>
-                                            <Button variant={"primary"} style={{}} onClick={() => setCreateNewIngredOpen(true)} className={"w-100 h-100"}>Add</Button>
-                                        </>
-                                    )
-                                }
-                            </Col>
-                            <Col>
-                                <ToggleList inputList={availableFilters} onUpdateList={(currentState) => setFilters(currentState)} value={filters} text={"Group By"} />
-                            </Col>
-
-                        </Row>
-
-                        {
-                            filters.includes("supplier") ? <Row>
-                                <Col>
-                                    <ImageList images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]} onImageChange={(e) => handleActiveSupplierChange(e)}></ImageList>
-
-                                </Col></Row> : <></>
-                        }
+                    {/* Supplier Filter (if enabled) - Updated to use same background */}
+                    {filters.includes("supplier") && (
+                        <Card className="mb-4 w-100" style={{ backgroundColor: '#394955' }}>
+                            <Card.Body className="p-2">
+                                <h6 className="card-subtitle mb-2 text-muted">Active Suppliers:</h6>
+                                <ImageList
+                                    images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]}
+                                    onImageChange={(e) => handleActiveSupplierChange(e)}
+                                />
+                            </Card.Body>
+                        </Card>
+                    )}
 
 
-                        {
-                            (createNewIngredOpen ? <><h2>Add New Ingredient</h2><AddShoppingItem shoppingListId={id} handleSubmit={handleSubmitCreateNewItem} reload={getRecipeDetails}></AddShoppingItem></> : <></>)
-                        }
+                    {/* List Ingredients - Streamlined Grouped View */}
+                    <div className={`${styles['ingredient-list-container']} w-100`}>
+                        {sortedGroups.map((group) => {
+                            const ingredientsInGroup = groupedIngredients[group];
 
+                            // Conditional Check: Don't render if the array is empty or undefined
+                            if (!ingredientsInGroup || ingredientsInGroup.length === 0) {
+                                return null;
+                            }
 
+                            return (
+                                <Card
+                                    key={group}
+                                    className={`mb-3 bg-transparent ${styles.cardHeader}`} // Minimal gap, subtle shadow
+                                >
 
-                        <br></br>
-                        {
-                            Object.keys(groupByKeys(matchedListIngreds, filters))
-                                .sort(sortFunction).map((group) => (
-                                    <>
-
-                                        <Row>
-                                            {/* <h3>{group}</h3> */}
-                                            <CategoryImage data={groupByKeys(matchedListIngreds, filters)} order={Object.keys(groupByKeys(matchedListIngreds, filters)).sort(sortFunction)} current={group}>
-                                                <h5>{showTotalOfList(groupByKeys(matchedListIngreds, filters)[group])}</h5>
+                                    {/* 1. SMALL HEADER: Group Name */}
+                                    <Card.Header className={`d-flex justify-content-start align-items-center ${styles.cardHeader}`}>
+                                        <h6 className="mb-0 text-light">
+                                            <CategoryImage
+                                                data={groupedIngredients}
+                                                order={sortedGroups}
+                                                current={group}
+                                                // 💡 ADD THIS CLASS TO TARGET THE INNER IMAGE CONTAINER IF POSSIBLE
+                                                className="bg-transparent"
+                                            >
+                                                <span className="ms-2">{group}</span>
                                             </CategoryImage>
-                                            {/* <CategoryList categoryString={group}></CategoryList> */}
-                                            <NewIngredientTable reload={() => reloadAllIngredients()} ingredients={groupByKeys(matchedListIngreds, filters)[group].sort(ingredientSortFunction).map((ingred) => { return ingred })} handleCheckboxChange={handleCheckboxChange} handleDeleteItem={handleDeleteItem} filters={filters} enabledSuppliers={enabledSuppliers}></NewIngredientTable>
-                                        </Row>
-                                    </>
-                                ))
-                        }
-                        <Button onClick={() => redirect(`${id}/stats`)} >
-                            see stats
-                        </Button>
-                        <Button onClick={() => markListAsComplete()}>Mark as Complete</Button>
-                        <CopyToClipboard listIngreds={listIngreds}></CopyToClipboard>
-                        {/* <Button
-                            onClick={() => navigator.clipboard.writeText(
-                                
-                            )}
-                        >
-                            Copy to Clipboard
-                        </Button> */}
-                        <p>ID = {id}</p>
+                                        </h6>
+                                    </Card.Header>
 
+                                    {/* 2. CARD BODY: Ingredient Table */}
+                                    <Card.Body className="p-0">
+                                        <NewIngredientTable
+                                            reload={() => reloadAllIngredients()}
+                                            ingredients={ingredientsInGroup.sort(ingredientSortFunction)}
+                                            handleCheckboxChange={handleCheckboxChange}
+                                            handleDeleteItem={handleDeleteItem}
+                                            filters={filters}
+                                            enabledSuppliers={enabledSuppliers}
+                                        />
+                                    </Card.Body>
+
+                                    {/* 3. CARD FOOTER: Total Sum */}
+                                    {/* <Card.Footer className={`d-flex justify-content-end align-items-center ${styles.cardFooter}`}> */}
+                                    {/* <h5 className="text-primary mb-0"> */}
+                                    {/* NOTE: showTotalOfList already returns an <h4>, adjust if necessary */}
+                                    {/* {showTotalOfList(ingredientsInGroup)} */}
+                                    {/* </h5> */}
+                                    {/* </Card.Footer> */}
+
+                                </Card>
+                            );
+                        })}
                     </div>
 
 
+                    {/* Bottom Actions and Debug Info */}
+                    <Row className="mt-4 pb-5 w-100">
+                        <Col xs={12} className="text-center">
+                            <CopyToClipboard listIngreds={listIngreds} />
+                        </Col>
+                        <Col xs={12} className="text-center">
+                            <Button
+                                onClick={() => markListAsComplete()}
+                                variant="success"
+                                className="mx-auto col-6 col-md-4"
+                            >
+                                ✅ Mark as Complete
+                            </Button>
+                            <p className="text-muted small mt-2">List ID: {id}</p>
+                        </Col>
+                    </Row>
+
                 </main>
+            </Container>
 
-                <footer className={styles.footer}>
-                    <a
-                        href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-
-                    </a>
-                </footer>
-            </div>
         </div >
-    )
+    );
 }

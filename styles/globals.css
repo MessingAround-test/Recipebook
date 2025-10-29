@@ -16,3 +16,10 @@ a {
 * {
   box-sizing: border-box;
 }
+
+
+#__next {
+    /* The root div Next.js uses to mount the app */
+    background-color: #394955;
+    min-height: 100vh;
+}

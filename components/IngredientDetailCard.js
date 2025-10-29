@@ -28,9 +28,7 @@ const IngredientDetailCard = ({ ingredient, show, onHide }) => {
       <Modal.Body>
         {renderIngredientDetails()}
       </Modal.Body>
-      <Modal.Footer>
-        {/* <Button variant="primary" onClick={handleSelect}>Select</Button> */}
-      </Modal.Footer>
+      
     </Modal>
   );
 };

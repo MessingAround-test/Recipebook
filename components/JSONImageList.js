@@ -67,7 +67,7 @@ export const JSONImageList = ({ children, data }) => {
                 return (
                     <div key={key} className={styles.banner}>
                         <div
-                            className={styles.bannerImage}
+                            className={styles.overlayContainer}
                             style={{ backgroundImage: `url(${subKeyMapping[subKey]})` }}
                         >
                             <div className={styles.overlayContainer}>
