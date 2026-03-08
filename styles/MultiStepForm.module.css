@@ -9,7 +9,7 @@
   max-width: 400px;
   margin: 20px;
   padding: 20px;
-  border: 1px solid #ccc;
+  border: 1px solid hsl(var(--border));
   border-radius: 5px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
@@ -18,7 +18,7 @@
   width: 100%;
   padding: 10px;
   margin-bottom: 15px;
-  border: 1px solid #ccc;
+  border: 1px solid hsl(var(--border));
   border-radius: 3px;
   font-size: 1rem;
 }
@@ -33,19 +33,19 @@
   flex: 0 0 auto;
   width: 150px;
   margin-right: 10px;
-  border: 1px solid #ccc;
+  border: 1px solid hsl(var(--border));
   border-radius: 5px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 10px;
-  font-size:  1rem;
+  font-size: 1rem;
 }
 
 .selected {
-  background-color: #4caf50;
-  border-color: #66bfff;
+  background-color: var(--accent);
+  border-color: hsl(var(--ring));
 }
 
 .checkbox {
@@ -60,9 +60,9 @@
 
 .goBackButton,
 .nextButton {
-  font-size:  1rem;
-  background-color: #4caf50;
-  color: white;
+  font-size: 1rem;
+  background-color: var(--accent);
+  color: hsl(var(--primary-foreground));
   padding: 10px 15px;
   border: none;
   border-radius: 3px;
@@ -71,16 +71,16 @@
 
 .goBackButton:hover,
 .nextButton:hover {
-  background-color: #45a049;
+  background-color: var(--accent-hover);
 }
 
 .goBackButton {
-  background-color: #2196f3;
+  background-color: hsl(var(--secondary));
   margin-right: 10px;
 }
 
 .goBackButton:hover {
-  background-color: #0b7dda;
+  background-color: var(--accent-muted);
 }
 
 /* Media query for smaller screens (mobile) */
@@ -101,13 +101,14 @@
 .additionalInfo {
   margin-top: 10px;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid hsl(var(--border));
   border-radius: 8px;
-  background-color: #f5f5f5;
+  background-color: hsl(var(--muted));
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-  color: #333;
+  color: hsl(var(--foreground));
   font-size: medium;
 }
+
 .progressBarContainer {
   width: 100%;
   height: 10px;
@@ -119,7 +120,7 @@
 .progressBar {
   height: 100%;
   border-radius: 5px;
-  background-color: #4caf50;
+  background-color: var(--accent);
   transition: width 0.3s ease;
 }
 
@@ -127,5 +128,5 @@
   display: block;
   text-align: center;
   font-size: 5px;
-  color: #333;
+  color: hsl(var(--muted-foreground));
 }
