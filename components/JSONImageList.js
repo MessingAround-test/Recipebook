@@ -1,56 +1,10 @@
-import styles from '../styles/Home.module.css'; // Import CSS module
+import styles from '../styles/Home.module.css';
+import { getColorForCategory, getLightColorForCategory } from '../lib/colors';
 
 
+// Legacy image mappings kept for possible external uses, but we won't use them for banners anymore
 const imageMapping = {
-    supplier: {
-        Coles: '/Coles.png',
-        IGA: '/IGA.png',
-        Panetta: '/Panetta.png',
-        WW: '/WW.png',
-        Aldi: '/Aldi.png',
-        '': '/unknown.jpg'
-
-        // Add more suppliers if needed
-    },
-    category: {
-        'Fresh Produce': '/categories2/FreshProduce.jpg',
-        'International Foods': '/images/international_foods.jpg',
-        'Bakery': '/categories2/Bakery.jpg',
-        'Baking Supplies': '/categories2/BakingSupplies.jpg',
-        'Beverages': '/categories2/Beverages.jpg',
-        'Canned Goods': '/categories2/CannedGoods.jpg',
-        'Cereal and Breakfast Foods': '/categories2/CerealandBreakfastFoods.jpg',
-        'Condiments and Sauces': '/categories2/CondimentsandSauces.jpg',
-        'Dairy and Eggs': '/categories2/DairyandEggs.jpg',
-        'Deli and Prepared Foods': '/categories2/DeliandPreparedFoods.jpg',
-        'Fresh Produce': '/categories2/FreshProduce.jpg',
-        'Frozen Foods': '/categories2/FrozenFoods.jpg',
-        'Health and Wellness': '/categories2/HealthandWellness.jpg',
-        'Home and Garden': '/categories2/HomeandGarden.jpg',
-        'Household and Cleaning': '/categories2/HouseholdandCleaning.jpg',
-        'International Foods': '/categories2/InternationalFoods.jpg',
-        'Meat and Seafood': '/categories2/MeatandSeafood.jpg',
-        'Pasta and Grains': '/categories2/PastaandGrains.jpg',
-        'Personal Care': '/categories2/PersonalCare.jpg',
-        'Snacks': '/categories2/Snacks.jpg',
-        'undefined': '/unknown.jpg'
-        // Add more categories if needed
-    },
-    category_simple: {
-        'Fresh Produce': '/categories2/FreshProduce.jpg',
-        'Staple Food': '/categories2/InternationalFoods.jpg',
-        'Fridge': '/categories2/DeliandPreparedFoods.jpg',
-        'Freezer': '/categories2/FrozenFoods.jpg',
-        'Staple Other': '/categories2/PersonalCare.jpg',
-        'undefined': '/unknown.jpg'
-    },
-    complete: {
-        "true": "/complete.jpg"
-    },
-    "": {
-        "undefined": "/.jpg"
-    }
-    // Add more main keys and subkeys as needed
+    // ... we don't need this for the new UI, but keeping it just in case
 };
 
 export const JSONImageList = ({ children, data }) => {
@@ -62,43 +16,48 @@ export const JSONImageList = ({ children, data }) => {
 
         return keys.map((key) => {
             const subKey = data[key];
-            const subKeyMapping = imageMapping[key];
-            if (key === "complete") {
-                return (
-                    <div key={key} className={styles.banner}>
-                        <div
-                            className={styles.overlayContainer}
-                            style={{ backgroundImage: `url(${subKeyMapping[subKey]})` }}
-                        >
-                            <div className={styles.overlayContainer}>
-                                <p className={styles.overlayText}>{key}</p>
-                            </div>
+
+            // Always use a sleek colored badge approach
+            const accentColor = getColorForCategory(subKey || key);
+            const lightColor = getLightColorForCategory(subKey || key);
+
+            if (key === "complete" || subKey !== undefined) {
+                const displayText = key === "complete" ? key : subKey;
+
+                // If it doesn't match a color, just show text of the category
+                if (!accentColor) {
+                    return (
+                        <div key={key} className="flex items-center">
+                            <span className="font-bold text-sm tracking-widest uppercase">{displayText}</span>
+                            {children && <div className="ml-3">{children}</div>}
                         </div>
+                    );
+                }
+
+                return (
+                    <div key={key} className="flex items-center">
+                        <div
+                            className="px-4 py-2 rounded-full font-bold text-sm tracking-widest uppercase shadow-lg inline-flex items-center gap-2"
+                            style={{
+                                backgroundColor: `${lightColor}20`, // 20% opacity background
+                                color: accentColor,
+                                border: `1px solid ${accentColor}40`
+                            }}
+                        >
+                            <span
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: accentColor, boxShadow: `0 0 8px ${accentColor}` }}
+                            />
+                            {displayText}
+                        </div>
+                        {children && <div className="ml-3">{children}</div>}
                     </div>
                 );
             }
-            if (subKeyMapping && subKeyMapping[subKey] && subKey !== undefined) {
-                return (
-                    <div key={key} className={styles.banner}>
-                        <div
-                            className={styles.bannerImage}
-                            style={{ backgroundImage: `url(${subKeyMapping[subKey]})` }}
-                        >
-                            <div className={styles.overlayContainer}>
-                                <p className={styles.overlayText}>{subKey}</p>
-                                {/* {children} */}
-                            </div>
-                            
-
-                        </div>
-
-                    </div>
-                );
-            }
-            return <h3>{JSON.stringify(data)}</h3>;
+            return <h3 className="text-white font-bold">{JSON.stringify(data)}</h3>;
         });
     };
 
-    return <div>{renderImages()}</div>;
+    return <div className="flex flex-row items-center gap-3">{renderImages()}</div>;
 };
 

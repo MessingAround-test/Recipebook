@@ -121,6 +121,7 @@ export default function IngredientListComp({
                     markAsIncorrect={markAsIncorrect}
                     filters={[]}
                     modalVersion={false}
+                    groupColor={undefined}
                 />
             ))}
         </div>

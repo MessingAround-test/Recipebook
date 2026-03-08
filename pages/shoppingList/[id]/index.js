@@ -12,6 +12,7 @@ import ToggleList from '../../../components/ToggleList'
 import CategoryImage from '../../../components/CategoryImage'
 import { getGroceryStoreProducts } from '../../../lib/commonAPIs'
 import { groupByKeys } from '../../../lib/grouping'
+import { getColorForCategory, getLightColorForCategory } from '../../../lib/colors'
 
 export default function Home() {
     const [userData, setUserData] = useState({})
@@ -233,25 +234,24 @@ export default function Home() {
                 <main className={styles.main}>
 
                     {/* Header */}
-                    <div className="flex-row justify-between align-center mb-3 w-full">
-                        <h1 className="bold uppercase m-0" style={{ fontFamily: 'var(--receipt-font)' }}>🛒 {list.name}</h1>
-                        <div className="text-center">
-                            <h4 className="bold m-0" style={{ fontFamily: 'var(--receipt-font)' }}>TOTAL: ${calculateTotalOfList(matchedListIngreds)}</h4>
-                            <span className="small uppercase" style={{ color: '#666', fontFamily: 'var(--receipt-font)' }}>({matchedListIngreds.length} items)</span>
+                    <div className="flex-row justify-between align-center mb-6 w-full glass-card p-6">
+                        <h1 className="text-4xl font-bold m-0 tracking-tight">🛒 {list.name}</h1>
+                        <div className="text-right flex flex-col justify-center">
+                            <h4 className="text-2xl font-bold m-0 text-[var(--accent)]">TOTAL: <span className="text-white">${calculateTotalOfList(matchedListIngreds)}</span></h4>
+                            <span className="text-sm font-medium text-gray-400 mt-1 uppercase">({matchedListIngreds.length} items)</span>
                         </div>
                     </div>
-                    <div style={{ borderTop: '2px dashed #ccc', width: '100%', marginBottom: '1.5rem' }}></div>
 
                     {/* Actions & Filters */}
-                    <div className="flex-row gap-2 mb-4 w-full">
+                    <div className="flex items-center gap-4 mb-6 w-full">
                         <button
-                            className={`btn-paper ${createNewIngredOpen ? 'btn-danger' : ''}`}
+                            className={`btn-modern ${createNewIngredOpen ? 'btn-danger' : ''}`}
                             onClick={() => setCreateNewIngredOpen(!createNewIngredOpen)}
                         >
                             {createNewIngredOpen ? 'CANCEL' : '➕ ADD ITEM'}
                         </button>
 
-                        <div className="ms-auto">
+                        <div className="ml-auto">
                             <ToggleList
                                 inputList={availableFilters}
                                 onUpdateList={(currentState) => setFilters(currentState)}
@@ -262,8 +262,7 @@ export default function Home() {
                     </div>
 
                     {createNewIngredOpen && (
-                        <div className="receipt w-full mb-4">
-                            <h5 className="bold uppercase mb-2">New Item</h5>
+                        <div className="w-full mb-6">
                             <AddShoppingItem
                                 shoppingListId={id}
                                 handleSubmit={handleSubmitCreateNewItem}
@@ -274,8 +273,8 @@ export default function Home() {
 
                     {/* Supplier Filter */}
                     {filters.includes("supplier") && (
-                        <div className="receipt w-full mb-4" style={{ padding: '1rem' }}>
-                            <h6 className="bold uppercase mb-2" style={{ fontSize: '0.8rem' }}>Active Suppliers:</h6>
+                        <div className="glass-card w-full mb-6" style={{ padding: '1.5rem' }}>
+                            <h6 className="font-bold uppercase tracking-wider text-gray-400 mb-4" style={{ fontSize: '0.85rem' }}>Active Suppliers</h6>
                             <ImageList
                                 images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]}
                                 onImageChange={(e) => handleActiveSupplierChange(e)}
@@ -284,25 +283,29 @@ export default function Home() {
                     )}
 
                     {/* Ingredients List */}
-                    <div className="w-full">
+                    <div className="w-full flex flex-col gap-6">
                         {sortedGroups.map((group) => {
                             const ingredientsInGroup = groupedIngredients[group];
                             if (!ingredientsInGroup || ingredientsInGroup.length === 0) return null;
 
+                            // Apply dynamic colors to the group wrapper based on the group name
+                            const groupColorAccent = getColorForCategory(group);
+                            const groupColorLight = getLightColorForCategory(group);
+
                             return (
-                                <div key={group} className="receipt w-full mb-3" style={{ padding: '0' }}>
-                                    <div style={{ padding: '0.75rem 1rem', borderBottom: '1px dashed #ccc', backgroundColor: '#fafcf7' }}>
-                                        <h6 className="bold uppercase m-0">
+                                <div key={group} className="glass-card w-full" style={{ padding: '0', overflow: 'hidden' }}>
+                                    <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-secondary)' }}>
+                                        <h6 className="font-bold uppercase tracking-wider text-lg m-0 flex items-center text-white">
                                             <CategoryImage
                                                 data={groupedIngredients}
                                                 order={sortedGroups}
                                                 current={group}
                                             >
-                                                <span style={{ marginLeft: '0.5rem' }}>{group}</span>
+                                                <span style={{ marginLeft: '0.75rem' }}>{group}</span>
                                             </CategoryImage>
                                         </h6>
                                     </div>
-                                    <div>
+                                    <div className="p-4 bg-[var(--bg-main)]">
                                         <NewIngredientTable
                                             reload={() => reloadAllIngredients()}
                                             ingredients={ingredientsInGroup.sort(ingredientSortFunction)}
@@ -310,6 +313,7 @@ export default function Home() {
                                             handleDeleteItem={handleDeleteItem}
                                             filters={filters}
                                             enabledSuppliers={enabledSuppliers}
+                                            groupColor={groupColorAccent}
                                         />
                                     </div>
                                 </div>
@@ -318,16 +322,15 @@ export default function Home() {
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="flex-col align-center gap-2 mt-4 pb-5 w-full">
+                    <div className="flex flex-col items-center gap-4 mt-8 pb-8 w-full border-t border-[var(--glass-border)] pt-8">
                         <CopyToClipboard listIngreds={listIngreds} />
                         <button
                             onClick={() => markListAsComplete()}
-                            className="btn-paper btn-success"
-                            style={{ padding: '1rem 2rem' }}
+                            className="btn-modern !bg-emerald-500 hover:!bg-emerald-400 !text-black text-lg py-4 px-8 w-full max-w-md shadow-lg shadow-emerald-500/20"
                         >
                             ✅ MARK AS COMPLETE
                         </button>
-                        <p className="small text-center mt-2 uppercase" style={{ color: '#888' }}>ID: {id}</p>
+                        <p className="text-xs text-center mt-4 text-gray-500 uppercase tracking-widest font-mono">List ID: {id}</p>
                     </div>
 
                 </main>

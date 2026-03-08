@@ -131,14 +131,17 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
     }, []);
 
     return (
-        <div className="receipt w-full max-w-[450px] mx-auto mb-4 p-6">
-            <form onSubmit={handleSubmitLocal}>
-                <h3 className="text-center font-bold uppercase mb-4 text-xl border-b-2 border-dashed border-black pb-2 text-black">New Item</h3>
+        <div className="glass-card w-full max-w-[500px] mx-auto mb-4 p-8 border border-[var(--glass-border)]">
+            <form onSubmit={handleSubmitLocal} className="flex flex-col gap-6">
+                <div>
+                    <h3 className="text-center font-bold uppercase text-2xl tracking-tight text-white mb-2">Add New Item</h3>
+                    <div className="h-1 w-16 bg-[var(--accent)] mx-auto rounded-full"></div>
+                </div>
 
                 <input name="name" id="ingredName" type="text" placeholder={shoppingListId} disabled hidden />
 
-                <div className="mb-4">
-                    <label className="label-paper">Item Name</label>
+                <div className="flex flex-col gap-2">
+                    <label className="label-modern text-white">Item Name</label>
                     <SearchableDropdown
                         options={knownIngredients}
                         placeholder={"Enter Ingredient Name"}
@@ -149,9 +152,9 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                     />
                 </div>
 
-                <div className="flex flex-row gap-4 mb-4">
-                    <div className="flex-1">
-                        <label className="label-paper">Quantity</label>
+                <div className="flex flex-row gap-4">
+                    <div className="flex-1 flex flex-col gap-2">
+                        <label className="label-modern text-white">Quantity</label>
                         <input
                             name="quantity"
                             id="ingredAmount"
@@ -160,18 +163,18 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                             required
                             onChange={handleChange}
                             value={formData.quantity}
-                            className="input-paper"
+                            className="input-modern"
                         />
                     </div>
-                    <div className="flex-1">
-                        <label className="label-paper">Unit</label>
+                    <div className="flex-1 flex flex-col gap-2">
+                        <label className="label-modern text-white">Unit</label>
                         <select
                             name="quantity_type"
                             id="quantity_type"
                             onChange={handleChange}
                             value={formData.quantity_type}
                             required
-                            className="input-paper !text-black"
+                            className="input-modern bg-[var(--bg-secondary)]"
                         >
                             <option value="any">any</option>
                             {Object.keys(quantity_unit_conversions).map((item) => <option key={item} value={item}>{item}</option>)}
@@ -179,8 +182,8 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                     </div>
                 </div>
 
-                <div className="mb-4">
-                    <label className="label-paper">Note (optional)</label>
+                <div className="flex flex-col gap-2">
+                    <label className="label-modern text-white">Note (optional)</label>
                     <input
                         name="note"
                         id="ingredNote"
@@ -188,13 +191,13 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                         placeholder="Note"
                         onChange={handleChange}
                         value={formData.note}
-                        className="input-paper"
+                        className="input-modern"
                     />
                 </div>
 
                 {!hideCategories && (
-                    <div className="mb-4">
-                        <label className="label-paper">Category</label>
+                    <div className="flex flex-col gap-2">
+                        <label className="label-modern text-white">Category</label>
                         <SearchableDropdown
                             options={categories.map((cat) => cat.name)}
                             placeholder={"Category"}
@@ -206,8 +209,8 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                     </div>
                 )}
 
-                <div className="mt-6 flex justify-center">
-                    <Button className="w-full font-bold uppercase rounded" type="submit">
+                <div className="mt-4 flex justify-center">
+                    <Button className="w-full font-bold uppercase tracking-wider text-base py-6 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all hover:scale-[1.02]" type="submit">
                         Add to List
                     </Button>
                 </div>

@@ -1,22 +1,36 @@
 import React, { useState } from 'react';
+import { getColorForCategory } from '../lib/colors';
 import PropTypes from 'prop-types';
 import styles from '../styles/Home.module.css';
 import { IngredientSearchList } from './IngredientSearchList';
 import CardListModal from './CardListModal';
 import IngredientCardProduct from './IngredientCardProduct';
 
-function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion, enabledSuppliers = [] }) {
+function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion, enabledSuppliers = [], groupColor }) {
     const [otherOptionsModalIsOpen, setOtherOptionsModalIsOpen] = useState(false);
 
+    // If a group color was passed down, use it. Otherwise, try to figure it out from the category or fallback to accent.
+    const accentColor = groupColor || getColorForCategory(ingredient.category || 'unknown') || 'var(--accent)';
+
     return (
-        <div style={{ filter: ingredient.complete ? 'grayscale(100%)' : 'none', opacity: ingredient.complete ? 0.6 : 1, width: '100%', marginBottom: '1rem' }}>
+        <div style={{ opacity: ingredient.complete ? 0.6 : 1, width: '100%', marginBottom: '1.25rem' }}>
             <div
                 key={ingredient._id}
-                className="glass-card flex-row align-center gap-4 py-4 px-6"
+                className="glass-card flex-row align-center gap-4 py-4 px-6 relative overflow-hidden transition-all duration-300"
                 style={{
-                    border: '1px solid var(--glass-border)',
+                    border: ingredient.complete ? '1px solid var(--glass-border)' : `1px solid ${accentColor}40`,
+                    boxShadow: ingredient.complete ? 'none' : `0 4px 20px -10px ${accentColor}30`,
                 }}
             >
+                {/* Subtle left border hint for color */}
+                <div
+                    className="absolute left-0 top-0 bottom-0 w-1 transition-all duration-300"
+                    style={{
+                        backgroundColor: ingredient.complete ? 'transparent' : accentColor,
+                        opacity: 0.8
+                    }}
+                />
+
                 {handleCheckboxChange !== undefined && (
                     <div style={{ display: 'flex', justifyContent: 'center', minWidth: '40px' }}>
                         <input
@@ -24,10 +38,11 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                             checked={ingredient.complete}
                             onChange={() => handleCheckboxChange(ingredient)}
                             style={{
-                                width: '1.4rem',
-                                height: '1.4rem',
+                                width: '1.5rem',
+                                height: '1.5rem',
                                 cursor: 'pointer',
-                                accentColor: 'var(--accent)'
+                                accentColor: accentColor,
+                                borderRadius: '0.25rem'
                             }}
                         />
                     </div>
