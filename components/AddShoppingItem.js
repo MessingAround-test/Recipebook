@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import styles from '../styles/Home.module.css'; // Import CSS module
-import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button'
 import { quantity_unit_conversions } from "../lib/conversion"
 import SearchableImageDropdown from './SearchableImageDropdown';
 import SearchableDropdown from './SearchableDropdown';
+
 let categories = [
     { name: 'Fresh Produce', image: 'FreshProduce.png' },
     { name: 'Dairy and Eggs', image: 'DairyandEggs.png' },
@@ -38,7 +37,6 @@ function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false 
     });
 
     const resetForm = () => {
-        // console.log("HAPPENED")
         setFormData({
             name: "",
             quantity: 1,
@@ -49,16 +47,10 @@ function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false 
         });
     };
 
-
-
     const [knownIngredients, setKnownIngredients] = useState([])
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        
-        // console.log(formData)
-        // console.log(name)
-        // console.log(value)
         setFormData({ ...formData, [name]: value });
     };
 
@@ -70,88 +62,64 @@ function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false 
     };
 
     const handleSubmitLocal = async (e) => {
+        e.preventDefault();
         e.value = formData
-        e.resetForm = resetForm; // Reset the form data after successful submission
+        e.resetForm = resetForm;
         handleSubmit(e)
     };
 
     function isValidCategory(categories, to_check) {
         return categories.some(category => category.name === to_check);
-      }
+    }
 
     async function determineDefaults(name) {
         try {
             let response = await (await fetch(`/api/ShoppingListItem/options?search_term=${name}&EDGEtoken=` + localStorage.getItem('Token'))).json()
 
-            // console.log(response)
-
             if (response.success) {
                 const values = response.data
 
-                if (values.category[0]){
-                    let category = values.category[0] ?  values.category[0].value  : formData.category
+                if (values.category[0]) {
+                    let category = values.category[0] ? values.category[0].value : formData.category
                     let quantity = values.quantity[0] ? values.quantity[0].value : formData.quantity
                     let quantity_type = values.quantity_type[0] ? values.quantity_type[0].value : formData.quantity_type
                     setFormData({ ...formData, category: category, quantity: quantity, quantity_type: quantity_type });
                 } else {
-                    // USE ai to determine the category... 
                     let response = await (await fetch(`/api/ai/determine_default_categories?search_term=${name}&EDGEtoken=` + localStorage.getItem('Token'))).json()
                     if (!response.success) {
                         console.error('Error fetching data:', response.statusText);
-                        // Handle the error, e.g., display an error message to the user
                         return;
-                      }
-                      
-                      // Extract the category from the response
-                      console.log(response)
-                      
-                      const category = response.data;
+                    }
 
-                      if (isValidCategory(categories, category)) {
+                    const category = response.data;
+
+                    if (isValidCategory(categories, category)) {
                         setFormData({ ...formData, category: category });
-                      } else {
+                    } else {
                         console.log("The response is not a valid category.");
-                      }
-                      
+                    }
+
                 }
-                
-                // alert(response)
-                // Handle success, e.g., show a success message or redirect
             } else {
-                // console.log(response.data)
                 return
-                // alert(response.data)
-                // Handle errors, e.g., show an error message
             }
         } catch (error) {
             console.log(error)
             return
-            // alert(error)
-            // Handle network or other errors
         }
     }
 
-
-
     const getKnownIngredients = async (e) => {
-        // e.preventDefault();
         try {
             let response = await (await fetch(`/api/Ingredients/defaults?EDGEtoken=` + localStorage.getItem('Token'))).json()
 
-            // console.log(response)
-
             if (response.success) {
-
                 setKnownIngredients(response.data)
-                // alert(response)
-                // Handle success, e.g., show a success message or redirect
             } else {
                 alert(response.data)
-                // Handle errors, e.g., show an error message
             }
         } catch (error) {
             alert(error)
-            // Handle network or other errors
         }
     }
 
@@ -160,39 +128,86 @@ function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false 
     }, []);
 
     return (
-        <div className={styles['centered']}>
+        <div className="receipt" style={{ maxWidth: '450px', margin: '1rem auto' }}>
+            <form onSubmit={handleSubmitLocal}>
+                <h3 className="text-center bold uppercase mb-3" style={{ borderBottom: '2px dashed black', paddingBottom: '0.5rem' }}>New Item</h3>
 
-            <Form onSubmit={(e) => handleSubmitLocal(e)}>
-                <Form.Group className="mb-3" id="ingredName">
-                    <Form.Control name="name" id="ingredName" type="text" placeholder={shoppingListId} disabled hidden />
-                </Form.Group>
+                <input name="name" id="ingredName" type="text" placeholder={shoppingListId} disabled hidden />
 
-                <Form.Group className="mb-3" id="formIngredName">
-                    <SearchableDropdown options={knownIngredients} placeholder={"Enter Ingredient Name"} onChange={handleChange} name={"name"} value={formData.name} onComplete={handleNameSubmit}></SearchableDropdown>
-                </Form.Group>
-                <Form.Group className="mb-3" id="formBasicEmail">
-                    <Form.Control name="quantity" id="ingredAmount" type="text" placeholder="Enter Amount" required onChange={handleChange} value={formData.quantity} />
-                    <Form.Select aria-label="Default select example" name="quantity_type" id="quantity_type" onChange={handleChange} value={formData.quantity_type} required>
-                        <option value="any">any</option>
-                        {Object.keys(quantity_unit_conversions).map((item) => <option value={item}>{item}</option>)}
-                    </Form.Select>
-                </Form.Group>
-                <Form.Group className="mb-3" id="formBasicPassword">
-                    <Form.Control name="note" id="ingredNote" type="text" placeholder="(optional note)" onChange={handleChange} value={formData.note} />
-                </Form.Group>
-                {hideCategories ? <></> : <><Form.Group className="mb-3" id="formCategory">
-                    <SearchableDropdown options={categories.map((cat)=>cat.name)} placeholder={"Category"} onChange={handleChange} name={"category"} value={formData.category}></SearchableDropdown>
-                </Form.Group></>}
+                <div className="mb-3">
+                    <label className="label-paper">Item Name</label>
+                    <SearchableDropdown
+                        options={knownIngredients}
+                        placeholder={"Enter Ingredient Name"}
+                        onChange={handleChange}
+                        name={"name"}
+                        value={formData.name}
+                        onComplete={handleNameSubmit}
+                    />
+                </div>
 
+                <div className="flex-row gap-2 mb-3">
+                    <div className="flex-col w-full">
+                        <label className="label-paper">Quantity</label>
+                        <input
+                            name="quantity"
+                            id="ingredAmount"
+                            type="text"
+                            placeholder="Amount"
+                            required
+                            onChange={handleChange}
+                            value={formData.quantity}
+                            className="input-paper"
+                        />
+                    </div>
+                    <div className="flex-col w-full">
+                        <label className="label-paper">Unit</label>
+                        <select
+                            name="quantity_type"
+                            id="quantity_type"
+                            onChange={handleChange}
+                            value={formData.quantity_type}
+                            required
+                            className="input-paper"
+                        >
+                            <option value="any">any</option>
+                            {Object.keys(quantity_unit_conversions).map((item) => <option key={item} value={item}>{item}</option>)}
+                        </select>
+                    </div>
+                </div>
 
+                <div className="mb-3">
+                    <label className="label-paper">Note (optional)</label>
+                    <input
+                        name="note"
+                        id="ingredNote"
+                        type="text"
+                        placeholder="Note"
+                        onChange={handleChange}
+                        value={formData.note}
+                        className="input-paper"
+                    />
+                </div>
 
-                <Button variant="success" type="submit">
-                    Submit
-                </Button>
-                {/* <Button variant="primary" onClick={() => // console.log(formData)}>
-                    show state
-                </Button> */}
-            </Form>
+                {!hideCategories && (
+                    <div className="mb-3">
+                        <label className="label-paper">Category</label>
+                        <SearchableDropdown
+                            options={categories.map((cat) => cat.name)}
+                            placeholder={"Category"}
+                            onChange={handleChange}
+                            name={"category"}
+                            value={formData.category}
+                        />
+                    </div>
+                )}
+
+                <div className="mt-4 text-center">
+                    <button className="btn-paper align-center justify-center w-full" type="submit">
+                        Add to List
+                    </button>
+                </div>
+            </form>
         </div>
     );
 }

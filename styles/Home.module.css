@@ -1,374 +1,116 @@
-/* ========================================================================= */
-/* BASE & GLOBAL STYLES (Mobile First) */
-/* ========================================================================= */
-
-.wrapper {
-    background-color: #394955; /* Ensure a consistent starting background */
-    min-height: 100vh;
-}
-
 .container {
-    /* Retaining your core styles but adjusting for better responsiveness */
-    padding: 0em 1vw;
-    background-color: #394955; /* Page Background */
+    padding: 2rem 1.5rem;
     width: 100%;
-    max-width: 100%;
-    overflow-x: hidden; /* Prevent unwanted horizontal scroll */
-    font-size: 16px; /* Reset to standard base size */
-    color: white; /* Ensure text is visible on dark background */
-}
+    max-width: 1200px;
+    margin: 0 auto;
+    color: var(--text-primary);
 
-.cardHeader {
-    border: none ;
-    background-color: #394955; 
 }
-
-/* ❌ REMOVED: customHeaderBg - Now directly using the unified #394955 on header/footer */
 
 .main {
-    /* Your existing main flex layout */
-    border-radius: 0em 0em 1em 1em;
-    min-height: 100vh;
-    font-size: 1rem; /* Base font size */
-    padding: 1em 1em;
-    flex: 1;
+    display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    width: 100%; /* Ensure main takes up all container width */
+    gap: 3rem;
 }
 
-/* New custom class for the sticky action bar */
-.sticky-top-controls {
-    /* Default styling for mobile: Fixed to bottom */
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    z-index: 1020; /* Above most content */
-    background-color: #394955;
-    padding: 10px;
-    margin: 0 !important; /* Override row margins */
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
-}
-
-/* Padding to ensure content is not hidden behind the fixed bar on mobile */
-.ingredient-list-container {
-    padding-bottom: 70px; 
+/* Card Grid for Home Page */
+.card_grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2rem;
     width: 100%;
 }
 
-/* Typography Adjustments for Dark Theme */
-.text-success {
-    color: #a4e5a4 !important; /* Lighter green for better visibility */
-}
-.text-primary {
-    color: #8ab4f8 !important; /* Lighter blue for better visibility */
-}
-.text-secondary {
-    color: #adb5bd !important; /* Muted color */
-}
-.text-muted {
-    color: #adb5bd !important;
-}
-
-
-/* ========================================================================= */
-/* CARD & TABLE STYLES - STREAMLINED & BORDERLESS */
-/* ========================================================================= */
-
-.card {
-    border: none !important; /* REMOVED BORDER */
-    /* Set Card BG to match Page BG for a seamless, floating appearance */
-    background-color: #394955;
-    color: white;
-    border-radius: 12px;
-}
-.card-header {
-    background-color: #394955 !important; /* MATCHED TO PAGE BG */
-    border-bottom: none !important; /* REMOVED SEPARATING LINE */
-    border-radius: 12px 12px 0 0 !important;
-    padding: 0.75rem 1rem 0.25rem 1rem; /* Reduced bottom padding for 'small' feel */
+/* Modern Card Style */
+.paperCard {
+    background: var(--bg-card);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 1.5rem;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
 }
 
-.card-footer {
-    background-color: #394955 !important; /* MATCHED TO PAGE BG */
-    border-top: none !important; /* REMOVED SEPARATING LINE */
-    border-radius: 0 0 12px 12px !important;
-    padding: 0.25rem 1rem 0.75rem 1rem; /* Reduced top padding to snug up to content */
-    color: white;
-}
-
-/* New Ingredient Table Styles (Using :global() to target table structure) */
-.ingredient-list-container :global(tbody tr) {
-    background-color: transparent;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-.ingredient-list-container :global(tbody tr:hover) {
-    background-color: #394955; /* Highlight on hover */
-}
-.ingredient-list-container :global(td) {
-    padding: 0.75rem 1rem;
-    vertical-align: middle;
-}
-
-
-/* ========================================================================= */
-/* YOUR ORIGINAL STYLES (Adjusted for responsiveness) */
-/* ========================================================================= */
-
-/* ... all your remaining CSS classes like .lds_circle, .modal, .header, .th, etc. should follow here ... */
-
-.lds_circle {
-    display: inline-block;
-    transform: translateZ(1px);
-}
-
-.lds_circle > div {
-    display: inline-block;
-    width: 1.5rem; /* Changed from vw to rem */
-    height: 1.5rem;
-    margin: 8px;
-    border-radius: 50%;
-    background:#39435c;
-    animation: lds_circle 2.4s cubic-bezier(0, 0.2, 0.8, 1) infinite;
-}
-
-@keyframes lds_circle {
-    0%, 100% {
-        animation-timing-function: cubic-bezier(0.5, 0, 1, 0.5);
-    }
-
-    0% {
-        transform: rotateY(0deg);
-    }
-
-    50% {
-        transform: rotateY(1800deg);
-        animation-timing-function: cubic-bezier(0, 0.5, 0.5, 1);
-    }
-
-    100% {
-        transform: rotateY(3600deg);
-    }
-}
-
-
-.curvedEdge {
-    border-radius :20px;
-}
-
-.modal {
+.paperCard::before {
+    content: '';
     position: absolute;
-    inset: 40px;
-    border: 1px solid rgb(204, 204, 204);
-    background: #394955; /* Dark background */
-    overflow: auto;
-    border-radius: 8px;
-    outline: none;
-    padding: 10px;
-    color: white;
+    inset: 0;
+    background: radial-gradient(circle at top right, rgba(16, 185, 129, 0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.4s ease;
 }
 
-.right {
-    float: right
+.paperCard:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: var(--accent);
+    box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8);
 }
 
-.bordered {
-    border-color: black;
-    border-width: 0.01em;
-    border-style: solid;
+.paperCard:hover::before {
+    opacity: 1;
 }
 
-
-.header {
-    background-color: #171f34;
-    border-radius :20px;
-    text-align: center;
-    align-items: center;
-    justify-content: center;
-}
-
-.centered_horizontal {
-    text-align: center;
-    align-items: center;
-    flex-grow: 1;
-}
-
-.centered {
-    text-align: center;
-    align-items: center;
-    justify-content: center;
-    margin: auto;
-    flex-grow: 1;
-}
-
-.centered_vertical {
-    justify-content: center;
-    margin: auto;
-}
-
-
-.cardGroup{
-    display: flex;
-    flex-wrap: wrap;
-}
-
-
-.overlayContainer {
-    width: 100vw;
-    height: auto;
-    display: flex;
-    
-    
-    
-    
-    
-    /* Background Image/Shape properties (kept from your original CSS) */
-    background-position: center;
-    background-size: cover;
-    background-repeat: no-repeat;
-}
-
-.overlayText {
-    margin: 0;
-    font-size: 1rem;
-    border-radius: 0.25rem;
-    color: black;
-    background-color: #eaeaea;
-    justify-content: center;
-    padding-left: 1%;
-    padding-right: 1%;
-    
-    /* 💡 THE FIX: Lower the z-index and set position so it respects z-index */
-    position: relative; 
-    z-index: 0; 
-}
-
-.main_flex {
-    border-radius: 1em;
-    min-height: 100vh;
-    padding: 1em 1em;
-    flex: 1;
+.card_body {
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    gap: 1rem;
+    z-index: 1;
 }
 
-.overlayContainer img {
-    /* 💡 NEW RULE: Give the image a higher z-index to place it in front */
-    position: relative; 
-    z-index: 2; 
+.card_title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
 }
 
+.card_image_wrapper {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+}
+
+.paperCard img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+}
+
+.paperCard:hover img {
+    transform: scale(1.1);
+}
 
 .footer {
+    margin-top: 4rem;
+    padding: 2rem 0;
+    text-align: center;
+    border-top: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+/* Adjusted Loader */
+.lds_circle {
     display: flex;
-    flex: 1;
-    padding: 2em 0;
-    border-top: 1px solid #eaeaea;
     justify-content: center;
-    align-items: center;
+    padding: 2rem;
 }
 
-.title {
-    margin: 0;
-    line-height: 1.15;
-    font-size: 2.5em;
-    text-align: center;
-}
-
-.Row {
-    display: flex;
-    align-items: center;
-    vertical-align: middle;
-    justify-content: center;
-    width: 100%;
-}
-
-.Row >* {
-    /* Ensure no unwanted styles are forcing layout issues */
-}
-
-.col{
-    padding: 0.5em;
-    text-align: center;
-    vertical-align: middle;
-    align-items: center;
-    justify-content: center;
-    display: flex; /* Kept display:flex for vertical alignment inside columns */
-}
-
-.th{
-    padding: 0.75rem 1rem; /* Adjusted for better spacing */
-    background-color: #1C2640;
-    font-size: 0.9rem;
-    flex-direction: column; 
-    text-align: center;
-    vertical-align: middle;
-    color:white;
-    overflow: hidden 
-}
-
-/* Other utility classes not heavily modified for this task */
-.td{
-    padding: 0.5em;
-    background-color: white;
-    font-size: 2cqw; /* Kept your cqw for table, but be cautious with browser support */
-    flex-direction: column; 
-    text-align: center;
-    vertical-align: middle;
-}
-
-/* --- New local class for scoping header element styles --- */
-.headerStyles h1 {
-    /* Base H1 style - Will be overridden by media query for desktop */
-    font-size: 1.5rem; 
-}
-
-.headerStyles h4 {
-    /* Base H4 style - Will be overridden by media query for desktop */
-    font-size: 1.25rem;
-}
-
-
-/* ========================================================================= */
-/* MEDIA QUERIES (Desktop Overrides) */
-/* ========================================================================= */
-
-@media (min-width: 768px) { /* Applies to tablets and desktops */
-    
-    /* FIX: Using the local class .headerStyles to scope the element selectors. */
-    .headerStyles h1 {
-        font-size: 2.5rem;
-    }
-    .headerStyles h4 {
-        font-size: 1.5rem;
-    }
-
-    .container {
-        padding: 0em 2vw;
-        max-width: 1200px; /* Constrain max width for desktop reading ease */
-        margin: auto;
-    }
-
-    .main {
-        font-size: 1.1rem;
-    }
-
-    /* DESKTOP: Un-stick the controls and place them back in the flow */
-    .sticky-top-controls {
-        position: static;
-        padding: 0;
-        margin-bottom: 1.5rem !important; /* Restore standard spacing */
-        box-shadow: none;
-        border-top: none;
-    }
-    /* Remove padding needed for fixed bar */
-    .ingredient-list-container {
-        padding-bottom: 0; 
-    }
+.lds_circle>div {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+    animation: lds_circle 2.4s cubic-bezier(0, 0.2, 0.8, 1) infinite;
 }

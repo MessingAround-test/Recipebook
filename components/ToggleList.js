@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Dropdown, Form } from 'react-bootstrap';
 
-const ToggleList = ({ inputList, onUpdateList, value, text= "Select Option" }) => {
+const ToggleList = ({ inputList, onUpdateList, value, text = "Select Option" }) => {
   const [activeItems, setActiveItems] = useState(value);
   const checkboxRefs = useRef({});
 
@@ -28,22 +28,23 @@ const ToggleList = ({ inputList, onUpdateList, value, text= "Select Option" }) =
   }, [activeItems, onUpdateList]);
 
   return (
-    <div>
-      
+    <div style={{ fontFamily: 'var(--receipt-font)' }}>
+
       <Dropdown>
-        <Dropdown.Toggle variant="success" id="dropdown-basic">
+        <Dropdown.Toggle variant="outline-dark" id="dropdown-basic" style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>
           {text}
         </Dropdown.Toggle>
-        <Dropdown.Menu>
+        <Dropdown.Menu style={{ padding: '0.5rem', border: '1px solid black', borderRadius: '0' }}>
           {inputList.map((item) => (
-            <Dropdown.Item key={item} onClick={() => handleItemClick(item)}>
-              <label>
+            <Dropdown.Item key={item} onClick={() => handleItemClick(item)} style={{ padding: '0.2rem 1rem' }}>
+              <label style={{ cursor: 'pointer', width: '100%', display: 'flex', alignItems: 'center' }}>
                 <Form.Check
                   type="checkbox"
-                  label={item}
+                  label={item.toUpperCase()}
                   checked={activeItems.includes(item)}
-                  onChange={() => {}}
+                  onChange={() => { }}
                   ref={(el) => (checkboxRefs.current[item] = el)}
+                  style={{ accentColor: 'black' }}
                 />
               </label>
             </Dropdown.Item>

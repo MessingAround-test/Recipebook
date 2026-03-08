@@ -1,4 +1,3 @@
-
 import { secret } from "../../../../lib/dbsecret"
 import { verify } from "jsonwebtoken";
 import dbConnect from '../../../../lib/dbConnect'
@@ -9,215 +8,113 @@ import axios from 'axios';
 import JSSoup from 'jssoup';
 import { convertMetricReading } from '../../../../lib/conversion'
 
-
-// Function to calculate Levenshtein distance between two strings
 function calculateLevenshteinDistance(a, b) {
     if (a.length === 0) return b.length;
     if (b.length === 0) return a.length;
-  
     const matrix = [];
-  
-    // Initialize the matrix
-    for (let i = 0; i <= a.length; i++) {
-      matrix[i] = [i];
-    }
-    for (let j = 0; j <= b.length; j++) {
-      matrix[0][j] = j;
-    }
-  
-    // Fill in the matrix
+    for (let i = 0; i <= a.length; i++) matrix[i] = [i];
+    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
     for (let i = 1; i <= a.length; i++) {
-      for (let j = 1; j <= b.length; j++) {
-        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1, // Deletion
-          matrix[i][j - 1] + 1, // Insertion
-          matrix[i - 1][j - 1] + cost // Substitution
-        );
-      }
-    }
-  
-    return matrix[a.length][b.length];
-  }
-// Function to find matches from the list of dictionaries and filter down to the top 5
-function findMatches(inputIngredient, products, maxNameLength) {
-    const threshold = 5; // Default threshold
-    const boostThreshold = 2; // Lower threshold for boosted matches
-    const matches = [];
-  
-    for (const product of products) {
-      const productName = product.name;
-      const productNameLower = productName.toLowerCase();
-      const inputIngredientLower = inputIngredient.toLowerCase();
-  
-      if (productNameLower.includes(inputIngredientLower)) {
-        // Input term found in product name - apply a boost
-        matches.push({ ...product, distance: -1 });
-      } else {
-        const distance = calculateLevenshteinDistance(
-          inputIngredientLower,
-          productNameLower
-        );
-  
-        if (distance <= threshold) {
-          matches.push({ ...product, distance });
+        for (let j = 1; j <= b.length; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j - 1] + cost
+            );
         }
-      }
     }
-  
-    if (matches.length > 0) {
-      // Filter out long product names
-      matches.sort((a, b) => (a.distance < b.distance ? -1 : 1));
-      return matches;
-      // Return the top 5 matches or fewer if there are fewer than 5 matches
-      
-    } else {
-      return [];
+    return matrix[a.length][b.length];
+}
+
+function findMatches(inputIngredient, products) {
+    const threshold = 5;
+    const matches = [];
+    for (const product of products) {
+        const productNameLower = product.name.toLowerCase();
+        const inputIngredientLower = inputIngredient.toLowerCase();
+        if (productNameLower.includes(inputIngredientLower)) {
+            matches.push({ ...product, distance: -1 });
+        } else {
+            const distance = calculateLevenshteinDistance(inputIngredientLower, productNameLower);
+            if (distance <= threshold) matches.push({ ...product, distance });
+        }
     }
-  }
-// This one is different, its a extract and then we can query it later...
-/**
- * @swagger
- * /api/Ingredients/WW/Aldi:
- *   get:
- *     description: Returns Token from Login
- *     responses:
- *       200:
- *         description: hello world
- */
+    return matches.sort((a, b) => a.distance - b.distance);
+}
 
 function removeSpecialChars(text) {
-    text = text.replace(/<[^>]*>/g, '');
-
-    // Replace special characters with spaces
-    text = text.replace(/[^\w\s]/g, ' ');
-
-    // Remove extra spaces and trim
-    text = text.replace(/\s+/g, ' ').trim();
-    return text
+    return text.replace(/<[^>]*>/g, '').replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 async function extractFromAldi(endpoint, formattedDateTime) {
     let ingredList = []
     try {
-
-        // Make an HTTP GET request to the URL
-        //console.log(endpoint)
-        const response = await axios.get(endpoint);
-        // //console.log(response.data)
-        // Parse the HTML content using JSSoup
+        const response = await axios.get(endpoint, {
+            headers: {
+                'User-Agent': 'PostmanRuntime/7.28.4',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': 'https://www.aldi.com.au'
+            }
+        });
         const soup = new JSSoup(response.data, true);
-
-        // Extract the data you need from the parsed HTML
         const targetDivs = soup.findAll('div', 'ratio-container');
-
         let source = "Aldi"
-        if (targetDivs.length > 0) {
-            // Loop through the found div elements and process them as needed
-            targetDivs.forEach((parentDiv) => {
-                try {
-                    const priceDiv = parentDiv.find('div', 'box--price');
-                    let quantity_unit
-                    let price;
-                    let quantity;
-                    let quantity_type;
-
-                    if (priceDiv) {
-                        let dollars = parseFloat((priceDiv.find("span", "box--value").text).replace("$", ""))
-                        let cents = parseFloat((priceDiv.find("span", "box--decimal").text).replace("$", ""))
-                        price = Number((dollars + cents / 100).toFixed(2))
-
-                        // //console.log(priceDiv.prettify()); // Output the prettified HTML of each matching sub div
-                    } else {
-                        //console.log('No matching sub div with class "box--price" found in the parent div.');
-                    }
-
-                    let internal_id = formattedDateTime
-
-                    let name = removeSpecialChars(parentDiv.find("div", "box--description--header").text)
-
-
-                    // If quantity type is not defined or null then extract from the name
-                    if (!(quantity_unit)) {
-
-                        let metricConversion = convertMetricReading(name)
-                        // //console.log(metricConversion)
-                        quantity = metricConversion.quantity
-                        quantity_unit = metricConversion.quantity_unit
-                        quantity_type = metricConversion.quantity_type
-                    } else {
-                        // If we get a quantity_unit, we need it converted to our format
-                        let metricConversion = convertMetricReading(quantity_unit)
-                        quantity_unit = metricConversion.quantity_unit
-                        quantity_type = metricConversion.quantity_type
-                        // //console.log(metricConversion)
-                        // If the quantity returned is not 1, then multiply it by the quantity
-                        if (metricConversion.quantity !== 1) {
-                            quantity = quantity * metricConversion.quantity
-                        }
-                    }
-                    let unit_price = parseFloat((price / quantity).toFixed(3))
-                    let ingredDict = {
-                        "id": source + "-" + name + "-" + internal_id,
-                        "name": name,
-                        "price": price,
-                        "unit_price": unit_price,
-                        "quantity_unit": quantity_unit,
-                        "quantity_type": quantity_type,
-                        "quantity": quantity,
-                        "endpoint": endpoint
-                    }
-                    AldiIngredient.create(ingredDict)
-                    ingredList.push(ingredDict)
-
-                } catch (error) {
-                    //console.log(error)
+        targetDivs.forEach((parentDiv) => {
+            try {
+                const priceDiv = parentDiv.find('div', 'box--price');
+                if (!priceDiv) return;
+                let dollars = parseFloat((priceDiv.find("span", "box--value").text).replace("$", ""))
+                let cents = parseFloat((priceDiv.find("span", "box--decimal").text).replace("$", ""))
+                let price = Number((dollars + cents / 100).toFixed(2))
+                let name = removeSpecialChars(parentDiv.find("div", "box--description--header").text)
+                let metricConversion = convertMetricReading(name)
+                let quantity = metricConversion.quantity
+                let quantity_unit = metricConversion.quantity_unit
+                let quantity_type = metricConversion.quantity_type
+                let unit_price = parseFloat((price / quantity).toFixed(3))
+                let ingredDict = {
+                    "id": source + "-" + name + "-" + formattedDateTime,
+                    "name": name,
+                    "price": price,
+                    "unit_price": unit_price,
+                    "quantity_unit": quantity_unit,
+                    "quantity_type": quantity_type,
+                    "quantity": quantity,
+                    "endpoint": endpoint
                 }
-
-
-                // //console.log(div.prettify()); // Output the prettified HTML of each matching div
-            });
-
-        } else {
-            //console.log('No matching div elements found.');
-        }
+                AldiIngredient.findOneAndUpdate({ id: ingredDict.id }, ingredDict, { upsert: true }).exec();
+                ingredList.push(ingredDict)
+            } catch (error) {
+                console.error("Error extracting item from Aldi:", error.message);
+            }
+        });
     } catch (error) {
-        console.error('An error occurred:', error);
+        console.error('Aldi extraction failed for endpoint:', endpoint, error.message);
     }
     return ingredList
 }
 
 function formatCurrentDateTime() {
     const currentDate = new Date();
-    const year = currentDate.getFullYear();
-    const month = String(currentDate.getMonth() + 1).padStart(2, '0'); // Zero-padding the month
-    const day = String(currentDate.getDate()).padStart(2, '0'); // Zero-padding the day
-    const hour = String(currentDate.getHours()).padStart(2, '0'); // Zero-padding the hour
-    const minute = String(currentDate.getMinutes()).padStart(2, '0'); // Zero-padding the minute
-
-    return `${year}-${month}-${day}-${hour}-${minute}`;
+    return `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}-${String(currentDate.getHours()).padStart(2, '0')}-${String(currentDate.getMinutes()).padStart(2, '0')}`;
 }
-
 
 export default async function handler(req, res) {
     const formattedDateTime = formatCurrentDateTime();
-    //console.log(formattedDateTime);
+    let search_term = req.query.name
 
+    return new Promise((resolve, reject) => {
+        verify(req.query.EDGEtoken, secret, async function (err, decoded) {
+            try {
+                if (err) {
+                    res.status(401).json({ success: false, message: "Unauthorized: " + err.message });
+                    return resolve();
+                }
 
-
-    //console.log(req.query)
-    let ingredient_name = req.query.name
-
-    verify(req.query.EDGEtoken, secret, async function (err, decoded) {
-
-        try {
-            let search_term = req.query.name
-            if (err) {
-                return res.status(400).json({ res: "error: " + String(err) })
-            } else {
+                await dbConnect();
                 if (req.method === "POST") {
-                    let jsonData
-                    let ingredList = []
                     let endpointList = [
                         "https://www.aldi.com.au/en/groceries/super-savers/",
                         "https://www.aldi.com.au/en/groceries/limited-time-only/",
@@ -239,116 +136,64 @@ export default async function handler(req, res) {
                         "https://www.aldi.com.au/en/groceries/pantry/chocolate/",
                         "https://www.aldi.com.au/en/groceries/pantry/coffee/"
                     ]
-                    endpointList.forEach(async function (endpoint) {
-                        ingredList.concat(extractFromAldi(endpoint, formattedDateTime))
-                    })
-
-
-
-                    return res.status(200).send({ res: ingredList, success: true })
-
-
-
-
-
+                    let allResults = []
+                    for (let endpoint of endpointList) {
+                        let list = await extractFromAldi(endpoint, formattedDateTime)
+                        allResults = allResults.concat(list)
+                    }
+                    res.status(200).send({ res: allResults, success: true })
+                    resolve();
                 } else if (req.method === "DELETE") {
-                    await dbConnect()
-
-                    //console.log(decoded)
                     let db_id = decoded.id
                     let userData = await User.findOne({ id: db_id });
-                    if (userData == {}) {
-                        return res.status(400).json({ res: "user not found, please relog" })
-                    } else {
-
-                        let RecipeData = await AldiIngredient.deleteMany({})
-                        return res.status(200).json({ success: true, data: RecipeData, message: "Success" })
+                    if (!userData) {
+                        res.status(404).json({ success: false, message: "User not found" });
+                        return resolve();
                     }
-                    return res.status(400).json({ success: false, data: [], message: "Not supported request" })
+                    if (userData.role !== "admin") {
+                        res.status(403).json({ success: false, message: "Insufficient Privileges" });
+                        return resolve();
+                    }
+                    let RecipeData = await AldiIngredient.deleteMany({})
+                    res.status(200).json({ success: true, data: RecipeData, message: "Success" })
+                    resolve();
                 } else if (req.method === "GET") {
-                    if (ingredient_name !== undefined && ingredient_name !== null) {
-                        // Get out of the ALdi DB
+                    if (search_term) {
                         let allIngreds = await AldiIngredient.find({}).lean().exec()
-                        //console.log(allIngreds)
-                        //console.log("SEARCH TERM =")
-                        //console.log(search_term)
                         let matchedProducts = findMatches(search_term, allIngreds);
-                        //console.log("Matches:", matchedProducts);
-                        let filteredDataArray = []
                         let source = "Aldi"
-                        //console.log(matchedProducts)
-                        // filteredDataArray = newIngredData
-                        for (let ingredData in matchedProducts) {
-
-
-                            let filteredData = matchedProducts[ingredData]
-                            let name = filteredData.name
-                            let internal_id = filteredData.id
-                            let quantity_unit = filteredData.quantity_unit
-                            let quantity_type = filteredData.quantity_type
-                            let unit_price = filteredData.unit_price
-                            let price = filteredData.price
-                            let quantity = filteredData.quantity
-
+                        let filteredDataArray = []
+                        for (let product of matchedProducts) {
                             let filteredObj = {
-                                "id": source + "-" + name + "-" + internal_id,
-                                "name": name,
-                                "price": price,
-                                "unit_price": unit_price,
-                                "quantity_unit": quantity_unit,
-                                "quantity_type": quantity_type,
-                                "quantity": quantity,
+                                "id": source + "-" + product.name + "-" + product.id,
+                                "name": product.name,
+                                "price": product.price,
+                                "unit_price": product.unit_price,
+                                "quantity_unit": product.quantity_unit,
+                                "quantity_type": product.quantity_type,
+                                "quantity": product.quantity,
                                 "search_term": search_term,
                                 "source": source,
-                                // "extraData": filteredData
-
                             }
-                            //console.log(filteredObj)
-                            const response = Ingredients.create({
-                                "id": source + "-" + name + "-" + internal_id,
-                                "name": name,
-                                "price": price,
-                                "unit_price": unit_price,
-                                "quantity_unit": quantity_unit,
-                                "quantity_type": quantity_type,
-                                "quantity": quantity,
-                                "search_term": search_term,
-                                "source": source,
-                            });
-                            //console.log("BEORE CREATE")
-                            //console.log(await response);
-
-
+                            await Ingredients.findOneAndUpdate({ id: filteredObj.id }, filteredObj, { upsert: true });
                             filteredDataArray.push(filteredObj)
                         }
-                        //console.log(filteredDataArray)
-                        return res.status(200).send({ res: filteredDataArray, success: true })
-
-
+                        res.status(200).send({ res: filteredDataArray, success: true })
+                        resolve();
                     } else {
                         let IngredData = await AldiIngredient.find({}).lean().exec()
-                        return res.status(200).send({ success: true, res: IngredData, message: "" })
+                        res.status(200).send({ success: true, res: IngredData })
+                        resolve();
                     }
-
-
-                    // return res.status(400).json({ success: false, data: [], message: "Not supported request" })
+                } else {
+                    res.status(405).json({ success: false, message: "Method Not Allowed" })
+                    resolve();
                 }
-                else {
-                    return res.status(400).json({ success: false, data: [], message: "Not supported request" })
-                }
+            } catch (error) {
+                console.error("Aldi API Error:", error);
+                res.status(500).json({ success: false, message: "Internal Server Error in Aldi API: " + error.message });
+                resolve();
             }
-        } catch (e) {
-
-
-            res
-                .status(200).
-                json({ success: false, res: [], message: `ERROR: ${e}` })
-        }
+        });
     });
-
-
-
-
-
-
 }

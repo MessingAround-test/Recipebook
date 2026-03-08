@@ -39,7 +39,7 @@ export function IngredientSearchList(props) {
         setAllIngreds([])
     }
 
-    async function handleGetIngredient(e){
+    async function handleGetIngredient(e) {
         e.preventDefault();
 
         console.log(e)
@@ -51,28 +51,28 @@ export function IngredientSearchList(props) {
 
     function objectToQueryString(obj) {
         const queryString = [];
-        
+
         for (const key in obj) {
-          if (obj.hasOwnProperty(key)) {
-            const value = obj[key];
-            if (value !== undefined) {
-              if (Array.isArray(value)) {
-                value.forEach(item => {
-                  queryString.push(`${encodeURIComponent(key)}[]=${encodeURIComponent(item)}`);
-                });
-              } else {
-                queryString.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
-              }
+            if (obj.hasOwnProperty(key)) {
+                const value = obj[key];
+                if (value !== undefined) {
+                    if (Array.isArray(value)) {
+                        value.forEach(item => {
+                            queryString.push(`${encodeURIComponent(key)}[]=${encodeURIComponent(item)}`);
+                        });
+                    } else {
+                        queryString.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
+                    }
+                }
             }
-          }
         }
-        
+
         return queryString.join('&');
-      }
-      
+    }
+
 
     async function getIngredient(IngredQuery, supplierName) {
-        let queryObj = {"name": IngredQuery, "supplier": supplierName, "EDGEtoken": localStorage.getItem('Token')}
+        let queryObj = { "name": IngredQuery, "supplier": supplierName, "EDGEtoken": localStorage.getItem('Token') }
         let data = await (await fetch(`/api/Ingredients?${objectToQueryString(queryObj)}`)).json()
         console.log(data)
         if (data.loadedSource === true) {
@@ -156,72 +156,80 @@ export function IngredientSearchList(props) {
     }, []) // <-- empty dependency array
 
 
-    const redirect = async function (page) {
-        Router.push(page)
-    };
-
     return (
-        <>
-            <div >
-                <Form onSubmit={(e) => handleGetIngredient(e)}>
-                    <Form.Group className="mb-3" id="formBasicEmail">
-                        <Form.Label>Name</Form.Label>
-                        <Form.Control name="ingredName" id="ingredName" value={props.search_term} type="text" placeholder="Enter ingredient Name" onChange={(e) => updateFilteredIngreds(e)} required />
-                        <Form.Label>Supplier</Form.Label>
-                        <Form.Select name="supplierName" id="supplierName" type="text" placeholder="Enter ingredient Name" onChange={(e) => updateFilteredIngreds(e)}>
-                            {
-                                Suppliers.map((supplier) => {
-                                    return <option value={supplier}>{supplier}</option>
-                                })
-                            }
-                        </Form.Select>
+        <div className="flex-col gap-8">
+            <div className="glass-card">
+                <form onSubmit={(e) => handleGetIngredient(e)} className="flex-col gap-4">
+                    <div className="flex-row gap-4">
+                        <div className="flex-col w-full">
+                            <label className="label-modern">Ingredient Name</label>
+                            <input
+                                className="input-modern"
+                                name="ingredName"
+                                id="ingredName"
+                                value={props.search_term}
+                                type="text"
+                                placeholder="e.g. Tomato"
+                                onChange={(e) => updateFilteredIngreds(e)}
+                                required
+                            />
+                        </div>
+                        <div className="flex-col w-full">
+                            <label className="label-modern">Supplier</label>
+                            <select
+                                className="input-modern"
+                                name="supplierName"
+                                id="supplierName"
+                                onChange={(e) => updateFilteredIngreds(e)}
+                                style={{ appearance: 'none' }}
+                            >
+                                {Suppliers.map((supplier) => (
+                                    <option key={supplier} value={supplier}>{supplier || 'All Suppliers'}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
 
-                    </Form.Group>
-
-
-                    <Button variant="primary" type="submit">
-                        Submit
-                    </Button>
-                    <Button variant="danger" style={{ "float": "right" }} onClick={(e) => deleteAllIngredients()}>
-                        Delete all
-                    </Button>
-                </Form>
+                    <div className="flex-row justify-between align-center mt-4">
+                        <button className="btn-modern" type="submit">
+                            Search Ingredients
+                        </button>
+                        <button
+                            className="btn-modern btn-danger"
+                            type="button"
+                            onClick={(e) => { if (confirm('Delete all cached ingredients?')) deleteAllIngredients() }}
+                        >
+                            Clear Cache
+                        </button>
+                    </div>
+                </form>
             </div>
-            <br></br>
-            <Table style={{ borderRadius: '5px',  maxWidth: "100%"}}>
-                {Headers.map((key) => {
-                    return (
-                        <>
-                            <th className={styles.th} style={{"maxWidth": `${80/(Headers.length)}vw`}}>
-                                {key}
-                            </th>
-                        </>
-                    )
-                })}
-                {filteredIngreds.map((ingredient) => {
-                    let res = Headers.map((key) => {
-                        return (
-                            <>
-                                <td className={styles.td} style={{"maxWidth": `${80/(Headers.length)}vw`}}>
-                                    
-                                        {ingredient[key]}
-                                    
-                                </td>
-                            </>
-                        )
-                    })
-                    return (
-                        <>
-                            <tr className={styles.tr} style={{}}>
-                                {res}
-                            </tr>
-                        </>
-                    )
 
-                })}
-
-            </Table>
-
-        </>
+            <div className="glass-card p-0 overflow-hidden">
+                <div style={{ overflowX: 'auto' }}>
+                    <div style={{ minWidth: '800px' }}>
+                        <Row className="p-4 align-center" style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--glass-border)', fontWeight: '700', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>
+                            {Headers.map((key) => (
+                                <Col key={key} style={{ flex: 1 }}>{key.replace('_', ' ')}</Col>
+                            ))}
+                        </Row>
+                        {filteredIngreds.map((ingredient, idx) => (
+                            <Row key={idx} className="p-4 align-center hover-accent" style={{ borderBottom: '1px solid var(--glass-border)', fontSize: '0.95rem', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                                {Headers.map((key) => (
+                                    <Col key={key} style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {key === 'price' || key === 'unit_price' ? `$${Number(ingredient[key]).toFixed(2)}` : ingredient[key]}
+                                    </Col>
+                                ))}
+                            </Row>
+                        ))}
+                    </div>
+                </div>
+                {filteredIngreds.length === 0 && (
+                    <div className="p-8 text-center text-secondary">
+                        No ingredients found. Try a different search term.
+                    </div>
+                )}
+            </div>
+        </div>
     )
 }
