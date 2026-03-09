@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Modal from 'react-modal';
 import { IngredientSearchList } from './IngredientSearchList';
+import Skeleton from './Skeleton';
 
 function IngredientTable({ ingredients, handleCheckboxChange, reload, availableColumns, handleDeleteItem, modifyColumnName, sortFunction }: any) {
     const [ingredientData, setIngredientData] = useState<any[]>(ingredients);
@@ -152,7 +153,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
 
                                     <div className="col-span-1 hidden md:flex justify-center items-center">
                                         {ingred.loading ? (
-                                            <object type="image/svg+xml" data="/loading.svg" className="w-6 h-6">loading</object>
+                                            <Skeleton width="24px" height="24px" circle className="mx-auto" />
                                         ) : (
                                             ingred.options && ingred.options[0]?.source && (
                                                 <img

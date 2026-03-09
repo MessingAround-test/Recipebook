@@ -5,6 +5,7 @@ import styles from '../styles/Home.module.css';
 import { IngredientSearchList } from './IngredientSearchList';
 import CardListModal from './CardListModal';
 import IngredientCardProduct from './IngredientCardProduct';
+import Skeleton from './Skeleton';
 
 /**
  * @param {Object} props
@@ -75,7 +76,11 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                         </span>
                     </div>
 
-                    {ingredient.loading && <div className={styles.lds_circle} style={{ transform: 'scale(0.5)' }}><div></div></div>}
+                    {ingredient.loading && (
+                        <div className="mt-2 w-full">
+                            <Skeleton height="3rem" className="w-full opacity-50" />
+                        </div>
+                    )}
 
                     {ingredient.options[0] !== undefined && filters.includes("supplier") && !ingredient.complete && (
                         <div className="mt-2 flex-col gap-3">

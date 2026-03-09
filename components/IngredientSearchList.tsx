@@ -1,5 +1,6 @@
 import { useEffect, useState, FormEvent, ChangeEvent } from 'react'
 import { Button } from './ui/button'
+import Skeleton from './Skeleton'
 
 interface IngredientSearchListProps {
     search_term?: string
@@ -11,8 +12,10 @@ export function IngredientSearchList(props: IngredientSearchListProps) {
     const [Headers, setHeaders] = useState<string[]>([])
     const [Suppliers, setSuppliers] = useState<string[]>([])
     const [filtersObj, setFiltersObj] = useState({ name: "", supplier: "" })
+    const [isLoading, setIsLoading] = useState(false)
 
     async function getAllIngredients() {
+        setIsLoading(true)
         if (props.search_term === undefined) {
             let res = await fetch(`/api/Ingredients/`, {
                 headers: { 'edgetoken': localStorage.getItem('Token') || "" }
@@ -25,6 +28,7 @@ export function IngredientSearchList(props: IngredientSearchListProps) {
             setAllIngreds(data || [])
             setFilteredIngreds(data || [])
         }
+        setIsLoading(false)
     }
 
     async function deleteAllIngredients() {
@@ -40,6 +44,7 @@ export function IngredientSearchList(props: IngredientSearchListProps) {
 
     async function handleGetIngredient(e: FormEvent<HTMLFormElement>) {
         e.preventDefault()
+        setIsLoading(true)
         const target = e.target as typeof e.target & {
             ingredName: { value: string }
             supplierName: { value: string }
@@ -48,6 +53,7 @@ export function IngredientSearchList(props: IngredientSearchListProps) {
         let supplierName = target.supplierName.value
         let data = await getIngredient(IngredQuery, supplierName)
         setAllIngreds([...allIngreds, ...data])
+        setIsLoading(false)
     }
 
     function objectToQueryString(obj: any) {
@@ -191,15 +197,24 @@ export function IngredientSearchList(props: IngredientSearchListProps) {
                         {filteredIngreds.map((ingredient, idx) => (
                             <div key={idx} className={`flex flex-row p-4 items-center transition-colors hover:bg-accent/50 border-b border-border text-sm ${idx % 2 === 0 ? 'bg-transparent' : 'bg-white/5'}`}>
                                 {Headers.map((key) => (
-                                    <div key={key} className="flex-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                                    <div key={key} className="flex-1 whitespace-nowrap overflow-hidden text-ellipsis px-1">
                                         {key === 'price' || key === 'unit_price' ? `$${Number(ingredient[key]).toFixed(2)}` : ingredient[key]}
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                        {isLoading && [1, 2, 3].map((i) => (
+                            <div key={`skeleton-${i}`} className="flex flex-row p-4 items-center border-b border-border text-sm">
+                                {Headers.map((key) => (
+                                    <div key={key} className="flex-1 px-1">
+                                        <Skeleton height="1.25rem" width="80%" />
                                     </div>
                                 ))}
                             </div>
                         ))}
                     </div>
                 </div>
-                {filteredIngreds.length === 0 && (
+                {filteredIngreds.length === 0 && !isLoading && (
                     <div className="p-8 text-center text-muted-foreground">
                         No ingredients found. Try a different search term.
                     </div>
