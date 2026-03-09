@@ -15,7 +15,10 @@ export default function Home() {
   const [recipes, setRecipes] = useState([])
 
   async function getUserDetails() {
-    let data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
+    let res = await fetch("/api/UserDetails", {
+      headers: { 'edgetoken': localStorage.getItem('Token') || '' }
+    })
+    let data = await res.json()
     console.log(data)
     setUserData(data.res)
   }

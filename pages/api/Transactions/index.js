@@ -1,77 +1,38 @@
-
-import { secret } from "../../../lib/dbsecret"
-import { verify } from "jsonwebtoken";
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
 import Transactions from '../../../models/Transactions'
-
-
-
-
+import { verifyToken } from "../../../lib/auth";
+import { logAPI } from '../../../lib/logger';
 
 export default async function handler(req, res) {
-    console.log(req.query)
-   let transaction_id= req.query.id
-    
-  verify(req.query.EDGEtoken, secret, async function (err, decoded) {
-    if (err) {
-      res.status(400).json({ res: "error: " + String(err) })
-    } else {
-      if (req.method === "GET") {
-        
-        await dbConnect()
+  logAPI(req)
+  const decoded = await verifyToken(req, res);
+  if (!decoded) return;
 
-        console.log(decoded)
-        let db_id = decoded.id
-        let userData = await User.findOne({ id: db_id });
-        if (userData === undefined) {
-          res.status(400).json({ res: "user not found, please relog" })
-        } else {
-          let TransactionData = await Transactions.find({user_id: userData._id}) //_id: transaction_id, 
-          res.status(200).json({ res: TransactionData})
-        }
-      
-      
-      } else if (req.method === "POST"){
+  try {
+    await dbConnect()
+    let db_id = decoded.id
+    let userData = await User.findOne({ id: db_id });
+    if (!userData) {
+      return res.status(404).json({ res: "user not found, please relog" })
+    }
+
+    if (req.method === "GET") {
+      let TransactionData = await Transactions.find({ user_id: userData._id })
+      return res.status(200).json({ res: TransactionData })
+    } else if (req.method === "POST") {
+      try {
         let transactionDetails = req.body
-        await dbConnect()
-
-        console.log(decoded)
-        let db_id = decoded.id
-        let userData = await User.findOne({ id: db_id });
-        if (userData === undefined) {
-          res.status(400).json({ res: "user not found, please relog" })
-        } else {
-            transactionDetails.user_id = userData._id
-            let createResponse = createTransaction(transactionDetails)
-            res.status(200).json({ res: createResponse})
-        }
-        
-      }else {
-        res.status(400).json({ success: false, data: [], message: "Not supported request"})
+        transactionDetails.user_id = userData._id
+        const result = await Transactions.create(transactionDetails);
+        return res.status(200).json({ success: true, data: result, message: "Success" })
+      } catch (error) {
+        return res.status(400).json({ success: false, message: "Incorrect data input: " + error.message })
       }
+    } else {
+      return res.status(405).json({ success: false, message: "Method Not Allowed" })
     }
-  });
-
-
-
-
-
-}
-
-
-
-
-async function createTransaction(body) {
-    // userModel.
-    
-    
-    try {
-        const res = Transactions.create(body);
-        console.log(await res);
-        return { success: true, data: await res, message: "Success" }
-    } catch (error)  {
-        console.log(error)
-        return { success: false, data: error, message: "Incorrect data input" }
-    }
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Internal Server Error: " + error.message });
+  }
 }

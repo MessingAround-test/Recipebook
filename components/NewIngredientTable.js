@@ -38,10 +38,11 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
     }
 
     const markAsIncorrect = async function (ingredientId, ingredName) {
-        let data = await (await fetch("/api/Ingredients/?id=" + ingredientId + "&EDGEtoken=" + localStorage.getItem('Token'), {
+        let data = await (await fetch("/api/Ingredients/?id=" + ingredientId, {
             method: 'DELETE',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'edgetoken': localStorage.getItem('Token')
             },
             body: JSON.stringify({})
         })).json()

@@ -80,7 +80,9 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
     async function determineDefaults(name: string) {
         try {
             const token = localStorage.getItem('Token')
-            let response = await (await fetch(`/api/ShoppingListItem/options?search_term=${name}&EDGEtoken=${token}`)).json()
+            let response = await (await fetch(`/api/ShoppingListItem/options?search_term=${name}`, {
+                headers: { 'edgetoken': token || "" }
+            })).json()
 
             if (response.success) {
                 const values = response.data
@@ -91,7 +93,9 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                     let quantity_type = values.quantity_type[0] ? values.quantity_type[0].value : formData.quantity_type
                     setFormData(prev => ({ ...prev, category, quantity, quantity_type }));
                 } else {
-                    let response = await (await fetch(`/api/ai/determine_default_categories?search_term=${name}&EDGEtoken=${token}`)).json()
+                    let response = await (await fetch(`/api/ai/determine_default_categories?search_term=${name}`, {
+                        headers: { 'edgetoken': token || "" }
+                    })).json()
                     if (!response.success) {
                         console.error('Error fetching data:', response.statusText);
                         return;
@@ -114,7 +118,9 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
     const getKnownIngredients = async () => {
         try {
             const token = localStorage.getItem('Token')
-            let response = await (await fetch(`/api/Ingredients/defaults?EDGEtoken=${token}`)).json()
+            let response = await (await fetch(`/api/Ingredients/defaults`, {
+                headers: { 'edgetoken': token || "" }
+            })).json()
 
             if (response.success) {
                 setKnownIngredients(response.data)

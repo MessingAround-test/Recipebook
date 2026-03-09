@@ -1,5 +1,4 @@
-import { secret } from "../../../../lib/dbsecret"
-import { verify } from "jsonwebtoken";
+import { verifyToken } from "../../../../lib/auth";
 import dbConnect from '../../../../lib/dbConnect'
 import User from '../../../../models/User'
 import AldiIngredient from '../../../../models/AldiIngredient'
@@ -47,7 +46,38 @@ function removeSpecialChars(text) {
     return text.replace(/<[^>]*>/g, '').replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function mapAldiProduct(product, search_term, source, formattedDateTime) {
+    const name = product.name;
+    const price = product.price.amount / 100;
+    const sku = product.sku;
+
+    // Use the sellingSize if available, otherwise default to 1 each
+    const sellingSize = product.sellingSize || "1 each";
+    const metricConversion = convertMetricReading(sellingSize);
+
+    // If name doesn't have metric info, try to use sellingSize for quantity
+    let quantity = metricConversion.quantity;
+    let quantity_unit = metricConversion.quantity_unit;
+    let quantity_type = metricConversion.quantity_type;
+
+    // Calculate unit price
+    const unit_price = parseFloat((price / quantity).toFixed(3));
+
+    return {
+        "id": `${source}-${name}-${sku}`,
+        "name": name,
+        "price": price,
+        "unit_price": unit_price,
+        "quantity_unit": quantity_unit,
+        "quantity_type": quantity_type,
+        "quantity": quantity,
+        "search_term": search_term,
+        "source": source,
+    };
+}
+
 async function extractFromAldi(endpoint, formattedDateTime) {
+    // Legacy scraping function - might still be used by POST if we keep it
     let ingredList = []
     try {
         const response = await axios.get(endpoint, {
@@ -105,95 +135,103 @@ export default async function handler(req, res) {
     const formattedDateTime = formatCurrentDateTime();
     let search_term = req.query.name
 
-    return new Promise((resolve, reject) => {
-        verify(req.query.EDGEtoken, secret, async function (err, decoded) {
-            try {
-                if (err) {
-                    res.status(401).json({ success: false, message: "Unauthorized: " + err.message });
-                    return resolve();
+    const decoded = await verifyToken(req, res);
+    if (!decoded) return;
+
+    try {
+        await dbConnect();
+        if (req.method === "POST") {
+            let endpointList = [
+                "https://www.aldi.com.au/en/groceries/super-savers/",
+                "https://www.aldi.com.au/en/groceries/limited-time-only/",
+                "https://www.aldi.com.au/en/groceries/price-reductions/",
+                "https://www.aldi.com.au/en/groceries/fresh-produce/dairy-eggs/",
+                "https://www.aldi.com.au/en/groceries/baby/nappies-and-wipes/",
+                "https://www.aldi.com.au/en/groceries/baby/baby-food/",
+                "https://www.aldi.com.au/en/groceries/beauty/",
+                "https://www.aldi.com.au/en/groceries/freezer/",
+                "https://www.aldi.com.au/en/groceries/health/",
+                "https://www.aldi.com.au/en/groceries/laundry-household/laundry/",
+                "https://www.aldi.com.au/en/groceries/laundry-household/household/",
+                "https://www.aldi.com.au/en/groceries/liquor/wine/",
+                "https://www.aldi.com.au/en/groceries/liquor/beer-cider/",
+                "https://www.aldi.com.au/en/groceries/liquor/champagne-sparkling/",
+                "https://www.aldi.com.au/en/groceries/liquor/spirits/",
+                "https://www.aldi.com.au/en/special-buys/special-buys-liquor/",
+                "https://www.aldi.com.au/en/groceries/pantry/olive-oil/",
+                "https://www.aldi.com.au/en/groceries/pantry/chocolate/",
+                "https://www.aldi.com.au/en/groceries/pantry/coffee/"
+            ]
+            let allResults = []
+            for (let endpoint of endpointList) {
+                let list = await extractFromAldi(endpoint, formattedDateTime)
+                allResults = allResults.concat(list)
+            }
+            return res.status(200).send({ res: allResults, success: true })
+        } else if (req.method === "DELETE") {
+            let db_id = decoded.id
+            let userData = await User.findOne({ id: db_id });
+            if (!userData) {
+                return res.status(404).json({ success: false, message: "User not found" });
+            }
+            if (userData.role !== "admin") {
+                return res.status(403).json({ success: false, message: "Insufficient Privileges" });
+            }
+            let RecipeData = await AldiIngredient.deleteMany({})
+            return res.status(200).json({ success: true, data: RecipeData, message: "Success" })
+        } else if (req.method === "GET") {
+            if (search_term) {
+                const source = "Aldi";
+
+                // Check database first to reduce API calls
+                const existingIngredients = await Ingredients.find({
+                    search_term: search_term.toLowerCase(),
+                    source: source
+                }).lean().exec();
+
+                if (existingIngredients.length > 0) {
+                    return res.status(200).json({ res: existingIngredients, success: true, from_db: true });
                 }
 
-                await dbConnect();
-                if (req.method === "POST") {
-                    let endpointList = [
-                        "https://www.aldi.com.au/en/groceries/super-savers/",
-                        "https://www.aldi.com.au/en/groceries/limited-time-only/",
-                        "https://www.aldi.com.au/en/groceries/price-reductions/",
-                        "https://www.aldi.com.au/en/groceries/fresh-produce/dairy-eggs/",
-                        "https://www.aldi.com.au/en/groceries/baby/nappies-and-wipes/",
-                        "https://www.aldi.com.au/en/groceries/baby/baby-food/",
-                        "https://www.aldi.com.au/en/groceries/beauty/",
-                        "https://www.aldi.com.au/en/groceries/freezer/",
-                        "https://www.aldi.com.au/en/groceries/health/",
-                        "https://www.aldi.com.au/en/groceries/laundry-household/laundry/",
-                        "https://www.aldi.com.au/en/groceries/laundry-household/household/",
-                        "https://www.aldi.com.au/en/groceries/liquor/wine/",
-                        "https://www.aldi.com.au/en/groceries/liquor/beer-cider/",
-                        "https://www.aldi.com.au/en/groceries/liquor/champagne-sparkling/",
-                        "https://www.aldi.com.au/en/groceries/liquor/spirits/",
-                        "https://www.aldi.com.au/en/special-buys/special-buys-liquor/",
-                        "https://www.aldi.com.au/en/groceries/pantry/olive-oil/",
-                        "https://www.aldi.com.au/en/groceries/pantry/chocolate/",
-                        "https://www.aldi.com.au/en/groceries/pantry/coffee/"
-                    ]
-                    let allResults = []
-                    for (let endpoint of endpointList) {
-                        let list = await extractFromAldi(endpoint, formattedDateTime)
-                        allResults = allResults.concat(list)
+                const aldiApiUrl = `https://api.aldi.com.au/v3/product-search?currency=AUD&serviceType=walk-in&q=${encodeURIComponent(search_term)}&limit=30&offset=0&sort=relevance&servicePoint=G452`;
+
+                const response = await axios.get(aldiApiUrl, {
+                    headers: {
+                        'User-Agent': 'PostmanRuntime/7.28.4',
+                        'Accept': 'application/json, text/plain, */*',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Referer': 'https://www.aldi.com.au'
                     }
-                    res.status(200).send({ res: allResults, success: true })
-                    resolve();
-                } else if (req.method === "DELETE") {
-                    let db_id = decoded.id
-                    let userData = await User.findOne({ id: db_id });
-                    if (!userData) {
-                        res.status(404).json({ success: false, message: "User not found" });
-                        return resolve();
-                    }
-                    if (userData.role !== "admin") {
-                        res.status(403).json({ success: false, message: "Insufficient Privileges" });
-                        return resolve();
-                    }
-                    let RecipeData = await AldiIngredient.deleteMany({})
-                    res.status(200).json({ success: true, data: RecipeData, message: "Success" })
-                    resolve();
-                } else if (req.method === "GET") {
-                    if (search_term) {
-                        let allIngreds = await AldiIngredient.find({}).lean().exec()
-                        let matchedProducts = findMatches(search_term, allIngreds);
-                        let source = "Aldi"
-                        let filteredDataArray = []
-                        for (let product of matchedProducts) {
-                            let filteredObj = {
-                                "id": source + "-" + product.name + "-" + product.id,
-                                "name": product.name,
-                                "price": product.price,
-                                "unit_price": product.unit_price,
-                                "quantity_unit": product.quantity_unit,
-                                "quantity_type": product.quantity_type,
-                                "quantity": product.quantity,
-                                "search_term": search_term,
-                                "source": source,
-                            }
-                            await Ingredients.findOneAndUpdate({ id: filteredObj.id }, filteredObj, { upsert: true });
-                            filteredDataArray.push(filteredObj)
+                });
+
+                let filteredDataArray = [];
+                if (response.data && response.data.data) {
+                    const products = response.data.data;
+                    for (const product of products) {
+                        try {
+                            const filteredObj = mapAldiProduct(product, search_term, source, formattedDateTime);
+
+                            await Ingredients.findOneAndUpdate(
+                                { id: filteredObj.id },
+                                filteredObj,
+                                { upsert: true }
+                            );
+                            filteredDataArray.push(filteredObj);
+                        } catch (innerError) {
+                            console.error("Error processing Aldi item:", innerError.message);
                         }
-                        res.status(200).send({ res: filteredDataArray, success: true })
-                        resolve();
-                    } else {
-                        let IngredData = await AldiIngredient.find({}).lean().exec()
-                        res.status(200).send({ success: true, res: IngredData })
-                        resolve();
                     }
-                } else {
-                    res.status(405).json({ success: false, message: "Method Not Allowed" })
-                    resolve();
                 }
-            } catch (error) {
-                console.error("Aldi API Error:", error);
-                res.status(500).json({ success: false, message: "Internal Server Error in Aldi API: " + error.message });
-                resolve();
+                return res.status(200).send({ res: filteredDataArray, success: true })
+            } else {
+                let IngredData = await AldiIngredient.find({}).lean().exec()
+                return res.status(200).send({ success: true, res: IngredData })
             }
-        });
-    });
+        } else {
+            return res.status(405).json({ success: false, message: "Method Not Allowed" })
+        }
+    } catch (error) {
+        console.error("Aldi API Error:", error);
+        return res.status(500).json({ success: false, message: "Internal Server Error in Aldi API: " + error.message });
+    }
 }

@@ -18,7 +18,9 @@ export default function Recipes() {
     async function getUserDetails() {
         const token = localStorage.getItem('Token')
         if (!token) return
-        let res = await fetch("/api/UserDetails?EDGEtoken=" + token)
+        let res = await fetch("/api/UserDetails", {
+            headers: { 'edgetoken': token }
+        })
         let data = await res.json()
         setUserData(data.res)
     }
@@ -26,7 +28,9 @@ export default function Recipes() {
     async function getRecipeDetails() {
         const token = localStorage.getItem('Token')
         if (!token) return
-        let res = await fetch("/api/Recipe?EDGEtoken=" + token)
+        let res = await fetch("/api/Recipe", {
+            headers: { 'edgetoken': token }
+        })
         let data = await res.json()
         setRecipes(data.res || [])
     }
@@ -57,9 +61,12 @@ export default function Recipes() {
 
     const deleteRecipe = async (id: string) => {
         const token = localStorage.getItem('Token')
-        let res = await fetch("/api/Recipe/" + String(id) + "?EDGEtoken=" + token, {
+        let res = await fetch("/api/Recipe/" + String(id), {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'edgetoken': token || ''
+            },
         })
         let data = await res.json()
         if (data.success === false || data.success === undefined) {
@@ -80,7 +87,7 @@ export default function Recipes() {
                         <Button onClick={() => redirect("/createRecipe")}>
                             Add recipe
                         </Button>
-                        {userData.role === "admin" && (
+                        {userData?.role === "admin" && (
                             <Button
                                 variant={allowDelete ? "destructive" : "outline"}
                                 onClick={() => setAllowDelete(!allowDelete)}

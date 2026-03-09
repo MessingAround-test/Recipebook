@@ -60,10 +60,14 @@ export default function Home() {
     }
 
     async function getGroceryStoreProducts(ingredient: any, returnN: number, enabledSuppliers: string[], token: string) {
-        let res = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${returnN}&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${token}`)
+        let res = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${returnN}&supplier=${enabledSuppliers.join(',')}`, {
+            headers: { 'edgetoken': token }
+        })
         let data = await res.json()
         if (data.loadedSource) {
-            let resLoaded = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${returnN}&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${token}`)
+            let resLoaded = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${returnN}&supplier=${enabledSuppliers.join(',')}`, {
+                headers: { 'edgetoken': token }
+            })
             data = await resLoaded.json()
         }
 
@@ -76,9 +80,12 @@ export default function Home() {
     }
 
     const deleteRecipe = async function () {
-        let res = await fetch("/api/Recipe/" + String(router.query.id) + "?EDGEtoken=" + localStorage.getItem('Token'), {
+        let res = await fetch("/api/Recipe/" + String(router.query.id), {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'edgetoken': localStorage.getItem('Token') || ""
+            },
             body: JSON.stringify({})
         })
         let data = await res.json()
@@ -91,7 +98,9 @@ export default function Home() {
 
     async function getRecipeDetails() {
         if (!id) return
-        let res = await fetch("/api/Recipe/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'))
+        let res = await fetch("/api/Recipe/" + String(id), {
+            headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+        })
         let data = await res.json()
         setRecipe(data.res)
         setImageData(data.res.image)
@@ -167,9 +176,12 @@ export default function Home() {
                     }
 
                     try {
-                        const response = await fetch(`/api/Recipe/${encodeURIComponent(String(id))}?EDGEtoken=${localStorage.getItem('Token')}`, {
+                        const response = await fetch(`/api/Recipe/${encodeURIComponent(String(id))}`, {
                             method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'edgetoken': localStorage.getItem('Token') || ""
+                            },
                             body: JSON.stringify({ image: base64String }),
                         })
 

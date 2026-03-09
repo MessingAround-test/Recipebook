@@ -88,9 +88,12 @@ export default function IngredientListComp({
 
     const markAsIncorrect = async function (ingredientId: string, ingredName: string) {
         const token = localStorage.getItem('Token')
-        const res = await fetch("/api/Ingredients/?id=" + ingredientId + "&EDGEtoken=" + token, {
+        const res = await fetch("/api/Ingredients/?id=" + ingredientId, {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' }
+            headers: {
+                'Content-Type': 'application/json',
+                'edgetoken': token || ""
+            }
         })
         const data = await res.json()
         if (data.success === false || data.success === undefined) {

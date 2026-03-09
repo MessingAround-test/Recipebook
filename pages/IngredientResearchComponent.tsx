@@ -13,12 +13,16 @@ export default function IngredientResearchComponent() {
         e.preventDefault();
         setLoading(true);
 
-        const res = await fetch(`/api/Ingredients/?name=${searchTerm}&qType=${quantityUnit}&quantity=${quantity}&EDGEtoken=${localStorage.getItem('Token')}`);
+        const res = await fetch(`/api/Ingredients/?name=${searchTerm}&qType=${quantityUnit}&quantity=${quantity}`, {
+            headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+        });
         const data = await res.json();
         setLoading(false);
 
         if (data.loadedSource === true) {
-            const resLoaded = await fetch(`/api/Ingredients/?name=${searchTerm}&qType=${quantityUnit}&quantity=${quantity}&EDGEtoken=${localStorage.getItem('Token')}`);
+            const resLoaded = await fetch(`/api/Ingredients/?name=${searchTerm}&qType=${quantityUnit}&quantity=${quantity}`, {
+                headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+            });
             const dataLoaded = await resLoaded.json();
             setIngredientData(dataLoaded.res || []);
         } else {

@@ -1,8 +1,9 @@
 import { convertKitchenMetrics, getShorthandForMeasure } from "./conversion";
+import { safeToObject } from "./utils";
 function calculateEfficiency(neededAmount, minPurchase) {
     const efficiency = (neededAmount / (Math.ceil(neededAmount / minPurchase) * minPurchase)) * 100;
     return efficiency.toFixed(2); // Rounds to two decimal places
-  }
+}
 
 export function filter(itemList, filterObj) {
     let validList = []
@@ -27,20 +28,20 @@ export function filter(itemList, filterObj) {
             unit_price_converted = current.price / grams
             unit_price_converted_type = "gram"
 
-            total_price = unit_price_converted* conversion.gram
-            
+            total_price = unit_price_converted * conversion.gram
+
             match_efficiency = calculateEfficiency(conversion.gram, currentConversion.gram)
         } else {
             // If we cant match, then just go through and filter out those with unmatching quantity
-            
+
             if (!(matchQuantityType(current, filterObj))) {
                 filterObj.quantity_unit
                 continue
             }
-            total_price = (filterObj.quantity/current.quantity)*current.price
+            total_price = (filterObj.quantity / current.quantity) * current.price
             // current.unit_price_converted_type = "gram"
             match_efficiency = 100
-        }        
+        }
 
         // Only if we have a price!
         if (current.price === undefined || current.price === null) {
@@ -57,7 +58,7 @@ export function filter(itemList, filterObj) {
         try {
             // current.score = similarity(current.name.toLowerCase(),filterObj.search_term.toLowerCase())
             // validList.push(current.toObject())
-            validList.push({ ...current.toObject(), "unit_price_converted_type": unit_price_converted_type, "unit_price_converted": unit_price_converted, "total_price": total_price, "match_efficiency": match_efficiency})
+            validList.push({ ...safeToObject(current), "unit_price_converted_type": unit_price_converted_type, "unit_price_converted": unit_price_converted, "total_price": total_price, "match_efficiency": match_efficiency })
         } catch (e) {
             console.log(e)
             console.log("failed to push")

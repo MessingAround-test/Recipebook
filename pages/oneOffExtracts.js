@@ -10,16 +10,19 @@ export default function Home() {
     const [userData, setUserData] = useState({})
 
     async function getUserDetails() {
-        let data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let data = await (await fetch("/api/UserDetails", {
+            headers: { 'edgetoken': localStorage.getItem('Token') }
+        })).json()
         setUserData(data.res)
     }
 
     async function ExtractFromAldi(e) {
         e.preventDefault();
-        let data = await (await fetch("/api/Ingredients/Aldi?EDGEtoken=" + localStorage.getItem('Token'), {
+        let data = await (await fetch("/api/Ingredients/Aldi", {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'edgetoken': localStorage.getItem('Token')
             },
             body: JSON.stringify([])
         })).json()
@@ -34,10 +37,11 @@ export default function Home() {
 
     async function ExtractNutritionInfo(e, requestType) {
         e.preventDefault();
-        let data = await (await fetch("/api/Nutrition/?EDGEtoken=" + localStorage.getItem('Token'), {
+        let data = await (await fetch("/api/Nutrition/", {
             method: requestType,
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'edgetoken': localStorage.getItem('Token')
             },
             body: JSON.stringify([])
         })).json()

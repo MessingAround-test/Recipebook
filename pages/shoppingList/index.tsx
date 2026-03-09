@@ -15,13 +15,21 @@ export default function Home() {
     const [allowDelete, setAllowDelete] = useState(false)
 
     async function getUserDetails() {
-        let res = await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))
+        let res = await fetch("/api/UserDetails", {
+            headers: {
+                'edgetoken': localStorage.getItem('Token') || ''
+            }
+        })
         let data = await res.json()
         setUserData(data.res)
     }
 
     async function getRecipeDetails() {
-        let res = await fetch("/api/ShoppingList?EDGEtoken=" + localStorage.getItem('Token'))
+        let res = await fetch("/api/ShoppingList", {
+            headers: {
+                'edgetoken': localStorage.getItem('Token') || ''
+            }
+        })
         let data = await res.json()
         let localRecipes = data.res || []
         localRecipes = localRecipes.filter((recipe: any) => (
@@ -42,10 +50,11 @@ export default function Home() {
     }
 
     const deleteRecipe = async function (id: string) {
-        let res = await fetch("/api/ShoppingList/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'), {
+        let res = await fetch("/api/ShoppingList/" + String(id), {
             method: 'DELETE',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'edgetoken': localStorage.getItem('Token') || ''
             },
             body: JSON.stringify({})
         })
@@ -74,7 +83,7 @@ export default function Home() {
                 <Button onClick={() => redirect("/shoppingList/create/")}>
                     + Create New List
                 </Button>
-                {userData.role === "admin" && (
+                {userData?.role === "admin" && (
                     <Button variant="destructive" onClick={toggleMassDelete}>
                         Allow Mass Delete
                     </Button>

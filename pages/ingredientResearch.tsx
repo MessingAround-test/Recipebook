@@ -12,7 +12,9 @@ export default function Home() {
             return
         }
         async function getUserDetails() {
-            let res = await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))
+            let res = await fetch("/api/UserDetails", {
+                headers: { 'edgetoken': localStorage.getItem('Token') || '' }
+            })
             let data = await res.json()
             setUserData(data.res)
         }

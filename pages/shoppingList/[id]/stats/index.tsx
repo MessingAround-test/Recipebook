@@ -58,10 +58,14 @@ export default function Home() {
     }, [listIngreds])
 
     async function getGroceryStoreProducts(ingredient: any) {
-        let res = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=1&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${localStorage.getItem('Token')}`)
+        let res = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=1&supplier=${enabledSuppliers.join(',')}`, {
+            headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+        })
         let data = await res.json()
         if (data.loadedSource) {
-            let resLoaded = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=1&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${localStorage.getItem('Token')}`)
+            let resLoaded = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=1&supplier=${enabledSuppliers.join(',')}`, {
+                headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+            })
             data = await resLoaded.json()
         }
 
@@ -74,13 +78,17 @@ export default function Home() {
     }
 
     async function getShoppingListItems() {
-        let res = await fetch(`/api/ShoppingListItem/?shoppingListId=${id}&EDGEtoken=${localStorage.getItem('Token')}`)
+        let res = await fetch(`/api/ShoppingListItem/?shoppingListId=${id}`, {
+            headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+        })
         let data = await res.json()
         setlistIngreds(data.res || [])
     }
 
     async function getRecipeDetails() {
-        let res = await fetch("/api/ShoppingList/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'))
+        let res = await fetch("/api/ShoppingList/" + String(id), {
+            headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+        })
         let data = await res.json()
         setlist(data.res || {})
     }

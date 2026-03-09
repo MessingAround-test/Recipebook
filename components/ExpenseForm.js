@@ -21,10 +21,11 @@ function ExpenseForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`/ASDASDapi/Transactionsasdsd/?EDGEtoken=${localStorage.getItem('Token')}`, {
+      const response = await fetch(`/api/Transactions/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'edgetoken': localStorage.getItem('Token') || ''
         },
         body: JSON.stringify(formData),
       });
@@ -37,7 +38,7 @@ function ExpenseForm() {
         // Handle errors, e.g., show an error message
       }
     } catch (error) {
-        alert(error)
+      alert(error)
       // Handle network or other errors
     }
   };

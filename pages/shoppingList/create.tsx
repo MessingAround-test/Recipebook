@@ -13,10 +13,11 @@ export default function Home() {
     const [loading, setLoading] = useState(false)
 
     async function handleSubmit(e: any) {
-        let res = await fetch("/api/ShoppingList/" + "?EDGEtoken=" + localStorage.getItem('Token'), {
+        let res = await fetch("/api/ShoppingList/", {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'edgetoken': localStorage.getItem('Token') || ''
             },
             body: JSON.stringify(e.value)
         })

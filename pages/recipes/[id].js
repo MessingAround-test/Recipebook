@@ -37,7 +37,9 @@ export default function Home() {
     }
 
     async function getUserDetails() {
-        let res = await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))
+        let res = await fetch("/api/UserDetails", {
+            headers: { 'edgetoken': localStorage.getItem('Token') || '' }
+        })
         let data = await res.json()
         setUserData(data.res)
     }
@@ -66,9 +68,12 @@ export default function Home() {
     };
 
     const deleteRecipe = async function () {
-        let res = await fetch("/api/Recipe/" + String(router.query.id) + "?EDGEtoken=" + localStorage.getItem('Token'), {
+        let res = await fetch("/api/Recipe/" + String(router.query.id), {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'edgetoken': localStorage.getItem('Token') || ''
+            },
             body: JSON.stringify({})
         })
         let data = await res.json()
@@ -81,7 +86,9 @@ export default function Home() {
 
     async function getRecipeDetails() {
         if (!router.query.id) return
-        let res = await fetch("/api/Recipe/" + String(router.query.id) + "?EDGEtoken=" + localStorage.getItem('Token'))
+        let res = await fetch("/api/Recipe/" + String(router.query.id), {
+            headers: { 'edgetoken': localStorage.getItem('Token') || '' }
+        })
         let data = await res.json()
         setRecipe(data.res)
         setImageData(data.res.image)
@@ -131,7 +138,7 @@ export default function Home() {
         document.querySelector('input[type="file"]')?.click();
     };
 
-    if (recipe === undefined) {
+    if (!recipe || Object.keys(recipe).length === 0) {
         return (
             <div>
                 <Toolbar />
@@ -155,7 +162,7 @@ export default function Home() {
             <Toolbar />
             <div className={styles.container}>
                 <Head>
-                    <title>{recipeName} | Recipebook</title>
+                    <title>{recipeName || 'Loading...'} | Recipebook</title>
                     <link rel="icon" href="/avo.ico" />
                 </Head>
                 <main className={styles.main}>

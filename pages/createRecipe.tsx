@@ -83,10 +83,11 @@ export default function CreateRecipe() {
         }
 
         const token = localStorage.getItem('Token')
-        const res = await fetch("/api/Recipe?EDGEtoken=" + token, {
+        const res = await fetch("/api/Recipe", {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'edgetoken': token || ''
             },
             body: JSON.stringify({
                 "ingreds": ingreds,
@@ -130,9 +131,12 @@ export default function CreateRecipe() {
             return
         }
 
-        const res = await fetch(`/api/recipeSiteExtract/${siteProvider}?url=${tasteURL}&EDGEtoken=${token}`, {
+        const res = await fetch(`/api/recipeSiteExtract/${siteProvider}?url=${tasteURL}`, {
             method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
+            headers: {
+                'Content-Type': 'application/json',
+                'edgetoken': token || ''
+            }
         })
         const data = await res.json()
 

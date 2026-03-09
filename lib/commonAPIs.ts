@@ -1,7 +1,11 @@
 export async function getGroceryStoreProducts(ingredient: any, results = 1, enabledSuppliers: string[], Token: string) {
-    let data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${results}&quantity=${ingredient.quantity}&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${Token}`)).json()
+    let data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${results}&quantity=${ingredient.quantity}&supplier=${enabledSuppliers.join(',')}`, {
+        headers: { 'edgetoken': Token }
+    })).json()
     if (data.loadedSource) {
-        data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${results}&quantity=${ingredient.quantity}&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${Token}`)).json()
+        data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${results}&quantity=${ingredient.quantity}&supplier=${enabledSuppliers.join(',')}`, {
+            headers: { 'edgetoken': Token }
+        })).json()
     }
 
     let updatedIngredient = ingredient
@@ -19,9 +23,12 @@ export async function getGroceryStoreProducts(ingredient: any, results = 1, enab
 
 export async function handleDeleteIngredient(id: string, Token: string) {
     try {
-        const response = await fetch(`/api/Ingredients?id=${id}&EDGEtoken=${Token}`, {
+        const response = await fetch(`/api/Ingredients?id=${id}`, {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' }
+            headers: {
+                'Content-Type': 'application/json',
+                'edgetoken': Token
+            }
         });
 
         if (response.ok) {
@@ -48,21 +55,28 @@ function determinePriceCategory(price: number | undefined) {
 }
 
 export async function getRecipeDetails(recipe_id: string | number) {
-    let data = await (await fetch("/api/Recipe/" + String(recipe_id) + "?EDGEtoken=" + localStorage.getItem('Token'))).json()
+    let data = await (await fetch("/api/Recipe/" + String(recipe_id), {
+        headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+    })).json()
     return (data.res)
 }
 
 export async function getShoppingListItems(list_id: string | number) {
-    let data = await (await fetch("/api/ShoppingList/" + String(list_id) + "?EDGEtoken=" + localStorage.getItem('Token'))).json()
+    let data = await (await fetch("/api/ShoppingList/" + String(list_id), {
+        headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+    })).json()
     return (data.res)
 }
 
 export async function filterValidEntries(filteredDataArray: any[], search_term: string, EDGEtoken: string) {
     const allNames = filteredDataArray.map((entry) => entry.name);
     try {
-        let response = await fetch(`http://localhost:8080/api/ai/determine_bad_entries?search_term=${search_term}&EDGEtoken=${EDGEtoken}`, {
+        let response = await fetch(`http://localhost:8080/api/ai/determine_bad_entries?search_term=${search_term}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'edgetoken': EDGEtoken
+            },
             body: JSON.stringify({ returned_terms: allNames })
         });
         let responseParsed = await response.json();

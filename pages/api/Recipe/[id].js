@@ -1,10 +1,12 @@
 
-import { secret } from "../../../lib/dbsecret"
-import { verify } from "jsonwebtoken";
+import { verifyToken } from "../../../lib/auth";
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
 import Recipe from '../../../models/Recipe'
 import { getShorthandForMeasure } from '../../../lib/conversion'
+import { logAPI } from "../../../lib/logger";
+import { safeToObject } from "../../../lib/utils";
+
 
 function convertIngredients(originalObject) {
 
@@ -20,83 +22,68 @@ function convertIngredients(originalObject) {
 
 
 export default async function handler(req, res) {
-  console.log(req.query)
+  logAPI(req)
   let recipe_id = req.query.id
 
-  verify(req.query.EDGEtoken, secret, async function (err, decoded) {
-    if (err) {
-      res.status(400).json({ res: "error: " + String(err) })
+  const decoded = await verifyToken(req, res);
+  if (!decoded) return;
+
+  if (req.method === "GET") {
+
+    await dbConnect()
+
+    let db_id = decoded.id
+    let userData = await User.findOne({ id: db_id });
+    if (userData === undefined) {
+      return res.status(400).json({ res: "user not found, please relog" })
     } else {
-      if (req.method === "GET") {
 
-        await dbConnect()
-
-        console.log(decoded)
-        let db_id = decoded.id
-        let userData = await User.findOne({ id: db_id });
-        if (userData === undefined) {
-          res.status(400).json({ res: "user not found, please relog" })
-        } else {
-
-          let RecipeData = await Recipe.findOne({ _id: recipe_id })
-          const responseData = {
-            ...RecipeData.toObject(),
-            ingredients: convertIngredients(RecipeData.ingredients)
-          }
-          res.status(200).json({ res: responseData })
-        }
-
-
-      } else if (req.method === "PUT") {
-        try{ 
-        // Allows update of image
-        await dbConnect()
-
-        console.log(decoded)
-        let db_id = decoded.id
-        let userData = await User.findOne({ id: db_id });
-        
-        if (userData === undefined) {
-          res.status(400).json({ res: "user not found, please relog" })
-        } else if (req.body.image === undefined || req.body.image === ""){
-          res.status(400).json({ res: "No image attached to update" })
-        } else {
-
-          let RecipeData = await Recipe.findOne({ _id: recipe_id })
-          console.log(req.body.image)
-          console.log(recipe_id)
-          console.log(RecipeData)
-          let responseData = await Recipe.findOneAndUpdate({ _id:recipe_id }, { $set: {_id:recipe_id , image:  req.body.image} });
-          console.log(responseData)
-          res.status(200).json({ res:  "DONE"})
-        }
-      } catch (e){ 
-        console.log(e)
-        res.status(400).json({ res: "Failed request" })
+      let RecipeData = await Recipe.findOne({ _id: recipe_id })
+      const responseData = {
+        ...safeToObject(RecipeData),
+        ingredients: convertIngredients(RecipeData.ingredients)
       }
-      } else if (req.method === "DELETE") {
-        await dbConnect()
-
-        console.log(decoded)
-        let db_id = decoded.id
-        let userData = await User.findOne({ id: db_id });
-        if (userData === undefined) {
-          res.status(400).json({ message: "user not found, please relog" })
-        } else if (userData.role !== "admin") {
-          res.status(400).json({ message: "Insufficient Privileges" })
-        } else {
-
-          let RecipeData = await Recipe.deleteOne({ _id: recipe_id })
-          res.status(200).json({ success: true, data: RecipeData, message: "Success" })
-        }
-      } else {
-        res.status(400).json({ success: false, data: [], message: "Not supported request" })
-      }
+      return res.status(200).json({ res: responseData })
     }
-  });
 
 
+  } else if (req.method === "PUT") {
+    try {
+      // Allows update of image
+      await dbConnect()
 
+      let db_id = decoded.id
+      let userData = await User.findOne({ id: db_id });
 
+      if (userData === undefined) {
+        return res.status(400).json({ res: "user not found, please relog" })
+      } else if (req.body.image === undefined || req.body.image === "") {
+        return res.status(400).json({ res: "No image attached to update" })
+      } else {
 
+        let RecipeData = await Recipe.findOne({ _id: recipe_id })
+        let responseData = await Recipe.findOneAndUpdate({ _id: recipe_id }, { $set: { _id: recipe_id, image: req.body.image } });
+        return res.status(200).json({ res: "DONE" })
+      }
+    } catch (e) {
+      console.log(e)
+      return res.status(400).json({ res: "Failed request" })
+    }
+  } else if (req.method === "DELETE") {
+    await dbConnect()
+
+    let db_id = decoded.id
+    let userData = await User.findOne({ id: db_id });
+    if (userData === undefined) {
+      return res.status(400).json({ message: "user not found, please relog" })
+    } else if (userData.role !== "admin") {
+      return res.status(400).json({ message: "Insufficient Privileges" })
+    } else {
+
+      let RecipeData = await Recipe.deleteOne({ _id: recipe_id })
+      return res.status(200).json({ success: true, data: RecipeData, message: "Success" })
+    }
+  } else {
+    return res.status(400).json({ success: false, data: [], message: "Not supported request" })
+  }
 }

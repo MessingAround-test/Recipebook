@@ -12,7 +12,9 @@ export default function Profile() {
     async function getUserDetails() {
         const token = localStorage.getItem('Token')
         if (!token) return
-        const res = await fetch("/api/UserDetails?EDGEtoken=" + token)
+        const res = await fetch("/api/UserDetails", {
+            headers: { 'edgetoken': token }
+        })
         const data = await res.json()
         if (data.res) {
             setUserData(data.res)
@@ -22,10 +24,11 @@ export default function Profile() {
     async function updateUserDetails(e: FormEvent<HTMLFormElement>) {
         e.preventDefault()
         const token = localStorage.getItem('Token')
-        const res = await fetch("/api/UserDetails?EDGEtoken=" + token, {
+        const res = await fetch("/api/UserDetails", {
             method: 'PUT',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'edgetoken': token || ''
             },
             body: JSON.stringify(userData)
         })

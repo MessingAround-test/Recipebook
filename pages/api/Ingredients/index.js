@@ -3,12 +3,17 @@ import axios from 'axios';
 import { filter } from '../../../lib/filtering'
 import { convertMetricReading } from '../../../lib/conversion'
 import dbConnect from '../../../lib/dbConnect'
-import { verify } from "jsonwebtoken";
-import { secret } from "../../../lib/dbsecret"
+import { verifyToken } from "../../../lib/auth";
 import User from '../../../models/User'
+import { logAPI } from '../../../lib/logger'
+
 
 
 export default async function handler(req, res) {
+    logAPI(req)
+    const decoded = await verifyToken(req, res);
+    if (!decoded) return;
+
     try {
         let search_term = req.query.name
         if (search_term !== undefined) {
@@ -63,7 +68,10 @@ export default async function handler(req, res) {
                             let supplierName = companies[supplierIndex]
                             let newIngredData = await axios({
                                 method: 'get',
-                                url: `http://localhost:8080/api/Ingredients/${supplierName}/?name=${search_term}&EDGEtoken=${req.query.EDGEtoken}`,
+                                url: `http://localhost:8080/api/Ingredients/${supplierName}/?name=${search_term}`,
+                                headers: {
+                                    'edgetoken': req.headers.edgetoken
+                                }
                             })
 
                             if (newIngredData.data.success === true && newIngredData.data.res.length > 0) {
@@ -81,48 +89,36 @@ export default async function handler(req, res) {
                 }
             }
         } else if (req.method === "DELETE") {
-            return new Promise((resolve, reject) => {
-                verify(req.query.EDGEtoken, secret, async function (err, decoded) {
-                    try {
-                        if (err) {
-                            res.status(401).json({ success: false, message: "Unauthorized: " + err.message });
-                            return resolve();
-                        }
+            try {
+                let id = req.query.id
+                let IngredData;
+                await dbConnect()
 
-                        let id = req.query.id
-                        let IngredData;
-                        await dbConnect()
+                let db_id = decoded.id
+                let userData = await User.findOne({ id: db_id });
 
-                        let db_id = decoded.id
-                        let userData = await User.findOne({ id: db_id });
+                if (!userData) {
+                    return res.status(404).json({ success: false, message: "User not found" });
+                }
 
-                        if (!userData) {
-                            res.status(404).json({ success: false, message: "User not found" });
-                            return resolve();
-                        }
-
-                        if (id !== undefined && id !== "") {
-                            IngredData = await Ingredients.deleteOne({ _id: id }).exec()
-                        } else if (search_term !== undefined && search_term !== "") {
-                            IngredData = await Ingredients.deleteMany({ search_term: search_term }).exec()
-                        } else {
-                            if (userData.role !== "admin") {
-                                return res.status(403).json({ success: false, message: "Insufficient Privileges" });
-                            } else {
-                                IngredData = await Ingredients.deleteMany({}).exec()
-                            }
-                        }
-
-                        res.status(200).json({ success: true, data: IngredData, message: "Success" })
-                        resolve();
-                    } catch (error) {
-                        res.status(500).json({ success: false, message: "Internal Server Error in DELETE: " + error.message });
-                        resolve();
+                if (id !== undefined && id !== "") {
+                    IngredData = await Ingredients.deleteOne({ _id: id }).exec()
+                } else if (search_term !== undefined && search_term !== "") {
+                    IngredData = await Ingredients.deleteMany({ search_term: search_term }).exec()
+                } else {
+                    if (userData.role !== "admin") {
+                        return res.status(403).json({ success: false, message: "Insufficient Privileges" });
+                    } else {
+                        IngredData = await Ingredients.deleteMany({}).exec()
                     }
-                });
-            });
+                }
+
+                return res.status(200).json({ success: true, data: IngredData, message: "Success" })
+            } catch (error) {
+                return res.status(500).json({ success: false, message: "Internal Server Error in DELETE: " + error.message });
+            }
         } else {
-            res.status(405).json({ success: false, message: "Method Not Allowed" })
+            return res.status(405).json({ success: false, message: "Method Not Allowed" })
         }
     } catch (error) {
         console.error("API Error in /api/Ingredients:", error);

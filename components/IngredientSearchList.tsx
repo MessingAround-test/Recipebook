@@ -14,7 +14,9 @@ export function IngredientSearchList(props: IngredientSearchListProps) {
 
     async function getAllIngredients() {
         if (props.search_term === undefined) {
-            let res = await fetch(`/api/Ingredients/?EDGEtoken=` + localStorage.getItem('Token'))
+            let res = await fetch(`/api/Ingredients/`, {
+                headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+            })
             let data = await res.json()
             setAllIngreds(data.res || [])
             setFilteredIngreds(data.res || [])
@@ -27,7 +29,10 @@ export function IngredientSearchList(props: IngredientSearchListProps) {
 
     async function deleteAllIngredients() {
         if (confirm('Delete all cached ingredients?')) {
-            await fetch(`/api/Ingredients/?EDGEtoken=` + localStorage.getItem('Token'), { method: "DELETE" })
+            await fetch(`/api/Ingredients/`, {
+                method: "DELETE",
+                headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+            })
             setAllIngreds([])
             setFilteredIngreds([])
         }
@@ -65,11 +70,15 @@ export function IngredientSearchList(props: IngredientSearchListProps) {
     }
 
     async function getIngredient(IngredQuery: string, supplierName: string) {
-        let queryObj = { name: IngredQuery, supplier: supplierName, EDGEtoken: localStorage.getItem('Token') }
-        let res = await fetch(`/api/Ingredients?${objectToQueryString(queryObj)}`)
+        let queryObj = { name: IngredQuery, supplier: supplierName }
+        let res = await fetch(`/api/Ingredients?${objectToQueryString(queryObj)}`, {
+            headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+        })
         let data = await res.json()
         if (data.loadedSource === true) {
-            let resLoaded = await fetch(`/api/Ingredients?name=${IngredQuery}&supplier=${supplierName}&EDGEtoken=` + localStorage.getItem('Token'))
+            let resLoaded = await fetch(`/api/Ingredients?name=${IngredQuery}&supplier=${supplierName}`, {
+                headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+            })
             data = await resLoaded.json()
         }
         return data.res || []

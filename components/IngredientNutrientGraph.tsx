@@ -57,24 +57,29 @@ export default function IngredientNutrientGraph({ ingredients }: { ingredients: 
             const token = localStorage.getItem('Token');
             if (!token) return;
 
-            const res = await fetch(`/api/Nutrition?search_term=${ingredientName}&quantity=${amount}&qType=${qType}&EDGEtoken=${token}`);
+            const res = await fetch(`/api/Nutrition?search_term=${ingredientName}&quantity=${amount}&qType=${qType}`, {
+                headers: { 'edgetoken': token || '' }
+            });
             const data = await res.json();
 
-            if (data.data && data.data.length > 0) {
+            if (data.data && data.data.length > 0 && data.data[0]) {
+                const ingredientData = data.data[0];
                 setIngredientNutrient(prevState => ({
                     ...prevState,
-                    [ingredientName]: data.data[0],
+                    [ingredientName]: ingredientData,
                 }));
 
-                const nutrientInfo = data.data[0].nutrition_info;
-                setTotalNutrient(prevState => ({
-                    ...prevState,
-                    protein: prevState.protein + (parseFloat(nutrientInfo.protein) || 0),
-                    fat: prevState.fat + (parseFloat(nutrientInfo.fat) || 0),
-                    carbohydrates: prevState.carbohydrates + (parseFloat(nutrientInfo.carbohydrates) || 0),
-                    fiber: prevState.fiber + (parseFloat(nutrientInfo.fiber) || 0),
-                    iron: prevState.iron + (parseFloat(nutrientInfo.iron) || 0),
-                }));
+                const nutrientInfo = ingredientData.nutrition_info;
+                if (nutrientInfo) {
+                    setTotalNutrient(prevState => ({
+                        ...prevState,
+                        protein: prevState.protein + (parseFloat(nutrientInfo.protein) || 0),
+                        fat: prevState.fat + (parseFloat(nutrientInfo.fat) || 0),
+                        carbohydrates: prevState.carbohydrates + (parseFloat(nutrientInfo.carbohydrates) || 0),
+                        fiber: prevState.fiber + (parseFloat(nutrientInfo.fiber) || 0),
+                        iron: prevState.iron + (parseFloat(nutrientInfo.iron) || 0),
+                    }));
+                }
             } else {
                 setIngredientNutrient(prevState => ({
                     ...prevState,

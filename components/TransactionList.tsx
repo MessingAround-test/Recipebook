@@ -11,7 +11,9 @@ export function TransactionList(props: any) {
 
     async function getAllIngredients() {
         if (props.search_term === undefined) {
-            let res = await fetch(`/api/Transactions/?EDGEtoken=` + localStorage.getItem('Token'))
+            let res = await fetch(`/api/Transactions/`, {
+                headers: { 'edgetoken': localStorage.getItem('Token') || '' }
+            })
             let data = await res.json()
             setAllIngreds(data.res || [])
             setFilteredIngreds(data.res || [])
@@ -23,7 +25,10 @@ export function TransactionList(props: any) {
     }
 
     async function deleteAllIngredients() {
-        let res = await fetch(`/api/Transactions/?EDGEtoken=` + localStorage.getItem('Token'), { method: "DELETE" })
+        let res = await fetch(`/api/Transactions/`, {
+            method: "DELETE",
+            headers: { 'edgetoken': localStorage.getItem('Token') || '' }
+        })
         let data = await res.json()
         setAllIngreds([])
         setFilteredIngreds([])
@@ -56,11 +61,15 @@ export function TransactionList(props: any) {
     }
 
     async function getIngredient(IngredQuery: string, supplierName: string | undefined) {
-        let queryObj = { "name": IngredQuery, "supplier": supplierName || "", "EDGEtoken": localStorage.getItem('Token') }
-        let res = await fetch(`/api/Transactions?${objectToQueryString(queryObj)}`)
+        let queryObj = { "name": IngredQuery, "supplier": supplierName || "" }
+        let res = await fetch(`/api/Transactions?${objectToQueryString(queryObj)}`, {
+            headers: { 'edgetoken': localStorage.getItem('Token') || '' }
+        })
         let data = await res.json()
         if (data.loadedSource === true) {
-            let resLoaded = await fetch(`/api/Transactions?name=${IngredQuery}&supplier=${supplierName || ""}&EDGEtoken=` + localStorage.getItem('Token'))
+            let resLoaded = await fetch(`/api/Transactions?name=${IngredQuery}&supplier=${supplierName || ""}`, {
+                headers: { 'edgetoken': localStorage.getItem('Token') || '' }
+            })
             data = await resLoaded.json()
         }
         return data.res || []

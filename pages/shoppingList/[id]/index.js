@@ -82,12 +82,22 @@ export default function Home() {
     }, [listIngreds])
 
     async function getShoppingListItems() {
-        let data = await (await fetch(`/api/ShoppingListItem/?shoppingListId=${id}&EDGEtoken=${localStorage.getItem('Token')}`)).json()
+        let res = await fetch(`/api/ShoppingListItem/?shoppingListId=${id}`, {
+            headers: {
+                'edgetoken': localStorage.getItem('Token') || ''
+            }
+        })
+        let data = await res.json()
         setlistIngreds(data.res)
     }
 
     async function getRecipeDetails() {
-        let data = await (await fetch("/api/ShoppingList/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let res = await fetch("/api/ShoppingList/" + String(id), {
+            headers: {
+                'edgetoken': localStorage.getItem('Token') || ''
+            }
+        })
+        let data = await res.json()
         setlist(data.res)
     }
 
@@ -95,10 +105,11 @@ export default function Home() {
         const isConfirmed = confirm("Are you sure you want to mark this list as COMPLETE?");
         if (!isConfirmed) return;
 
-        const response = await fetch(`/api/ShoppingList/${String(id)}/?EDGEtoken=${localStorage.getItem('Token')}`, {
+        const response = await fetch(`/api/ShoppingList/${String(id)}/`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
+                'edgetoken': localStorage.getItem('Token') || ''
             },
             body: JSON.stringify({ "complete": "true", "_id": String(id) }),
         });
@@ -114,10 +125,11 @@ export default function Home() {
     async function handleSubmitCreateNewItem(e) {
         e.preventDefault();
         try {
-            const response = await fetch(`/api/ShoppingListItem/?EDGEtoken=${localStorage.getItem('Token')}`, {
+            const response = await fetch(`/api/ShoppingListItem/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'edgetoken': localStorage.getItem('Token') || ''
                 },
                 body: JSON.stringify(e.value),
             });
@@ -137,10 +149,11 @@ export default function Home() {
     async function handleDeleteItem(e, id) {
         e.preventDefault();
         try {
-            const response = await fetch(`/api/ShoppingListItem/${id}?EDGEtoken=${localStorage.getItem('Token')}`, {
+            const response = await fetch(`/api/ShoppingListItem/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
+                    'edgetoken': localStorage.getItem('Token') || ''
                 }
             });
 
@@ -172,10 +185,11 @@ export default function Home() {
 
     async function updateCompleteInDB(id, complete) {
         try {
-            const response = await fetch(`/api/ShoppingListItem/${id}?EDGEtoken=${localStorage.getItem('Token')}`, {
+            const response = await fetch(`/api/ShoppingListItem/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
+                    'edgetoken': localStorage.getItem('Token') || ''
                 },
                 body: JSON.stringify({ "complete": complete }),
             });
@@ -227,7 +241,7 @@ export default function Home() {
         <div className={styles.wrapper}>
             <Toolbar />
             <Head>
-                <title>Shopping List | {list.name || 'Loading...'}</title>
+                <title>Shopping List | {list?.name || 'Loading...'}</title>
             </Head>
 
             <div className={styles.container}>
@@ -235,7 +249,7 @@ export default function Home() {
 
                     {/* Header */}
                     <div className="flex-row justify-between align-center mb-6 w-full glass-card p-6">
-                        <h1 className="text-4xl font-bold m-0 tracking-tight">🛒 {list.name}</h1>
+                        <h1 className="text-4xl font-bold m-0 tracking-tight">🛒 {list?.name || 'Loading...'}</h1>
                         <div className="text-right flex flex-col justify-center">
                             <h4 className="text-2xl font-bold m-0 text-[var(--accent)]">TOTAL: <span className="text-white">${calculateTotalOfList(matchedListIngreds)}</span></h4>
                             <span className="text-sm font-medium text-gray-400 mt-1 uppercase">({matchedListIngreds.length} items)</span>
