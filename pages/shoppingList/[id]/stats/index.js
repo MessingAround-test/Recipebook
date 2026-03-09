@@ -6,11 +6,6 @@ import Image from 'next/image'
 
 import { Toolbar } from '../../../Toolbar'
 import { useEffect, useState } from 'react'
-import Button from 'react-bootstrap/Button';
-import Router from 'next/router'
-import Card from 'react-bootstrap/Card'
-import { useRouter } from 'next/router'
-import Container from 'react-bootstrap/Container'
 import IngredientNutrientGraph from '../../../../components/IngredientNutrientGraph'
 
 export default function Home() {
@@ -28,7 +23,7 @@ export default function Home() {
 
     useEffect(() => {
         if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
-            
+
             Router.push("/login")
         }
         if (id) {
@@ -247,8 +242,8 @@ export default function Home() {
                 "AmountType": ingred.quantity_type
             }
         ))
-        
-        
+
+
     }
 
 

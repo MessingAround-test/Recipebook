@@ -6,6 +6,18 @@ import { IngredientSearchList } from './IngredientSearchList';
 import CardListModal from './CardListModal';
 import IngredientCardProduct from './IngredientCardProduct';
 
+/**
+ * @param {Object} props
+ * @param {any} props.ingredient
+ * @param {boolean} [props.essential]
+ * @param {Function} props.openModal
+ * @param {Function} [props.handleCheckboxChange]
+ * @param {Function} [props.markAsIncorrect]
+ * @param {string[]} props.filters
+ * @param {boolean} [props.modalVersion]
+ * @param {string[]} [props.enabledSuppliers]
+ * @param {string} [props.groupColor]
+ */
 function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion, enabledSuppliers = [], groupColor }) {
     const [otherOptionsModalIsOpen, setOtherOptionsModalIsOpen] = useState(false);
 
@@ -88,10 +100,10 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
 
 IngredientCard.propTypes = {
     ingredient: PropTypes.object.isRequired,
-    essential: PropTypes.bool.isRequired,
+    essential: PropTypes.bool,
     openModal: PropTypes.func.isRequired,
-    handleCheckboxChange: PropTypes.func.isRequired,
-    markAsIncorrect: PropTypes.func.isRequired,
+    handleCheckboxChange: PropTypes.func,
+    markAsIncorrect: PropTypes.func,
 };
 
 export default IngredientCard;

@@ -1,17 +1,10 @@
 import Head from 'next/head'
 import Image from 'next/image'
 import styles from '../../styles/Home.module.css'
-
-
-
 import { Toolbar } from '../Toolbar'
 import { useEffect, useState } from 'react'
-import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
+import { Card, CardContent, CardTitle } from '../../components/ui/card'
 import Router from 'next/router'
-import Card from 'react-bootstrap/Card'
-
-
 
 export default function Home() {
     const [userData, setUserData] = useState({})
@@ -19,41 +12,23 @@ export default function Home() {
 
     async function getUserDetails() {
         let data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
-        console.log(data)
         setUserData(data.res)
     }
 
-    async function getRecipeDetails() {
-        let data = await (await fetch("/api/Recipe?EDGEtoken=" + localStorage.getItem('Token'))).json()
-        console.log(data)
-        setRecipes(data.res)
-    }
-
-
-
     useEffect(() => {
         if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
-            
             Router.push("/login")
         }
-
         getUserDetails();
-        // getRecipeDetails();
-        // console.log(await data)
-    }, []) // <-- empty dependency array
-
+    }, [])
 
     const redirect = async function (page) {
         Router.push(page)
     };
 
-
-
-
     return (
         <div>
-            <Toolbar>
-            </Toolbar>
+            <Toolbar />
             <div className={styles.container}>
                 <Head>
                     <title>Recipes</title>
@@ -61,48 +36,34 @@ export default function Home() {
                     <link rel="icon" href="/avo.ico" />
                 </Head>
 
-
-
-
-
-
-
-
                 <main className={styles.main}>
                     <div className={styles.cardGroup}>
-
                         <div style={{ padding: "0.5vh" }}>
-                            <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black" }} onClick={() => (redirect("/game/create"))}>
-                                <Card.Body style={{ overflow: "hidden" }}>
-                                    <Card.Title>Create Game</Card.Title>
-                                    <Card.Img variant="top"  />
-                                </Card.Body>
-
+                            <Card
+                                className="w-[15rem] h-[15rem] cursor-pointer text-black dark:text-white"
+                                onClick={() => redirect("/game/create")}
+                            >
+                                <CardContent className="flex flex-col items-center justify-center h-full">
+                                    <CardTitle>Create Game</CardTitle>
+                                </CardContent>
                             </Card>
                         </div>
 
                         <div style={{ padding: "0.5vh" }}>
-                            <Card style={{ maxWidth: '15rem', minWidth: "15rem", maxHeight: "15rem", minHeight: "15rem", color: "black" }} onClick={() => (redirect("/game/" + recipe._id))}>
-                                <Card.Body style={{ overflow: "hidden" }}>
-                                    <Card.Title>Join Game</Card.Title>
-                                    <Card.Img variant="top"  />
-                                </Card.Body>
-
+                            <Card
+                                className="w-[15rem] h-[15rem] cursor-pointer text-black dark:text-white"
+                                onClick={() => redirect("/game/join")}
+                            >
+                                <CardContent className="flex flex-col items-center justify-center h-full">
+                                    <CardTitle>Join Game</CardTitle>
+                                </CardContent>
                             </Card>
                         </div>
-
                     </div>
-                    {/* <Button onClick={() => console.log(recipes)}> show Recipes</Button> */}
                 </main>
 
                 <footer className={styles.footer}>
-                    <a
-                        href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-
-                    </a>
+                    &copy; {new Date().getFullYear()} Recipebook
                 </footer>
             </div>
         </div>

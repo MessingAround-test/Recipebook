@@ -41,9 +41,7 @@ export default function Home() {
                     <GenericForm
                         formInitialState={{ "name": { "value": "" }, "note": { "value": "" } }}
                         handleSubmitProp={(e: any) => handleSubmit(e)}
-                    >
-                        hi
-                    </GenericForm>
+                    />
                     {loading && (
                         <div className="mt-4 flex items-center justify-center text-muted-foreground">
                             loading...<object type="image/svg+xml" data="/loading.svg" className="ml-2 w-6 h-6">svg-animation</object>

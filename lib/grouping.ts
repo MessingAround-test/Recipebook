@@ -1,9 +1,3 @@
-
- async function handleActiveSupplierChange(inputObject) {
-    await updateSupplierFromInputObject(inputObject)
-
-}
-
 function generateKey(obj, keys) {
     return keys.map(key => `${key}=${obj[key]}`).join('|');
 }

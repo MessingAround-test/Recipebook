@@ -141,6 +141,44 @@ a {
   border-color: var(--accent);
 }
 
+/* Receipt Style - Light Background for Forms */
+.receipt {
+  background-color: #fdfaf0;
+  background-image: radial-gradient(#dcdcdc 1px, transparent 0);
+  background-size: 20px 20px;
+  border: 1px solid #d1d5db;
+  box-shadow: 10px 10px 0px rgba(0, 0, 0, 0.1);
+  color: black;
+  position: relative;
+}
+
+.label-paper {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #4b5563;
+  margin-bottom: 0.25rem;
+  letter-spacing: 0.05em;
+}
+
+.input-paper {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 2px dotted #9ca3af;
+  padding: 0.5rem 0;
+  color: black;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-paper:focus {
+  border-bottom-style: solid;
+  border-bottom-color: var(--accent);
+}
+
 /* Premium Green Button */
 .btn-modern {
   background: var(--accent);
@@ -297,6 +335,7 @@ a {
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
   }
+
   .dark {
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
@@ -330,15 +369,19 @@ a {
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
   }
+
   .theme {
     --font-sans: var(--font-sans);
   }
+
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
   }

@@ -3,7 +3,7 @@ import styles from '../styles/Home.module.css'; // Import CSS module
 import { quantity_unit_conversions } from "../lib/conversion"
 import SearchableDropdown from './SearchableDropdown';
 
-function GenericForm({ formInitialState, handleSubmitProp }) {
+function GenericForm({ formInitialState, handleSubmitProp, children = null }) {
     const [formData, setFormData] = useState(formInitialState);
 
     const handleChange = (e) => {

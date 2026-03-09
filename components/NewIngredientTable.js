@@ -84,7 +84,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
                 contentLabel="Ingredient Research"
                 className={styles.modal}
             >
-                <div className="flex-col">
+                <div className="flex-col text-black">
                     <button
                         style={{ alignSelf: "flex-end", background: "none", border: "none", cursor: "pointer" }}
                         onClick={closeModal}
