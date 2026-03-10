@@ -60,6 +60,13 @@ export default async function handler(req, res) {
 
                 let IngredData = await Ingredients.find(search_query).exec()
                 if (IngredData.length == 0) {
+                    // Check if there are ANY records for this search term at all (ignoring supplier)
+                    const globalCount = await Ingredients.countDocuments({ search_term: search_term }).exec();
+
+                    if (globalCount > 0) {
+                        return res.status(200).send({ success: true, res: [], "loadedSource": false, message: "No results for this supplier, but term exists in database." })
+                    }
+
                     let allIngredData = []
                     companies = ["WW", "IGA", "Panetta", "Aldi"]
                     // , "Coles"

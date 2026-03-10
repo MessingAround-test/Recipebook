@@ -12,6 +12,8 @@ export default function Home() {
     const { id } = router.query
     const [loading, setLoading] = useState(false)
 
+    const today = new Date().toISOString().split('T')[0]
+
     async function handleSubmit(e: any) {
         let res = await fetch("/api/ShoppingList/", {
             method: 'POST',
@@ -35,12 +37,12 @@ export default function Home() {
 
     return (
         <Layout title="Create a new List">
-            <div className="max-w-2xl mx-auto mt-8">
+            <div className="max-w-2xl mx-auto mt-8 px-4 sm:px-0">
                 <PageHeader title="Create a new List" />
 
                 <div className="mt-8">
                     <GenericForm
-                        formInitialState={{ "name": { "value": "" }, "note": { "value": "" } }}
+                        formInitialState={{ "name": { "value": today }, "note": { "value": "" } }}
                         handleSubmitProp={(e: any) => handleSubmit(e)}
                     />
                     {loading && (

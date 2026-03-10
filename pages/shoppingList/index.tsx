@@ -80,14 +80,16 @@ export default function Home() {
     return (
         <Layout title="Shopping Lists">
             <PageHeader title="Shopping Lists">
-                <Button onClick={() => redirect("/shoppingList/create/")}>
-                    + Create New List
-                </Button>
-                {userData?.role === "admin" && (
-                    <Button variant="destructive" onClick={toggleMassDelete}>
-                        Allow Mass Delete
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                    <Button onClick={() => redirect("/shoppingList/create/")} className="flex-1 sm:flex-none">
+                        + Create New List
                     </Button>
-                )}
+                    {userData?.role === "admin" && (
+                        <Button variant="destructive" onClick={toggleMassDelete} className="flex-1 sm:flex-none text-xs sm:text-sm">
+                            Allow Mass Delete
+                        </Button>
+                    )}
+                </div>
             </PageHeader>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mt-6">

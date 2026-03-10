@@ -28,7 +28,7 @@ function GenericForm({ formInitialState, handleSubmitProp, children = null }) {
     };
 
     return (
-        <div className="glass-card" style={{ maxWidth: '500px', margin: '1.5rem auto', padding: '2rem' }}>
+        <div className="glass-card w-full max-w-md mx-auto p-4 sm:p-8 my-6">
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <h3 className="text-center font-bold uppercase text-2xl tracking-tight text-white mb-4 border-b border-[var(--glass-border)] pb-4">Entry</h3>
                 {Object.keys(formData).map((key) => {

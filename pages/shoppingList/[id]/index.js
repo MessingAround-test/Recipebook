@@ -245,10 +245,10 @@ export default function Home() {
     }
 
     function calculateMedianSupplierTotal(items, suppliers) {
-        const supplierTotals = calculateSupplierTotals(items, suppliers);
-        const costs = Object.values(supplierTotals)
-            .filter(data => data.itemsFound > 0)
-            .map(data => data.cost)
+        const combinations = calculateSupplierTotals(items, suppliers);
+        const costs = combinations
+            .filter(opt => opt.suppliers.length === 1 && opt.itemsFound > 0)
+            .map(opt => opt.cost)
             .sort((a, b) => a - b);
 
         if (costs.length === 0) return "0.00";
@@ -263,34 +263,84 @@ export default function Home() {
     }
 
     function calculateSupplierTotals(items, suppliers) {
-        const totals = {};
+        const singleResults = {};
+
+        // Single supplier combinations
         suppliers.forEach(supplier => {
-            totals[supplier] = { cost: 0, itemsFound: 0 };
-        });
-
-        items.forEach(item => {
-            if (!item.options || item.options.length === 0) return;
-
-            suppliers.forEach(supplier => {
+            let cost = 0;
+            let itemsFound = 0;
+            items.forEach(item => {
+                if (!item.options || item.options.length === 0) return;
                 const supplierOptions = item.options.filter(opt => opt.source === supplier);
                 if (supplierOptions.length > 0) {
-                    // Selection based on lowest purchase price (price at register)
                     let cheapestOption = supplierOptions.reduce((prev, curr) => (prev.price < curr.price) ? prev : curr);
-                    totals[supplier].cost += cheapestOption.price;
-                    totals[supplier].itemsFound += 1;
+                    cost += cheapestOption.price;
+                    itemsFound += 1;
                 }
             });
+            singleResults[supplier] = { suppliers: [supplier], cost, itemsFound };
         });
 
-        return totals;
+        const combinations = Object.values(singleResults);
+
+        // Double supplier combinations
+        for (let i = 0; i < suppliers.length; i++) {
+            for (let j = i + 1; j < suppliers.length; j++) {
+                const s1 = suppliers[i];
+                const s2 = suppliers[j];
+                const supplierPair = [s1, s2];
+                let cost = 0;
+                let itemsFound = 0;
+
+                items.forEach(item => {
+                    if (!item.options || item.options.length === 0) return;
+                    const pairOptions = item.options.filter(opt => supplierPair.includes(opt.source));
+                    if (pairOptions.length > 0) {
+                        let cheapestOption = pairOptions.reduce((prev, curr) => (prev.price < curr.price) ? prev : curr);
+                        cost += cheapestOption.price;
+                        itemsFound += 1;
+                    }
+                });
+
+                // Redundancy check: Only add if it's better than either single supplier
+                const res1 = singleResults[s1];
+                const res2 = singleResults[s2];
+
+                const betterThanS1 = itemsFound > res1.itemsFound || (itemsFound === res1.itemsFound && cost < res1.cost);
+                const betterThanS2 = itemsFound > res2.itemsFound || (itemsFound === res2.itemsFound && cost < res2.cost);
+
+                if (betterThanS1 && betterThanS2) {
+                    combinations.push({ suppliers: supplierPair, cost, itemsFound });
+                }
+            }
+        }
+
+        return combinations;
     }
 
-    const handleSupplierClick = (supplier) => {
-        const isCurrentlyOnlyEnabled = enabledSuppliers.length === 1 && enabledSuppliers[0] === supplier;
+    const resetToDefault = () => {
+        const allSuppliers = ["WW", "Panetta", "IGA", "Aldi", "Coles"];
+        setEnabledSuppliers(allSuppliers);
+        setPendingSuppliers({
+            "/WW.png": true,
+            "/Panetta.png": true,
+            "/IGA.png": true,
+            "/Aldi.png": true,
+            "/Coles.png": true
+        });
+        setFilters(["complete"]);
+    };
 
-        if (isCurrentlyOnlyEnabled) {
-            const allSuppliers = ["WW", "Panetta", "IGA", "Aldi"];
-            // , "Coles"
+    const handleSupplierClick = (suppliersInput) => {
+        // Support both single string and array of suppliers
+        const suppliers = Array.isArray(suppliersInput) ? suppliersInput : [suppliersInput];
+
+        const isCurrentlySame = enabledSuppliers.length === suppliers.length &&
+            suppliers.every(s => enabledSuppliers.includes(s));
+
+        if (isCurrentlySame) {
+            // If already filtered to exactly these, reset to all
+            const allSuppliers = ["WW", "Panetta", "IGA", "Aldi", "Coles"];
             setEnabledSuppliers(allSuppliers);
             setPendingSuppliers({
                 "/WW.png": true,
@@ -301,13 +351,14 @@ export default function Home() {
             });
             setFilters(filters.filter(f => f !== "supplier"));
         } else {
-            setEnabledSuppliers([supplier]);
+            // Filter to the selected suppliers
+            setEnabledSuppliers(suppliers);
             const newPending = {
-                "/WW.png": supplier === "WW",
-                "/Panetta.png": supplier === "Panetta",
-                "/IGA.png": supplier === "IGA",
-                "/Aldi.png": supplier === "Aldi",
-                "/Coles.png": supplier === "Coles"
+                "/WW.png": suppliers.includes("WW"),
+                "/Panetta.png": suppliers.includes("Panetta"),
+                "/IGA.png": suppliers.includes("IGA"),
+                "/Aldi.png": suppliers.includes("Aldi"),
+                "/Coles.png": suppliers.includes("Coles")
             };
             setPendingSuppliers(newPending);
             if (!filters.includes("supplier")) {
@@ -340,27 +391,30 @@ export default function Home() {
                 <main className={styles.main}>
 
                     {/* Consolidated Header & Actions */}
-                    <div className="glass-card w-full mb-6 p-4 flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-[100]">
+                    <div className="glass-card w-full mb-6 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 relative z-[100]">
                         <div className="flex flex-col gap-1">
-                            <h1 className="text-2xl font-bold m-0 tracking-tight">🛒 {list?.name || 'Loading...'}</h1>
+                            <h1 className="text-xl sm:text-2xl font-bold m-0 tracking-tight flex items-center gap-2">
+                                <span>🛒</span>
+                                <span className="truncate max-w-[200px] sm:max-w-none">{list?.name || 'Loading...'}</span>
+                            </h1>
                             <div className="flex items-center gap-3 flex-wrap">
-                                <h4 className="text-sm font-bold m-0 text-[var(--accent)] uppercase tracking-wide">
+                                <h4 className="text-[10px] sm:text-sm font-bold m-0 text-[var(--accent)] uppercase tracking-wide">
                                     EST. COST: <span className="text-white">${displayTotalMin} - ${displayTotalMax}</span>
                                 </h4>
                                 <span className="text-[10px] font-medium text-gray-400 uppercase opacity-70">({matchedListIngreds.length} items)</span>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3 flex-wrap md:flex-nowrap">
+                        <div className="flex flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto">
                             {!createNewIngredOpen && (
                                 <button
-                                    className="btn-modern !py-2 !px-4 text-xs"
+                                    className="btn-modern !py-2.5 !px-4 text-[10px] sm:text-xs flex-1 sm:flex-none whitespace-nowrap"
                                     onClick={() => setCreateNewIngredOpen(true)}
                                 >
                                     ➕ ADD ITEM
                                 </button>
                             )}
-                            <div className="min-w-[170px] flex-1 md:flex-none">
+                            <div className="flex-1 sm:min-w-[170px] sm:flex-none">
                                 <ToggleList
                                     inputList={availableFilters}
                                     onUpdateList={(currentState) => setFilters(currentState)}
@@ -385,10 +439,10 @@ export default function Home() {
                     {/* Secondary Filters (Suppliers) */}
                     {filters.includes("supplier") && (
                         <div className="flex flex-col gap-4 mb-3 w-full">
-                            <div className="glass-card w-full" style={{ padding: '0.75rem 1rem' }}>
+                            <div className="glass-card w-full p-3 sm:p-4">
                                 <h6 className="font-bold uppercase tracking-wider text-gray-500 mb-2" style={{ fontSize: '0.65rem' }}>Active Suppliers</h6>
-                                <div className="flex items-center justify-between gap-4 flex-wrap">
-                                    <div className="scale-75 origin-left">
+                                <div className="flex items-center justify-between gap-2 sm:gap-4 flex-wrap sm:flex-nowrap">
+                                    <div className="scale-65 sm:scale-75 origin-left flex-1 min-w-[200px]">
                                         <ImageList
                                             images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]}
                                             onImageChange={(e) => setPendingSuppliers(e)}
@@ -396,7 +450,7 @@ export default function Home() {
                                         />
                                     </div>
                                     <button
-                                        className="btn-modern !bg-emerald-500 hover:!bg-emerald-400 !text-black px-3 py-1 rounded-md font-bold text-[10px]"
+                                        className="btn-modern !bg-emerald-500 hover:!bg-emerald-400 !text-black px-4 py-2 sm:px-3 sm:py-1 rounded-md font-bold text-[10px] w-full sm:w-auto mt-2 sm:mt-0"
                                         onClick={() => updateSupplierFromInputObject(pendingSuppliers)}
                                     >
                                         APPLY
@@ -416,6 +470,7 @@ export default function Home() {
                             const groupColorLight = getLightColorForCategory(group);
 
                             // Calculate group costs
+                            const supplierResults = calculateSupplierTotals(ingredientsInGroup, enabledSuppliers);
                             const groupCost1 = parseFloat(calculateTotalOfList(ingredientsInGroup));
                             const groupCost2 = parseFloat(calculateMedianSupplierTotal(ingredientsInGroup, enabledSuppliers));
                             const groupMin = Math.min(groupCost1, groupCost2).toFixed(2);
@@ -423,9 +478,9 @@ export default function Home() {
 
                             return (
                                 <div key={group} className="glass-card w-full" style={{ padding: '0', overflow: 'hidden' }}>
-                                    <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-secondary)' }}>
-                                        <div className="flex justify-between items-center">
-                                            <h6 className="font-bold uppercase tracking-wider text-base m-0 flex items-center">
+                                    <div style={{ padding: '0.5rem 1rem', sm: { padding: '0.75rem 1.25rem' }, borderBottom: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-secondary)' }}>
+                                        <div className="flex justify-between items-center gap-2">
+                                            <h6 className="font-bold uppercase tracking-wider text-xs sm:text-base m-0 flex flex-wrap items-center">
                                                 {(() => {
                                                     const parts = group.split('|')
                                                         .map(p => p.includes('=') ? p.split('=')[1] : p)
@@ -442,17 +497,17 @@ export default function Home() {
                                                                 {part}
                                                             </span>
                                                             {index < parts.length - 1 && (
-                                                                <span className="mx-2 text-gray-500 opacity-50">&</span>
+                                                                <span className="mx-1 sm:mx-2 text-gray-500 opacity-50">&</span>
                                                             )}
                                                         </span>
                                                     ));
                                                 })()}
                                             </h6>
-                                            <div className="text-right flex flex-col justify-center">
-                                                <h4 className="font-bold m-0 text-[var(--accent)]" style={{ fontSize: '0.8rem' }}>
-                                                    EST. COST: <span className="text-white">${groupMin} - ${groupMax}</span>
+                                            <div className="text-right flex flex-col justify-center min-w-[80px]">
+                                                <h4 className="font-bold m-0 text-[var(--accent)]" style={{ fontSize: '0.65rem', sm: { fontSize: '0.8rem' } }}>
+                                                    <span className="hidden sm:inline">EST. COST: </span><span className="text-white">${groupMin} - ${groupMax}</span>
                                                 </h4>
-                                                <span className="text-[9px] font-medium text-gray-400 mt-0.5 uppercase">({ingredientsInGroup.length} items)</span>
+                                                <span className="text-[8px] sm:text-[9px] font-medium text-gray-400 mt-0.5 uppercase">({ingredientsInGroup.length} items)</span>
                                             </div>
                                         </div>
                                     </div>
@@ -476,56 +531,82 @@ export default function Home() {
                     <div className="flex flex-col items-center gap-4 mt-8 pb-8 w-full border-t border-[var(--glass-border)] pt-8">
 
                         <div className="w-full mb-6">
-                            <h3 className="text-xl font-bold mb-4 text-center text-white">Cheapest Single-Supplier Options</h3>
-                            <div className="flex flex-wrap justify-center gap-4">
-                                {Object.entries(calculateSupplierTotals(matchedListIngreds, enabledSuppliers))
-                                    .sort((a, b) => a[1].cost - b[1].cost)
-                                    .map(([supplier, data]) => {
-                                        if (data.itemsFound === 0) return null;
+                            <h3 className="text-xl font-bold mb-4 text-center text-white">Recommended Supplier Options</h3>
+                            <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-3 sm:gap-4">
+                                {/* Reset View Option */}
+                                <div
+                                    onClick={resetToDefault}
+                                    className="glass-card flex flex-col items-center justify-center p-3 sm:p-4 w-full sm:w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer group hover:border-gray-500"
+                                    style={{ borderColor: 'var(--glass-border)' }}
+                                >
+                                    <div className="text-2xl mb-1 group-hover:rotate-12 transition-transform">🔄</div>
+                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Reset View</div>
+                                    <div className="text-[9px] text-gray-500 mt-1">Clear all filters</div>
+                                </div>
 
-                                        const percentFound = Math.round((data.itemsFound / matchedListIngreds.length) * 100);
-                                        const allFound = data.itemsFound === matchedListIngreds.length;
-                                        const supplierColor = getColorForCategory(supplier) || 'var(--accent)';
+                                {(() => {
+                                    const allOptions = calculateSupplierTotals(matchedListIngreds, enabledSuppliers);
+                                    const sortedOptions = allOptions.sort((a, b) => {
+                                        if (b.itemsFound !== a.itemsFound) return b.itemsFound - a.itemsFound;
+                                        return a.cost - b.cost;
+                                    });
+
+                                    const someComplete = sortedOptions.some(opt => opt.itemsFound === matchedListIngreds.length);
+
+                                    return sortedOptions.slice(0, 5).map((option, idx) => {
+                                        if (option.itemsFound === 0) return null;
+
+                                        const allFound = option.itemsFound === matchedListIngreds.length;
+                                        const isRecommended = someComplete ? allFound : idx < 2;
+                                        const supplierNames = option.suppliers.join(' + ');
+                                        const primarySupplier = option.suppliers[0];
+                                        const supplierColor = getColorForCategory(primarySupplier) || 'var(--accent)';
 
                                         return (
                                             <div
-                                                key={supplier}
-                                                onClick={() => handleSupplierClick(supplier)}
-                                                className="glass-card flex flex-col p-4 w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer group hover:border-[var(--accent)]"
-                                                style={{ borderColor: `${supplierColor}40` }}
+                                                key={supplierNames}
+                                                onClick={() => handleSupplierClick(option.suppliers)}
+                                                className={`glass-card flex flex-col p-3 sm:p-4 w-full sm:w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer group ${isRecommended ? 'border-2 border-[var(--accent)] shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]' : ''}`}
+                                                style={{ borderColor: isRecommended ? supplierColor : `${supplierColor}40` }}
                                             >
+                                                {isRecommended && (
+                                                    <div className="absolute top-2 right-2 z-10">
+                                                        <span className="bg-[var(--accent)] text-black text-[8px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-tighter">RECOMMENDED</span>
+                                                    </div>
+                                                )}
+
                                                 <div className="absolute top-0 left-0 right-0 h-1 transition-height duration-300 group-hover:h-2" style={{ backgroundColor: supplierColor }}></div>
 
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <img src={`/${supplier}.png`} alt={supplier} className="h-6 object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-                                                    <span className="font-bold text-gray-300 uppercase tracking-wider text-xs" style={{ display: 'none' }}>{supplier}</span>
+                                                <div className="flex items-center justify-between mb-1 sm:mb-2">
+                                                    <div className="flex -space-x-2">
+                                                        {option.suppliers.map(s => (
+                                                            <img key={s} src={`/${s}.png`} alt={s} className="h-4 sm:h-6 w-4 sm:w-6 rounded-full border border-black object-contain bg-white" onError={(e) => { e.target.style.display = 'none'; }} />
+                                                        ))}
+                                                    </div>
+                                                    <span className="font-bold text-gray-300 uppercase tracking-wider text-[8px] sm:text-xs truncate max-w-[60px]">{supplierNames}</span>
                                                 </div>
 
-                                                <div className="mt-2 text-2xl font-bold text-white">
-                                                    ${data.cost.toFixed(2)}
+                                                <div className="mt-1 sm:mt-2 text-lg sm:text-2xl font-bold text-white">
+                                                    ${option.cost.toFixed(2)}
                                                 </div>
 
                                                 <div className="mt-1 flex items-center gap-2 relative">
-                                                    <div className={`text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1 ${allFound ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                                                        {data.itemsFound}/{matchedListIngreds.length} items found
-                                                        <Info size={12} className="opacity-70 group-hover:opacity-100" />
-                                                    </div>
-
-                                                    <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-gray-800 text-[10px] text-white rounded shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-10 text-center">
-                                                        Click to filter by {supplier}
-                                                        <div className="absolute top-full left-4 -mt-1 border-4 border-transparent border-t-gray-800"></div>
+                                                    <div className={`text-[8px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-1 ${allFound ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                                        {option.itemsFound}/{matchedListIngreds.length} <span className="hidden sm:inline">found</span>
+                                                        <Info size={10} className="sm:size-[12px] opacity-70 group-hover:opacity-100" />
                                                     </div>
                                                 </div>
                                             </div>
                                         );
-                                    })}
+                                    });
+                                })()}
                             </div>
                         </div>
 
                         <CopyToClipboard listIngreds={listIngreds} />
                         <button
                             onClick={() => markListAsComplete()}
-                            className="btn-modern !bg-emerald-500 hover:!bg-emerald-400 !text-black text-lg py-4 px-8 w-full max-w-md shadow-lg shadow-emerald-500/20"
+                            className="btn-modern !bg-emerald-500 hover:!bg-emerald-400 !text-black text-base sm:text-lg py-3 sm:py-4 px-8 w-full max-w-md shadow-lg shadow-emerald-500/20"
                         >
                             ✅ MARK AS COMPLETE
                         </button>

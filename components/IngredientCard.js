@@ -62,7 +62,9 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
 
                 <div style={{ flex: 1 }} className="flex-col gap-1">
                     <div onClick={() => openModal(ingredient.name)} className="hover-accent" style={{
-                        fontSize: '1.2rem',
+                        fontSize: '1rem',
+                        sm: { fontSize: '1.2rem' },
+                        lineHeight: '1.2',
                         fontWeight: '700',
                         color: 'var(--text-primary)',
                         cursor: 'pointer',
@@ -70,7 +72,7 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                         letterSpacing: '-0.01em'
                     }}>
                         {`${ingredient.name.toUpperCase()}`}
-                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginLeft: '0.5rem', fontWeight: '500' }}>
+                        <span style={{ fontSize: '0.8rem', sm: { fontSize: '0.9rem' }, color: 'var(--text-secondary)', marginLeft: '0.5rem', fontWeight: '500' }}>
                             &bull; {ingredient.quantity} {ingredient.quantity_type_shorthand}
                         </span>
                     </div>
