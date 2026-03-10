@@ -2,11 +2,6 @@ export async function getGroceryStoreProducts(ingredient: any, results = 1, enab
     let data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${results}&quantity=${ingredient.quantity}&supplier=${enabledSuppliers.join(',')}`, {
         headers: { 'edgetoken': Token }
     })).json()
-    if (data.loadedSource) {
-        data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${results}&quantity=${ingredient.quantity}&supplier=${enabledSuppliers.join(',')}`, {
-            headers: { 'edgetoken': Token }
-        })).json()
-    }
 
     let updatedIngredient = ingredient
     updatedIngredient.options = []

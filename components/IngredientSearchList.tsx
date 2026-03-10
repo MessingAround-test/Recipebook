@@ -1,9 +1,10 @@
-import { useEffect, useState, FormEvent, ChangeEvent } from 'react'
+import React, { useEffect, useState, FormEvent, ChangeEvent } from 'react'
 import { Button } from './ui/button'
 import Skeleton from './Skeleton'
 
 interface IngredientSearchListProps {
     search_term?: string
+    hideSearchForm?: boolean
 }
 
 export function IngredientSearchList(props: IngredientSearchListProps) {
@@ -31,16 +32,6 @@ export function IngredientSearchList(props: IngredientSearchListProps) {
         setIsLoading(false)
     }
 
-    async function deleteAllIngredients() {
-        if (confirm('Delete all cached ingredients?')) {
-            await fetch(`/api/Ingredients/`, {
-                method: "DELETE",
-                headers: { 'edgetoken': localStorage.getItem('Token') || "" }
-            })
-            setAllIngreds([])
-            setFilteredIngreds([])
-        }
-    }
 
     async function handleGetIngredient(e: FormEvent<HTMLFormElement>) {
         e.preventDefault()
@@ -140,51 +131,46 @@ export function IngredientSearchList(props: IngredientSearchListProps) {
 
     return (
         <div className="flex flex-col gap-8 w-full">
-            <div className="glass-card">
-                <form onSubmit={handleGetIngredient} className="flex flex-col gap-4">
-                    <div className="flex flex-col md:flex-row gap-4">
-                        <div className="flex flex-col w-full">
-                            <label className="text-sm font-semibold mb-1">Ingredient Name</label>
-                            <input
-                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                name="ingredName"
-                                id="ingredName"
-                                defaultValue={props.search_term}
-                                type="text"
-                                placeholder="e.g. Tomato"
-                                onChange={updateFilteredIngreds}
-                                required
-                            />
+            {!props.hideSearchForm && (
+                <div className="glass-card">
+                    <form onSubmit={handleGetIngredient} className="flex flex-col gap-4">
+                        <div className="flex flex-col md:flex-row gap-4">
+                            <div className="flex flex-col w-full">
+                                <label className="text-sm font-semibold mb-1">Ingredient Name</label>
+                                <input
+                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    name="ingredName"
+                                    id="ingredName"
+                                    defaultValue={props.search_term}
+                                    type="text"
+                                    placeholder="e.g. Tomato"
+                                    onChange={updateFilteredIngreds}
+                                    required
+                                />
+                            </div>
+                            <div className="flex flex-col w-full">
+                                <label className="text-sm font-semibold mb-1">Supplier</label>
+                                <select
+                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    name="supplierName"
+                                    id="supplierName"
+                                    onChange={updateFilteredIngreds}
+                                >
+                                    {Suppliers.map((supplier) => (
+                                        <option className="text-black" key={supplier} value={supplier}>{supplier || 'All Suppliers'}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
-                        <div className="flex flex-col w-full">
-                            <label className="text-sm font-semibold mb-1">Supplier</label>
-                            <select
-                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                name="supplierName"
-                                id="supplierName"
-                                onChange={updateFilteredIngreds}
-                            >
-                                {Suppliers.map((supplier) => (
-                                    <option className="text-black" key={supplier} value={supplier}>{supplier || 'All Suppliers'}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
 
-                    <div className="flex flex-row justify-between items-center mt-4">
-                        <Button type="submit">
-                            Search Ingredients
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            type="button"
-                            onClick={deleteAllIngredients}
-                        >
-                            Clear Cache
-                        </Button>
-                    </div>
-                </form>
-            </div>
+                        <div className="mt-4">
+                            <Button type="submit">
+                                Search Ingredients
+                            </Button>
+                        </div>
+                    </form>
+                </div>
+            )}
 
             <div className="glass-card p-0 overflow-hidden w-full">
                 <div className="overflow-x-auto w-full">

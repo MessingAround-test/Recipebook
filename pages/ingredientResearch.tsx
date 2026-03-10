@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Layout } from '../components/Layout'
 import Router from 'next/router'
-import IngredientResearchComponent from './IngredientResearchComponent'
+import IngredientResearchComponent from '../components/IngredientResearchComponent'
 
 export default function Home() {
     const [userData, setUserData] = useState<any>({})

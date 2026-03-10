@@ -1,4 +1,4 @@
-import { useEffect, useState, FormEvent } from 'react'
+import React, { useEffect, useState, FormEvent } from 'react'
 import { Layout } from '../components/Layout'
 import { FormField } from '../components/FormField'
 import { Button } from '../components/ui/button'
@@ -83,6 +83,34 @@ export default function Profile() {
                         </div>
                     </form>
                 </div>
+
+                {userData.role === 'admin' && (
+                    <div className="glass-card mt-8 border-destructive/50">
+                        <h3 className="text-sm font-black uppercase tracking-widest text-destructive mb-4">Admin settings (DANGEROUS)</h3>
+                        <p className="text-sm text-muted-foreground mb-6">These actions affect the entire system. Use with extreme caution.</p>
+                        <Button
+                            variant="destructive"
+                            className="w-full sm:w-auto"
+                            onClick={async () => {
+                                if (confirm('EXTREME CAUTION: Are you sure you want to DELETE ALL cached ingredients from the database? This cannot be undone.')) {
+                                    const token = localStorage.getItem('Token')
+                                    const res = await fetch("/api/Ingredients/", {
+                                        method: "DELETE",
+                                        headers: { 'edgetoken': token || "" }
+                                    })
+                                    const data = await res.json()
+                                    if (data.success) {
+                                        alert("All ingredients deleted successfully.")
+                                    } else {
+                                        alert("Failed to delete ingredients: " + (data.message || "Unknown error"))
+                                    }
+                                }
+                            }}
+                        >
+                            DELETE ALL CACHED INGREDIENTS
+                        </Button>
+                    </div>
+                )}
             </div>
         </Layout>
     )

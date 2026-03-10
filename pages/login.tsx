@@ -81,9 +81,9 @@ export default function Login() {
                                 <Button variant="outline" className="w-full text-black border-black hover:bg-black hover:text-white" type="button" onClick={() => redirect("/register")}>
                                     Register
                                 </Button>
-                                <Button variant="outline" className="w-full text-black border-black hover:bg-black hover:text-white" type="button" onClick={() => redirect("/SamplePage")}>
+                                {/* <Button variant="outline" className="w-full text-black border-black hover:bg-black hover:text-white" type="button" onClick={() => redirect("/SamplePage")}>
                                     Sample
-                                </Button>
+                                </Button> */}
                             </div>
                         </div>
                     </form>

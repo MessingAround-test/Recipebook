@@ -7,19 +7,7 @@ import CardListModal from './CardListModal';
 import IngredientCardProduct from './IngredientCardProduct';
 import Skeleton from './Skeleton';
 
-/**
- * @param {Object} props
- * @param {any} props.ingredient
- * @param {boolean} [props.essential]
- * @param {Function} props.openModal
- * @param {Function} [props.handleCheckboxChange]
- * @param {Function} [props.markAsIncorrect]
- * @param {string[]} props.filters
- * @param {boolean} [props.modalVersion]
- * @param {string[]} [props.enabledSuppliers]
- * @param {string} [props.groupColor]
- */
-function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion, enabledSuppliers = [], groupColor, pricingStrategy = 'match' }) {
+function IngredientCard({ ingredient, essential, handleCheckboxChange, markAsIncorrect, filters, modalVersion, enabledSuppliers = [], groupColor, pricingStrategy = 'match' }) {
     const [otherOptionsModalIsOpen, setOtherOptionsModalIsOpen] = useState(false);
 
     // If a group color was passed down, use it. Otherwise, try to figure it out from the category or fallback to accent.
@@ -83,7 +71,7 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                 )}
 
                 <div style={{ flex: 1 }} className="flex-col gap-1">
-                    <div onClick={() => openModal(ingredient.name)} className="hover-accent" style={{
+                    <div onClick={() => setOtherOptionsModalIsOpen(true)} className="hover-accent transition-all hover:translate-x-1" style={{
                         fontSize: '1rem',
                         sm: { fontSize: '1.2rem' },
                         lineHeight: '1.2',
@@ -91,7 +79,8 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                         color: 'var(--text-primary)',
                         cursor: 'pointer',
                         textDecoration: ingredient.complete ? 'line-through' : 'none',
-                        letterSpacing: '-0.01em'
+                        letterSpacing: '-0.01em',
+                        display: 'inline-block'
                     }}>
                         {`${ingredient.name.toUpperCase()}`}
                         <span style={{ fontSize: '0.8rem', sm: { fontSize: '0.9rem' }, color: 'var(--text-secondary)', marginLeft: '0.5rem', fontWeight: '500' }}>
@@ -118,9 +107,9 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                                     🔄
                                 </button>
                             </div>
-                            <CardListModal filters={filters} ingredient={ingredient} show={otherOptionsModalIsOpen} onHide={() => setOtherOptionsModalIsOpen(false)} enabledSuppliers={enabledSuppliers}></CardListModal>
                         </div>
                     )}
+                    <CardListModal filters={filters} ingredient={ingredient} show={otherOptionsModalIsOpen} onHide={() => setOtherOptionsModalIsOpen(false)} enabledSuppliers={enabledSuppliers}></CardListModal>
                 </div>
             </div >
         </div >

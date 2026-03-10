@@ -1,14 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
 import { quantity_unit_conversions } from "../lib/conversion";
 import { Button } from "../components/ui/button"
 import 'chart.js/auto';
 import { Bar } from 'react-chartjs-2';
 
-export default function IngredientResearchComponent() {
-    const [searchTerm, setSearchTerm] = useState('');
+interface IngredientResearchComponentProps {
+    initialSearchTerm?: string;
+    initialQuantity?: number | string;
+    initialQuantityUnit?: string;
+    autoSearch?: boolean;
+    excludeTop3?: boolean;
+    showForm?: boolean;
+    showCharts?: boolean;
+    showTable?: boolean;
+}
+
+export default function IngredientResearchComponent({
+    initialSearchTerm = '',
+    initialQuantity = 1,
+    initialQuantityUnit = 'any',
+    autoSearch = false,
+    excludeTop3 = false,
+    showForm = true,
+    showCharts = true,
+    showTable = true
+}: IngredientResearchComponentProps) {
+    const getCanonicalUnit = (unit: string) => {
+        if (!unit || unit === 'any') return 'any';
+        const lowerUnit = unit.toLowerCase();
+
+        // Check if it's already a key
+        if (quantity_unit_conversions[lowerUnit]) return lowerUnit;
+
+        // Check synonyms and shorthand
+        for (const [key, config] of Object.entries(quantity_unit_conversions)) {
+            if (config.synonyms.includes(lowerUnit) || config.shorthand.toLowerCase() === lowerUnit) {
+                return key;
+            }
+        }
+
+        return 'any';
+    };
+
+    const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
     const [ingredientData, setIngredientData] = useState<any[]>([]);
-    const [quantity, setQuantity] = useState<number | string>(1);
-    const [quantityUnit, setQuantityUnit] = useState('any');
+    const [quantity, setQuantity] = useState<number | string>(initialQuantity);
+    const [quantityUnit, setQuantityUnit] = useState(getCanonicalUnit(initialQuantityUnit));
     const [loading, setLoading] = useState(false);
     const [selectedBinIndex, setSelectedBinIndex] = useState<number>(-1);
     const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -16,8 +53,7 @@ export default function IngredientResearchComponent() {
     const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
     const [selectedDeleteIds, setSelectedDeleteIds] = useState<Set<string>>(new Set());
 
-    async function handleGetIngredient(e: React.FormEvent) {
-        e.preventDefault();
+    const executeSearch = async (term: string, unit: string, qty: number | string) => {
         setLoading(true);
         setSelectedBinIndex(-1);
         setSelectedProductId(null);
@@ -25,14 +61,13 @@ export default function IngredientResearchComponent() {
         setDeletingIds(new Set());
         setSelectedDeleteIds(new Set());
 
-        const res = await fetch(`/api/Ingredients/?name=${searchTerm}&qType=${quantityUnit}&quantity=${quantity}`, {
+        const res = await fetch(`/api/Ingredients/?name=${term}&qType=${unit}&quantity=${qty}`, {
             headers: { 'edgetoken': localStorage.getItem('Token') || "" }
         });
         const data = await res.json();
-        setLoading(false);
 
         if (data.loadedSource === true) {
-            const resLoaded = await fetch(`/api/Ingredients/?name=${searchTerm}&qType=${quantityUnit}&quantity=${quantity}`, {
+            const resLoaded = await fetch(`/api/Ingredients/?name=${term}&qType=${unit}&quantity=${qty}`, {
                 headers: { 'edgetoken': localStorage.getItem('Token') || "" }
             });
             const dataLoaded = await resLoaded.json();
@@ -40,7 +75,21 @@ export default function IngredientResearchComponent() {
         } else {
             setIngredientData(data.res || []);
         }
+        setLoading(false);
+    };
+
+    async function handleGetIngredient(e: FormEvent) {
+        e.preventDefault();
+        await executeSearch(searchTerm, quantityUnit, quantity);
     }
+
+    useEffect(() => {
+        if (autoSearch && initialSearchTerm) {
+            const canonicalUnit = getCanonicalUnit(initialQuantityUnit);
+            setQuantityUnit(canonicalUnit);
+            executeSearch(initialSearchTerm, canonicalUnit, initialQuantity);
+        }
+    }, [autoSearch, initialSearchTerm, initialQuantity, initialQuantityUnit]);
 
     async function deleteIngredient(ids: string | string[]) {
         const idArray = Array.isArray(ids) ? ids : [ids];
@@ -472,52 +521,54 @@ export default function IngredientResearchComponent() {
 
     return (
         <div className="w-full">
-            <form onSubmit={handleGetIngredient} className="flex flex-col gap-4 mb-8">
-                <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1">
-                        <label className="text-sm font-semibold mb-1 block">Ingredient</label>
-                        <input
-                            name="ingredName"
-                            value={searchTerm}
-                            type="text"
-                            placeholder="Enter ingredient name"
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            required
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            autoComplete='off'
-                        />
-                    </div>
-                    <div className="flex gap-4">
-                        <div className="w-24">
-                            <label className="text-sm font-semibold mb-1 block">Qty</label>
+            {showForm && (
+                <form onSubmit={handleGetIngredient} className="flex flex-col gap-4 mb-8">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="flex-1">
+                            <label className="text-sm font-semibold mb-1 block">Ingredient</label>
                             <input
-                                type="number"
-                                value={quantity}
-                                onChange={(e) => setQuantity(e.target.value)}
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                name="ingredName"
+                                value={searchTerm}
+                                type="text"
+                                placeholder="Enter ingredient name"
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                required
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                autoComplete='off'
                             />
                         </div>
-                        <div className="w-32">
-                            <label className="text-sm font-semibold mb-1 block">Unit</label>
-                            <select
-                                name="quantity_type"
-                                onChange={(e) => setQuantityUnit(e.target.value)}
-                                value={quantityUnit}
-                                required
-                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <option className="text-black" value="any">any</option>
-                                {Object.keys(quantity_unit_conversions).map((item) => (
-                                    <option className="text-black" key={item} value={item}>{item}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="flex items-end">
-                            <Button type="submit" className="h-10">Search</Button>
+                        <div className="flex gap-4">
+                            <div className="w-24">
+                                <label className="text-sm font-semibold mb-1 block">Qty</label>
+                                <input
+                                    type="number"
+                                    value={quantity}
+                                    onChange={(e) => setQuantity(e.target.value)}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                />
+                            </div>
+                            <div className="w-32">
+                                <label className="text-sm font-semibold mb-1 block">Unit</label>
+                                <select
+                                    name="quantity_type"
+                                    onChange={(e) => setQuantityUnit(e.target.value)}
+                                    value={quantityUnit}
+                                    required
+                                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <option className="text-black" value="any">any</option>
+                                    {Object.keys(quantity_unit_conversions).map((item) => (
+                                        <option className="text-black" key={item} value={item}>{item}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex items-end">
+                                <Button type="submit" className="h-10">Search</Button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </form>
+                </form>
+            )}
 
             {loading && (
                 <div className="flex justify-center my-8 text-primary">
@@ -525,7 +576,7 @@ export default function IngredientResearchComponent() {
                 </div>
             )}
 
-            {ingredientData.length > 0 && (
+            {ingredientData.length > 0 && !excludeTop3 && (
                 <div className="mb-12">
                     <h3 className="text-xl font-bold mb-6 text-foreground">Top 3 Products</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -596,10 +647,10 @@ export default function IngredientResearchComponent() {
                 </div>
             )}
 
-            {renderComparisonChart()}
-            {renderHistogram()}
+            {showCharts && renderComparisonChart()}
+            {showCharts && renderHistogram()}
 
-            {ingredientData.length > 0 && (
+            {ingredientData.length > 0 && showTable && (
                 <div className="relative rounded-md border border-border overflow-x-auto w-full">
                     {selectedDeleteIds.size > 0 && (
                         <div className="absolute top-2 right-4 z-20 animate-in fade-in slide-in-from-top-2">

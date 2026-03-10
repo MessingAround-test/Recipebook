@@ -50,7 +50,7 @@ export default function Home() {
         if (list._id !== undefined) {
             getShoppingListItems()
         }
-    }, [list])
+    }, [list._id])
 
     const reloadAllIngredients = async () => {
         let updatedListIngreds = listIngreds.map((ingred) => ({
@@ -60,27 +60,38 @@ export default function Home() {
         }));
         setMatchedListIngreds(updatedListIngreds);
 
-        // Always fetch all suppliers so the recommendations panel always has full data
         const allSuppliers = ["WW", "Panetta", "IGA", "Aldi", "Coles"];
+        const Token = localStorage.getItem('Token');
 
-        for (let i = 0; i < updatedListIngreds.length; i++) {
+        // Parallelize fetching with a concurrency limit if needed, 
+        // but for typical shopping list sizes, Promise.all is fine.
+        const fetchPromises = updatedListIngreds.map(async (ingred, index) => {
             try {
                 const updatedIngredient = await getGroceryStoreProducts(
-                    updatedListIngreds[i],
+                    ingred,
                     1000,
                     allSuppliers,
-                    localStorage.getItem('Token')
+                    Token
                 );
 
-                updatedListIngreds[i] = {
-                    ...updatedIngredient,
-                    loading: false,
-                };
-                setMatchedListIngreds([...updatedListIngreds]);
+                return { index, ingredient: { ...updatedIngredient, loading: false } };
             } catch (error) {
-                console.error(`Error updating ingredient: ${error.message}`);
+                console.error(`Error updating ingredient ${ingred.name}: ${error.message}`);
+                return { index, ingredient: { ...ingred, loading: false } };
             }
-        }
+        });
+
+        // Use Promise.all to fetch all items in parallel
+        const results = await Promise.all(fetchPromises);
+
+        // Update the list once after all (or most) have completed to avoid excessive re-renders
+        // although updatedListIngreds is already mutated in some patterns, here we create a fresh array.
+        const finalIngreds = [...updatedListIngreds];
+        results.forEach(({ index, ingredient }) => {
+            finalIngreds[index] = ingredient;
+        });
+
+        setMatchedListIngreds(finalIngreds);
     };
 
     const redirect = async function (page) {
@@ -456,7 +467,7 @@ export default function Home() {
                 <main className={styles.main}>
 
                     {/* Consolidated Header & Actions */}
-                    <div className="glass-card w-full mb-6 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 relative z-[100]">
+                    <div className="glass-card w-full mb-6 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 relative z-[10]">
                         <div className="flex flex-col gap-1">
                             <h1 className="text-xl sm:text-2xl font-bold m-0 tracking-tight flex items-center gap-2">
                                 <span>🛒</span>

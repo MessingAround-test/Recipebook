@@ -1,87 +1,53 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Modal from 'react-modal';
-import IngredientCardProduct from './IngredientCardProduct';
-import { getGroceryStoreProducts, handleDeleteIngredient } from '../lib/commonAPIs';
+import IngredientResearchComponent from './IngredientResearchComponent';
 
 const CardListModal = ({ ingredient, show, onHide, filters, enabledSuppliers = [] }: any) => {
-    const [selectableOptions, setselectableOptions] = useState<any[]>([]);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                if (ingredient && show === true) {
-                    const response = await getGroceryStoreProducts(ingredient, 5, enabledSuppliers, localStorage.getItem('Token') || '');
-                    const resOptions = response.options;
-                    setselectableOptions(resOptions);
-                }
-            } catch (error) {
-                console.error('Error fetching data:', error);
-            }
-        };
-
-        fetchData();
-    }, [ingredient, show]);
-
-    const handleDelete = async (id_promise: Promise<string> | string) => {
-        const id = await id_promise;
-        const indexToDelete = selectableOptions.findIndex(option => option._id === id);
-        const updatedSelectableOptions = [...selectableOptions];
-        if (indexToDelete !== -1) {
-            updatedSelectableOptions.splice(indexToDelete, 1);
-            setselectableOptions(updatedSelectableOptions);
-        } else {
-            console.error(`Object with _id ${id} not found in selectableOptions`);
-        }
-    };
-
-    const handleSelect = () => {
-        if (selectableOptions.length > 0) {
-            onHide();
-        }
-    };
 
     return (
         <Modal
             isOpen={show}
             onRequestClose={onHide}
+            portalClassName="dark"
             style={{
                 content: {
-                    backgroundColor: 'var(--background)',
-                    borderColor: 'var(--border)',
-                    color: 'var(--foreground)',
-                    maxWidth: '800px',
+                    backgroundColor: '#0f172a', // Deep slate for better chart contrast
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    color: '#f8fafc', // Light slate text
+                    maxWidth: '900px',
                     margin: '0 auto',
                     padding: '2rem',
-                    borderRadius: '0.75rem'
+                    borderRadius: '0.75rem',
+                    overflowY: 'auto',
+                    maxHeight: '90vh',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
                 },
                 overlay: {
                     backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                    backdropFilter: 'blur(4px)',
-                    zIndex: 50
+                    backdropFilter: 'blur(8px)',
+                    zIndex: 200 // Higher than page header
                 }
             }}
-            contentLabel="Alternative Options"
+            contentLabel="Ingredient Detail & Research"
         >
-            <div className="flex justify-between items-center mb-4 pb-2 border-b border-border">
-                <h2 className="text-xl font-bold">Alternative Options</h2>
-                <button onClick={onHide} className="text-muted-foreground hover:text-foreground text-2xl leading-none">&times;</button>
-            </div>
-            <div>
-                <p className="text-sm text-muted-foreground mb-4">Please delete Options until a valid one is first</p>
-                <div className="flex flex-col gap-2">
-                    {selectableOptions.map((option, index) => (
-                        <div
-                            key={option._id || index}
-                            className="border border-border rounded-lg shadow-sm my-1 p-4 bg-muted/20"
-                        >
-                            <IngredientCardProduct
-                                ingredient={option}
-                                handleDeleteIngredient={handleDeleteIngredient}
-                                handleDelete={handleDelete}
-                                filters={filters}
-                            />
-                        </div>
-                    ))}
+            <div className="dark flex flex-col gap-8 h-full">
+                <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10 sticky top-0 bg-[#0f172a] z-10 -mt-2 -mx-2 px-2">
+                    <div className="flex flex-col">
+                        <h2 className="text-2xl font-bold tracking-tight">{ingredient?.name?.toUpperCase()}</h2>
+                        <p className="text-sm text-muted-foreground">Detail & Advanced Research</p>
+                    </div>
+                    <button onClick={onHide} className="text-muted-foreground hover:text-foreground text-3xl leading-none transition-colors">&times;</button>
+                </div>
+
+                <div className="flex flex-col gap-8">
+                    <IngredientResearchComponent
+                        initialSearchTerm={ingredient?.name}
+                        initialQuantity={ingredient?.quantity || 1}
+                        initialQuantityUnit={ingredient?.quantity_unit || ingredient?.quantity_type || 'any'}
+                        autoSearch={true}
+                        excludeTop3={true}
+                    />
                 </div>
             </div>
         </Modal>
