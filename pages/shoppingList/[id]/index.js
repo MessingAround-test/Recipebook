@@ -53,19 +53,33 @@ export default function Home() {
     }, [list._id])
 
     const reloadAllIngredients = async () => {
-        let updatedListIngreds = listIngreds.map((ingred) => ({
-            ...ingred,
-            options: [],
-            loading: true,
-        }));
-        setMatchedListIngreds(updatedListIngreds);
-
-        const allSuppliers = ["WW", "Panetta", "IGA", "Aldi", "Coles"];
         const Token = localStorage.getItem('Token');
+        const allSuppliers = ["WW", "Panetta", "IGA", "Aldi", "Coles"];
 
-        // Parallelize fetching with a concurrency limit if needed, 
-        // but for typical shopping list sizes, Promise.all is fine.
-        const fetchPromises = updatedListIngreds.map(async (ingred, index) => {
+        // 1. Synchronize matchedListIngreds with listIngreds while preserving existing options/loading state
+        setMatchedListIngreds(prevMatched => {
+            return listIngreds.map(ingred => {
+                const existing = prevMatched.find(p => p._id === ingred._id);
+                if (existing) {
+                    // Item exists, keep its previous state (options, loading, etc.)
+                    return { ...ingred, ...existing };
+                }
+                // New item, initialize it with loading state
+                return { ...ingred, options: [], loading: true };
+            });
+        });
+
+        // 2. Identify which items actually need to be fetched (those with no options and currently loading)
+        // We'll use the latest listIngreds but check against current matched state
+        const itemsToFetch = listIngreds.filter(ingred => {
+            const matched = matchedListIngreds.find(m => m._id === ingred._id);
+            return !matched || !matched.options || matched.options.length === 0;
+        });
+
+        if (itemsToFetch.length === 0) return;
+
+        // 3. Fetch each missing ingredient and update state incrementally
+        itemsToFetch.forEach(async (ingred) => {
             try {
                 const updatedIngredient = await getGroceryStoreProducts(
                     ingred,
@@ -74,24 +88,16 @@ export default function Home() {
                     Token
                 );
 
-                return { index, ingredient: { ...updatedIngredient, loading: false } };
+                setMatchedListIngreds(prev => prev.map(item =>
+                    item._id === ingred._id ? { ...updatedIngredient, loading: false } : item
+                ));
             } catch (error) {
                 console.error(`Error updating ingredient ${ingred.name}: ${error.message}`);
-                return { index, ingredient: { ...ingred, loading: false } };
+                setMatchedListIngreds(prev => prev.map(item =>
+                    item._id === ingred._id ? { ...item, loading: false } : item
+                ));
             }
         });
-
-        // Use Promise.all to fetch all items in parallel
-        const results = await Promise.all(fetchPromises);
-
-        // Update the list once after all (or most) have completed to avoid excessive re-renders
-        // although updatedListIngreds is already mutated in some patterns, here we create a fresh array.
-        const finalIngreds = [...updatedListIngreds];
-        results.forEach(({ index, ingredient }) => {
-            finalIngreds[index] = ingredient;
-        });
-
-        setMatchedListIngreds(finalIngreds);
     };
 
     const redirect = async function (page) {
@@ -173,6 +179,7 @@ export default function Home() {
             if (response.ok) {
                 e.resetForm()
                 getRecipeDetails()
+                getShoppingListItems()
             } else {
                 let error = await response.json()
                 alert(error.message)
@@ -195,6 +202,7 @@ export default function Home() {
 
             if (response.ok) {
                 getRecipeDetails()
+                getShoppingListItems()
             } else {
                 let error = await response.json()
                 alert(error.message)
