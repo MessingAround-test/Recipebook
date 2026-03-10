@@ -1,88 +1,114 @@
 import React, { useState } from 'react';
+import { getColorForCategory } from '../lib/colors';
 import PropTypes from 'prop-types';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Button from 'react-bootstrap/Button';
-import Modal from 'react-modal';
 import styles from '../styles/Home.module.css';
 import { IngredientSearchList } from './IngredientSearchList';
-import { Card, ProgressBar } from 'react-bootstrap';
 import CardListModal from './CardListModal';
 import IngredientCardProduct from './IngredientCardProduct';
+import Skeleton from './Skeleton';
 
-
-function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion, enabledSuppliers = [] }) {
+/**
+ * @param {Object} props
+ * @param {any} props.ingredient
+ * @param {boolean} [props.essential]
+ * @param {Function} props.openModal
+ * @param {Function} [props.handleCheckboxChange]
+ * @param {Function} [props.markAsIncorrect]
+ * @param {string[]} props.filters
+ * @param {boolean} [props.modalVersion]
+ * @param {string[]} [props.enabledSuppliers]
+ * @param {string} [props.groupColor]
+ */
+function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion, enabledSuppliers = [], groupColor }) {
     const [otherOptionsModalIsOpen, setOtherOptionsModalIsOpen] = useState(false);
-    const [moreInfoModalIsOpen, setMoreInfoModalIsOpen] = useState(false)
-    const [selectedIngred, setSelectedIngred] = useState("");
+
+    // If a group color was passed down, use it. Otherwise, try to figure it out from the category or fallback to accent.
+    const accentColor = groupColor || getColorForCategory(ingredient.category || 'unknown') || 'var(--accent)';
 
     return (
-        <div style={{ filter: ingredient.complete ? 'grayscale(100%)' : 'none' }}>
-            <Col
+        <div style={{ opacity: ingredient.complete ? 0.6 : 1, width: '100%', marginBottom: '1.25rem' }}>
+            <div
                 key={ingredient._id}
+                className="glass-card flex-row align-center gap-4 py-4 px-6 relative overflow-hidden transition-all duration-300"
                 style={{
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                    margin: '0.2rem 0',
-                    padding: '1rem',
-                    backgroundColor: '#171f34',
+                    border: ingredient.complete ? '1px solid var(--glass-border)' : `1px solid ${accentColor}40`,
+                    boxShadow: ingredient.complete ? 'none' : `0 4px 20px -10px ${accentColor}30`,
                 }}
             >
-                <Row>
-                    {handleCheckboxChange !== undefined ? <Col xs={2} className={styles.centered_vertical}>
+                {/* Subtle left border hint for color */}
+                <div
+                    className="absolute left-0 top-0 bottom-0 w-1 transition-all duration-300"
+                    style={{
+                        backgroundColor: ingredient.complete ? 'transparent' : accentColor,
+                        opacity: 0.8
+                    }}
+                />
+
+                {handleCheckboxChange !== undefined && (
+                    <div style={{ display: 'flex', justifyContent: 'center', minWidth: '40px' }}>
                         <input
                             type="checkbox"
                             checked={ingredient.complete}
-                            value={ingredient.complete}
                             onChange={() => handleCheckboxChange(ingredient)}
-                            style={{ width: '2rem', height: '2rem' }}
+                            style={{
+                                width: '1.5rem',
+                                height: '1.5rem',
+                                cursor: 'pointer',
+                                accentColor: accentColor,
+                                borderRadius: '0.25rem'
+                            }}
                         />
+                    </div>
+                )}
 
-                    </Col> : <></>
-                    }
+                <div style={{ flex: 1 }} className="flex-col gap-1">
+                    <div onClick={() => openModal(ingredient.name)} className="hover-accent" style={{
+                        fontSize: '1.2rem',
+                        fontWeight: '700',
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer',
+                        textDecoration: ingredient.complete ? 'line-through' : 'none',
+                        letterSpacing: '-0.01em'
+                    }}>
+                        {`${ingredient.name.toUpperCase()}`}
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginLeft: '0.5rem', fontWeight: '500' }}>
+                            &bull; {ingredient.quantity} {ingredient.quantity_type_shorthand}
+                        </span>
+                    </div>
 
-                    <Col className={styles.centered}>
-
-                        <div onClick={() => openModal(ingredient.name)} style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>
-                            {`${ingredient.name} - ${ingredient.quantity} ${ingredient.quantity_type_shorthand}`}
+                    {ingredient.loading && (
+                        <div className="mt-2 w-full">
+                            <Skeleton height="3rem" className="w-full opacity-50" />
                         </div>
+                    )}
 
-
-
-
-                        {/* <Col>
-                            {
-                                ingredient.category ? <img src={`/categories/${ingredient.category.replace(/\s/g, '')}.png`} style={{ "maxWidth": "40%" }} /> : <></>
-                            }
-                        </Col>  */}
-
-                        {ingredient.loading ? <div className={styles.lds_circle}><div></div></div> : <></>}
-                        {/* {ingredient.options[0] !== undefined && ( */}
-                        {ingredient.options[0] !== undefined && filters.includes("supplier") && (
-                            <>
-                                <IngredientCardProduct ingredient={ingredient.options[0]} showSupplierImage={false}></IngredientCardProduct>
-                                <Button onClick={() => setOtherOptionsModalIsOpen(true)} variant={'warning'}>Other Options</Button>
-                                {/* <BsFillInfoCircleFill onClick={()=>setMoreInfoModalIsOpen(true)}/> */}
-
-                                {/* <Button  variant={'info'}><BsFillInfoCircleFill /></Button> */}
-                                <CardListModal filters={filters} ingredient={ingredient} show={otherOptionsModalIsOpen} onHide={() => setOtherOptionsModalIsOpen(false)} enabledSuppliers={enabledSuppliers}></CardListModal>
-                                {/* <IngredientDetailCard ingredient={ingredient} show={moreInfoModalIsOpen} onHide={()=>setMoreInfoModalIsOpen(false)}></IngredientDetailCard> */}
-                            </>
-                        )}
-                    </Col>
-                </Row>
-            </Col >
+                    {ingredient.options[0] !== undefined && filters.includes("supplier") && !ingredient.complete && (
+                        <div className="mt-2 flex-col gap-3">
+                            <IngredientCardProduct ingredient={ingredient.options[0]} showSupplierImage={false}></IngredientCardProduct>
+                            <div className="flex-row">
+                                <button
+                                    onClick={() => setOtherOptionsModalIsOpen(true)}
+                                    className="btn-modern btn-outline py-1 px-3"
+                                    style={{ fontSize: '0.8rem' }}
+                                >
+                                    View Other Options
+                                </button>
+                            </div>
+                            <CardListModal filters={filters} ingredient={ingredient} show={otherOptionsModalIsOpen} onHide={() => setOtherOptionsModalIsOpen(false)} enabledSuppliers={enabledSuppliers}></CardListModal>
+                        </div>
+                    )}
+                </div>
+            </div >
         </div >
     );
 }
 
 IngredientCard.propTypes = {
     ingredient: PropTypes.object.isRequired,
-    essential: PropTypes.bool.isRequired,
+    essential: PropTypes.bool,
     openModal: PropTypes.func.isRequired,
-    handleCheckboxChange: PropTypes.func.isRequired,
-    markAsIncorrect: PropTypes.func.isRequired,
+    handleCheckboxChange: PropTypes.func,
+    markAsIncorrect: PropTypes.func,
 };
 
 export default IngredientCard;

@@ -1,30 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import styles from '../styles/Home.module.css'; // Import CSS module
-import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button'
 import { quantity_unit_conversions } from "../lib/conversion"
 import SearchableDropdown from './SearchableDropdown';
 
-function GenericForm({ formInitialState, handleSubmitProp }) {
+function GenericForm({ formInitialState, handleSubmitProp, children = null }) {
     const [formData, setFormData] = useState(formInitialState);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        console.log(e)
-        console.log(formData)
-        console.log(name)
-        console.log(value)
         let currentVal = formData[name]
         currentVal.value = value
-        
+
         setFormData({ ...formData, [name]: currentVal });
     };
 
-
-
     const handleSubmit = async (e) => {
         e.preventDefault();
-        e.formData =formData
+        e.formData = formData
         let keyValuePairs = {};
         Object.keys(formData).forEach((key) => {
             keyValuePairs[key] = formData[key].value;
@@ -35,54 +27,44 @@ function GenericForm({ formInitialState, handleSubmitProp }) {
         handleSubmitProp(e)
     };
 
-    useEffect(() => {
-    }, []);
-
     return (
-        <div className={styles['centered']}>
-            <Form onSubmit={(e) => handleSubmit(e)}>
+        <div className="glass-card" style={{ maxWidth: '500px', margin: '1.5rem auto', padding: '2rem' }}>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <h3 className="text-center font-bold uppercase text-2xl tracking-tight text-white mb-4 border-b border-[var(--glass-border)] pb-4">Entry</h3>
                 {Object.keys(formData).map((key) => {
                     if (Array.isArray(formData[key].options)) {
                         return (
-                            <Form.Group className="mb-3" id={`form-searchable-${key}`}>
+                            <div className="flex flex-col gap-2" key={key}>
+                                <label className="label-modern text-white">{key}</label>
                                 <SearchableDropdown options={formData[key].options} placeholder={key} onChange={handleChange} name={key}></SearchableDropdown>
-                            </Form.Group>
+                            </div>
                         )
                     } else {
                         return (
-                            <Form.Group className="mb-3" id={`form-${key}`}>
-                                <Form.Control name={key} id={key} type="text" placeholder={key} onChange={handleChange} />
-                            </Form.Group>
+                            <div className="flex flex-col gap-2" key={key}>
+                                <label className="label-modern text-white">{key}</label>
+                                <input
+                                    name={key}
+                                    id={key}
+                                    type="text"
+                                    placeholder={key}
+                                    onChange={handleChange}
+                                    className="input-modern"
+                                />
+                            </div>
                         )
                     }
                 })}
-                {/* <Form.Group className="mb-3" id="formBasicEmail">
-                    <Form.Control name="name" id="ingredName" type="text" placeholder={shoppingListId} disabled />
-                </Form.Group>
-                <Form.Group className="mb-3" id="formIngredName">
-                    <SearchableDropdown options={knownIngredients} placeholder={"Enter Ingredient Name"} onChange={handleChange} name={"name"}></SearchableDropdown>
-                </Form.Group>
-                <Form.Group className="mb-3" id="formBasicEmail">
-                    <Form.Control name="quantity" id="ingredAmount" type="text" placeholder="Enter Amount" required onChange={handleChange}/>
-                    <Form.Select aria-label="Default select example" name="quantity_type" id="quantity_type" onChange={handleChange} required>
-                        {Object.keys(quantity_unit_conversions).map((item) => <option value={item}>{item}</option>)}
-                    </Form.Select>
-                </Form.Group>
-                <Form.Group className="mb-3" id="formBasicPassword">
-                    <Form.Control name="note" id="ingredNote" type="text" placeholder="(optional note)" onChange={handleChange}/>
-                </Form.Group>
-                <Form.Group className="mb-3" id="formCategory">
-                    <SearchableDropdown options={categories} placeholder={"Category"} onChange={handleChange} name={"category"}></SearchableDropdown>
-                </Form.Group> */}
 
-
-                <Button variant="primary" type="submit">
-                    Submit
-                </Button>
-                <Button variant="primary" onClick={() => console.log(formData)}>
-                    show state
-                </Button>
-            </Form>
+                <div className="flex flex-col gap-4 mt-6">
+                    <button className="btn-modern !bg-emerald-500 hover:!bg-emerald-400 !text-black w-full py-4 text-base tracking-wider uppercase" type="submit">
+                        Submit
+                    </button>
+                    <button className="btn-modern btn-outline text-sm w-full py-2" type="button" onClick={() => console.log(formData)}>
+                        Show State (Debug)
+                    </button>
+                </div>
+            </form>
         </div>
     );
 }

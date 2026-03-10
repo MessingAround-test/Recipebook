@@ -1,15 +1,9 @@
 import Head from 'next/head'
 import Image from 'next/image'
 import styles from '../styles/Home.module.css'
-
-
-
 import { Toolbar } from './Toolbar'
 import { useEffect, useState } from 'react'
-import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
 import Router from 'next/router'
-import Card from 'react-bootstrap/Card'
 
 
 
@@ -18,13 +12,19 @@ export default function Home() {
     const [recipes, setRecipes] = useState([])
 
     async function getUserDetails() {
-        let data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let res = await fetch("/api/UserDetails", {
+            headers: { 'edgetoken': localStorage.getItem('Token') || '' }
+        })
+        let data = await res.json()
         console.log(data)
         setUserData(data.res)
     }
 
     async function getRecipeDetails() {
-        let data = await (await fetch("/api/Recipe?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let res = await fetch("/api/Recipe", {
+            headers: { 'edgetoken': localStorage.getItem('Token') || '' }
+        })
+        let data = await res.json()
         console.log(data)
         setRecipes(data.res)
     }
@@ -33,7 +33,7 @@ export default function Home() {
 
     useEffect(() => {
         if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
-            
+
             Router.push("/login")
         }
 
@@ -64,7 +64,7 @@ export default function Home() {
 
                 <main className={styles.main}>
                     <div className={styles.cardGroup}>
-                    <object type="image/svg+xml" data="/loading.svg">svg-animation</object>
+                        <object type="image/svg+xml" data="/loading.svg">svg-animation</object>
 
 
                     </div>

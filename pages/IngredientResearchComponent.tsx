@@ -1,0 +1,716 @@
+import React, { useState } from 'react';
+import { quantity_unit_conversions } from "../lib/conversion";
+import { Button } from "../components/ui/button"
+import 'chart.js/auto';
+import { Bar } from 'react-chartjs-2';
+
+export default function IngredientResearchComponent() {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [ingredientData, setIngredientData] = useState<any[]>([]);
+    const [quantity, setQuantity] = useState<number | string>(1);
+    const [quantityUnit, setQuantityUnit] = useState('any');
+    const [loading, setLoading] = useState(false);
+    const [selectedBinIndex, setSelectedBinIndex] = useState<number>(-1);
+    const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+    const [chosenProductId, setChosenProductId] = useState<string | null>(null);
+    const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+    const [selectedDeleteIds, setSelectedDeleteIds] = useState<Set<string>>(new Set());
+
+    async function handleGetIngredient(e: React.FormEvent) {
+        e.preventDefault();
+        setLoading(true);
+        setSelectedBinIndex(-1);
+        setSelectedProductId(null);
+        setChosenProductId(null);
+        setDeletingIds(new Set());
+        setSelectedDeleteIds(new Set());
+
+        const res = await fetch(`/api/Ingredients/?name=${searchTerm}&qType=${quantityUnit}&quantity=${quantity}`, {
+            headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+        });
+        const data = await res.json();
+        setLoading(false);
+
+        if (data.loadedSource === true) {
+            const resLoaded = await fetch(`/api/Ingredients/?name=${searchTerm}&qType=${quantityUnit}&quantity=${quantity}`, {
+                headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+            });
+            const dataLoaded = await resLoaded.json();
+            setIngredientData(dataLoaded.res || []);
+        } else {
+            setIngredientData(data.res || []);
+        }
+    }
+
+    async function deleteIngredient(ids: string | string[]) {
+        const idArray = Array.isArray(ids) ? ids : [ids];
+        if (idArray.length === 0) return;
+
+        if (!confirm(`Are you sure you want to delete ${idArray.length} product(s)? They will be removed from the database.`)) return;
+
+        idArray.forEach(id => setDeletingIds(prev => new Set(prev).add(id)));
+
+        try {
+            const idString = idArray.join(',');
+            const res = await fetch(`/api/Ingredients/?id=${idString}`, {
+                method: 'DELETE',
+                headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+            });
+            const data = await res.json();
+            if (data.success) {
+                setIngredientData(prev => prev.filter(item => !idArray.includes(item.id)));
+                setSelectedDeleteIds(prev => {
+                    const next = new Set(prev);
+                    idArray.forEach(id => next.delete(id));
+                    return next;
+                });
+            } else {
+                alert("Failed to delete: " + data.message);
+            }
+        } catch (err) {
+            alert("Error deleting product(s)");
+        } finally {
+            idArray.forEach(id => setDeletingIds(prev => {
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+            }));
+        }
+    }
+
+    const toggleSelectAll = () => {
+        // Find items that pass the current filter
+        const visibleItems = ingredientData.filter(product => {
+            const inSelectedBin = isFiltered(product.total_price);
+            const isSelectedProduct = selectedProductId === product.id;
+
+            // If no filter active, all items are visible
+            if (selectedBinIndex === -1 && !selectedProductId) return true;
+
+            // Otherwise, only items that match the highlight criteria
+            return isSelectedProduct || (selectedBinIndex !== -1 && inSelectedBin);
+        });
+
+        const visibleIds = visibleItems.map(item => item.id);
+        const allVisibleSelected = visibleIds.every(id => selectedDeleteIds.has(id));
+
+        if (allVisibleSelected) {
+            // Deselect only the visible ones
+            setSelectedDeleteIds(prev => {
+                const next = new Set(prev);
+                visibleIds.forEach(id => next.delete(id));
+                return next;
+            });
+        } else {
+            // Select all visible ones
+            setSelectedDeleteIds(prev => {
+                const next = new Set(prev);
+                visibleIds.forEach(id => next.add(id));
+                return next;
+            });
+        }
+    }
+
+    function getTopProducts() {
+        const sortedProducts = [...ingredientData].sort((a, b) => a.rank - b.rank);
+        return sortedProducts.slice(0, 3);
+    }
+
+    const renderComparisonChart = () => {
+        if (!ingredientData || ingredientData.length === 0) return null;
+
+        // Take top 8 cheapest items for comparison
+        const topItems = [...ingredientData]
+            .filter(item => item.total_price !== undefined)
+            .sort((a, b) => a.rank - b.rank)
+            .slice(0, 8);
+
+        if (topItems.length === 0) return null;
+
+        const rank1Item = topItems[0];
+        const labels = topItems.map(item => item.name.length > 20 ? item.name.substring(0, 17) + '...' : item.name);
+        const percentages = topItems.map(item => {
+            if (item.rank === 1) return 0;
+            return ((item.total_price - rank1Item.total_price) / rank1Item.total_price) * 100;
+        });
+
+        // Pre-load images for the plugin
+        const images: { [key: string]: HTMLImageElement } = {};
+        topItems.forEach(item => {
+            if (!images[item.source]) {
+                const img = new Image();
+                img.src = `/${item.source}.png`;
+                images[item.source] = img;
+            }
+        });
+
+        const logoPlugin = {
+            id: 'logoPlugin',
+            afterDraw: (chart: any) => {
+                const ctx = chart.ctx;
+                const xAxis = chart.scales.x;
+                const yAxis = chart.scales.y;
+
+                chart.data.datasets[0].data.forEach((value: number, index: number) => {
+                    const x = xAxis.getPixelForValue(index);
+                    const y = yAxis.getPixelForValue(value);
+                    const source = topItems[index].source;
+                    const img = images[source];
+
+                    if (img && img.complete) {
+                        const size = 24;
+                        ctx.drawImage(img, x - size / 2, y - size - 5, size, size);
+                    }
+                });
+            }
+        };
+
+        const data = {
+            labels,
+            datasets: [
+                {
+                    label: '% Price Difference',
+                    data: percentages,
+                    backgroundColor: topItems.map(item =>
+                        item.rank === 1 ? 'rgba(34, 197, 94, 0.7)' :
+                            (selectedProductId === item.id ? 'rgba(147, 51, 234, 0.8)' : 'rgba(59, 130, 246, 0.4)')
+                    ),
+                    borderColor: topItems.map(item =>
+                        item.rank === 1 ? 'rgb(34, 197, 94)' :
+                            (selectedProductId === item.id ? 'rgb(147, 51, 234)' : 'rgba(59, 130, 246, 0.8)')
+                    ),
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }
+            ]
+        };
+
+        const options = {
+            responsive: true,
+            maintainAspectRatio: false,
+            onClick: (_event: any, elements: any[]) => {
+                if (elements && elements.length > 0) {
+                    const { index } = elements[0];
+                    const product = topItems[index];
+                    setSelectedProductId(prev => prev === product.id ? null : product.id);
+                    setSelectedBinIndex(-1); // Clear bin filter
+                } else {
+                    setSelectedProductId(null);
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context: any) => {
+                            const item = topItems[context.dataIndex];
+                            return [
+                                ` Price: $${(item.total_price || 0).toFixed(2)}`,
+                                ` Diff: +${context.raw.toFixed(1)}%`
+                            ];
+                        },
+                        title: (items: any) => topItems[items[0].dataIndex].name
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 9 } }
+                },
+                y: {
+                    title: { display: true, text: '% Difference vs Rank #1', color: 'rgba(255,255,255,0.6)', font: { size: 10 } },
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: { color: 'rgba(255,255,255,0.6)', callback: (val: any) => `${val}%` }
+                }
+            }
+        };
+
+        return (
+            <div className="mb-12">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4">
+                    <div>
+                        <h3 className="text-xl font-bold text-foreground">Top Deals Comparison</h3>
+                        <p className="text-xs text-muted-foreground italic">
+                            Relative price difference compared to the cheapest option
+                        </p>
+                    </div>
+                </div>
+                <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 h-[320px] cursor-pointer">
+                    <Bar data={data} options={options} plugins={[logoPlugin]} />
+                </div>
+            </div>
+        );
+    };
+
+    const renderHistogram = () => {
+        if (!ingredientData || ingredientData.length === 0) return null;
+
+        // Extract total prices
+        let allPrices = ingredientData
+            .map(item => item.total_price)
+            .filter(price => price !== undefined && price !== null)
+            .sort((a, b) => a - b);
+
+        if (allPrices.length === 0) return null;
+
+        // Detect Outliers using IQR method
+        const q1 = allPrices[Math.floor(allPrices.length * 0.25)];
+        const q3 = allPrices[Math.floor(allPrices.length * 0.75)];
+        const iqr = q3 - q1;
+        const upperLimit = iqr === 0 ? Math.max(...allPrices) : q3 + (iqr * 1.5);
+
+        const normalPrices = allPrices.filter(p => p <= upperLimit);
+        const outlierCount = allPrices.filter(p => p > upperLimit).length;
+
+        if (normalPrices.length === 0) return null;
+
+        const minPrice = normalPrices[0];
+        const maxPrice = normalPrices[normalPrices.length - 1];
+        const range = maxPrice - minPrice;
+
+        // Initial binning to find majority range
+        let tempBinCount = Math.min(10, normalPrices.length);
+        let tempBinWidth = range === 0 ? 1 : range / tempBinCount;
+        let tempBins = Array(tempBinCount).fill(0);
+        normalPrices.forEach(p => {
+            let idx = Math.floor((p - minPrice) / tempBinWidth);
+            if (idx >= tempBinCount) idx = tempBinCount - 1;
+            tempBins[idx]++;
+        });
+
+        // If one bin has the majority (> 40% of normal), increase overall bin count for more granularity
+        const maxInBin = Math.max(...tempBins);
+        const binCount = (maxInBin / normalPrices.length > 0.4) ? Math.min(20, normalPrices.length) : Math.min(12, normalPrices.length);
+        const binWidth = range === 0 ? 1 : range / binCount;
+
+        const bins = Array(range === 0 ? 1 : binCount).fill(0);
+        const binRanges = bins.map((_, i) => {
+            const start = minPrice + i * binWidth;
+            const end = start + binWidth;
+            return { start, end };
+        });
+
+        const binLabels = binRanges.map(r => `$${r.start.toFixed(2)}-${r.end.toFixed(2)}`);
+
+        normalPrices.forEach(price => {
+            let binIndex = Math.floor((price - minPrice) / binWidth);
+            if (binIndex >= binCount) binIndex = binCount - 1;
+            if (binIndex < 0) binIndex = 0;
+            bins[binIndex]++;
+        });
+
+        // Add Outlier Bin if exists
+        if (outlierCount > 0) {
+            bins.push(outlierCount);
+            binLabels.push(`> $${upperLimit.toFixed(2)}`);
+            binRanges.push({ start: upperLimit, end: Infinity });
+        }
+
+        // Find cheapest item bin
+        const cheapestItem = ingredientData.find(item => item.rank === 1);
+        const cheapestBinIndex = cheapestItem && cheapestItem.total_price <= upperLimit
+            ? Math.min(binCount - 1, Math.max(0, Math.floor((cheapestItem.total_price - minPrice) / binWidth)))
+            : (cheapestItem && cheapestItem.total_price > upperLimit ? bins.length - 1 : -1);
+
+        const maxFreq = Math.max(...bins);
+        const mostCommonBinIndex = bins.indexOf(maxFreq);
+
+        const backgroundColors = bins.map((_, i) => {
+            if (i === selectedBinIndex) return 'rgba(147, 51, 234, 0.8)'; // Purple for selected
+            if (i === cheapestBinIndex) return 'rgba(34, 197, 94, 0.7)'; // Emerald/Green for cheapest
+            if (i === bins.length - 1 && outlierCount > 0) return 'rgba(239, 68, 68, 0.4)'; // Reddish for outliers
+            if (i === mostCommonBinIndex) return 'rgba(59, 130, 246, 0.7)'; // Blue for most common
+            return 'rgba(255, 255, 255, 0.2)';
+        });
+
+        const borderColors = bins.map((_, i) => {
+            if (i === selectedBinIndex) return 'rgb(147, 51, 234)';
+            if (i === cheapestBinIndex) return 'rgb(34, 197, 94)';
+            if (i === bins.length - 1 && outlierCount > 0) return 'rgb(239, 68, 68)';
+            if (i === mostCommonBinIndex) return 'rgb(59, 130, 246)';
+            return 'rgba(255, 255, 255, 0.4)';
+        });
+
+        const data = {
+            labels: binLabels,
+            datasets: [
+                {
+                    label: 'Number of Products',
+                    data: bins,
+                    backgroundColor: backgroundColors,
+                    borderColor: borderColors,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                },
+            ],
+        };
+
+        const onClick = (_event: any, elements: any[]) => {
+            if (elements && elements.length > 0) {
+                const { index } = elements[0];
+                setSelectedBinIndex(prev => prev === index ? -1 : index);
+            } else {
+                setSelectedBinIndex(-1);
+            }
+        };
+
+        const options = {
+            responsive: true,
+            maintainAspectRatio: false,
+            onClick,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context: any) => ` ${context.raw} Products (Click to filter)`,
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false, color: 'rgba(255,255,255,0.1)' },
+                    ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 9 }, maxRotation: 45, minRotation: 45 }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: { color: 'rgba(255,255,255,0.6)', stepSize: 1 }
+                }
+            }
+        };
+
+        const selectedRange = selectedBinIndex !== -1 ? binRanges[selectedBinIndex] : null;
+
+        return (
+            <div className="mb-12">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4">
+                    <div>
+                        <h3 className="text-xl font-bold text-foreground">Price Distribution</h3>
+                        <p className="text-xs text-muted-foreground italic">
+                            {selectedRange
+                                ? `Showing $${selectedRange.start.toFixed(2)}${selectedRange.end === Infinity ? '+' : ' - $' + selectedRange.end.toFixed(2)} range`
+                                : `Comparing ${quantity} ${quantityUnit === 'any' ? 'units' : quantityUnit} - ${allPrices.length} results`}
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-[10px] uppercase tracking-wider font-semibold">
+                        <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 rounded-sm bg-purple-500"></div>
+                            <span>Selected</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 rounded-sm bg-green-500/70"></div>
+                            <span>Cheapest</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 rounded-sm bg-blue-500/70"></div>
+                            <span>Common</span>
+                        </div>
+                        {outlierCount > 0 && (
+                            <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 rounded-sm bg-red-500/40"></div>
+                                <span>Outliers</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 h-[320px] cursor-pointer">
+                    <Bar data={data} options={options} />
+                </div>
+                {selectedBinIndex !== -1 && (
+                    <div className="mt-2 text-center">
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedBinIndex(-1)} className="text-xs">
+                            Clear Filter
+                        </Button>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const isFiltered = (price: number) => {
+        if (selectedBinIndex === -1) return true;
+
+        // Need to re-calculate bins for filtering
+        let allPrices = ingredientData
+            .map(item => item.total_price)
+            .filter(price => price !== undefined && price !== null)
+            .sort((a, b) => a - b);
+
+        const q1 = allPrices[Math.floor(allPrices.length * 0.25)];
+        const q3 = allPrices[Math.floor(allPrices.length * 0.75)];
+        const iqr = q3 - q1;
+        const upperLimit = iqr === 0 ? Math.max(...allPrices) : q3 + (iqr * 1.5);
+        const normalPrices = allPrices.filter(p => p <= upperLimit);
+
+        const minPrice = normalPrices[0];
+        const maxPrice = normalPrices[normalPrices.length - 1];
+        const range = maxPrice - minPrice;
+
+        let tempBinCount = Math.min(10, normalPrices.length);
+        let tempBinWidth = range === 0 ? 1 : range / tempBinCount;
+        let tempBins = Array(tempBinCount).fill(0);
+        normalPrices.forEach(p => {
+            let idx = Math.floor((p - minPrice) / tempBinWidth);
+            if (idx >= tempBinCount) idx = tempBinCount - 1;
+            tempBins[idx]++;
+        });
+
+        const maxInBin = Math.max(...tempBins);
+        const binCount = (maxInBin / normalPrices.length > 0.4) ? Math.min(20, normalPrices.length) : Math.min(12, normalPrices.length);
+        const binWidth = range === 0 ? 1 : range / binCount;
+
+        if (price > upperLimit) {
+            return selectedBinIndex === binCount; // Outlier bin is always binCount if it exists
+        }
+
+        let binIndex = Math.floor((price - minPrice) / binWidth);
+        if (binIndex >= binCount) binIndex = binCount - 1;
+        if (binIndex < 0) binIndex = 0;
+
+        return binIndex === selectedBinIndex;
+    };
+
+    return (
+        <div className="w-full">
+            <form onSubmit={handleGetIngredient} className="flex flex-col gap-4 mb-8">
+                <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1">
+                        <label className="text-sm font-semibold mb-1 block">Ingredient</label>
+                        <input
+                            name="ingredName"
+                            value={searchTerm}
+                            type="text"
+                            placeholder="Enter ingredient name"
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            required
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            autoComplete='off'
+                        />
+                    </div>
+                    <div className="flex gap-4">
+                        <div className="w-24">
+                            <label className="text-sm font-semibold mb-1 block">Qty</label>
+                            <input
+                                type="number"
+                                value={quantity}
+                                onChange={(e) => setQuantity(e.target.value)}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            />
+                        </div>
+                        <div className="w-32">
+                            <label className="text-sm font-semibold mb-1 block">Unit</label>
+                            <select
+                                name="quantity_type"
+                                onChange={(e) => setQuantityUnit(e.target.value)}
+                                value={quantityUnit}
+                                required
+                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <option className="text-black" value="any">any</option>
+                                {Object.keys(quantity_unit_conversions).map((item) => (
+                                    <option className="text-black" key={item} value={item}>{item}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex items-end">
+                            <Button type="submit" className="h-10">Search</Button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            {loading && (
+                <div className="flex justify-center my-8 text-primary">
+                    <object type="image/svg+xml" data="/loading.svg" className="w-12 h-12">loading...</object>
+                </div>
+            )}
+
+            {ingredientData.length > 0 && (
+                <div className="mb-12">
+                    <h3 className="text-xl font-bold mb-6 text-foreground">Top 3 Products</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {getTopProducts().map((product, index) => {
+                            const barColors = ['bg-yellow-400', 'bg-slate-300', 'bg-amber-600'];
+                            const rankColor = barColors[index] || 'bg-border';
+                            const isSelectedProduct = selectedProductId === product.id;
+                            const isChosen = chosenProductId === product.id;
+                            return (
+                                <div
+                                    key={index}
+                                    className={`rounded-xl border transition-all duration-300 bg-card text-card-foreground shadow-sm overflow-hidden relative cursor-pointer ${isChosen ? 'ring-4 ring-yellow-400 scale-[1.05] z-10' : (isSelectedProduct ? 'ring-2 ring-purple-500 scale-[1.02]' : 'border-border hover:border-primary/50')}`}
+                                    onClick={() => setSelectedProductId(prev => prev === product.id ? null : product.id)}
+                                >
+                                    <div className={`h-2 w-full ${rankColor}`}></div>
+                                    {isChosen && (
+                                        <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-[10px] font-black px-3 py-0.5 rounded-b-md uppercase tracking-wider shadow-lg">
+                                            Best Choice
+                                        </div>
+                                    )}
+                                    <div className="p-6">
+                                        <div className="flex flex-col gap-1 mb-4">
+                                            <span className="text-2xl font-bold opacity-80">#{index + 1}</span>
+                                            <h5 className="text-xl font-semibold leading-none tracking-tight pr-12">{product.name}</h5>
+                                        </div>
+                                        <div className="absolute top-6 right-4 w-12 h-12 bg-white rounded-md p-1 border border-border flex items-center justify-center">
+                                            <img
+                                                src={`/${product.source}.png`}
+                                                alt={product.source}
+                                                className="max-w-full max-h-full object-contain"
+                                                onError={(e) => { e.currentTarget.style.display = 'none' }}
+                                            />
+                                        </div>
+                                        <div className="text-sm text-muted-foreground text-center mb-4">{product.source}</div>
+                                        <div className="space-y-2 text-sm mb-6">
+                                            <div className="flex justify-between border-b border-border pb-2">
+                                                <strong className="text-muted-foreground">Price:</strong>
+                                                <span className="font-medium">${Number(product.price).toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between border-b border-border pb-2">
+                                                <strong className="text-muted-foreground">Unit Price:</strong>
+                                                <span className="font-medium">
+                                                    {product.unit_price_converted < 1
+                                                        ? `${(product.unit_price_converted * 100).toFixed(2)}¢`
+                                                        : `$${Number(product.unit_price_converted).toFixed(2)}`}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between pb-2">
+                                                <strong className="text-muted-foreground">Total:</strong>
+                                                <span className="font-bold text-primary">${(product.total_price || 0).toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            className={`w-full ${isChosen ? 'bg-yellow-400 hover:bg-yellow-500 text-black' : ''}`}
+                                            variant={isChosen ? "default" : "outline"}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setChosenProductId(isChosen ? null : product.id);
+                                            }}
+                                        >
+                                            {isChosen ? 'Selected' : 'Select as Best'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {renderComparisonChart()}
+            {renderHistogram()}
+
+            {ingredientData.length > 0 && (
+                <div className="relative rounded-md border border-border overflow-x-auto w-full">
+                    {selectedDeleteIds.size > 0 && (
+                        <div className="absolute top-2 right-4 z-20 animate-in fade-in slide-in-from-top-2">
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                className="shadow-lg h-8 px-4 text-xs font-bold bg-red-600 hover:bg-red-700"
+                                onClick={() => deleteIngredient(Array.from(selectedDeleteIds))}
+                            >
+                                Delete Selected ({selectedDeleteIds.size})
+                            </Button>
+                        </div>
+                    )}
+                    <table className="w-full text-sm">
+                        <thead className="border-b bg-muted/50">
+                            <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground w-12">
+                                    <input
+                                        type="checkbox"
+                                        className="w-4 h-4 rounded border-white/20 bg-white/5 accent-primary cursor-pointer"
+                                        checked={selectedDeleteIds.size === ingredientData.length && ingredientData.length > 0}
+                                        onChange={toggleSelectAll}
+                                    />
+                                </th>
+                                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Product Name</th>
+                                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Price</th>
+                                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">% Diff</th>
+                                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Unit Price</th>
+                                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Quantity</th>
+                                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Source</th>
+                                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Rank</th>
+                                <th className="h-10 px-4 text-center align-middle font-medium text-muted-foreground">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {ingredientData.map((product, idx) => {
+                                const inSelectedBin = isFiltered(product.total_price);
+                                const isSelectedProduct = selectedProductId === product.id;
+                                const isChosen = chosenProductId === product.id;
+                                const isRowChecked = selectedDeleteIds.has(product.id);
+
+                                const rank1 = ingredientData.find(p => p.rank === 1);
+                                const percentDiff = rank1 && product.total_price ? ((product.total_price - rank1.total_price) / rank1.total_price) * 100 : 0;
+
+                                const shouldHighlight = isSelectedProduct || (selectedBinIndex !== -1 && inSelectedBin);
+                                const isTotallyHidden = (selectedProductId && !isSelectedProduct) || (selectedBinIndex !== -1 && !inSelectedBin);
+
+                                return (
+                                    <tr
+                                        key={idx}
+                                        className={`border-b transition-all duration-200 hover:bg-muted/50 cursor-pointer 
+                                            ${isChosen ? 'bg-yellow-400/20 border-yellow-400/50' :
+                                                (isTotallyHidden || deletingIds.has(product.id) ? 'opacity-20 grayscale-[0.8]' :
+                                                    (isRowChecked ? 'bg-primary/20' :
+                                                        (shouldHighlight ? 'bg-purple-500/20' : 'bg-primary/5')))}`}
+                                        onClick={() => !deletingIds.has(product.id) && setSelectedProductId(prev => prev === product.id ? null : product.id)}
+                                    >
+                                        <td className="p-4 align-middle" onClick={(e) => e.stopPropagation()}>
+                                            <input
+                                                type="checkbox"
+                                                className="w-4 h-4 rounded border-white/20 bg-white/5 accent-primary cursor-pointer"
+                                                checked={isRowChecked}
+                                                onChange={(e) => {
+                                                    const next = new Set(selectedDeleteIds);
+                                                    if (e.target.checked) next.add(product.id);
+                                                    else next.delete(product.id);
+                                                    setSelectedDeleteIds(next);
+                                                }}
+                                                disabled={deletingIds.has(product.id)}
+                                            />
+                                        </td>
+                                        <td className="p-4 align-middle font-medium">
+                                            <div className="flex items-center gap-2">
+                                                {isChosen && <div className="w-2 h-2 rounded-full bg-yellow-400"></div>}
+                                                {product.name}
+                                            </div>
+                                        </td>
+                                        <td className="p-4 align-middle font-bold">${Number(product.price).toFixed(2)}</td>
+                                        <td className="p-4 align-middle">
+                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${percentDiff === 0 ? 'bg-green-500/20 text-green-500' : 'bg-red-500/10 text-red-400'}`}>
+                                                {percentDiff === 0 ? 'CHEAPEST' : `+${percentDiff.toFixed(1)}%`}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 align-middle">
+                                            {product.unit_price_converted < 1
+                                                ? `${(product.unit_price_converted * 100).toFixed(2)}¢`
+                                                : `$${Number(product.unit_price_converted).toFixed(2)}`}
+                                        </td>
+                                        <td className="p-4 align-middle">{product.quantity} {product.quantity_unit}</td>
+                                        <td className="p-4 align-middle">{product.source}</td>
+                                        <td className="p-4 align-middle">{product.rank}</td>
+                                        <td className="p-4 align-middle text-center">
+                                            <Button
+                                                size="sm"
+                                                variant={isChosen ? "default" : "outline"}
+                                                className={isChosen ? "bg-yellow-400 hover:bg-yellow-500 text-black border-none h-7 text-[10px]" : "h-7 text-[10px]"}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setChosenProductId(isChosen ? null : product.id);
+                                                }}
+                                            >
+                                                {isChosen ? 'Selected' : 'Select'}
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
+}

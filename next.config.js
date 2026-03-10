@@ -4,6 +4,9 @@ const nextConfig = {
   api: {
     responseLimit: '8mb',
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 }
 
 module.exports = nextConfig

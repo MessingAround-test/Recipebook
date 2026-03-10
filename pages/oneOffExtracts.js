@@ -1,85 +1,68 @@
 import Head from 'next/head'
 import Image from 'next/image'
 import styles from '../styles/Home.module.css'
-
-
-
 import { Toolbar } from './Toolbar'
 import { useEffect, useState } from 'react'
-import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
+import { Button } from '../components/ui/button'
 import Router from 'next/router'
-
-
 
 export default function Home() {
     const [userData, setUserData] = useState({})
 
     async function getUserDetails() {
-        let data = await (await fetch("/api/UserDetails?EDGEtoken=" + localStorage.getItem('Token'))).json()
-        console.log(data)
+        let data = await (await fetch("/api/UserDetails", {
+            headers: { 'edgetoken': localStorage.getItem('Token') }
+        })).json()
         setUserData(data.res)
     }
 
     async function ExtractFromAldi(e) {
         e.preventDefault();
-        let data = await (await fetch("/api/Ingredients/Aldi?EDGEtoken=" + localStorage.getItem('Token'), {
+        let data = await (await fetch("/api/Ingredients/Aldi", {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'edgetoken': localStorage.getItem('Token')
             },
             body: JSON.stringify([])
         })).json()
-        console.log(data)
-        if (data.success === false || data.success === undefined){
-            if (data.message !== undefined){
+        if (data.success === false || data.success === undefined) {
+            if (data.message !== undefined) {
                 alert(data.message)
             } else {
                 alert("failed, unexpected error")
             }
-            
         }
     }
 
     async function ExtractNutritionInfo(e, requestType) {
         e.preventDefault();
-        let data = await (await fetch("/api/Nutrition/?EDGEtoken=" + localStorage.getItem('Token'), {
+        let data = await (await fetch("/api/Nutrition/", {
             method: requestType,
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'edgetoken': localStorage.getItem('Token')
             },
             body: JSON.stringify([])
         })).json()
-        console.log(data)
-        if (data.success === false || data.success === undefined){
-            if (data.message !== undefined){
+        if (data.success === false || data.success === undefined) {
+            if (data.message !== undefined) {
                 alert(data.message)
             } else {
                 alert("failed, unexpected error")
             }
-            
         }
     }
 
-
     useEffect(() => {
         if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
-            
             Router.push("/login")
         }
-
-    }, []) // <-- empty dependency array
-
-
-
-
-
-
+    }, [])
 
     return (
         <div>
-            <Toolbar>
-            </Toolbar>
+            <Toolbar />
             <div className={styles.container}>
                 <Head>
                     <title>Profile</title>
@@ -87,37 +70,18 @@ export default function Home() {
                     <link rel="icon" href="/avo.ico" />
                 </Head>
 
-
-
-
-
-
-
-
                 <main className={styles.main}>
-                <div>
-                <Button onClick={(e)=>ExtractFromAldi(e)}> Extract Aldi </Button>
-                </div>
-                <div>
-                <Button onClick={(e)=>ExtractNutritionInfo(e, "POST")}> Extract Nutrition Info </Button>
-                </div>
-                <div>
-                <Button onClick={(e)=>ExtractNutritionInfo(e, "PATCH")}> Get US Nutrition Info </Button>
-                </div>
-                <Button variant={"warning"} onClick={(e)=>ExtractNutritionInfo(e, "DELETE")}> Delete Nutrition Info </Button>
-                
-                ExtractNutritionInfo
-
+                    <div className="flex flex-col gap-4 max-w-md mx-auto py-10">
+                        <Button onClick={(e) => ExtractFromAldi(e)}> Extract Aldi </Button>
+                        <Button onClick={(e) => ExtractNutritionInfo(e, "POST")}> Extract Nutrition Info </Button>
+                        <Button onClick={(e) => ExtractNutritionInfo(e, "PATCH")}> Get US Nutrition Info </Button>
+                        <Button variant={"destructive"} onClick={(e) => ExtractNutritionInfo(e, "DELETE")}> Delete Nutrition Info </Button>
+                        <p className="text-center text-muted-foreground mt-4">ExtractNutritionInfo</p>
+                    </div>
                 </main>
 
                 <footer className={styles.footer}>
-                    <a
-                        href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-
-                    </a>
+                    &copy; {new Date().getFullYear()} Recipebook
                 </footer>
             </div>
         </div>

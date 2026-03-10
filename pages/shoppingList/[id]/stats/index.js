@@ -6,11 +6,6 @@ import Image from 'next/image'
 
 import { Toolbar } from '../../../Toolbar'
 import { useEffect, useState } from 'react'
-import Button from 'react-bootstrap/Button';
-import Router from 'next/router'
-import Card from 'react-bootstrap/Card'
-import { useRouter } from 'next/router'
-import Container from 'react-bootstrap/Container'
 import IngredientNutrientGraph from '../../../../components/IngredientNutrientGraph'
 
 export default function Home() {
@@ -28,7 +23,7 @@ export default function Home() {
 
     useEffect(() => {
         if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
-            
+
             Router.push("/login")
         }
         if (id) {
@@ -85,10 +80,14 @@ export default function Home() {
     }, [listIngreds])
 
     async function getGroceryStoreProducts(ingredient) {
-        let data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=1&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${localStorage.getItem('Token')}`)).json()
+        let data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=1&supplier=${enabledSuppliers.join(',')}`, {
+            headers: { 'edgetoken': localStorage.getItem('Token') }
+        })).json()
         if (data.loadedSource) {
             //     // We extract again if the source was loaded... our response is returning some weird stuff... 
-            data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=1&supplier=${enabledSuppliers.join(',')}&EDGEtoken=${localStorage.getItem('Token')}`)).json()
+            data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=1&supplier=${enabledSuppliers.join(',')}`, {
+                headers: { 'edgetoken': localStorage.getItem('Token') }
+            })).json()
         }
 
         let updatedIngredient = ingredient
@@ -102,13 +101,17 @@ export default function Home() {
 
 
     async function getShoppingListItems() {
-        let data = await (await fetch(`/api/ShoppingListItem/?shoppingListId=${id}&EDGEtoken=${localStorage.getItem('Token')}`)).json()
+        let data = await (await fetch(`/api/ShoppingListItem/?shoppingListId=${id}`, {
+            headers: { 'edgetoken': localStorage.getItem('Token') }
+        })).json()
         setlistIngreds(data.res)
     }
 
 
     async function getRecipeDetails() {
-        let data = await (await fetch("/api/ShoppingList/" + String(id) + "?EDGEtoken=" + localStorage.getItem('Token'))).json()
+        let data = await (await fetch("/api/ShoppingList/" + String(id), {
+            headers: { 'edgetoken': localStorage.getItem('Token') }
+        })).json()
         setlist(data.res)
     }
 
@@ -116,10 +119,11 @@ export default function Home() {
         e.preventDefault();
 
         try {
-            const response = await fetch(`/api/ShoppingListItem/?EDGEtoken=${localStorage.getItem('Token')}`, {
+            const response = await fetch(`/api/ShoppingListItem/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'edgetoken': localStorage.getItem('Token')
                 },
                 body: JSON.stringify(e.value),
             });
@@ -148,10 +152,11 @@ export default function Home() {
         e.preventDefault();
 
         try {
-            const response = await fetch(`/api/ShoppingListItem/${id}?EDGEtoken=${localStorage.getItem('Token')}`, {
+            const response = await fetch(`/api/ShoppingListItem/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
+                    'edgetoken': localStorage.getItem('Token')
                 }
             });
 
@@ -196,10 +201,11 @@ export default function Home() {
 
     async function updateCompleteInDB(id, complete) {
         try {
-            const response = await fetch(`/api/ShoppingListItem/${id}?EDGEtoken=${localStorage.getItem('Token')}`, {
+            const response = await fetch(`/api/ShoppingListItem/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
+                    'edgetoken': localStorage.getItem('Token')
                 },
                 body: JSON.stringify({ "complete": complete }),
             });
@@ -247,8 +253,8 @@ export default function Home() {
                 "AmountType": ingred.quantity_type
             }
         ))
-        
-        
+
+
     }
 
 
