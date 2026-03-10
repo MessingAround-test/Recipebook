@@ -5,7 +5,7 @@ import Modal from 'react-modal';
 import { IngredientSearchList } from './IngredientSearchList'
 import IngredientCard from './IngredientCard'
 
-function IngredientTable({ ingredients, handleCheckboxChange, reload, availableColumns, handleDeleteItem, modifyColumnName, sortFunction, filters, enabledSuppliers = [], groupColor }) {
+function IngredientTable({ ingredients, handleCheckboxChange, reload, availableColumns, handleDeleteItem, modifyColumnName, sortFunction, filters, enabledSuppliers = [], groupColor, pricingStrategy }) {
     const [ingredientData, setIngredientData] = useState(ingredients);
     const [modalIsOpen, setIsOpen] = useState(false);
     const [selectedIngred, setSelectedIngred] = useState("")
@@ -74,6 +74,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
                         filters={filters}
                         enabledSuppliers={enabledSuppliers}
                         groupColor={groupColor}
+                        pricingStrategy={pricingStrategy}
                     />
                 ))}
             </div>

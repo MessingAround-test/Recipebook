@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { getColorForCategory } from '../lib/colors';
 import PropTypes from 'prop-types';
 import styles from '../styles/Home.module.css';
@@ -19,11 +19,33 @@ import Skeleton from './Skeleton';
  * @param {string[]} [props.enabledSuppliers]
  * @param {string} [props.groupColor]
  */
-function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion, enabledSuppliers = [], groupColor }) {
+function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange, markAsIncorrect, filters, modalVersion, enabledSuppliers = [], groupColor, pricingStrategy = 'match' }) {
     const [otherOptionsModalIsOpen, setOtherOptionsModalIsOpen] = useState(false);
 
     // If a group color was passed down, use it. Otherwise, try to figure it out from the category or fallback to accent.
     const accentColor = groupColor || getColorForCategory(ingredient.category || 'unknown') || 'var(--accent)';
+
+    const bestOption = useMemo(() => {
+        if (!ingredient.options || ingredient.options.length === 0) return undefined;
+        let filtered = ingredient.options;
+        if (enabledSuppliers && enabledSuppliers.length > 0) {
+            filtered = ingredient.options.filter(opt => enabledSuppliers.includes(opt.source));
+        }
+        if (filtered.length === 0) return undefined;
+
+        if (pricingStrategy === 'value') {
+            return filtered.reduce((prev, curr) => {
+                const pPrev = prev.unit_price_converted ?? prev.price;
+                const pCurr = curr.unit_price_converted ?? curr.price;
+                return pPrev < pCurr ? prev : curr;
+            });
+        }
+        return filtered.reduce((prev, curr) => {
+            const pPrev = prev.total_price ?? prev.price;
+            const pCurr = curr.total_price ?? curr.price;
+            return pPrev < pCurr ? prev : curr;
+        });
+    }, [ingredient.options, enabledSuppliers, pricingStrategy]);
 
     return (
         <div style={{ opacity: ingredient.complete ? 0.6 : 1, width: '100%' }}>
@@ -83,9 +105,9 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                         </div>
                     )}
 
-                    {ingredient.options[0] !== undefined && filters.includes("supplier") && !ingredient.complete && (
+                    {bestOption !== undefined && filters.includes("supplier") && !ingredient.complete && (
                         <div className="mt-1 flex-col gap-1">
-                            <IngredientCardProduct ingredient={ingredient.options[0]} showSupplierImage={false}></IngredientCardProduct>
+                            <IngredientCardProduct ingredient={bestOption} showSupplierImage={false}></IngredientCardProduct>
                             <div className="flex-row">
                                 <button
                                     onClick={() => setOtherOptionsModalIsOpen(true)}

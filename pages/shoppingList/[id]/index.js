@@ -34,6 +34,7 @@ export default function Home() {
     })
 
     const [filters, setFilters] = useState(["complete"])
+    const [pricingStrategy, setPricingStrategy] = useState("match")
     const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type", "category_simple"]
 
     useEffect(() => {
@@ -59,12 +60,15 @@ export default function Home() {
         }));
         setMatchedListIngreds(updatedListIngreds);
 
+        // Always fetch all suppliers so the recommendations panel always has full data
+        const allSuppliers = ["WW", "Panetta", "IGA", "Aldi", "Coles"];
+
         for (let i = 0; i < updatedListIngreds.length; i++) {
             try {
                 const updatedIngredient = await getGroceryStoreProducts(
                     updatedListIngreds[i],
-                    1000, // Increased from 60 to 1000
-                    enabledSuppliers,
+                    1000,
+                    allSuppliers,
                     localStorage.getItem('Token')
                 );
 
@@ -228,41 +232,38 @@ export default function Home() {
         return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
     }
 
-    useEffect(() => {
-        reloadAllIngredients();
-    }, [enabledSuppliers]);
 
-    function calculateTotalOfList(items) {
-        let total = 0
+    // pricingStrategy: 'match' = lowest total_price, 'value' = lowest unit_price_converted
+    function calculateItemCost(item, suppliers, strategy) {
+        if (!item.options || item.options.length === 0) return null;
+        const filtered = item.options.filter(opt => suppliers.includes(opt.source));
+        if (filtered.length === 0) return null;
+        if (strategy === 'value') {
+            // Pick the best price per unit (unit_price_converted), fallback to price
+            return filtered.reduce((prev, curr) => {
+                const pPrev = prev.unit_price_converted ?? prev.price;
+                const pCurr = curr.unit_price_converted ?? curr.price;
+                return pPrev < pCurr ? prev : curr;
+            });
+        }
+        // 'match': lowest total purchase price (total_price), fallback to price
+        return filtered.reduce((prev, curr) => {
+            const pPrev = prev.total_price ?? prev.price;
+            const pCurr = curr.total_price ?? curr.price;
+            return pPrev < pCurr ? prev : curr;
+        });
+    }
+
+    function calculateTotalOfList(items, suppliers, strategy = 'match') {
+        let total = 0;
         items.forEach((item) => {
-            if (item.options && item.options.length > 0) {
-                // Find the cheapest option by purchase PRICE, not efficiency/usage price
-                let cheapestOption = item.options.reduce((prev, curr) => (prev.price < curr.price) ? prev : curr);
-                total += cheapestOption.price;
-            }
-        })
+            const opt = calculateItemCost(item, suppliers, strategy);
+            if (opt) total += opt.price;
+        });
         return total.toFixed(2);
     }
 
-    function calculateMedianSupplierTotal(items, suppliers) {
-        const combinations = calculateSupplierTotals(items, suppliers);
-        const costs = combinations
-            .filter(opt => opt.suppliers.length === 1 && opt.itemsFound > 0)
-            .map(opt => opt.cost)
-            .sort((a, b) => a - b);
-
-        if (costs.length === 0) return "0.00";
-        if (costs.length === 1) return costs[0].toFixed(2);
-
-        const mid = Math.floor(costs.length / 2);
-        const median = costs.length % 2 !== 0
-            ? costs[mid]
-            : (costs[mid - 1] + costs[mid]) / 2;
-
-        return median.toFixed(2);
-    }
-
-    function calculateSupplierTotals(items, suppliers) {
+    function calculateSupplierTotals(items, suppliers, strategy = 'match') {
         const singleResults = {};
 
         // Single supplier combinations
@@ -270,11 +271,9 @@ export default function Home() {
             let cost = 0;
             let itemsFound = 0;
             items.forEach(item => {
-                if (!item.options || item.options.length === 0) return;
-                const supplierOptions = item.options.filter(opt => opt.source === supplier);
-                if (supplierOptions.length > 0) {
-                    let cheapestOption = supplierOptions.reduce((prev, curr) => (prev.price < curr.price) ? prev : curr);
-                    cost += cheapestOption.price;
+                const opt = calculateItemCost(item, [supplier], strategy);
+                if (opt) {
+                    cost += opt.price;
                     itemsFound += 1;
                 }
             });
@@ -293,11 +292,9 @@ export default function Home() {
                 let itemsFound = 0;
 
                 items.forEach(item => {
-                    if (!item.options || item.options.length === 0) return;
-                    const pairOptions = item.options.filter(opt => supplierPair.includes(opt.source));
-                    if (pairOptions.length > 0) {
-                        let cheapestOption = pairOptions.reduce((prev, curr) => (prev.price < curr.price) ? prev : curr);
-                        cost += cheapestOption.price;
+                    const opt = calculateItemCost(item, supplierPair, strategy);
+                    if (opt) {
+                        cost += opt.price;
                         itemsFound += 1;
                     }
                 });
@@ -317,6 +314,7 @@ export default function Home() {
 
         return combinations;
     }
+
 
     const resetToDefault = () => {
         const allSuppliers = ["WW", "Panetta", "IGA", "Aldi", "Coles"];
@@ -372,13 +370,30 @@ export default function Home() {
         if (b === 'supplier') return 1;
         return 0;
     });
-    const groupedIngredients = groupByKeys(matchedListIngreds, activeFilters);
+    const supplierFilterActive = filters.includes("supplier");
+
+    // When a supplier filter is active, only show items that have an option from those suppliers.
+    // Also, dynamically re-map the "supplier" property so the grouping logic categorizes it correctly.
+    const displayIngredients = (supplierFilterActive
+        ? matchedListIngreds.filter(item =>
+            item.options && item.options.some(opt => enabledSuppliers.includes(opt.source))
+        )
+        : matchedListIngreds).map(item => {
+            const bestOpt = calculateItemCost(item, enabledSuppliers, pricingStrategy);
+            if (bestOpt) {
+                return {
+                    ...item,
+                    supplier: bestOpt.source
+                };
+            }
+            return item;
+        });
+
+    const groupedIngredients = groupByKeys(displayIngredients, activeFilters);
     const sortedGroups = Object.keys(groupedIngredients).sort(sortFunction);
 
-    const totalCost1 = parseFloat(calculateTotalOfList(matchedListIngreds));
-    const totalCost2 = parseFloat(calculateMedianSupplierTotal(matchedListIngreds, enabledSuppliers));
-    const displayTotalMin = Math.min(totalCost1, totalCost2).toFixed(2);
-    const displayTotalMax = Math.max(totalCost1, totalCost2).toFixed(2);
+    // Always show cost for the currently enabled suppliers + chosen strategy
+    const displayTotal = calculateTotalOfList(displayIngredients, enabledSuppliers, pricingStrategy);
 
     return (
         <div className={styles.wrapper}>
@@ -399,13 +414,24 @@ export default function Home() {
                             </h1>
                             <div className="flex items-center gap-3 flex-wrap">
                                 <h4 className="text-[10px] sm:text-sm font-bold m-0 text-[var(--accent)] uppercase tracking-wide">
-                                    EST. COST: <span className="text-white">${displayTotalMin} - ${displayTotalMax}</span>
+                                    EST. COST: <span className="text-white">${displayTotal}</span>
                                 </h4>
                                 <span className="text-[10px] font-medium text-gray-400 uppercase opacity-70">({matchedListIngreds.length} items)</span>
                             </div>
                         </div>
 
-                        <div className="flex flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                        <div className="flex flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto flex-wrap">
+                            {/* Pricing Strategy Toggle */}
+                            <div className="flex rounded-lg overflow-hidden border border-[var(--glass-border)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
+                                <button
+                                    onClick={() => setPricingStrategy('match')}
+                                    className={`px-2 py-1.5 transition-colors ${pricingStrategy === 'match' ? 'bg-[var(--accent)] text-black' : 'bg-transparent text-gray-400 hover:text-white'}`}
+                                >Best Match</button>
+                                <button
+                                    onClick={() => setPricingStrategy('value')}
+                                    className={`px-2 py-1.5 transition-colors ${pricingStrategy === 'value' ? 'bg-[var(--accent)] text-black' : 'bg-transparent text-gray-400 hover:text-white'}`}
+                                >Best Value</button>
+                            </div>
                             {!createNewIngredOpen && (
                                 <button
                                     className="btn-modern !py-2.5 !px-4 text-[10px] sm:text-xs flex-1 sm:flex-none whitespace-nowrap"
@@ -469,16 +495,12 @@ export default function Home() {
                             const groupColorAccent = getColorForCategory(group);
                             const groupColorLight = getLightColorForCategory(group);
 
-                            // Calculate group costs
-                            const supplierResults = calculateSupplierTotals(ingredientsInGroup, enabledSuppliers);
-                            const groupCost1 = parseFloat(calculateTotalOfList(ingredientsInGroup));
-                            const groupCost2 = parseFloat(calculateMedianSupplierTotal(ingredientsInGroup, enabledSuppliers));
-                            const groupMin = Math.min(groupCost1, groupCost2).toFixed(2);
-                            const groupMax = Math.max(groupCost1, groupCost2).toFixed(2);
+                            // Always show group cost
+                            const groupCost = calculateTotalOfList(ingredientsInGroup, enabledSuppliers, pricingStrategy);
 
                             return (
                                 <div key={group} className="glass-card w-full" style={{ padding: '0', overflow: 'hidden' }}>
-                                    <div style={{ padding: '0.5rem 1rem', sm: { padding: '0.75rem 1.25rem' }, borderBottom: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-secondary)' }}>
+                                    <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-secondary)' }}>
                                         <div className="flex justify-between items-center gap-2">
                                             <h6 className="font-bold uppercase tracking-wider text-xs sm:text-base m-0 flex flex-wrap items-center">
                                                 {(() => {
@@ -503,9 +525,9 @@ export default function Home() {
                                                     ));
                                                 })()}
                                             </h6>
-                                            <div className="text-right flex flex-col justify-center min-w-[80px]">
-                                                <h4 className="font-bold m-0 text-[var(--accent)]" style={{ fontSize: '0.65rem', sm: { fontSize: '0.8rem' } }}>
-                                                    <span className="hidden sm:inline">EST. COST: </span><span className="text-white">${groupMin} - ${groupMax}</span>
+                                            <div className="text-right flex flex-col justify-center min-w-[60px]">
+                                                <h4 className="font-bold m-0 text-[var(--accent)]" style={{ fontSize: '0.65rem' }}>
+                                                    <span className="text-white">${groupCost}</span>
                                                 </h4>
                                                 <span className="text-[8px] sm:text-[9px] font-medium text-gray-400 mt-0.5 uppercase">({ingredientsInGroup.length} items)</span>
                                             </div>
@@ -520,6 +542,7 @@ export default function Home() {
                                             filters={filters}
                                             enabledSuppliers={enabledSuppliers}
                                             groupColor={groupColorAccent}
+                                            pricingStrategy={pricingStrategy}
                                         />
                                     </div>
                                 </div>
@@ -545,7 +568,9 @@ export default function Home() {
                                 </div>
 
                                 {(() => {
-                                    const allOptions = calculateSupplierTotals(matchedListIngreds, enabledSuppliers);
+                                    // Always show all 5 suppliers in recommendations, regardless of current filter
+                                    const allSuppliers = ["WW", "Panetta", "IGA", "Aldi", "Coles"];
+                                    const allOptions = calculateSupplierTotals(matchedListIngreds, allSuppliers, pricingStrategy);
                                     const sortedOptions = allOptions.sort((a, b) => {
                                         if (b.itemsFound !== a.itemsFound) return b.itemsFound - a.itemsFound;
                                         return a.cost - b.cost;
@@ -562,16 +587,27 @@ export default function Home() {
                                         const primarySupplier = option.suppliers[0];
                                         const supplierColor = getColorForCategory(primarySupplier) || 'var(--accent)';
 
+                                        // Highlight currently active selection
+                                        const isActive = enabledSuppliers.length === option.suppliers.length &&
+                                            option.suppliers.every(s => enabledSuppliers.includes(s));
+
                                         return (
                                             <div
                                                 key={supplierNames}
                                                 onClick={() => handleSupplierClick(option.suppliers)}
-                                                className={`glass-card flex flex-col p-3 sm:p-4 w-full sm:w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer group ${isRecommended ? 'border-2 border-[var(--accent)] shadow-[0_0_15px_rgba(var(--accent-rgb),0.3)]' : ''}`}
-                                                style={{ borderColor: isRecommended ? supplierColor : `${supplierColor}40` }}
+                                                className={`glass-card flex flex-col p-3 sm:p-4 w-full sm:w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer group ${isActive ? 'ring-2 ring-[var(--accent)] shadow-[0_0_20px_rgba(var(--accent-rgb),0.5)]' :
+                                                    isRecommended ? 'border-2 shadow-[0_0_15px_rgba(var(--accent-rgb),0.2)]' : ''
+                                                    }`}
+                                                style={{ borderColor: isActive ? 'var(--accent)' : isRecommended ? supplierColor : `${supplierColor}40` }}
                                             >
-                                                {isRecommended && (
+                                                {isActive && (
                                                     <div className="absolute top-2 right-2 z-10">
-                                                        <span className="bg-[var(--accent)] text-black text-[8px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-tighter">RECOMMENDED</span>
+                                                        <span className="bg-white text-black text-[8px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-tighter">ACTIVE</span>
+                                                    </div>
+                                                )}
+                                                {!isActive && isRecommended && (
+                                                    <div className="absolute top-2 right-2 z-10">
+                                                        <span className="bg-[var(--accent)] text-black text-[8px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-tighter">BEST</span>
                                                     </div>
                                                 )}
 

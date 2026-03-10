@@ -1,17 +1,18 @@
 // ShoppingListComponent.js
 
 import React, { useEffect, useState } from 'react';
-import  getGroceryStoreProducts from '../lib/commonAPIs';
-import {groupByKeys} from '../lib/grouping';
-import  ToggleList  from './ToggleList';
-import ImageList  from './ImageList';
-import  AddShoppingItem  from './AddShoppingItem';
-import  NewIngredientTable  from './NewIngredientTable';
+import getGroceryStoreProducts from '../lib/commonAPIs';
+import { groupByKeys } from '../lib/grouping';
+import ToggleList from './ToggleList';
+import ImageList from './ImageList';
+import AddShoppingItem from './AddShoppingItem';
+import NewIngredientTable from './NewIngredientTable';
 
 export function ShoppingListComponent({ ingredients }) {
   const [matchedListIngreds, setMatchedListIngreds] = useState([]);
   const [createNewIngredOpen, setCreateNewIngredOpen] = useState(false);
-  const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA", "Aldi", "Coles"]);
+  const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA", "Aldi"]);
+  // , "Coles"
   const [filters, setFilters] = useState(["complete", "supplier"]);
 
   useEffect(() => {
