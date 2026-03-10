@@ -13,6 +13,7 @@ import CategoryImage from '../../../components/CategoryImage'
 import { getGroceryStoreProducts } from '../../../lib/commonAPIs'
 import { groupByKeys } from '../../../lib/grouping'
 import { getColorForCategory, getLightColorForCategory } from '../../../lib/colors'
+import { Info } from 'lucide-react'
 
 export default function Home() {
     const [userData, setUserData] = useState({})
@@ -24,6 +25,13 @@ export default function Home() {
     const [isLoading, setLoading] = useState(false)
     const [createNewIngredOpen, setCreateNewIngredOpen] = useState(false)
     const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA", "Aldi", "Coles"])
+    const [pendingSuppliers, setPendingSuppliers] = useState({
+        "/WW.png": true,
+        "/Panetta.png": true,
+        "/IGA.png": true,
+        "/Aldi.png": true,
+        "/Coles.png": true
+    })
 
     const [filters, setFilters] = useState(["complete"])
     const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type", "category_simple"]
@@ -55,7 +63,7 @@ export default function Home() {
             try {
                 const updatedIngredient = await getGroceryStoreProducts(
                     updatedListIngreds[i],
-                    1,
+                    30,
                     enabledSuppliers,
                     localStorage.getItem('Token')
                 );
@@ -234,6 +242,37 @@ export default function Home() {
         return total.toFixed(2);
     }
 
+    function calculateSupplierTotals(items, suppliers) {
+        const totals = {};
+        suppliers.forEach(supplier => {
+            totals[supplier] = { cost: 0, itemsFound: 0 };
+        });
+
+        items.forEach(item => {
+            if (!item.options || item.options.length === 0) return;
+
+            suppliers.forEach(supplier => {
+                // Find all options from this supplier
+                const supplierOptions = item.options.filter(opt => opt.source === supplier);
+                if (supplierOptions.length > 0) {
+                    // Options seem to be already sorted by price, but let's be safe and find the minimum total_price explicitly.
+                    // Assuming options are objects mapped from filter():
+                    let cheapestOption = supplierOptions[0];
+                    for (let i = 1; i < supplierOptions.length; i++) {
+                        if (supplierOptions[i].total_price < cheapestOption.total_price) {
+                            cheapestOption = supplierOptions[i];
+                        }
+                    }
+
+                    totals[supplier].cost += (cheapestOption.total_price / cheapestOption.match_efficiency * 100);
+                    totals[supplier].itemsFound += 1;
+                }
+            });
+        });
+
+        return totals;
+    }
+
     const groupedIngredients = groupByKeys(matchedListIngreds, filters);
     const sortedGroups = Object.keys(groupedIngredients).sort(sortFunction);
 
@@ -289,10 +328,18 @@ export default function Home() {
                     {filters.includes("supplier") && (
                         <div className="glass-card w-full mb-6" style={{ padding: '1.5rem' }}>
                             <h6 className="font-bold uppercase tracking-wider text-gray-400 mb-4" style={{ fontSize: '0.85rem' }}>Active Suppliers</h6>
-                            <ImageList
-                                images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]}
-                                onImageChange={(e) => handleActiveSupplierChange(e)}
-                            />
+                            <div className="flex items-center justify-between gap-4 flex-wrap">
+                                <ImageList
+                                    images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]}
+                                    onImageChange={(e) => setPendingSuppliers(e)}
+                                />
+                                <button
+                                    className="btn-modern !bg-emerald-500 hover:!bg-emerald-400 !text-black px-6 py-2 rounded-md font-bold"
+                                    onClick={() => updateSupplierFromInputObject(pendingSuppliers)}
+                                >
+                                    APPLY FILTER
+                                </button>
+                            </div>
                         </div>
                     )}
 
@@ -319,7 +366,7 @@ export default function Home() {
                                             </CategoryImage>
                                         </h6>
                                     </div>
-                                    <div className="p-4 bg-[var(--bg-main)]">
+                                    <div className="bg-[var(--bg-main)]">
                                         <NewIngredientTable
                                             reload={() => reloadAllIngredients()}
                                             ingredients={ingredientsInGroup.sort(ingredientSortFunction)}
@@ -337,6 +384,59 @@ export default function Home() {
 
                     {/* Footer Actions */}
                     <div className="flex flex-col items-center gap-4 mt-8 pb-8 w-full border-t border-[var(--glass-border)] pt-8">
+
+                        {/* Supplier Totals Cards */}
+                        <div className="w-full max-w-4xl mb-6">
+                            <h3 className="text-xl font-bold mb-4 text-center text-white">Cheapest Single-Supplier Options</h3>
+                            <div className="flex flex-wrap justify-center gap-4">
+                                {Object.entries(calculateSupplierTotals(matchedListIngreds, enabledSuppliers))
+                                    .sort((a, b) => a[1].cost - b[1].cost) // Sort by cost ascending
+                                    .map(([supplier, data]) => {
+                                        if (data.itemsFound === 0) return null;
+
+                                        // Calculate percentage of items found
+                                        const percentFound = Math.round((data.itemsFound / matchedListIngreds.length) * 100);
+                                        const allFound = data.itemsFound === matchedListIngreds.length;
+                                        const supplierColor = getColorForCategory(supplier) || 'var(--accent)';
+
+                                        return (
+                                            <div key={supplier} className="glass-card flex flex-col p-4 w-48 relative overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg" style={{ borderColor: `${supplierColor}40` }}>
+                                                {/* Top accent bar */}
+                                                <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: supplierColor }}></div>
+
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <img src={`/${supplier}.png`} alt={supplier} className="h-6 object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+                                                    <span className="font-bold text-gray-300 uppercase tracking-wider text-xs" style={{ display: 'none' }}>{supplier}</span>
+                                                </div>
+
+                                                <div className="mt-2 text-2xl font-bold text-white">
+                                                    ${data.cost.toFixed(2)}
+                                                </div>
+
+                                                <div className="mt-1 flex items-center gap-2 group relative">
+                                                    <div className={`text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1 ${allFound ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                                        {data.itemsFound}/{matchedListIngreds.length} items found
+                                                        <Info size={12} className="opacity-70 hover:opacity-100 cursor-help" />
+                                                    </div>
+
+                                                    {/* Tooltip */}
+                                                    <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-gray-800 text-xs text-white rounded shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-10 text-center">
+                                                        This shows how many items from your shopping list are available at this supplier.
+                                                        <div className="absolute top-full left-4 -mt-1 border-4 border-transparent border-t-gray-800"></div>
+                                                    </div>
+
+                                                    {!allFound && (
+                                                        <span className="text-[10px] text-gray-500" title="Not all items are available at this supplier" style={{ display: 'none' }}>
+                                                            ({percentFound}%)
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        </div>
+
                         <CopyToClipboard listIngreds={listIngreds} />
                         <button
                             onClick={() => markListAsComplete()}

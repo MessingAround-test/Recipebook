@@ -26,13 +26,12 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
     const accentColor = groupColor || getColorForCategory(ingredient.category || 'unknown') || 'var(--accent)';
 
     return (
-        <div style={{ opacity: ingredient.complete ? 0.6 : 1, width: '100%', marginBottom: '1.25rem' }}>
+        <div style={{ opacity: ingredient.complete ? 0.6 : 1, width: '100%' }}>
             <div
                 key={ingredient._id}
-                className="glass-card flex-row align-center gap-4 py-4 px-6 relative overflow-hidden transition-all duration-300"
+                className="flex-row align-center gap-4 py-4 px-6 relative transition-colors duration-200 hover:bg-accent/5"
                 style={{
-                    border: ingredient.complete ? '1px solid var(--glass-border)' : `1px solid ${accentColor}40`,
-                    boxShadow: ingredient.complete ? 'none' : `0 4px 20px -10px ${accentColor}30`,
+                    borderBottom: '1px solid var(--glass-border)'
                 }}
             >
                 {/* Subtle left border hint for color */}
@@ -83,13 +82,13 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                     )}
 
                     {ingredient.options[0] !== undefined && filters.includes("supplier") && !ingredient.complete && (
-                        <div className="mt-2 flex-col gap-3">
+                        <div className="mt-1 flex-col gap-1">
                             <IngredientCardProduct ingredient={ingredient.options[0]} showSupplierImage={false}></IngredientCardProduct>
                             <div className="flex-row">
                                 <button
                                     onClick={() => setOtherOptionsModalIsOpen(true)}
-                                    className="btn-modern btn-outline py-1 px-3"
-                                    style={{ fontSize: '0.8rem' }}
+                                    className="btn-modern btn-outline py-0.5 px-2 rounded-md"
+                                    style={{ fontSize: '0.75rem' }}
                                 >
                                     View Other Options
                                 </button>

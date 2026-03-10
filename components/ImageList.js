@@ -15,67 +15,34 @@ function ImageList({ images, onImageChange }) {
     onImageChange(newImageStates);
   };
 
-  const toggleImageEnabled = (imageUrl) => {
-    if (!imageStates[imageUrl]) {
-      toggleImageState(imageUrl);
-    }
-  };
-
-  const imageListStyle = {
-    display: 'flex',
-    gap: '5px',
-    borderRadius: '10px', // Set border radius to 10px
-    background: '#1C2640', // Change the background color
-    padding: '5px',
-    overflow: 'hidden',
-  };
-
-  const imageStyle = {
-    flex: '1',
-    maxWidth: '100%',
-    position: 'relative',
-  };
-
-  const overlayStyle = {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    background: 'rgba(0, 0, 0, 0.5)',
-    color: 'red', // Set the color to red
-    fontSize: '24px',
-    cursor: 'pointer', // Make the cursor a pointer
-  };
-
   return (
-    <div style={imageListStyle}>
-      {images.map((imageUrl, index) => (
-        <div key={index} style={imageStyle}>
-          <img
-            src={imageUrl}
-            alt={`Image ${index + 1}`}
-            style={{
-              filter: imageStates[imageUrl] ? 'none' : 'grayscale(100%)',
-              cursor: 'pointer',
-              width: '100%',
-              height: '100%',
-            }}
+    <div className="flex flex-wrap gap-4 items-center">
+      {images.map((imageUrl, index) => {
+        const isEnabled = imageStates[imageUrl];
+
+        return (
+          <div
+            key={index}
+            className={`
+              relative flex items-center justify-center p-2 rounded-lg cursor-pointer
+              transition-all duration-200 border-2 select-none
+              ${isEnabled
+                ? 'border-transparent bg-white/5 hover:bg-white/10 shadow-sm'
+                : 'border-white/5 bg-transparent opacity-50 grayscale hover:opacity-75'
+              }
+            `}
+            style={{ width: '80px', height: '48px' }}
             onClick={() => toggleImageState(imageUrl)}
-          />
-          {!imageStates[imageUrl] && (
-            <div
-              style={overlayStyle}
-              onClick={() => toggleImageEnabled(imageUrl)}
-            >
-              X
-            </div>
-          )}
-        </div>
-      ))}
+            title={isEnabled ? "Disable Supplier" : "Enable Supplier"}
+          >
+            <img
+              src={imageUrl}
+              alt={`Supplier ${index + 1}`}
+              className="max-w-full max-h-full object-contain pointer-events-none"
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }

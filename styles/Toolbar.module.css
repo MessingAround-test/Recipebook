@@ -63,7 +63,20 @@
 }
 
 @media (max-width: 768px) {
+  .nav_wrapper {
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
   .nav_links {
-    display: none;
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .brand {
+    font-size: 1.25rem;
   }
 }

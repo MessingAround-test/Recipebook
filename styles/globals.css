@@ -5,27 +5,34 @@
 @tailwind utilities;
 
 :root {
-  /* Dynamic Design System - Deep Dark Edition */
+  /* Dynamic Design System - Light Theme */
   --accent: #10b981;
-  --accent-hover: #34d399;
+  --accent-hover: #059669;
   --accent-muted: rgba(16, 185, 129, 0.1);
   --glass-blur: blur(16px);
 
-  /* Palette - Eliminating White */
-  --bg-main: #050505;
-  --bg-secondary: #0d0d0d;
-  --bg-card: rgba(16, 185, 129, 0.03);
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --glass-border: rgba(16, 185, 129, 0.1);
+  /* Palette - Light Theme */
+  --bg-main: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.6);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --glass-border: rgba(0, 0, 0, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-main: #020202;
-    --bg-secondary: #070707;
-    --bg-card: rgba(16, 185, 129, 0.04);
-    --glass-border: rgba(16, 185, 129, 0.15);
+    --accent: #10b981;
+    --accent-hover: #34d399;
+    --accent-muted: rgba(16, 185, 129, 0.15);
+
+    /* Softer Dark Theme (Slate) */
+    --bg-main: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-card: rgba(30, 41, 59, 0.7);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --glass-border: rgba(255, 255, 255, 0.1);
   }
 }
 

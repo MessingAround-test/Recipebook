@@ -63,7 +63,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
 
     return (
         <div className="w-full">
-            <div className="flex-col gap-0">
+            <div className="flex flex-col w-full">
                 {ingredientData.map((ingred, index) => (
                     <IngredientCard
                         key={ingred._id || index}

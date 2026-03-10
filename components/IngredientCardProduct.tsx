@@ -9,46 +9,53 @@ function IngredientCardProduct({ ingredient, handleDeleteIngredient, essential, 
     const matchEfficiency = ingredient?.match_efficiency || 0;
 
     return (
-        <div className={`flex flex-col gap-3 ${ingredient?.complete ? 'grayscale opacity-75' : ''}`}>
+        <div className={`flex flex-col gap-1.5 ${ingredient?.complete ? 'grayscale opacity-75' : ''}`}>
 
-            {showSupplierImage && (
-                <div className="flex justify-center mb-1">
+            {/* Top row: Image & Name */}
+            <div className="flex flex-row items-center gap-2">
+                {showSupplierImage && (
                     <img
-                        className="max-w-[10%] h-auto rounded-[5px]"
+                        className="w-5 h-5 object-contain rounded-sm"
                         src={`/${ingredient?.source ? ingredient.source : 'cross'}.png`}
                         alt={ingredient?.name}
                     />
-                </div>
-            )}
+                )}
 
-            <div className="flex justify-center text-center text-foreground font-medium mb-1 relative group cursor-pointer" onClick={() => setIsOpen(true)}>
-                <IngredientDetailCard ingredient={ingredient} show={modalIsOpen} onHide={() => setIsOpen(false)} />
-                <span className="text-base group-hover:text-primary transition-colors hover:underline">
-                    {ingredient ? ingredient.name : ""}
-                </span>
+                <div className="text-sm font-medium relative group cursor-pointer" onClick={() => setIsOpen(true)}>
+                    <span className="group-hover:text-primary transition-colors hover:underline truncate max-w-[200px] inline-block align-bottom">
+                        {ingredient ? ingredient.name : ""}
+                    </span>
+                </div>
+                <IngredientDetailCard ingredient={ingredient} show={modalIsOpen} onHide={(e: any) => {
+                    if (e && e.stopPropagation) e.stopPropagation();
+                    setIsOpen(false);
+                }} />
             </div>
 
-            <div className="flex flex-col items-center justify-center text-center text-lg mb-1 font-semibold text-foreground">
-                <div>${(ingredient?.total_price || 0).toFixed(2)}/</div>
-                <div className="text-sm font-normal">
-                    ${((ingredient?.total_price || 0) / (ingredient?.match_efficiency || 100) * 100).toFixed(2)}
+            {/* Middle row: Price & Efficiency Bar */}
+            <div className="flex flex-row items-center gap-3">
+                <div className="flex flex-row items-baseline gap-1 font-semibold text-foreground text-sm">
+                    <span>${(ingredient?.total_price || 0).toFixed(2)}</span>
+                    <span className="text-xs text-muted-foreground font-normal">
+                        (${((ingredient?.total_price || 0) / (matchEfficiency || 100) * 100).toFixed(2)} adj)
+                    </span>
                 </div>
-            </div>
 
-            {ingredient !== undefined && matchEfficiency < 100 && (
-                <div className="w-full bg-muted rounded-full h-4 mb-2 overflow-hidden border border-border">
-                    <div className="bg-green-500 h-4 rounded-full text-xs font-bold text-white flex items-center justify-center whitespace-nowrap overflow-hidden transition-all" style={{ width: `${Math.max(matchEfficiency, 0)}%` }}>
-                        {Math.max(matchEfficiency, 0).toFixed(0)}% efficiency
+                {ingredient !== undefined && matchEfficiency < 100 && (
+                    <div className="w-24 bg-muted rounded-full overflow-hidden border border-border h-1.5 mt-0.5" title={`${Math.max(matchEfficiency, 0).toFixed(0)}% match efficiency`}>
+                        <div className="bg-green-500 h-full rounded-full transition-all" style={{ width: `${Math.max(matchEfficiency, 0)}%` }}></div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
 
+            {/* Bottom Row: Delete button (if present) */}
             {handleDeleteIngredient !== undefined && (
-                <div className="flex justify-center mt-2">
+                <div className="flex mt-1">
                     <Button
                         onClick={() => handleDelete(handleDeleteIngredient(ingredient._id, localStorage.getItem('Token')))}
                         variant="destructive"
                         size="sm"
+                        className="h-6 text-xs px-2"
                     >
                         Delete
                     </Button>
