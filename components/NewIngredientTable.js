@@ -70,7 +70,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
                         ingredient={ingred}
                         openModal={openModal}
                         handleCheckboxChange={handleCheckboxChange}
-                        markAsIncorrect={markAsIncorrect}
+                        handleDeleteItem={handleDeleteItem}
                         filters={filters}
                         enabledSuppliers={enabledSuppliers}
                         groupColor={groupColor}

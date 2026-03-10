@@ -190,7 +190,7 @@ export default function Home() {
     };
 
     async function handleDeleteItem(e, id) {
-        e.preventDefault();
+        if (e && e.preventDefault) e.preventDefault();
         try {
             const response = await fetch(`/api/ShoppingListItem/${id}`, {
                 method: 'DELETE',

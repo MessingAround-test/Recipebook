@@ -7,7 +7,7 @@ import CardListModal from './CardListModal';
 import IngredientCardProduct from './IngredientCardProduct';
 import Skeleton from './Skeleton';
 
-function IngredientCard({ ingredient, essential, handleCheckboxChange, markAsIncorrect, filters, modalVersion, enabledSuppliers = [], groupColor, pricingStrategy = 'match' }) {
+function IngredientCard({ ingredient, essential, handleCheckboxChange, markAsIncorrect, handleDeleteItem, filters, modalVersion, enabledSuppliers = [], groupColor, pricingStrategy = 'match' }) {
     const [otherOptionsModalIsOpen, setOtherOptionsModalIsOpen] = useState(false);
 
     // If a group color was passed down, use it. Otherwise, try to figure it out from the category or fallback to accent.
@@ -109,7 +109,7 @@ function IngredientCard({ ingredient, essential, handleCheckboxChange, markAsInc
                             </div>
                         </div>
                     )}
-                    <CardListModal filters={filters} ingredient={ingredient} show={otherOptionsModalIsOpen} onHide={() => setOtherOptionsModalIsOpen(false)} enabledSuppliers={enabledSuppliers}></CardListModal>
+                    <CardListModal handleDeleteItem={handleDeleteItem} filters={filters} ingredient={ingredient} show={otherOptionsModalIsOpen} onHide={() => setOtherOptionsModalIsOpen(false)} enabledSuppliers={enabledSuppliers}></CardListModal>
                 </div>
             </div >
         </div >
