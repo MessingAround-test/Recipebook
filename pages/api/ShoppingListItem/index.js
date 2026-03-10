@@ -1,4 +1,4 @@
-import { verifyToken } from "../../../lib/auth";
+import { verifyToken } from "../../../lib/auth.ts";
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
 import ShoppingListItem from '../../../models/ShoppingListItem'

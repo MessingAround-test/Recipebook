@@ -13,35 +13,29 @@ export function Toolbar() {
     return (
         <header className={styles.Container}>
             <nav className={styles.nav_wrapper}>
-                <Link href="/" passHref>
-                    <a className={styles.brand}>BRYNS GARBAGE</a>
-                </Link>
+                <Link href="/" className={styles.brand}>BRYNS GARBAGE</Link>
 
                 <ul className={styles.nav_links}>
                     <li className={styles.nav_item}>
-                        <Link href="/recipes" passHref><a className={styles.nav_link}>Recipes</a></Link>
+                        <Link href="/recipes" className={styles.nav_link}>Recipes</Link>
                     </li>
                     <li className={styles.nav_item}>
-                        <Link href="/createRecipe" passHref><a className={styles.nav_link}><AiFillPlusCircle size={20} /></a></Link>
+                        <Link href="/createRecipe" className={styles.nav_link}><AiFillPlusCircle size={20} /></Link>
                     </li>
                     <li className={styles.nav_item}>
-                        <Link href="/ingredientResearch" passHref><a className={styles.nav_link}>Research</a></Link>
+                        <Link href="/ingredientResearch" className={styles.nav_link}>Research</Link>
                     </li>
                     <li className={styles.nav_item}>
-                        <Link href="/shoppingList" passHref><a className={styles.nav_link}>Shopping List</a></Link>
+                        <Link href="/shoppingList" className={styles.nav_link}>Shopping List</Link>
                     </li>
                 </ul>
 
                 <div className={styles.nav_right}>
-                    <Link href="/profile" passHref>
-                        <a className={styles.nav_link}>
-                            <CgProfile size={25} />
-                        </a>
+                    <Link href="/profile" className={styles.nav_link}>
+                        <CgProfile size={25} />
                     </Link>
-                    <Link href="/login" passHref>
-                        <a className={styles.nav_link} onClick={clearCookie}>
-                            <MdLogout size={25} />
-                        </a>
+                    <Link href="/login" className={styles.nav_link} onClick={clearCookie}>
+                        <MdLogout size={25} />
                     </Link>
                 </div>
             </nav>

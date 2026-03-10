@@ -54,7 +54,7 @@ export const JSONImageList = ({ children, data }) => {
                     </div>
                 );
             }
-            return <h3 className="text-white font-bold">{JSON.stringify(data)}</h3>;
+            return <h3 key={key} className="text-white font-bold">{JSON.stringify(data)}</h3>;
         });
     };
 

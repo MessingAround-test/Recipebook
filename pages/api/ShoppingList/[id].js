@@ -1,8 +1,8 @@
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
 import ShoppingList from '../../../models/ShoppingList'
-import { verifyToken } from "../../../lib/auth";
-import { logAPI } from '../../../lib/logger';
+import { verifyToken } from "../../../lib/auth.ts";
+import { logAPI } from '../../../lib/logger.ts';
 
 export default async function handler(req, res) {
   logAPI(req)

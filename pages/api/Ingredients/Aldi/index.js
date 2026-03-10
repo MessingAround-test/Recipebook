@@ -1,4 +1,5 @@
-import { verifyToken } from "../../../../lib/auth";
+import { verifyToken } from "../../../../lib/auth.ts";
+import { logAPI } from '../../../../lib/logger.ts';
 import dbConnect from '../../../../lib/dbConnect'
 import User from '../../../../models/User'
 import AldiIngredient from '../../../../models/AldiIngredient'

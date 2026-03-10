@@ -3,16 +3,15 @@ import axios from 'axios';
 import { filter } from '../../../lib/filtering'
 import { convertMetricReading } from '../../../lib/conversion'
 import dbConnect from '../../../lib/dbConnect'
-import { verifyToken } from "../../../lib/auth";
+import { verifyToken } from "../../../lib/auth.ts";
+import { logAPI } from '../../../lib/logger.ts';
 import User from '../../../models/User'
-import { logAPI } from '../../../lib/logger'
-
 
 
 export default async function handler(req, res) {
-    logAPI(req)
     const decoded = await verifyToken(req, res);
     if (!decoded) return;
+    logAPI(req)
 
     try {
         let search_term = req.query.name

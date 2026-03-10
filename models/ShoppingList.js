@@ -3,14 +3,14 @@ import mongoose from 'mongoose';
 
 const ShoppingList = new mongoose.Schema(
     {
-        id: {type: mongoose.ObjectId, unique: true, dropDups: true, index: true },
-        name: {type: String, required: true},
-        createdBy: {type: String, required: true},
-        deleted: {type: Boolean, required: false},
-        note: {type: String, required: false},
-        complete: {type: Boolean, required: true},
-        image: {type: String},
-        cost: {type: Number},
+        id: { type: mongoose.ObjectId, unique: true, dropDups: true, index: true },
+        name: { type: String, required: true },
+        createdBy: { type: String, required: true },
+        deleted: { type: Boolean, required: false },
+        note: { type: String, required: false },
+        complete: { type: Boolean, required: true },
+        image: { type: String },
+        cost: { type: Number },
     },
     { timestamps: { createdAt: "created_at", updatedAt: "updated_at" }, autoIndex: false }
 )
@@ -21,4 +21,4 @@ const ShoppingList = new mongoose.Schema(
 // mongoose.model('IngredSchema', IngredSchema).createIndexes();
 
 
-module.exports = mongoose.models.ShoppingList || mongoose.model('ShoppingList', ShoppingList)
+export default mongoose.models.ShoppingList || mongoose.model('ShoppingList', ShoppingList)

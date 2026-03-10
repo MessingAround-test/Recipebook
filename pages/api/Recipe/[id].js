@@ -1,10 +1,10 @@
 
-import { verifyToken } from "../../../lib/auth";
+import { verifyToken } from "../../../lib/auth.ts";
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
 import Recipe from '../../../models/Recipe'
 import { getShorthandForMeasure } from '../../../lib/conversion'
-import { logAPI } from "../../../lib/logger";
+import { logAPI } from "../../../lib/logger.ts";
 import { safeToObject } from "../../../lib/utils";
 
 

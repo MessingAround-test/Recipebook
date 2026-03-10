@@ -29,8 +29,8 @@ function SamplePage() {
           </CardHeader>
           <CardContent>
             <p className="text-center text-muted-foreground mb-4 text-sm">
-              Check out how much shit costs at either, "Woolworths", "Aldi", "Panetta" or "IGA".
-              First one to try is "Carrot"
+              Check out how much shit costs at either, &quot;Woolworths&quot;, &quot;Aldi&quot;, &quot;Panetta&quot; or &quot;IGA&quot;.
+              First one to try is &quot;Carrot&quot;
               <br></br>
               You are restricted to only the ones which have already been searched unless bryn gives you an account.
             </p>

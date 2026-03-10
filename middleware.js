@@ -1,24 +1,17 @@
-import { NextResponse, NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 
-// This function can be marked `async` if using `await` inside
 export function middleware(request) {
-  console.log(`[Middleware] Request to: ${request.nextUrl.pathname}`);
-  if (request.nextUrl.pathname === "profile2") {
-    return NextResponse.redirect(new URL('/home', request.url))
+  const { pathname } = request.nextUrl
+
+  if (pathname.startsWith('/api')) {
+    // Proxy for Next.js 16 - rewriting API requests
+    // Adjust target URL as needed for your backend environment
+    return NextResponse.rewrite(new URL(request.url))
   }
-  return NextResponse.redirect(new URL('/home', request.url))
+
+  return NextResponse.next()
 }
 
 export const config = {
-  matcher: [
-    {
-      source: '/api/*',
-      regexp: '^/api/(.*)',
-      locale: false,
-      has: [
-        { type: 'header', key: 'Authorization', value: 'Bearer Token' }
-      ],
-      missing: [{ type: 'cookie', key: 'session', value: 'active' }],
-    },
-  ],
+  matcher: '/api/:path*',
 }
