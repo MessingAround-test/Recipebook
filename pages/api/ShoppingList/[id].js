@@ -28,8 +28,14 @@ export default async function handler(req, res) {
       if (!userData) {
         return res.status(404).json({ message: "user not found, please relog" })
       } else {
-        let complete = req.body.complete === "true" || req.body.complete === true ? true : false
-        let updateRes = await ShoppingList.updateOne({ _id: id }, { $set: { "complete": complete } });
+        let updateData = {};
+        if (req.body.complete !== undefined) {
+          updateData.complete = req.body.complete === "true" || req.body.complete === true ? true : false;
+        }
+        if (req.body.cost !== undefined) {
+          updateData.cost = Number(req.body.cost);
+        }
+        let updateRes = await ShoppingList.updateOne({ _id: id }, { $set: updateData });
         return res.status(200).json({ res: updateRes })
       }
     } else if (req.method === "DELETE") {

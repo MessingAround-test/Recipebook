@@ -17,8 +17,4 @@ const ShoppingList = new mongoose.Schema(
 
 
 
-// IngredSchema.index({ name: 'text'});
-// mongoose.model('IngredSchema', IngredSchema).createIndexes();
-
-
 export default mongoose.models.ShoppingList || mongoose.model('ShoppingList', ShoppingList)

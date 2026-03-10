@@ -113,6 +113,16 @@ export default function Home() {
         setlist(data.res)
     }
 
+    async function getRecipeDetails() {
+        let res = await fetch("/api/ShoppingList/" + String(id), {
+            headers: {
+                'edgetoken': localStorage.getItem('Token') || ''
+            }
+        })
+        let data = await res.json()
+        setlist(data.res)
+    }
+
     async function markListAsComplete() {
         const isConfirmed = confirm("Are you sure you want to mark this list as COMPLETE?");
         if (!isConfirmed) return;
@@ -372,28 +382,68 @@ export default function Home() {
     });
     const supplierFilterActive = filters.includes("supplier");
 
-    // When a supplier filter is active, only show items that have an option from those suppliers.
-    // Also, dynamically re-map the "supplier" property so the grouping logic categorizes it correctly.
-    const displayIngredients = (supplierFilterActive
-        ? matchedListIngreds.filter(item =>
-            item.options && item.options.some(opt => enabledSuppliers.includes(opt.source))
-        )
-        : matchedListIngreds).map(item => {
-            const bestOpt = calculateItemCost(item, enabledSuppliers, pricingStrategy);
-            if (bestOpt) {
-                return {
-                    ...item,
-                    supplier: bestOpt.source
-                };
-            }
-            return item;
-        });
+    // Map ingredients to their best supplier match. 
+    // If no match is found at selected suppliers, label as 'Other (No Match)' so they still appear in the list.
+    const displayIngredients = matchedListIngreds.map(item => {
+        const bestOpt = calculateItemCost(item, enabledSuppliers, pricingStrategy);
+        if (bestOpt) {
+            return {
+                ...item,
+                supplier: bestOpt.source
+            };
+        }
+        return {
+            ...item,
+            supplier: "Other (No Match)"
+        };
+    });
+
+    // Calculate display total as the average of the best supplier options that find the max possible items
+    const displayTotal = (() => {
+        if (!matchedListIngreds || matchedListIngreds.length === 0) return "0.00";
+        const allSuppliers = ["WW", "Panetta", "IGA", "Aldi", "Coles"];
+        const allOptions = calculateSupplierTotals(matchedListIngreds, allSuppliers, pricingStrategy);
+        if (allOptions.length === 0) return "0.00";
+        const maxItemsFound = Math.max(...allOptions.map(o => o.itemsFound));
+        if (maxItemsFound <= 0) return "0.00";
+        const bestOptions = allOptions
+            .filter(opt => opt.itemsFound === maxItemsFound)
+            .sort((a, b) => a.cost - b.cost)
+            .slice(0, 5);
+        return (bestOptions.reduce((sum, opt) => sum + opt.cost, 0) / bestOptions.length).toFixed(2);
+    })();
+
+    const [isUpdatingCost, setIsUpdatingCost] = useState(false);
+
+    useEffect(() => {
+        const anyLoading = matchedListIngreds.some(i => i.loading);
+        if (id && displayTotal !== "0.00" && !anyLoading && !isUpdatingCost && Number(displayTotal) !== list.cost) {
+            persistCostToDB();
+        }
+    }, [displayTotal, matchedListIngreds, id, list.cost]);
+
+    async function persistCostToDB() {
+        setIsUpdatingCost(true);
+        try {
+            await fetch(`/api/ShoppingList/${String(id)}/`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'edgetoken': localStorage.getItem('Token') || ''
+                },
+                body: JSON.stringify({ cost: Number(displayTotal) }),
+            });
+            // Update local state to prevent loop
+            setlist(prev => ({ ...prev, cost: Number(displayTotal) }));
+        } catch (error) {
+            console.error("Failed to persist cost:", error);
+        } finally {
+            setIsUpdatingCost(false);
+        }
+    }
 
     const groupedIngredients = groupByKeys(displayIngredients, activeFilters);
     const sortedGroups = Object.keys(groupedIngredients).sort(sortFunction);
-
-    // Always show cost for the currently enabled suppliers + chosen strategy
-    const displayTotal = calculateTotalOfList(displayIngredients, enabledSuppliers, pricingStrategy);
 
     return (
         <div className={styles.wrapper}>
@@ -414,7 +464,7 @@ export default function Home() {
                             </h1>
                             <div className="flex items-center gap-3 flex-wrap">
                                 <h4 className="text-[10px] sm:text-sm font-bold m-0 text-[var(--accent)] uppercase tracking-wide">
-                                    EST. COST: <span className="text-white">${displayTotal}</span>
+                                    AVG EST. COST: <span className="text-white">${displayTotal}</span>
                                 </h4>
                                 <span className="text-[10px] font-medium text-gray-400 uppercase opacity-70">({matchedListIngreds.length} items)</span>
                             </div>
@@ -516,7 +566,7 @@ export default function Home() {
                                                     return parts.map((part, index) => (
                                                         <span key={index} className="flex items-center">
                                                             <span style={{ color: getColorForCategory(part) || 'white' }}>
-                                                                {part}
+                                                                {part === "Other (No Match)" ? "⚠️ Figure This Out" : part}
                                                             </span>
                                                             {index < parts.length - 1 && (
                                                                 <span className="mx-1 sm:mx-2 text-gray-500 opacity-50">&</span>
