@@ -26,35 +26,30 @@ export default async function handler(req, res) {
         {
           "parts": [
             {
-              "text": `Given the following categories, what category does "${searchTerm}" belong to? Reply with just the category\n
-            "Fresh Produce"\n
-            "Dairy and Eggs"\n
-            "Bakery"\n
-            "Meat and Seafood"\n
-            "Canned Goods"\n
-            "Pasta and Grains"\n
-            "Condiments and Sauces"\n
-            "Snacks"\n
-            "Beverages"\n
-            "Frozen Foods"\n
-            "Cereal and Breakfast Foods"\n
-            "Baking Supplies"\n
-            "Household and Cleaning"\n
-            "Personal Care"\n
-            "Health and Wellness"\n
-            "International Foods"\n
-            "Deli and Prepared Foods"\n
-            "Home and Garden"`
+              "text": `Given the item "${searchTerm}", respond with a JSON object containing the most likely 'category', a common 'quantity' (number), and the 'unit' you would normally buy it in. Prioritize metric units which can be broken down easily eg. gram, kilogram, milliliter
+            
+            Valid Categories:
+            "Fresh Produce", "Dairy and Eggs", "Bakery", "Meat and Seafood", "Canned Goods", "Pasta and Grains", "Condiments and Sauces", "Snacks", "Beverages", "Frozen Foods", "Cereal and Breakfast Foods", "Baking Supplies", "Household and Cleaning", "Personal Care", "Health and Wellness", "International Foods", "Deli and Prepared Foods", "Home and Garden"
+
+            Valid Units:
+            "each", "gram", "kilogram", "cup", "tablespoon", "teaspoon", "milliliter", "liter"
+
+            Respond ONLY with the JSON object. Example:
+            {"category": "Fresh Produce", "quantity": 1, "unit": "kilogram"}`
             }
           ]
         }
-      ]
+      ],
+      "generationConfig": {
+        "response_mime_type": "application/json"
+      }
     };
 
     const response = await axios.post(geminiEndpoint, prompt);
-    const category = response.data.candidates[0].content.parts[0].text.trim();
+    const responseText = response.data.candidates[0].content.parts[0].text.trim();
+    const data = JSON.parse(responseText);
 
-    return res.status(200).json({ success: true, data: category })
+    return res.status(200).json({ success: true, data: data })
   } catch (error) {
     console.error("Error calling Gemini API:", error);
     return res.status(500).json({ success: false, message: "Error processing request" })

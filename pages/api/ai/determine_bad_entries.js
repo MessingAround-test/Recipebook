@@ -20,9 +20,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ message: "Missing search term or list of entries" });
     }
 
-    if (returned_terms.length > 15) {
-      returned_terms = returned_terms.slice(0, 15)
-    }
+    // Removed limit to allow full validation of expanded results
+    // if (returned_terms.length > 15) {
+    //   returned_terms = returned_terms.slice(0, 15)
+    // }
 
     const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${GEMINI_API_KEY}`;
     const prompt = {

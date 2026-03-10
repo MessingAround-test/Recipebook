@@ -51,18 +51,18 @@ const ToggleList = ({ inputList, onUpdateList, value, text = "Select Option" }: 
                     {inputList.map((item: string) => (
                         <div
                             key={item}
-                            className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                            className="relative flex w-full cursor-pointer select-none items-center rounded-sm hover:bg-[var(--accent)] hover:text-black transition-colors"
                             onClick={() => toggleItem(item)}
                         >
-                            <label className="flex items-center gap-2 cursor-pointer w-full uppercase">
+                            <div className="flex items-center gap-2 py-1.5 px-2 w-full uppercase pointer-events-none">
                                 <input
                                     type="checkbox"
                                     checked={activeItems.includes(item)}
-                                    onChange={() => { }}
-                                    className="accent-primary"
+                                    readOnly
+                                    className="accent-emerald-500"
                                 />
                                 {item}
-                            </label>
+                            </div>
                         </div>
                     ))}
                 </div>

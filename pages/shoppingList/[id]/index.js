@@ -9,7 +9,6 @@ import CopyToClipboard from '../../../components/CopyToClipboard'
 import AddShoppingItem from '../../../components/AddShoppingItem'
 import NewIngredientTable from '../../../components/NewIngredientTable'
 import ToggleList from '../../../components/ToggleList'
-import CategoryImage from '../../../components/CategoryImage'
 import { getGroceryStoreProducts } from '../../../lib/commonAPIs'
 import { groupByKeys } from '../../../lib/grouping'
 import { getColorForCategory, getLightColorForCategory } from '../../../lib/colors'
@@ -24,7 +23,8 @@ export default function Home() {
     const [matchedListIngreds, setMatchedListIngreds] = useState([])
     const [isLoading, setLoading] = useState(false)
     const [createNewIngredOpen, setCreateNewIngredOpen] = useState(false)
-    const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA", "Aldi", "Coles"])
+    const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA", "Aldi"])
+    // , "Coles"
     const [pendingSuppliers, setPendingSuppliers] = useState({
         "/WW.png": true,
         "/Panetta.png": true,
@@ -63,7 +63,7 @@ export default function Home() {
             try {
                 const updatedIngredient = await getGroceryStoreProducts(
                     updatedListIngreds[i],
-                    60,
+                    1000, // Increased from 60 to 1000
                     enabledSuppliers,
                     localStorage.getItem('Token')
                 );
@@ -236,7 +236,9 @@ export default function Home() {
         let total = 0
         items.forEach((item) => {
             if (item.options && item.options.length > 0) {
-                total += (item.options[0].total_price / item.options[0].match_efficiency * 100)
+                // Find the cheapest option by purchase PRICE, not efficiency/usage price
+                let cheapestOption = item.options.reduce((prev, curr) => (prev.price < curr.price) ? prev : curr);
+                total += cheapestOption.price;
             }
         })
         return total.toFixed(2);
@@ -270,19 +272,11 @@ export default function Home() {
             if (!item.options || item.options.length === 0) return;
 
             suppliers.forEach(supplier => {
-                // Find all options from this supplier
                 const supplierOptions = item.options.filter(opt => opt.source === supplier);
                 if (supplierOptions.length > 0) {
-                    // Options seem to be already sorted by price, but let's be safe and find the minimum total_price explicitly.
-                    // Assuming options are objects mapped from filter():
-                    let cheapestOption = supplierOptions[0];
-                    for (let i = 1; i < supplierOptions.length; i++) {
-                        if (supplierOptions[i].total_price < cheapestOption.total_price) {
-                            cheapestOption = supplierOptions[i];
-                        }
-                    }
-
-                    totals[supplier].cost += (cheapestOption.total_price / cheapestOption.match_efficiency * 100);
+                    // Selection based on lowest purchase price (price at register)
+                    let cheapestOption = supplierOptions.reduce((prev, curr) => (prev.price < curr.price) ? prev : curr);
+                    totals[supplier].cost += cheapestOption.price;
                     totals[supplier].itemsFound += 1;
                 }
             });
@@ -295,8 +289,8 @@ export default function Home() {
         const isCurrentlyOnlyEnabled = enabledSuppliers.length === 1 && enabledSuppliers[0] === supplier;
 
         if (isCurrentlyOnlyEnabled) {
-            // Reset to all suppliers
-            const allSuppliers = ["WW", "Panetta", "IGA", "Aldi", "Coles"];
+            const allSuppliers = ["WW", "Panetta", "IGA", "Aldi"];
+            // , "Coles"
             setEnabledSuppliers(allSuppliers);
             setPendingSuppliers({
                 "/WW.png": true,
@@ -305,10 +299,8 @@ export default function Home() {
                 "/Aldi.png": true,
                 "/Coles.png": true
             });
-            // Remove "supplier" from filters
             setFilters(filters.filter(f => f !== "supplier"));
         } else {
-            // Filter to just this supplier
             setEnabledSuppliers([supplier]);
             const newPending = {
                 "/WW.png": supplier === "WW",
@@ -318,15 +310,24 @@ export default function Home() {
                 "/Coles.png": supplier === "Coles"
             };
             setPendingSuppliers(newPending);
-            // Add "supplier" to filters if not present
             if (!filters.includes("supplier")) {
                 setFilters([...filters, "supplier"]);
             }
         }
     };
 
-    const groupedIngredients = groupByKeys(matchedListIngreds, filters);
+    const activeFilters = [...filters].sort((a, b) => {
+        if (a === 'supplier') return -1;
+        if (b === 'supplier') return 1;
+        return 0;
+    });
+    const groupedIngredients = groupByKeys(matchedListIngreds, activeFilters);
     const sortedGroups = Object.keys(groupedIngredients).sort(sortFunction);
+
+    const totalCost1 = parseFloat(calculateTotalOfList(matchedListIngreds));
+    const totalCost2 = parseFloat(calculateMedianSupplierTotal(matchedListIngreds, enabledSuppliers));
+    const displayTotalMin = Math.min(totalCost1, totalCost2).toFixed(2);
+    const displayTotalMax = Math.max(totalCost1, totalCost2).toFixed(2);
 
     return (
         <div className={styles.wrapper}>
@@ -338,33 +339,35 @@ export default function Home() {
             <div className={styles.container}>
                 <main className={styles.main}>
 
-                    {/* Header */}
-                    <div className="flex-row justify-between align-center mb-6 w-full glass-card p-4">
-                        <h1 className="text-2xl font-bold m-0 tracking-tight">🛒 {list?.name || 'Loading...'}</h1>
-                        <div className="text-right flex flex-col justify-center">
-                            <h4 className="text-lg font-bold m-0 text-[var(--accent)]">
-                                EST. COST: <span className="text-white">${calculateTotalOfList(matchedListIngreds)} - ${calculateMedianSupplierTotal(matchedListIngreds, enabledSuppliers)}</span>
-                            </h4>
-                            <span className="text-[10px] font-medium text-gray-400 mt-0.5 uppercase">({matchedListIngreds.length} items)</span>
+                    {/* Consolidated Header & Actions */}
+                    <div className="glass-card w-full mb-6 p-4 flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-[100]">
+                        <div className="flex flex-col gap-1">
+                            <h1 className="text-2xl font-bold m-0 tracking-tight">🛒 {list?.name || 'Loading...'}</h1>
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <h4 className="text-sm font-bold m-0 text-[var(--accent)] uppercase tracking-wide">
+                                    EST. COST: <span className="text-white">${displayTotalMin} - ${displayTotalMax}</span>
+                                </h4>
+                                <span className="text-[10px] font-medium text-gray-400 uppercase opacity-70">({matchedListIngreds.length} items)</span>
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Actions & Filters */}
-                    <div className="flex items-center gap-4 mb-6 w-full relative z-[100]">
-                        <button
-                            className={`btn-modern scale-90 ${createNewIngredOpen ? 'btn-danger' : ''}`}
-                            onClick={() => setCreateNewIngredOpen(!createNewIngredOpen)}
-                        >
-                            {createNewIngredOpen ? 'CANCEL' : '➕ ADD ITEM'}
-                        </button>
-
-                        <div className="ml-auto min-w-[200px]">
-                            <ToggleList
-                                inputList={availableFilters}
-                                onUpdateList={(currentState) => setFilters(currentState)}
-                                value={filters}
-                                text={"Group By"}
-                            />
+                        <div className="flex items-center gap-3 flex-wrap md:flex-nowrap">
+                            {!createNewIngredOpen && (
+                                <button
+                                    className="btn-modern !py-2 !px-4 text-xs"
+                                    onClick={() => setCreateNewIngredOpen(true)}
+                                >
+                                    ➕ ADD ITEM
+                                </button>
+                            )}
+                            <div className="min-w-[170px] flex-1 md:flex-none">
+                                <ToggleList
+                                    inputList={availableFilters}
+                                    onUpdateList={(currentState) => setFilters(currentState)}
+                                    value={filters}
+                                    text={"Group By"}
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -374,28 +377,31 @@ export default function Home() {
                                 shoppingListId={id}
                                 handleSubmit={handleSubmitCreateNewItem}
                                 reload={getRecipeDetails}
+                                onCancel={() => setCreateNewIngredOpen(false)}
                             />
                         </div>
                     )}
 
-                    {/* Supplier Filter */}
+                    {/* Secondary Filters (Suppliers) */}
                     {filters.includes("supplier") && (
-                        <div className="glass-card w-full mb-6" style={{ padding: '1rem 1.25rem' }}>
-                            <h6 className="font-bold uppercase tracking-wider text-gray-500 mb-3" style={{ fontSize: '0.7rem' }}>Active Suppliers</h6>
-                            <div className="flex items-center justify-between gap-4 flex-wrap">
-                                <div className="scale-90 origin-left">
-                                    <ImageList
-                                        images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]}
-                                        onImageChange={(e) => setPendingSuppliers(e)}
-                                        value={pendingSuppliers}
-                                    />
+                        <div className="flex flex-col gap-4 mb-3 w-full">
+                            <div className="glass-card w-full" style={{ padding: '0.75rem 1rem' }}>
+                                <h6 className="font-bold uppercase tracking-wider text-gray-500 mb-2" style={{ fontSize: '0.65rem' }}>Active Suppliers</h6>
+                                <div className="flex items-center justify-between gap-4 flex-wrap">
+                                    <div className="scale-75 origin-left">
+                                        <ImageList
+                                            images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]}
+                                            onImageChange={(e) => setPendingSuppliers(e)}
+                                            value={pendingSuppliers}
+                                        />
+                                    </div>
+                                    <button
+                                        className="btn-modern !bg-emerald-500 hover:!bg-emerald-400 !text-black px-3 py-1 rounded-md font-bold text-[10px]"
+                                        onClick={() => updateSupplierFromInputObject(pendingSuppliers)}
+                                    >
+                                        APPLY
+                                    </button>
                                 </div>
-                                <button
-                                    className="btn-modern !bg-emerald-500 hover:!bg-emerald-400 !text-black px-4 py-1.5 rounded-md font-bold text-xs"
-                                    onClick={() => updateSupplierFromInputObject(pendingSuppliers)}
-                                >
-                                    APPLY FILTER
-                                </button>
                             </div>
                         </div>
                     )}
@@ -406,28 +412,49 @@ export default function Home() {
                             const ingredientsInGroup = groupedIngredients[group];
                             if (!ingredientsInGroup || ingredientsInGroup.length === 0) return null;
 
-                            // Apply dynamic colors to the group wrapper based on the group name
                             const groupColorAccent = getColorForCategory(group);
                             const groupColorLight = getLightColorForCategory(group);
+
+                            // Calculate group costs
+                            const groupCost1 = parseFloat(calculateTotalOfList(ingredientsInGroup));
+                            const groupCost2 = parseFloat(calculateMedianSupplierTotal(ingredientsInGroup, enabledSuppliers));
+                            const groupMin = Math.min(groupCost1, groupCost2).toFixed(2);
+                            const groupMax = Math.max(groupCost1, groupCost2).toFixed(2);
 
                             return (
                                 <div key={group} className="glass-card w-full" style={{ padding: '0', overflow: 'hidden' }}>
                                     <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-secondary)' }}>
-                                        <h6 className="font-bold uppercase tracking-wider text-base m-0 flex items-center text-white">
-                                            <CategoryImage
-                                                data={groupedIngredients}
-                                                order={sortedGroups}
-                                                current={group}
-                                            >
-                                                <span style={{ marginLeft: '0.6rem' }}>
-                                                    {group.split('|')
+                                        <div className="flex justify-between items-center">
+                                            <h6 className="font-bold uppercase tracking-wider text-base m-0 flex items-center">
+                                                {(() => {
+                                                    const parts = group.split('|')
                                                         .map(p => p.includes('=') ? p.split('=')[1] : p)
-                                                        .filter(v => v !== 'true' && v !== 'false')
-                                                        .join(' ')
+                                                        .filter(v => v !== 'true' && v !== 'false' && v !== '');
+
+                                                    if (parts.length === 0) {
+                                                        if (group.includes("complete=true")) return <span className="text-emerald-400">✅ COMPLETED</span>;
+                                                        return <span className="text-white">OTHER</span>;
                                                     }
-                                                </span>
-                                            </CategoryImage>
-                                        </h6>
+
+                                                    return parts.map((part, index) => (
+                                                        <span key={index} className="flex items-center">
+                                                            <span style={{ color: getColorForCategory(part) || 'white' }}>
+                                                                {part}
+                                                            </span>
+                                                            {index < parts.length - 1 && (
+                                                                <span className="mx-2 text-gray-500 opacity-50">&</span>
+                                                            )}
+                                                        </span>
+                                                    ));
+                                                })()}
+                                            </h6>
+                                            <div className="text-right flex flex-col justify-center">
+                                                <h4 className="font-bold m-0 text-[var(--accent)]" style={{ fontSize: '0.8rem' }}>
+                                                    EST. COST: <span className="text-white">${groupMin} - ${groupMax}</span>
+                                                </h4>
+                                                <span className="text-[9px] font-medium text-gray-400 mt-0.5 uppercase">({ingredientsInGroup.length} items)</span>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="bg-[var(--bg-main)]">
                                         <NewIngredientTable
@@ -448,16 +475,14 @@ export default function Home() {
                     {/* Footer Actions */}
                     <div className="flex flex-col items-center gap-4 mt-8 pb-8 w-full border-t border-[var(--glass-border)] pt-8">
 
-                        {/* Supplier Totals Cards */}
                         <div className="w-full mb-6">
                             <h3 className="text-xl font-bold mb-4 text-center text-white">Cheapest Single-Supplier Options</h3>
                             <div className="flex flex-wrap justify-center gap-4">
                                 {Object.entries(calculateSupplierTotals(matchedListIngreds, enabledSuppliers))
-                                    .sort((a, b) => a[1].cost - b[1].cost) // Sort by cost ascending
+                                    .sort((a, b) => a[1].cost - b[1].cost)
                                     .map(([supplier, data]) => {
                                         if (data.itemsFound === 0) return null;
 
-                                        // Calculate percentage of items found
                                         const percentFound = Math.round((data.itemsFound / matchedListIngreds.length) * 100);
                                         const allFound = data.itemsFound === matchedListIngreds.length;
                                         const supplierColor = getColorForCategory(supplier) || 'var(--accent)';
@@ -469,7 +494,6 @@ export default function Home() {
                                                 className="glass-card flex flex-col p-4 w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer group hover:border-[var(--accent)]"
                                                 style={{ borderColor: `${supplierColor}40` }}
                                             >
-                                                {/* Top accent bar */}
                                                 <div className="absolute top-0 left-0 right-0 h-1 transition-height duration-300 group-hover:h-2" style={{ backgroundColor: supplierColor }}></div>
 
                                                 <div className="flex items-center justify-between mb-2">
@@ -487,7 +511,6 @@ export default function Home() {
                                                         <Info size={12} className="opacity-70 group-hover:opacity-100" />
                                                     </div>
 
-                                                    {/* Tooltip hint */}
                                                     <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-gray-800 text-[10px] text-white rounded shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-10 text-center">
                                                         Click to filter by {supplier}
                                                         <div className="absolute top-full left-4 -mt-1 border-4 border-transparent border-t-gray-800"></div>

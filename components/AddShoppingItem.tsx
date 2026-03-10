@@ -4,6 +4,7 @@ import SearchableImageDropdown from './SearchableImageDropdown'
 import SearchableDropdown from './SearchableDropdown'
 import { FormField } from './FormField'
 import { Button } from './ui/button'
+import { X } from 'lucide-react'
 
 const categories = [
     { name: 'Fresh Produce', image: 'FreshProduce.png' },
@@ -30,9 +31,10 @@ interface AddShoppingItemProps {
     shoppingListId?: string
     handleSubmit: (e: any) => void
     hideCategories?: boolean
+    onCancel?: () => void
 }
 
-export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false }: AddShoppingItemProps) {
+export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false, onCancel }: AddShoppingItemProps) {
     const [formData, setFormData] = useState({
         name: "",
         quantity: 1 as number | string,
@@ -41,6 +43,9 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
         shoppingListId: shoppingListId,
         category: ""
     });
+
+    const [isAiLoading, setIsAiLoading] = useState(false);
+    const [fieldsRevealed, setFieldsRevealed] = useState(false);
 
     const resetForm = () => {
         setFormData({
@@ -51,6 +56,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
             shoppingListId: shoppingListId,
             category: ""
         });
+        setFieldsRevealed(false);
     };
 
     const [knownIngredients, setKnownIngredients] = useState<any[]>([])
@@ -61,6 +67,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
     };
 
     const handleNameSubmit = async () => {
+        if (fieldsRevealed || isAiLoading) return;
         if (formData.name !== undefined && formData.name !== "") {
             await determineDefaults(formData.name)
         }
@@ -68,6 +75,10 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
 
     const handleSubmitLocal = async (e: any) => {
         e.preventDefault();
+        if (!fieldsRevealed && !isAiLoading) {
+            await handleNameSubmit();
+            return;
+        }
         e.value = formData
         e.resetForm = resetForm;
         handleSubmit(e)
@@ -78,40 +89,41 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
     }
 
     async function determineDefaults(name: string) {
+        setIsAiLoading(true);
         try {
             const token = localStorage.getItem('Token')
             let response = await (await fetch(`/api/ShoppingListItem/options?search_term=${name}`, {
                 headers: { 'edgetoken': token || "" }
             })).json()
 
-            if (response.success) {
+            if (response.success && response.data.category && response.data.category[0]) {
                 const values = response.data
+                let category = values.category[0] ? values.category[0].value : formData.category
+                let quantity = values.quantity[0] ? values.quantity[0].value : formData.quantity
+                let quantity_type = values.quantity_type[0] ? values.quantity_type[0].value : formData.quantity_type
+                setFormData(prev => ({ ...prev, category, quantity, quantity_type }));
+                setFieldsRevealed(true);
+            } else {
+                let aiResponse = await (await fetch(`/api/ai/determine_default_categories?search_term=${name}`, {
+                    headers: { 'edgetoken': token || "" }
+                })).json()
 
-                if (values.category && values.category[0]) {
-                    let category = values.category[0] ? values.category[0].value : formData.category
-                    let quantity = values.quantity[0] ? values.quantity[0].value : formData.quantity
-                    let quantity_type = values.quantity_type[0] ? values.quantity_type[0].value : formData.quantity_type
-                    setFormData(prev => ({ ...prev, category, quantity, quantity_type }));
-                } else {
-                    let response = await (await fetch(`/api/ai/determine_default_categories?search_term=${name}`, {
-                        headers: { 'edgetoken': token || "" }
-                    })).json()
-                    if (!response.success) {
-                        console.error('Error fetching data:', response.statusText);
-                        return;
-                    }
-
-                    const category = response.data;
-
-                    if (isValidCategory(categories, category)) {
-                        setFormData(prev => ({ ...prev, category }));
-                    } else {
-                        console.log("The response is not a valid category.");
-                    }
+                if (aiResponse.success) {
+                    const { category, quantity, unit } = aiResponse.data;
+                    setFormData(prev => ({
+                        ...prev,
+                        category: isValidCategory(categories, category) ? category : prev.category,
+                        quantity: quantity || prev.quantity,
+                        quantity_type: unit || prev.quantity_type
+                    }));
                 }
+                setFieldsRevealed(true);
             }
         } catch (error) {
             console.log(error)
+            setFieldsRevealed(true);
+        } finally {
+            setIsAiLoading(false);
         }
     }
 
@@ -137,7 +149,16 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
     }, []);
 
     return (
-        <div className="glass-card w-full max-w-[500px] mx-auto mb-4 p-8 border border-[var(--glass-border)]">
+        <div className="glass-card w-full max-w-[500px] mx-auto mb-4 p-8 border border-[var(--glass-border)] relative">
+            {onCancel && (
+                <button
+                    type="button"
+                    onClick={onCancel}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+                >
+                    <X size={20} />
+                </button>
+            )}
             <form onSubmit={handleSubmitLocal} className="flex flex-col gap-6">
                 <div>
                     <h3 className="text-center font-bold uppercase text-2xl tracking-tight text-white mb-2">Add New Item</h3>
@@ -158,36 +179,6 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                     />
                 </div>
 
-                <div className="flex flex-row gap-4">
-                    <div className="flex-1 flex flex-col gap-2">
-                        <label className="label-modern text-white">Quantity</label>
-                        <input
-                            name="quantity"
-                            id="ingredAmount"
-                            type="text"
-                            placeholder="Amount"
-                            required
-                            onChange={handleChange}
-                            value={formData.quantity}
-                            className="input-modern"
-                        />
-                    </div>
-                    <div className="flex-1 flex flex-col gap-2">
-                        <label className="label-modern text-white">Unit</label>
-                        <select
-                            name="quantity_type"
-                            id="quantity_type"
-                            onChange={handleChange}
-                            value={formData.quantity_type}
-                            required
-                            className="input-modern bg-[var(--bg-secondary)]"
-                        >
-                            <option value="any">any</option>
-                            {Object.keys(quantity_unit_conversions).map((item) => <option key={item} value={item}>{item}</option>)}
-                        </select>
-                    </div>
-                </div>
-
                 <div className="flex flex-col gap-2">
                     <label className="label-modern text-white">Note (optional)</label>
                     <input
@@ -201,23 +192,64 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                     />
                 </div>
 
-                {!hideCategories && (
-                    <div className="flex flex-col gap-2">
-                        <label className="label-modern text-white">Category</label>
-                        <SearchableDropdown
-                            options={categories.map((cat) => cat.name)}
-                            placeholder={"Category"}
-                            onChange={handleChange}
-                            name={"category"}
-                            value={formData.category}
-                            onComplete={() => { }}
-                        />
+                {isAiLoading && (
+                    <div className="flex justify-center items-center gap-2 py-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--accent)]"></div>
+                        <span className="text-xs text-gray-400 font-medium uppercase tracking-widest">AI is thinking...</span>
+                    </div>
+                )}
+
+                {fieldsRevealed && (
+                    <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="flex flex-row gap-4">
+                            <div className="flex-1 flex flex-col gap-2">
+                                <label className="label-modern text-white">Quantity</label>
+                                <input
+                                    name="quantity"
+                                    id="ingredAmount"
+                                    type="text"
+                                    placeholder="Amount"
+                                    required
+                                    onChange={handleChange}
+                                    value={formData.quantity}
+                                    className="input-modern"
+                                />
+                            </div>
+                            <div className="flex-1 flex flex-col gap-2">
+                                <label className="label-modern text-white">Unit</label>
+                                <select
+                                    name="quantity_type"
+                                    id="quantity_type"
+                                    onChange={handleChange}
+                                    value={formData.quantity_type}
+                                    required
+                                    className="input-modern bg-[var(--bg-secondary)]"
+                                >
+                                    <option value="any">any</option>
+                                    {Object.keys(quantity_unit_conversions).map((item) => <option key={item} value={item}>{item}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        {!hideCategories && (
+                            <div className="flex flex-col gap-2">
+                                <label className="label-modern text-white">Category</label>
+                                <SearchableDropdown
+                                    options={categories.map((cat) => cat.name)}
+                                    placeholder={"Category"}
+                                    onChange={handleChange}
+                                    name={"category"}
+                                    value={formData.category}
+                                    onComplete={() => { }}
+                                />
+                            </div>
+                        )}
                     </div>
                 )}
 
                 <div className="mt-4 flex justify-center">
                     <Button className="w-full font-bold uppercase tracking-wider text-base py-6 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all hover:scale-[1.02]" type="submit">
-                        Add to List
+                        {fieldsRevealed ? 'Add to List' : 'Search Item'}
                     </Button>
                 </div>
             </form>

@@ -43,7 +43,8 @@ export default async function handler(req, res) {
                 return res.status(200).send({ res: IngredData })
             } else {
                 let search_query = { search_term: search_term }
-                let companies = ["WW", "IGA", "Panetta", "Aldi", "Coles"]
+                let companies = ["WW", "IGA", "Panetta", "Aldi"]
+                // "Coles"
                 const supplierParam = req.query.supplier;
 
                 if (supplierParam !== undefined) {
@@ -60,7 +61,8 @@ export default async function handler(req, res) {
                 let IngredData = await Ingredients.find(search_query).exec()
                 if (IngredData.length == 0) {
                     let allIngredData = []
-                    companies = ["WW", "IGA", "Panetta", "Aldi", "Coles"]
+                    companies = ["WW", "IGA", "Panetta", "Aldi"]
+                    // , "Coles"
 
                     for (let supplierIndex in companies) {
                         try {
