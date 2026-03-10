@@ -47,32 +47,47 @@ export default async function handler(req, res) {
             let filteredDataArray = []
 
             if (response.data && response.data.Products) {
-                for (let ingredData in response.data.Products) {
-                    let productGroup = response.data.Products[ingredData]
+                for (let productGroup of response.data.Products) {
                     if (!productGroup.Products || productGroup.Products.length === 0) continue;
 
                     let filteredData = productGroup.Products[0]
-                    let internal_id = ""
+                    let internal_id = filteredData.Stockcode || ""
                     let name = filteredData.Name
-                    let price = filteredData.price || filteredData.CupPrice
-                    let quantity = 1
-                    let quantity_unit = filteredData.measure || filteredData.CupMeasure
-                    let quantity_type;
 
-                    if (!(quantity_unit)) {
-                        let metricConversion = convertMetricReading(name)
-                        quantity = metricConversion.quantity
-                        quantity_unit = metricConversion.quantity_unit
-                        quantity_type = metricConversion.quantity_type
-                    } else {
-                        let metricConversion = convertMetricReading(quantity_unit)
-                        quantity_unit = metricConversion.quantity_unit
-                        quantity_type = metricConversion.quantity_type
-                        if (metricConversion.quantity !== 1) {
-                            quantity = quantity * metricConversion.quantity
+                    // Woolworths API: price is typically the package price, CupPrice is comparison price
+                    let price = filteredData.price
+                    let quantity_unit = filteredData.PackageSize || filteredData.measure || filteredData.CupMeasure
+                    let quantity = 1
+                    let quantity_type = "each"
+
+                    if (price !== undefined && price !== null) {
+                        // We have a package price. Try to find the package size.
+                        // 1. Try name first as it often contains the most explicit "2kg" etc.
+                        let nameConversion = convertMetricReading(name)
+                        if (nameConversion.quantity_unit !== 'each') {
+                            quantity = nameConversion.quantity
+                            quantity_unit = nameConversion.quantity_unit
+                            quantity_type = nameConversion.quantity_type
+                        } else if (quantity_unit) {
+                            // 2. Fallback to package size field
+                            let unitConversion = convertMetricReading(quantity_unit)
+                            quantity = unitConversion.quantity
+                            quantity_unit = unitConversion.quantity_unit
+                            quantity_type = unitConversion.quantity_type
                         }
+                    } else if (filteredData.CupPrice !== undefined) {
+                        // Fallback to unit/comparison price if package price is missing
+                        price = filteredData.CupPrice
+                        quantity_unit = filteredData.CupMeasure || "1 each"
+                        let unitConversion = convertMetricReading(quantity_unit)
+                        quantity = unitConversion.quantity
+                        quantity_unit = unitConversion.quantity_unit
+                        quantity_type = unitConversion.quantity_type
                     }
-                    let unit_price = parseFloat((price / quantity).toFixed(3))
+
+                    // Safety check to avoid division by zero
+                    let unit_price = quantity > 0 ? parseFloat((price / quantity).toFixed(3)) : price
+
                     let filteredObj = {
                         "id": source + "-" + name + "-" + internal_id,
                         "name": name,
