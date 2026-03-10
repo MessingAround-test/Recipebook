@@ -112,6 +112,9 @@ export default function Home() {
         })
         let data = await res.json()
         setlistIngreds(data.res)
+        if (data.res && data.res.length === 0) {
+            setCreateNewIngredOpen(true)
+        }
     }
 
     async function getRecipeDetails() {
@@ -456,6 +459,8 @@ export default function Home() {
     const groupedIngredients = groupByKeys(displayIngredients, activeFilters);
     const sortedGroups = Object.keys(groupedIngredients).sort(sortFunction);
 
+    const isListEmpty = matchedListIngreds.length === 0;
+
     return (
         <div className={styles.wrapper}>
             <Toolbar />
@@ -474,25 +479,31 @@ export default function Home() {
                                 <span className="truncate max-w-[200px] sm:max-w-none">{list?.name || 'Loading...'}</span>
                             </h1>
                             <div className="flex items-center gap-3 flex-wrap">
-                                <h4 className="text-[10px] sm:text-sm font-bold m-0 text-[var(--accent)] uppercase tracking-wide">
-                                    AVG EST. COST: <span className="text-white">${displayTotal}</span>
-                                </h4>
-                                <span className="text-[10px] font-medium text-gray-400 uppercase opacity-70">({matchedListIngreds.length} items)</span>
+                                {!isListEmpty && (
+                                    <>
+                                        <h4 className="text-[10px] sm:text-sm font-bold m-0 text-[var(--accent)] uppercase tracking-wide">
+                                            AVG EST. COST: <span className="text-white">${displayTotal}</span>
+                                        </h4>
+                                        <span className="text-[10px] font-medium text-gray-400 uppercase opacity-70">({matchedListIngreds.length} items)</span>
+                                    </>
+                                )}
                             </div>
                         </div>
 
                         <div className="flex flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto flex-wrap">
                             {/* Pricing Strategy Toggle */}
-                            <div className="flex rounded-lg overflow-hidden border border-[var(--glass-border)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
-                                <button
-                                    onClick={() => setPricingStrategy('match')}
-                                    className={`px-2 py-1.5 transition-colors ${pricingStrategy === 'match' ? 'bg-[var(--accent)] text-black' : 'bg-transparent text-gray-400 hover:text-white'}`}
-                                >Best Match</button>
-                                <button
-                                    onClick={() => setPricingStrategy('value')}
-                                    className={`px-2 py-1.5 transition-colors ${pricingStrategy === 'value' ? 'bg-[var(--accent)] text-black' : 'bg-transparent text-gray-400 hover:text-white'}`}
-                                >Best Value</button>
-                            </div>
+                            {!isListEmpty && (
+                                <div className="flex rounded-lg overflow-hidden border border-[var(--glass-border)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
+                                    <button
+                                        onClick={() => setPricingStrategy('match')}
+                                        className={`px-2 py-1.5 transition-colors ${pricingStrategy === 'match' ? 'bg-[var(--accent)] text-black' : 'bg-transparent text-gray-400 hover:text-white'}`}
+                                    >Best Match</button>
+                                    <button
+                                        onClick={() => setPricingStrategy('value')}
+                                        className={`px-2 py-1.5 transition-colors ${pricingStrategy === 'value' ? 'bg-[var(--accent)] text-black' : 'bg-transparent text-gray-400 hover:text-white'}`}
+                                    >Best Value</button>
+                                </div>
+                            )}
                             {!createNewIngredOpen && (
                                 <button
                                     className="btn-modern !py-2.5 !px-4 text-[10px] sm:text-xs flex-1 sm:flex-none whitespace-nowrap"
@@ -501,14 +512,16 @@ export default function Home() {
                                     ➕ ADD ITEM
                                 </button>
                             )}
-                            <div className="flex-1 sm:min-w-[170px] sm:flex-none">
-                                <ToggleList
-                                    inputList={availableFilters}
-                                    onUpdateList={(currentState) => setFilters(currentState)}
-                                    value={filters}
-                                    text={"Group By"}
-                                />
-                            </div>
+                            {!isListEmpty && (
+                                <div className="flex-1 sm:min-w-[170px] sm:flex-none">
+                                    <ToggleList
+                                        inputList={availableFilters}
+                                        onUpdateList={(currentState) => setFilters(currentState)}
+                                        value={filters}
+                                        text={"Group By"}
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -524,7 +537,7 @@ export default function Home() {
                     )}
 
                     {/* Secondary Filters (Suppliers) */}
-                    {filters.includes("supplier") && (
+                    {filters.includes("supplier") && !isListEmpty && (
                         <div className="flex flex-col gap-4 mb-3 w-full">
                             <div className="glass-card w-full p-3 sm:p-4">
                                 <h6 className="font-bold uppercase tracking-wider text-gray-500 mb-2" style={{ fontSize: '0.65rem' }}>Active Suppliers</h6>
@@ -548,188 +561,192 @@ export default function Home() {
                     )}
 
                     {/* Ingredients List */}
-                    <div className="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
-                        {sortedGroups.map((group) => {
-                            const ingredientsInGroup = groupedIngredients[group];
-                            if (!ingredientsInGroup || ingredientsInGroup.length === 0) return null;
+                    {!isListEmpty && (
+                        <div className="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
+                            {sortedGroups.map((group) => {
+                                const ingredientsInGroup = groupedIngredients[group];
+                                if (!ingredientsInGroup || ingredientsInGroup.length === 0) return null;
 
-                            const groupColorAccent = getColorForCategory(group);
-                            const groupColorLight = getLightColorForCategory(group);
+                                const groupColorAccent = getColorForCategory(group);
+                                const groupColorLight = getLightColorForCategory(group);
 
-                            // Always show group cost
-                            const groupCost = calculateTotalOfList(ingredientsInGroup, enabledSuppliers, pricingStrategy);
+                                // Always show group cost
+                                const groupCost = calculateTotalOfList(ingredientsInGroup, enabledSuppliers, pricingStrategy);
 
-                            return (
-                                <div key={group} className="glass-card w-full" style={{ padding: '0', overflow: 'hidden' }}>
-                                    <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-secondary)' }}>
-                                        <div className="flex justify-between items-center gap-2">
-                                            <h6 className="font-bold uppercase tracking-wider text-xs sm:text-base m-0 flex flex-wrap items-center">
-                                                {(() => {
-                                                    const parts = group.split('|')
-                                                        .map(p => p.includes('=') ? p.split('=')[1] : p)
-                                                        .filter(v => v !== 'true' && v !== 'false' && v !== '');
+                                return (
+                                    <div key={group} className="glass-card w-full" style={{ padding: '0', overflow: 'hidden' }}>
+                                        <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-secondary)' }}>
+                                            <div className="flex justify-between items-center gap-2">
+                                                <h6 className="font-bold uppercase tracking-wider text-xs sm:text-base m-0 flex flex-wrap items-center">
+                                                    {(() => {
+                                                        const parts = group.split('|')
+                                                            .map(p => p.includes('=') ? p.split('=')[1] : p)
+                                                            .filter(v => v !== 'true' && v !== 'false' && v !== '');
 
-                                                    if (parts.length === 0) {
-                                                        if (group.includes("complete=true")) return <span className="text-emerald-400">✅ COMPLETED</span>;
-                                                        return <span className="text-white">OTHER</span>;
-                                                    }
+                                                        if (parts.length === 0) {
+                                                            if (group.includes("complete=true")) return <span className="text-emerald-400">✅ COMPLETED</span>;
+                                                            return <span className="text-white">OTHER</span>;
+                                                        }
 
-                                                    return parts.map((part, index) => (
-                                                        <span key={index} className="flex items-center">
-                                                            <span style={{ color: getColorForCategory(part) || 'white' }}>
-                                                                {part === "Other (No Match)" ? "⚠️ Figure This Out" : part}
+                                                        return parts.map((part, index) => (
+                                                            <span key={index} className="flex items-center">
+                                                                <span style={{ color: getColorForCategory(part) || 'white' }}>
+                                                                    {part === "Other (No Match)" ? "⚠️ Figure This Out" : part}
+                                                                </span>
+                                                                {index < parts.length - 1 && (
+                                                                    <span className="mx-1 sm:mx-2 text-gray-500 opacity-50">&</span>
+                                                                )}
                                                             </span>
-                                                            {index < parts.length - 1 && (
-                                                                <span className="mx-1 sm:mx-2 text-gray-500 opacity-50">&</span>
-                                                            )}
-                                                        </span>
-                                                    ));
-                                                })()}
-                                            </h6>
-                                            <div className="text-right flex flex-col justify-center min-w-[60px]">
-                                                <h4 className="font-bold m-0 text-[var(--accent)]" style={{ fontSize: '0.65rem' }}>
-                                                    <span className="text-white">${groupCost}</span>
-                                                </h4>
-                                                <span className="text-[8px] sm:text-[9px] font-medium text-gray-400 mt-0.5 uppercase">({ingredientsInGroup.length} items)</span>
+                                                        ));
+                                                    })()}
+                                                </h6>
+                                                <div className="text-right flex flex-col justify-center min-w-[60px]">
+                                                    <h4 className="font-bold m-0 text-[var(--accent)]" style={{ fontSize: '0.65rem' }}>
+                                                        <span className="text-white">${groupCost}</span>
+                                                    </h4>
+                                                    <span className="text-[8px] sm:text-[9px] font-medium text-gray-400 mt-0.5 uppercase">({ingredientsInGroup.length} items)</span>
+                                                </div>
                                             </div>
                                         </div>
+                                        <div className="bg-[var(--bg-main)]">
+                                            <NewIngredientTable
+                                                reload={() => reloadAllIngredients()}
+                                                ingredients={ingredientsInGroup.sort(ingredientSortFunction)}
+                                                handleCheckboxChange={handleCheckboxChange}
+                                                handleDeleteItem={handleDeleteItem}
+                                                filters={filters}
+                                                enabledSuppliers={enabledSuppliers}
+                                                groupColor={groupColorAccent}
+                                                pricingStrategy={pricingStrategy}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="bg-[var(--bg-main)]">
-                                        <NewIngredientTable
-                                            reload={() => reloadAllIngredients()}
-                                            ingredients={ingredientsInGroup.sort(ingredientSortFunction)}
-                                            handleCheckboxChange={handleCheckboxChange}
-                                            handleDeleteItem={handleDeleteItem}
-                                            filters={filters}
-                                            enabledSuppliers={enabledSuppliers}
-                                            groupColor={groupColorAccent}
-                                            pricingStrategy={pricingStrategy}
-                                        />
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     {/* Footer Actions */}
                     <div className="flex flex-col items-center gap-4 mt-8 pb-8 w-full border-t border-[var(--glass-border)] pt-8">
 
-                        <div className="w-full mb-6">
-                            <h3 className="text-xl font-bold mb-4 text-center text-white">Recommended Supplier Options</h3>
-                            <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-3 sm:gap-4">
-                                {/* Reset View Option */}
-                                <div
-                                    onClick={resetToDefault}
-                                    className="glass-card flex flex-col items-center justify-center p-3 sm:p-4 w-full sm:w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer group hover:border-gray-500"
-                                    style={{ borderColor: 'var(--glass-border)' }}
-                                >
-                                    <div className="text-2xl mb-1 group-hover:rotate-12 transition-transform">🔄</div>
-                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Reset View</div>
-                                    <div className="text-[9px] text-gray-500 mt-1">Clear all filters</div>
+                        {!isListEmpty && (
+                            <div className="w-full mb-6">
+                                <h3 className="text-xl font-bold mb-4 text-center text-white">Recommended Supplier Options</h3>
+                                <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-3 sm:gap-4">
+                                    {/* Reset View Option */}
+                                    <div
+                                        onClick={resetToDefault}
+                                        className="glass-card flex flex-col items-center justify-center p-3 sm:p-4 w-full sm:w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer group hover:border-gray-500"
+                                        style={{ borderColor: 'var(--glass-border)' }}
+                                    >
+                                        <div className="text-2xl mb-1 group-hover:rotate-12 transition-transform">🔄</div>
+                                        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Reset View</div>
+                                        <div className="text-[9px] text-gray-500 mt-1">Clear all filters</div>
+                                    </div>
+
+                                    {(() => {
+                                        // Always show all 5 suppliers in recommendations, regardless of current filter
+                                        const allSuppliers = ["WW", "Panetta", "IGA", "Aldi", "Coles"];
+                                        const allOptions = calculateSupplierTotals(matchedListIngreds, allSuppliers, pricingStrategy);
+                                        const sortedOptions = allOptions.sort((a, b) => {
+                                            if (b.itemsFound !== a.itemsFound) return b.itemsFound - a.itemsFound;
+                                            return a.cost - b.cost;
+                                        });
+
+                                        const someComplete = sortedOptions.some(opt => opt.itemsFound === matchedListIngreds.length);
+
+                                        const bestCost = sortedOptions[0]?.cost || 0;
+                                        const rankLabels = ["BEST", "GOOD", "OK", "FAIR", "POOR"];
+
+                                        return sortedOptions.slice(0, 5).map((option, idx) => {
+                                            if (option.itemsFound === 0) return null;
+
+                                            const allFound = option.itemsFound === matchedListIngreds.length;
+                                            const isRecommended = someComplete ? allFound : idx < 2;
+                                            const supplierNames = option.suppliers.join(' + ');
+                                            const primarySupplier = option.suppliers[0];
+                                            const supplierColor = getColorForCategory(primarySupplier) || 'var(--accent)';
+
+                                            const percentDiff = bestCost > 0 ? ((option.cost - bestCost) / bestCost * 100).toFixed(0) : 0;
+                                            const rankLabel = rankLabels[idx] || "POOR";
+
+                                            // Highlight currently active selection
+                                            const isActive = enabledSuppliers.length === option.suppliers.length &&
+                                                option.suppliers.every(s => enabledSuppliers.includes(s));
+
+                                            return (
+                                                <div
+                                                    key={supplierNames}
+                                                    onClick={() => handleSupplierClick(option.suppliers)}
+                                                    className={`glass-card flex flex-col p-4 w-full sm:w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer group ${isActive ? 'ring-2 ring-[var(--accent)] shadow-[0_0_20px_rgba(var(--accent-rgb),0.5)]' :
+                                                        isRecommended ? 'border shadow-[0_0_15px_rgba(var(--accent-rgb),0.2)]' : ''
+                                                        }`}
+                                                    style={{ borderColor: isActive ? 'var(--accent)' : isRecommended ? supplierColor : `${supplierColor}20` }}
+                                                >
+                                                    {/* Header: Rank & Icons */}
+                                                    <div className="flex items-start justify-between mb-4">
+                                                        <div className="flex flex-col gap-1">
+                                                            {isActive && (
+                                                                <span className="bg-white text-black text-[7px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-tighter w-fit shadow-sm">ACTIVE</span>
+                                                            )}
+                                                            <span
+                                                                className="text-[9px] font-black px-2 py-0.5 rounded-sm uppercase tracking-wider w-fit shadow-sm"
+                                                                style={{
+                                                                    backgroundColor: isActive ? 'var(--accent)' : idx === 0 ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
+                                                                    color: isActive || idx === 0 ? 'black' : 'rgba(255,255,255,0.4)'
+                                                                }}
+                                                            >
+                                                                {rankLabel}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex -space-x-1.5">
+                                                            {option.suppliers.map(s => (
+                                                                <div key={s} className="h-6 w-6 sm:h-7 sm:w-7 rounded-full border-2 border-[var(--bg-secondary)] bg-white p-0.5 overflow-hidden shadow-sm transition-transform group-hover:scale-110">
+                                                                    <img src={`/${s}.png`} alt={s} className="w-full h-full object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Main: Price */}
+                                                    <div className="flex flex-col items-center justify-center py-1">
+                                                        <div className="flex items-baseline gap-1.5">
+                                                            <span className="text-2xl sm:text-3xl font-black text-white tracking-tighter">${option.cost.toFixed(2)}</span>
+                                                            {idx > 0 && (
+                                                                <span className="text-[10px] font-bold text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded ring-1 ring-inset ring-red-400/20">+{percentDiff}%</span>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-[9px] uppercase font-bold text-gray-500 tracking-[0.2em] mt-1 filter brightness-125">Est. Total</span>
+                                                    </div>
+
+                                                    {/* Footer: Details */}
+                                                    <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
+                                                        <div className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5 ${allFound ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                                                            <span>{option.itemsFound} found</span>
+                                                            <Info
+                                                                size={10}
+                                                                className="opacity-40 group-hover:opacity-100 cursor-help transition-opacity"
+                                                                title={supplierNames}
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Accent Line */}
+                                                    <div className="absolute top-0 left-0 right-0 h-0.5 opacity-50 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: supplierColor }}></div>
+                                                </div>
+                                            );
+                                        });
+                                    })()}
                                 </div>
-
-                                {(() => {
-                                    // Always show all 5 suppliers in recommendations, regardless of current filter
-                                    const allSuppliers = ["WW", "Panetta", "IGA", "Aldi", "Coles"];
-                                    const allOptions = calculateSupplierTotals(matchedListIngreds, allSuppliers, pricingStrategy);
-                                    const sortedOptions = allOptions.sort((a, b) => {
-                                        if (b.itemsFound !== a.itemsFound) return b.itemsFound - a.itemsFound;
-                                        return a.cost - b.cost;
-                                    });
-
-                                    const someComplete = sortedOptions.some(opt => opt.itemsFound === matchedListIngreds.length);
-
-                                    const bestCost = sortedOptions[0]?.cost || 0;
-                                    const rankLabels = ["BEST", "GOOD", "OK", "FAIR", "POOR"];
-
-                                    return sortedOptions.slice(0, 5).map((option, idx) => {
-                                        if (option.itemsFound === 0) return null;
-
-                                        const allFound = option.itemsFound === matchedListIngreds.length;
-                                        const isRecommended = someComplete ? allFound : idx < 2;
-                                        const supplierNames = option.suppliers.join(' + ');
-                                        const primarySupplier = option.suppliers[0];
-                                        const supplierColor = getColorForCategory(primarySupplier) || 'var(--accent)';
-
-                                        const percentDiff = bestCost > 0 ? ((option.cost - bestCost) / bestCost * 100).toFixed(0) : 0;
-                                        const rankLabel = rankLabels[idx] || "POOR";
-
-                                        // Highlight currently active selection
-                                        const isActive = enabledSuppliers.length === option.suppliers.length &&
-                                            option.suppliers.every(s => enabledSuppliers.includes(s));
-
-                                        return (
-                                            <div
-                                                key={supplierNames}
-                                                onClick={() => handleSupplierClick(option.suppliers)}
-                                                className={`glass-card flex flex-col p-4 w-full sm:w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer group ${isActive ? 'ring-2 ring-[var(--accent)] shadow-[0_0_20px_rgba(var(--accent-rgb),0.5)]' :
-                                                    isRecommended ? 'border shadow-[0_0_15px_rgba(var(--accent-rgb),0.2)]' : ''
-                                                    }`}
-                                                style={{ borderColor: isActive ? 'var(--accent)' : isRecommended ? supplierColor : `${supplierColor}20` }}
-                                            >
-                                                {/* Header: Rank & Icons */}
-                                                <div className="flex items-start justify-between mb-4">
-                                                    <div className="flex flex-col gap-1">
-                                                        {isActive && (
-                                                            <span className="bg-white text-black text-[7px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-tighter w-fit shadow-sm">ACTIVE</span>
-                                                        )}
-                                                        <span
-                                                            className="text-[9px] font-black px-2 py-0.5 rounded-sm uppercase tracking-wider w-fit shadow-sm"
-                                                            style={{
-                                                                backgroundColor: isActive ? 'var(--accent)' : idx === 0 ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
-                                                                color: isActive || idx === 0 ? 'black' : 'rgba(255,255,255,0.4)'
-                                                            }}
-                                                        >
-                                                            {rankLabel}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex -space-x-1.5">
-                                                        {option.suppliers.map(s => (
-                                                            <div key={s} className="h-6 w-6 sm:h-7 sm:w-7 rounded-full border-2 border-[var(--bg-secondary)] bg-white p-0.5 overflow-hidden shadow-sm transition-transform group-hover:scale-110">
-                                                                <img src={`/${s}.png`} alt={s} className="w-full h-full object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-
-                                                {/* Main: Price */}
-                                                <div className="flex flex-col items-center justify-center py-1">
-                                                    <div className="flex items-baseline gap-1.5">
-                                                        <span className="text-2xl sm:text-3xl font-black text-white tracking-tighter">${option.cost.toFixed(2)}</span>
-                                                        {idx > 0 && (
-                                                            <span className="text-[10px] font-bold text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded ring-1 ring-inset ring-red-400/20">+{percentDiff}%</span>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-[9px] uppercase font-bold text-gray-500 tracking-[0.2em] mt-1 filter brightness-125">Est. Total</span>
-                                                </div>
-
-                                                {/* Footer: Details */}
-                                                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
-                                                    <div className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5 ${allFound ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                                                        <span>{option.itemsFound} found</span>
-                                                        <Info
-                                                            size={10}
-                                                            className="opacity-40 group-hover:opacity-100 cursor-help transition-opacity"
-                                                            title={supplierNames}
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                {/* Accent Line */}
-                                                <div className="absolute top-0 left-0 right-0 h-0.5 opacity-50 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: supplierColor }}></div>
-                                            </div>
-                                        );
-                                    });
-                                })()}
                             </div>
-                        </div>
+                        )}
 
-                        <CopyToClipboard listIngreds={listIngreds} />
+                        {!isListEmpty && <CopyToClipboard listIngreds={listIngreds} />}
                         <button
                             onClick={() => markListAsComplete()}
-                            className="btn-modern !bg-emerald-500 hover:!bg-emerald-400 !text-black text-base sm:text-lg py-3 sm:py-4 px-8 w-full max-w-md shadow-lg shadow-emerald-500/20"
+                            className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 border border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 py-2 px-6 rounded-lg transition-all"
                         >
-                            ✅ MARK AS COMPLETE
+                            ✅ Mark List as Complete
                         </button>
                         <p className="text-xs text-center mt-4 text-gray-500 uppercase tracking-widest font-mono">List ID: {id}</p>
                     </div>
