@@ -162,7 +162,7 @@ export default function Home() {
             <Toolbar />
             <div className={styles.container}>
                 <Head>
-                    <title>{recipeName || 'Loading...'} | Recipebook</title>
+                    <title>{`${recipeName || 'Loading...'} | Recipebook`}</title>
                     <link rel="icon" href="/avo.ico" />
                 </Head>
                 <main className={styles.main}>

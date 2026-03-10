@@ -5,6 +5,13 @@ const ToggleList = ({ inputList, onUpdateList, value, text = "Select Option" }: 
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
+    // Sync state with prop
+    useEffect(() => {
+        if (value) {
+            setActiveItems(value);
+        }
+    }, [value]);
+
     const toggleItem = (item: string) => {
         const updatedItems = [...activeItems];
         const index = updatedItems.indexOf(item);
@@ -14,11 +21,8 @@ const ToggleList = ({ inputList, onUpdateList, value, text = "Select Option" }: 
             updatedItems.splice(index, 1);
         }
         setActiveItems(updatedItems);
+        onUpdateList(updatedItems);
     };
-
-    useEffect(() => {
-        onUpdateList(activeItems);
-    }, [activeItems, onUpdateList]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -33,14 +37,17 @@ const ToggleList = ({ inputList, onUpdateList, value, text = "Select Option" }: 
     return (
         <div className="relative font-mono" ref={dropdownRef}>
             <button
-                className="flex h-10 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm font-bold uppercase ring-offset-background hover:bg-accent hover:text-accent-foreground w-full"
+                className="flex h-10 items-center justify-between rounded-md border border-[var(--glass-border)] bg-[var(--bg-secondary)] px-4 py-2 text-xs font-bold uppercase ring-offset-background hover:bg-[var(--accent)] hover:text-black transition-colors w-full shadow-lg"
                 onClick={() => setIsOpen(!isOpen)}
                 type="button"
             >
-                {text}
+                <span className="flex items-center gap-2">
+                    <span className="opacity-60">📁</span> {text}
+                </span>
+                <span className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
             </button>
             {isOpen && (
-                <div className="absolute top-12 left-0 z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md w-full">
+                <div className="absolute top-12 right-0 z-[200] min-w-[12rem] overflow-hidden rounded-md border border-[var(--glass-border)] bg-[var(--bg-secondary)] p-1 text-white shadow-2xl backdrop-blur-xl">
                     {inputList.map((item: string) => (
                         <div
                             key={item}

@@ -89,8 +89,9 @@ function IngredientCard({ ingredient, essential, openModal, handleCheckboxChange
                                     onClick={() => setOtherOptionsModalIsOpen(true)}
                                     className="btn-modern btn-outline py-0.5 px-2 rounded-md"
                                     style={{ fontSize: '0.75rem' }}
+                                    title="View Other Options"
                                 >
-                                    View Other Options
+                                    🔄
                                 </button>
                             </div>
                             <CardListModal filters={filters} ingredient={ingredient} show={otherOptionsModalIsOpen} onHide={() => setOtherOptionsModalIsOpen(false)} enabledSuppliers={enabledSuppliers}></CardListModal>

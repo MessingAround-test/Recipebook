@@ -15,7 +15,7 @@ export function Layout({ title, description = 'Premium Culinary Management', chi
             <Toolbar />
             <div className={styles.container}>
                 <Head>
-                    <title>{title} | Recipebook</title>
+                    <title>{`${title} | Recipebook`}</title>
                     <meta name="description" content={description} />
                     <link rel="icon" href="/avo.ico" />
                 </Head>

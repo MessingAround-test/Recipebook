@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 
-function ImageList({ images, onImageChange }) {
-  const [imageStates, setImageStates] = useState(
+function ImageList({ images, onImageChange, value }) {
+  const [internalStates, setInternalStates] = useState(
     images.reduce((acc, imageUrl) => {
-      acc[imageUrl] = true; // Initially, all images are enabled
+      acc[imageUrl] = true;
       return acc;
     }, {})
   );
 
+  const imageStates = value || internalStates;
+
   const toggleImageState = (imageUrl) => {
     const newImageStates = { ...imageStates };
     newImageStates[imageUrl] = !newImageStates[imageUrl];
-    setImageStates(newImageStates);
+    if (!value) setInternalStates(newImageStates);
     onImageChange(newImageStates);
   };
 
