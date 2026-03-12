@@ -24,25 +24,33 @@ export default async function handler(req, res) {
             }
 
             const source = "WW";
-            const existingIngredients = await Ingredients.find({
-                search_term: search_term.toLowerCase(),
-                source: source
-            }).lean().exec();
+            const force = req.query.force === 'true';
+            if (!force) {
+                const existingIngredients = await Ingredients.find({
+                    search_term: search_term.toLowerCase(),
+                    source: source
+                }).lean().exec();
 
-            if (existingIngredients.length > 0) {
-                return res.status(200).json({ res: existingIngredients, success: true, from_db: true });
+                if (existingIngredients.length > 0) {
+                    return res.status(200).json({ res: existingIngredients, success: true, from_db: true });
+                }
             }
 
-            const response = await axios({
-                method: 'get',
-                url: `https://www.woolworths.com.au/apis/ui/v2/Search/products?searchTerm=${search_term}`,
-                headers: {
-                    'User-Agent': 'PostmanRuntime/7.28.4',
-                    'Accept': 'application/json, text/plain, */*',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Referer': 'https://www.woolworths.com.au'
-                }
-            })
+            let response;
+            try {
+                response = await axios({
+                    method: 'get',
+                    url: `https://www.woolworths.com.au/apis/ui/v2/Search/products?searchTerm=${search_term}`,
+                    headers: {
+                        'User-Agent': 'PostmanRuntime/7.28.4',
+                        'Accept': 'application/json, text/plain, */*',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Referer': 'https://www.woolworths.com.au'
+                    }
+                })
+            } catch (searchError) {
+                throw searchError;
+            }
 
             let filteredDataArray = []
 
@@ -64,7 +72,7 @@ export default async function handler(req, res) {
                         // We have a package price. Try to find the package size.
                         // 1. Try name first as it often contains the most explicit "2kg" etc.
                         let nameConversion = convertMetricReading(name)
-                        if (nameConversion.quantity_unit !== 'each') {
+                        if (nameConversion.quantity !== 1 || nameConversion.quantity_unit !== 'each') {
                             quantity = nameConversion.quantity
                             quantity_unit = nameConversion.quantity_unit
                             quantity_type = nameConversion.quantity_type
@@ -121,6 +129,9 @@ export default async function handler(req, res) {
                     { upsert: true }
                 );
             }
+
+            // Log successful search and get conversion
+
             return res.status(200).send({ "res": validatedEntries, success: true })
 
         } else {

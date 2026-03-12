@@ -1,6 +1,6 @@
 import dbConnect from '../../lib/dbConnect'
 import User from '../../models/User'
-import {compare} from "bcrypt"
+import {compare} from "bcryptjs"
 import { sign} from "jsonwebtoken"
 import {secret} from "../../lib/dbsecret"
 

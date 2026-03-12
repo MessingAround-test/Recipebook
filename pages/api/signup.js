@@ -1,6 +1,6 @@
 import dbConnect from '../../lib/dbConnect'
 import User from '../../models/User'
-import { hash } from 'bcrypt';
+import { hash } from 'bcryptjs';
 
 
 export default async function handler(req, res) {
@@ -24,7 +24,7 @@ async function createUser(body) {
     const approved = false;
     console.log(username + ": " + password + ": " + email);
     let hashval = hash(password, 10)
-    
+
     try {
         const res = User.create({
             username: username,
@@ -36,12 +36,12 @@ async function createUser(body) {
         });
         console.log(await res);
         return { success: true, data: await res, message: "Success" }
-    } catch (error)  {
+    } catch (error) {
         console.log(error)
         return { success: false, data: error, message: "Incorrect data input" }
     }
-    
-    
+
+
 
     // let response = hash(password, 10, async function (err, hash) {
     //     try {

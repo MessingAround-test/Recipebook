@@ -1,5 +1,25 @@
 export async function getGroceryStoreProducts(ingredient: any, results = 1, enabledSuppliers: string[], Token: string) {
-    let data = await (await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${results}&quantity=${ingredient.quantity}&supplier=${enabledSuppliers.join(',')}`, {
+    let skipConversion = localStorage.getItem('skipConversion') === 'true';
+
+    // Max size settings — read from localStorage, fallback to defaults
+    const maxSizeRaw = localStorage.getItem('maxSizeOverrides');
+    let maxSizeParams = '';
+    if (maxSizeRaw) {
+        try {
+            const overrides = JSON.parse(maxSizeRaw);
+            // Use the ingredient's category or the generic each/weight fallback
+            const category = ingredient.category_simple?.toLowerCase() || ingredient.category?.toLowerCase() || '';
+            const matchedOverride = overrides[category] || overrides[ingredient.quantity_type] || null;
+            if (matchedOverride) {
+                maxSizeParams = `&maxSize=${matchedOverride.quantity}&maxSizeUnit=${matchedOverride.unit}`;
+            }
+        } catch {
+            // ignore parse errors
+        }
+    }
+
+    let data = await (await fetch(
+        `/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${results}&quantity=${ingredient.quantity}&supplier=${enabledSuppliers.join(',')}&skipConversion=${skipConversion}${maxSizeParams}`, {
         headers: { 'edgetoken': Token }
     })).json()
 

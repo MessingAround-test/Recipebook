@@ -38,7 +38,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
     const [formData, setFormData] = useState({
         name: "",
         quantity: 1 as number | string,
-        quantity_type: "any",
+        quantity_type: "each",
         note: "",
         shoppingListId: shoppingListId,
         category: ""
@@ -51,7 +51,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
         setFormData({
             name: "",
             quantity: 1,
-            quantity_type: "any",
+            quantity_type: "each",
             note: "",
             shoppingListId: shoppingListId,
             category: ""
@@ -225,7 +225,6 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                                     required
                                     className="input-modern bg-[var(--bg-secondary)]"
                                 >
-                                    <option value="any">any</option>
                                     {Object.keys(quantity_unit_conversions).map((item) => <option key={item} value={item}>{item}</option>)}
                                 </select>
                             </div>

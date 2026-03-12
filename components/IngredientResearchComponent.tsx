@@ -1,8 +1,12 @@
 import React, { useState, useEffect, FormEvent } from 'react';
-import { quantity_unit_conversions } from "../lib/conversion";
+import { quantity_unit_conversions, MAX_SIZE_DEFAULTS, CATEGORY_MAX_SIZES } from "../lib/conversion";
 import { Button } from "../components/ui/button"
 import 'chart.js/auto';
 import { Bar } from 'react-chartjs-2';
+import { Checkbox } from "./ui/checkbox";
+import { Label } from "./ui/label";
+import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
+import axios from 'axios';
 
 interface IngredientResearchComponentProps {
     initialSearchTerm?: string;
@@ -18,7 +22,7 @@ interface IngredientResearchComponentProps {
 export default function IngredientResearchComponent({
     initialSearchTerm = '',
     initialQuantity = 1,
-    initialQuantityUnit = 'any',
+    initialQuantityUnit = 'each',
     autoSearch = false,
     excludeTop3 = false,
     showForm = true,
@@ -26,7 +30,7 @@ export default function IngredientResearchComponent({
     showTable = true
 }: IngredientResearchComponentProps) {
     const getCanonicalUnit = (unit: string) => {
-        if (!unit || unit === 'any') return 'any';
+        if (!unit || unit === 'any') return 'each';
         const lowerUnit = unit.toLowerCase();
 
         // Check if it's already a key
@@ -39,7 +43,7 @@ export default function IngredientResearchComponent({
             }
         }
 
-        return 'any';
+        return 'each';
     };
 
     const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
@@ -50,10 +54,21 @@ export default function IngredientResearchComponent({
     const [selectedBinIndex, setSelectedBinIndex] = useState<number>(-1);
     const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
     const [chosenProductId, setChosenProductId] = useState<string | null>(null);
-    const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+    const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>(['WW', 'Coles', 'Aldi', 'IGA', 'Panetta']);
+    const [skipConversion, setSkipConversion] = useState<boolean>(() => localStorage.getItem('skipConversion') === 'true');
+    const [comparisonView, setComparisonView] = useState<'table' | 'cards'>('cards');
+    const [showSettings, setShowSettings] = useState<boolean>(false);
+
+    // Max size overrides — persisted in localStorage
+    const [maxSizeOverrides, setMaxSizeOverrides] = useState<Record<string, { quantity: number; unit: string }>>(() => {
+        try { return JSON.parse(localStorage.getItem('maxSizeOverrides') || '{}'); } catch { return {}; }
+    });
+
+    const deletingIds = useState<Set<string>>(new Set())[0];
+    const [deletingIdsState, setDeletingIds] = useState<Set<string>>(new Set());
     const [selectedDeleteIds, setSelectedDeleteIds] = useState<Set<string>>(new Set());
 
-    const executeSearch = async (term: string, unit: string, qty: number | string) => {
+    const executeSearch = async (term: string, unit: string, qty: number | string, skipConv: boolean = false) => {
         setLoading(true);
         setSelectedBinIndex(-1);
         setSelectedProductId(null);
@@ -61,13 +76,24 @@ export default function IngredientResearchComponent({
         setDeletingIds(new Set());
         setSelectedDeleteIds(new Set());
 
-        const res = await fetch(`/api/Ingredients/?name=${term}&qType=${unit}&quantity=${qty}`, {
+        let url = `/api/Ingredients?name=${encodeURIComponent(term)}&qType=${unit}&quantity=${qty}&supplier=${selectedSuppliers.join(',')}`;
+        if (skipConv) url += `&skipConversion=true`;
+
+        // Attach max size params — look up by unit type
+        const unitType = unit === 'each' ? 'each' : (unit === 'gram' || unit === 'kilogram' ? 'weight' : 'volume');
+        const maxSizeKey = Object.keys(maxSizeOverrides).find(k => k === unitType || k === unit) || null;
+        const maxSizeVal = maxSizeKey ? maxSizeOverrides[maxSizeKey] : null;
+        if (maxSizeVal) {
+            url += `&maxSize=${maxSizeVal.quantity}&maxSizeUnit=${maxSizeVal.unit}`;
+        }
+
+        const res = await fetch(url, {
             headers: { 'edgetoken': localStorage.getItem('Token') || "" }
         });
         const data = await res.json();
 
         if (data.loadedSource === true) {
-            const resLoaded = await fetch(`/api/Ingredients/?name=${term}&qType=${unit}&quantity=${qty}`, {
+            const resLoaded = await fetch(url, {
                 headers: { 'edgetoken': localStorage.getItem('Token') || "" }
             });
             const dataLoaded = await resLoaded.json();
@@ -80,16 +106,16 @@ export default function IngredientResearchComponent({
 
     async function handleGetIngredient(e: FormEvent) {
         e.preventDefault();
-        await executeSearch(searchTerm, quantityUnit, quantity);
+        await executeSearch(searchTerm, quantityUnit, quantity, skipConversion);
     }
 
     useEffect(() => {
         if (autoSearch && initialSearchTerm) {
             const canonicalUnit = getCanonicalUnit(initialQuantityUnit);
             setQuantityUnit(canonicalUnit);
-            executeSearch(initialSearchTerm, canonicalUnit, initialQuantity);
+            executeSearch(initialSearchTerm, canonicalUnit, initialQuantity, skipConversion);
         }
-    }, [autoSearch, initialSearchTerm, initialQuantity, initialQuantityUnit]);
+    }, [autoSearch, initialSearchTerm, initialQuantity, initialQuantityUnit, skipConversion]);
 
     async function deleteIngredient(ids: string | string[]) {
         const idArray = Array.isArray(ids) ? ids : [ids];
@@ -434,11 +460,10 @@ export default function IngredientResearchComponent({
             <div className="mb-12">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4">
                     <div>
-                        <h3 className="text-xl font-bold text-foreground">Price Distribution</h3>
                         <p className="text-xs text-muted-foreground italic">
                             {selectedRange
                                 ? `Showing $${selectedRange.start.toFixed(2)}${selectedRange.end === Infinity ? '+' : ' - $' + selectedRange.end.toFixed(2)} range`
-                                : `Comparing ${quantity} ${quantityUnit === 'any' ? 'units' : quantityUnit} - ${allPrices.length} results`}
+                                : `Comparing ${quantity} ${quantityUnit} - ${allPrices.length} results`}
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-4 text-[10px] uppercase tracking-wider font-semibold">
@@ -465,14 +490,16 @@ export default function IngredientResearchComponent({
                 <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 h-[320px] cursor-pointer">
                     <Bar data={data} options={options} />
                 </div>
-                {selectedBinIndex !== -1 && (
-                    <div className="mt-2 text-center">
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedBinIndex(-1)} className="text-xs">
-                            Clear Filter
-                        </Button>
-                    </div>
-                )}
-            </div>
+                {
+                    selectedBinIndex !== -1 && (
+                        <div className="mt-2 text-center">
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedBinIndex(-1)} className="text-xs">
+                                Clear Filter
+                            </Button>
+                        </div>
+                    )
+                }
+            </div >
         );
     };
 
@@ -554,10 +581,9 @@ export default function IngredientResearchComponent({
                                     onChange={(e) => setQuantityUnit(e.target.value)}
                                     value={quantityUnit}
                                     required
-                                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-foreground"
                                 >
-                                    <option className="text-black" value="any">any</option>
-                                    {Object.keys(quantity_unit_conversions).map((item) => (
+                                    {Object.keys(quantity_unit_conversions).filter(unit => unit !== 'any').map((item) => (
                                         <option className="text-black" key={item} value={item}>{item}</option>
                                     ))}
                                 </select>
@@ -566,6 +592,132 @@ export default function IngredientResearchComponent({
                                 <Button type="submit" className="h-10">Search</Button>
                             </div>
                         </div>
+                    </div>
+                    <div className="mt-4 border border-border rounded-md overflow-hidden">
+                        {/* Settings header toggle */}
+                        <button
+                            type="button"
+                            onClick={() => setShowSettings(s => !s)}
+                            className="w-full flex items-center justify-between px-4 py-2 bg-card text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            <span>⚙️ Search Options</span>
+                            <span className="text-xs opacity-60">{showSettings ? '▲ collapse' : '▼ expand'}</span>
+                        </button>
+
+                        {showSettings && (
+                            <div className="p-4 bg-card/50 flex flex-col gap-5">
+
+                                {/* Skip Conversion */}
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="skip-conversion"
+                                        checked={skipConversion}
+                                        onCheckedChange={(checked) => {
+                                            setSkipConversion(!!checked);
+                                            localStorage.setItem('skipConversion', String(!!checked));
+                                        }}
+                                    />
+                                    <Label htmlFor="skip-conversion" className="text-sm font-medium">Skip Unified Conversion (show raw results)</Label>
+                                </div>
+
+                                {/* Max Size Overrides */}
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                                        Max Comparison Size <span className="text-[10px] font-normal normal-case">(price comparison is scaled to this quantity)</span>
+                                    </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        {[
+                                            { key: 'each', label: 'Each items (default: 20x)', defaultQ: MAX_SIZE_DEFAULTS.each.quantity, defaultU: MAX_SIZE_DEFAULTS.each.unit },
+                                            { key: 'weight', label: 'Weight items (default: 1kg)', defaultQ: MAX_SIZE_DEFAULTS.weight.quantity, defaultU: MAX_SIZE_DEFAULTS.weight.unit },
+                                            { key: 'volume', label: 'Volume items (default: 1L)', defaultQ: MAX_SIZE_DEFAULTS.volume.quantity, defaultU: MAX_SIZE_DEFAULTS.volume.unit },
+                                        ].map(({ key, label, defaultQ, defaultU }) => {
+                                            const override = maxSizeOverrides[key];
+                                            return (
+                                                <div key={key} className="flex flex-col gap-1 p-2 rounded border border-border bg-background">
+                                                    <span className="text-[11px] text-muted-foreground">{label}</span>
+                                                    <div className="flex gap-1">
+                                                        <input
+                                                            type="number"
+                                                            className="flex h-8 w-20 rounded border border-input bg-background px-2 py-1 text-sm"
+                                                            value={override?.quantity ?? defaultQ}
+                                                            min={1}
+                                                            onChange={e => {
+                                                                const updated = { ...maxSizeOverrides, [key]: { quantity: Number(e.target.value), unit: override?.unit ?? defaultU } };
+                                                                setMaxSizeOverrides(updated);
+                                                                localStorage.setItem('maxSizeOverrides', JSON.stringify(updated));
+                                                            }}
+                                                        />
+                                                        <select
+                                                            className="flex h-8 flex-1 rounded border border-input bg-background px-2 text-sm text-foreground"
+                                                            value={override?.unit ?? defaultU}
+                                                            onChange={e => {
+                                                                const updated = { ...maxSizeOverrides, [key]: { quantity: override?.quantity ?? defaultQ, unit: e.target.value } };
+                                                                setMaxSizeOverrides(updated);
+                                                                localStorage.setItem('maxSizeOverrides', JSON.stringify(updated));
+                                                            }}
+                                                        >
+                                                            {Object.keys(quantity_unit_conversions).filter(u => u !== 'any').map(u => (
+                                                                <option key={u} value={u}>{u}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Category overrides */}
+                                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mt-3 mb-2">Category Overrides</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        {Object.entries(CATEGORY_MAX_SIZES).map(([cat, def]) => {
+                                            const override = maxSizeOverrides[cat];
+                                            return (
+                                                <div key={cat} className="flex flex-col gap-1 p-2 rounded border border-border bg-background">
+                                                    <span className="text-[11px] text-muted-foreground capitalize">{cat}</span>
+                                                    <div className="flex gap-1">
+                                                        <input
+                                                            type="number"
+                                                            className="flex h-8 w-20 rounded border border-input bg-background px-2 py-1 text-sm"
+                                                            value={override?.quantity ?? def.quantity}
+                                                            min={1}
+                                                            onChange={e => {
+                                                                const updated = { ...maxSizeOverrides, [cat]: { quantity: Number(e.target.value), unit: override?.unit ?? def.unit } };
+                                                                setMaxSizeOverrides(updated);
+                                                                localStorage.setItem('maxSizeOverrides', JSON.stringify(updated));
+                                                            }}
+                                                        />
+                                                        <select
+                                                            className="flex h-8 flex-1 rounded border border-input bg-background px-2 text-sm text-foreground"
+                                                            value={override?.unit ?? def.unit}
+                                                            onChange={e => {
+                                                                const updated = { ...maxSizeOverrides, [cat]: { quantity: override?.quantity ?? def.quantity, unit: e.target.value } };
+                                                                setMaxSizeOverrides(updated);
+                                                                localStorage.setItem('maxSizeOverrides', JSON.stringify(updated));
+                                                            }}
+                                                        >
+                                                            {Object.keys(quantity_unit_conversions).filter(u => u !== 'any').map(u => (
+                                                                <option key={u} value={u}>{u}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        className="mt-2 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                                        onClick={() => {
+                                            setMaxSizeOverrides({});
+                                            localStorage.removeItem('maxSizeOverrides');
+                                        }}
+                                    >
+                                        ↩ Reset to defaults
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </form>
             )}
@@ -591,12 +743,12 @@ export default function IngredientResearchComponent({
                                     className={`rounded-xl border transition-all duration-300 bg-card text-card-foreground shadow-sm overflow-hidden relative cursor-pointer ${isChosen ? 'ring-4 ring-yellow-400 scale-[1.05] z-10' : (isSelectedProduct ? 'ring-2 ring-purple-500 scale-[1.02]' : 'border-border hover:border-primary/50')}`}
                                     onClick={() => setSelectedProductId(prev => prev === product.id ? null : product.id)}
                                 >
-                                    <div className={`h-2 w-full ${rankColor}`}></div>
                                     {isChosen && (
                                         <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-[10px] font-black px-3 py-0.5 rounded-b-md uppercase tracking-wider shadow-lg">
                                             Best Choice
                                         </div>
                                     )}
+                                    <div className={`h-2 w-full ${rankColor}`}></div>
                                     <div className="p-6">
                                         <div className="flex flex-col gap-1 mb-4">
                                             <span className="text-2xl font-bold opacity-80">#{index + 1}</span>
@@ -678,8 +830,9 @@ export default function IngredientResearchComponent({
                                 <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Product Name</th>
                                 <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Price</th>
                                 <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">% Diff</th>
-                                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Unit Price</th>
+                                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground whitespace-nowrap">Unit Price</th>
                                 <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Quantity</th>
+                                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Derivation</th>
                                 <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Source</th>
                                 <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Rank</th>
                                 <th className="h-10 px-4 text-center align-middle font-medium text-muted-foreground">Action</th>
@@ -740,6 +893,13 @@ export default function IngredientResearchComponent({
                                                 : `$${Number(product.unit_price_converted).toFixed(2)}`}
                                         </td>
                                         <td className="p-4 align-middle">{product.quantity} {product.quantity_unit}</td>
+                                        <td className="p-4 align-middle">
+                                            {product.conversion_source && (
+                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap ${product.conversion_source === 'explicit' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                                                    {product.conversion_source === 'explicit' ? 'EXPLICIT' : 'AI ESTIMATE'}
+                                                </span>
+                                            )}
+                                        </td>
                                         <td className="p-4 align-middle">{product.source}</td>
                                         <td className="p-4 align-middle">{product.rank}</td>
                                         <td className="p-4 align-middle text-center">

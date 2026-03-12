@@ -25,32 +25,40 @@ export default async function handler(req, res) {
                 return res.status(400).json({ success: false, message: "Search term cannot be empty" })
             } else {
                 const source = "Coles";
-                const existingIngredients = await Ingredients.find({
-                    search_term: search_term.toLowerCase(),
-                    source: source
-                }).lean().exec();
+                const force = req.query.force === 'true';
+                if (!force) {
+                    const existingIngredients = await Ingredients.find({
+                        search_term: search_term.toLowerCase(),
+                        source: source
+                    }).lean().exec();
 
-                if (existingIngredients.length > 0) {
-                    return res.status(200).json({ res: existingIngredients, success: true, from_db: true });
+                    if (existingIngredients.length > 0) {
+                        return res.status(200).json({ res: existingIngredients, success: true, from_db: true });
+                    }
                 }
 
-                const response = await axios({
-                    method: 'get',
-                    url: `https://www.coles.com.au/_next/data/20260310.4-d51173fab603623c68e557a054992d8939a1a9e7/en/search/products.json?q=${search_term}`,
-                    headers: {
-                        'accept': '*/*',
-                        'accept-language': 'en-GB,en;q=0.6',
-                        'referer': 'https://www.coles.com.au/',
-                        'sec-ch-ua': '"Chromium";v="146", "Not-A.Brand";v="24", "Brave";v="146"',
-                        'sec-ch-ua-mobile': '?1',
-                        'sec-ch-ua-platform': '"Android"',
-                        'sec-fetch-dest': 'empty',
-                        'sec-fetch-mode': 'cors',
-                        'sec-fetch-site': 'same-origin',
-                        'user-agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36',
-                        'x-nextjs-data': '1'
-                    }
-                })
+                let response;
+                try {
+                    response = await axios({
+                        method: 'get',
+                        url: `https://www.coles.com.au/_next/data/20260310.4-d51173fab603623c68e557a054992d8939a1a9e7/en/search/products.json?q=${search_term}`,
+                        headers: {
+                            'accept': '*/*',
+                            'accept-language': 'en-GB,en;q=0.6',
+                            'referer': 'https://www.coles.com.au/',
+                            'sec-ch-ua': '"Chromium";v="146", "Not-A.Brand";v="24", "Brave";v="146"',
+                            'sec-ch-ua-mobile': '?1',
+                            'sec-ch-ua-platform': '"Android"',
+                            'sec-fetch-dest': 'empty',
+                            'sec-fetch-mode': 'cors',
+                            'sec-fetch-site': 'same-origin',
+                            'user-agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36',
+                            'x-nextjs-data': '1'
+                        }
+                    })
+                } catch (searchError) {
+                    throw searchError;
+                }
 
                 let filteredDataArray = []
 
@@ -63,23 +71,53 @@ export default async function handler(req, res) {
                             if (!filteredData) continue;
 
                             let internal_id = filteredData.id
-                            let quantity_unit = filteredData.pricing?.unit?.ofMeasureUnits
-                            let quantity_type;
                             let name = filteredData.name
                             let price = filteredData.pricing?.now
-                            let quantity = filteredData.pricing?.unit?.ofMeasureQuantity || 1
 
-                            if (!(quantity_unit)) {
-                                let metricConversion = convertMetricReading(name)
-                                quantity = metricConversion.quantity
-                                quantity_unit = metricConversion.quantity_unit
-                                quantity_type = metricConversion.quantity_type
+                            // Better unit/quantity extraction
+                            let quantity_unit = filteredData.pricing?.comparablePrice?.unitOfMeasure || filteredData.pricing?.unit?.ofMeasureUnits
+                            let quantity = filteredData.pricing?.unit?.ofMeasureQuantity || 1
+                            let quantity_type;
+
+                            if (filteredData.pricing?.comparablePrice?.per) {
+                                // e.g. "per 1kg" or "per 100g"
+                                let perMatch = filteredData.pricing.comparablePrice.per.match(/per\s+(\d+)?\s*(.*)/i);
+                                if (perMatch) {
+                                    let perQty = parseFloat(perMatch[1] || 1);
+                                    let perUnit = perMatch[2].trim();
+
+                                    // If price is per kg but item is sold in grams, we can normalize
+                                    // Use convertMetricReading to normalize the 'per' unit
+                                    let perConversion = convertMetricReading(`${perQty} ${perUnit}`);
+
+                                    // If we have a reliable package size in the name or field, prioritize it
+                                    let nameConversion = convertMetricReading(name);
+                                    if (nameConversion.quantity !== 1 || nameConversion.quantity_unit !== 'each') {
+                                        quantity = nameConversion.quantity;
+                                        quantity_unit = nameConversion.quantity_unit;
+                                        quantity_type = nameConversion.quantity_type;
+                                    } else {
+                                        // Fallback to unit/quantity from pricing fields
+                                        let unitConversion = convertMetricReading(`${quantity} ${quantity_unit}`);
+                                        quantity = unitConversion.quantity;
+                                        quantity_unit = unitConversion.quantity_unit;
+                                        quantity_type = unitConversion.quantity_type;
+                                    }
+                                }
                             } else {
-                                let metricConversion = convertMetricReading(quantity_unit)
-                                quantity_unit = metricConversion.quantity_unit
-                                quantity_type = metricConversion.quantity_type
-                                if (metricConversion.quantity !== 1) {
-                                    quantity = quantity * metricConversion.quantity
+                                // Existing logic fallback
+                                let nameConversion = convertMetricReading(name)
+                                if (!(quantity_unit) || nameConversion.quantity !== 1 || nameConversion.quantity_unit !== 'each') {
+                                    quantity = nameConversion.quantity
+                                    quantity_unit = nameConversion.quantity_unit
+                                    quantity_type = nameConversion.quantity_type
+                                } else {
+                                    let metricConversion = convertMetricReading(quantity_unit)
+                                    quantity_unit = metricConversion.quantity_unit
+                                    quantity_type = metricConversion.quantity_type
+                                    if (metricConversion.quantity !== 1) {
+                                        quantity = quantity * metricConversion.quantity
+                                    }
                                 }
                             }
                             let unit_price = parseFloat((price / quantity).toFixed(3))
@@ -109,6 +147,9 @@ export default async function handler(req, res) {
                         { upsert: true }
                     );
                 }
+
+                // Log successful search and get conversion
+
                 return res.status(200).send({ res: validatedEntries, success: true })
             }
         } else {

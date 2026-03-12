@@ -10,10 +10,29 @@ export default function Home() {
     const [pages] = useState([
         { name: "Recipes", _id: "/recipes", image: "/cookbook_oragami.png" },
         { name: "Shopping List", _id: "/shoppingList", image: "/shop_list_oragami.png" },
-        { name: "One Off Extracts", _id: "/oneOffExtracts", image: "/forklift_oragami.png" }
+        { name: "One Off Extracts", _id: "/oneOffExtracts", image: "/forklift_oragami.png" },
+        { name: "Search Logs", _id: "/searchLogs", image: "/avo xl.png" },
+        { name: "Migrate Search Logs", _id: "MIGRATE", image: "/avo.ico" }
     ])
 
     const redirect = async (page: string) => {
+        if (page === "MIGRATE") {
+            if (confirm("Are you sure you want to migrate existing ingredient records to the Search Log?")) {
+                let data = await (await fetch("/api/Ingredients/migrate_search_logs", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'edgetoken': localStorage.getItem('Token') || ""
+                    }
+                })).json()
+                if (data.success === false || data.success === undefined) {
+                    alert(data.message || "Failed, unexpected error")
+                } else {
+                    alert(data.message)
+                }
+            }
+            return;
+        }
         Router.push(page)
     }
 

@@ -67,7 +67,12 @@ export function IngredientSearchList(props: IngredientSearchListProps) {
     }
 
     async function getIngredient(IngredQuery: string, supplierName: string) {
-        let queryObj = { name: IngredQuery, supplier: supplierName }
+        let skipConversion = localStorage.getItem('skipConversion') === 'true';
+        let queryObj = {
+            name: IngredQuery,
+            supplier: supplierName,
+            skipConversion: skipConversion
+        }
         let res = await fetch(`/api/Ingredients?${objectToQueryString(queryObj)}`, {
             headers: { 'edgetoken': localStorage.getItem('Token') || "" }
         })

@@ -9,6 +9,8 @@ export default function Profile() {
     const isAuthed = useAuthGuard()
     const [userData, setUserData] = useState<Record<string, string>>({})
 
+    const [skipConversion, setSkipConversion] = useState(localStorage.getItem('skipConversion') === 'true')
+
     async function getUserDetails() {
         const token = localStorage.getItem('Token')
         if (!token) return
@@ -82,6 +84,27 @@ export default function Profile() {
                             </Button>
                         </div>
                     </form>
+                </div>
+
+                <div className="glass-card mt-8">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-emerald-500 mb-4">General Settings</h3>
+                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+                        <div>
+                            <p className="font-semibold text-white">Automatic Quantity Conversion</p>
+                            <p className="text-sm text-gray-400">Normalize prices across different units using shared factors.</p>
+                        </div>
+                        <input
+                            type="checkbox"
+                            className="toggle toggle-emerald"
+                            checked={!skipConversion}
+                            onChange={(e) => {
+                                const newValue = !e.target.checked;
+                                localStorage.setItem('skipConversion', newValue.toString());
+                                setSkipConversion(newValue);
+                                window.dispatchEvent(new Event('storage'));
+                            }}
+                        />
+                    </div>
                 </div>
 
                 {userData.role === 'admin' && (

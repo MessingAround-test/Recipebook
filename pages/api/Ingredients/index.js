@@ -1,4 +1,7 @@
 import Ingredients from '../../../models/Ingredients'
+import SearchLog from '../../../models/SearchLog'
+import IngredientConversion from '../../../models/IngredientConversion'
+import { logSearchAndGetConversion } from '../../../lib/searchLogger'
 import axios from 'axios';
 import { filter } from '../../../lib/filtering'
 import { convertMetricReading } from '../../../lib/conversion'
@@ -6,6 +9,7 @@ import dbConnect from '../../../lib/dbConnect'
 import { verifyToken } from "../../../lib/auth.ts";
 import { logAPI } from '../../../lib/logger.ts';
 import User from '../../../models/User'
+import { safeToObject } from '../../../lib/utils'
 
 
 export default async function handler(req, res) {
@@ -35,7 +39,12 @@ export default async function handler(req, res) {
                 "optionSort": req.query.sort,
                 "returnN": req.query.returnN,
                 "quantity_unit": qType,
-                "quantity": req.query.quantity
+                "quantity": req.query.quantity,
+                "skipConversion": req.query.skipConversion,
+                "maxSize": req.query.maxSize,
+                "maxSizeUnit": req.query.maxSizeUnit,
+                "category": req.query.category,
+                // grams_per_each set below once SearchLogLookup resolves
             }
 
             if (search_term === "" || search_term === undefined) {
@@ -58,21 +67,35 @@ export default async function handler(req, res) {
                 }
 
                 let IngredData = await Ingredients.find(search_query).exec()
-                if (IngredData.length == 0) {
-                    // Check if there are ANY records for this search term at all (ignoring supplier)
-                    const globalCount = await Ingredients.countDocuments({ search_term: search_term }).exec();
+                const existingSuppliers = new Set(IngredData.map(i => i.source));
+                const missingSuppliers = companies.filter(c => !existingSuppliers.has(c));
 
-                    if (globalCount > 0) {
-                        return res.status(200).send({ success: true, res: [], "loadedSource": false, message: "No results for this supplier, but term exists in database." })
-                    }
+                // NEW: Attach global conversion factor to ingredients
+                const searchLogLookup = await axios.get(
+                    `http://localhost:8080/api/Ingredients/SearchLogLookup?search_term=${search_term}`,
+                    { headers: { 'edgetoken': req.headers.edgetoken } }
+                ).catch(() => ({ data: { success: false } }));
+                const conversion = searchLogLookup.data.success ? searchLogLookup.data.res : { grams_per_each: 0, each_per_gram: 0 };
 
-                    let allIngredData = []
-                    companies = ["WW", "IGA", "Panetta", "Aldi", "Coles"]
+                const attachConversion = (items) => {
+                    return items.map(item => {
+                        const itemObj = safeToObject(item);
+                        return {
+                            ...itemObj,
+                            grams_per_each: conversion.grams_per_each,
+                            each_per_gram: conversion.each_per_gram
+                        };
+                    });
+                };
 
-                    for (let supplierIndex in companies) {
+                let allIngredData = [...IngredData];
+                let loadedFromSource = false;
+
+                if (missingSuppliers.length > 0) {
+                    loadedFromSource = true;
+                    for (let supplierName of missingSuppliers) {
                         try {
-                            let supplierName = companies[supplierIndex]
-                            let newIngredData = await axios({
+                            const newIngredData = await axios({
                                 method: 'get',
                                 url: `http://localhost:8080/api/Ingredients/${supplierName}/?name=${search_term}`,
                                 headers: {
@@ -80,19 +103,35 @@ export default async function handler(req, res) {
                                 }
                             })
 
-                            if (newIngredData.data.success === true && newIngredData.data.res.length > 0) {
-                                allIngredData = [...allIngredData.concat(newIngredData.data.res)]
+                            if (newIngredData.data.success === true) {
+                                if (newIngredData.data.res.length > 0) {
+                                    allIngredData = allIngredData.concat(newIngredData.data.res);
+                                }
+                                // Log success for this supplier
+                                await logSearchAndGetConversion(search_term, supplierName, true, "", req.headers.edgetoken);
+                            } else {
+                                // If the API returned a failure message, log it
+                                await logSearchAndGetConversion(search_term, supplierName, false, newIngredData.data.message || "Unknown error", req.headers.edgetoken);
                             }
                         } catch (error) {
-                            console.error(`API Call to ${companies[supplierIndex]} failed:`, error.message)
+                            console.error(`API Call to ${supplierName} failed:`, error.message)
+                            // Log the connection/timeout failure
+                            await logSearchAndGetConversion(search_term, supplierName, false, error.message, req.headers.edgetoken);
                         }
                     }
-                    let filteredIngredData = filter(allIngredData, filterDetails)
-                    return res.status(200).send({ success: true, res: filteredIngredData, "loadedSource": true })
-                } else {
-                    let filteredIngredData = filter(IngredData, filterDetails)
-                    return res.status(200).send({ success: true, res: filteredIngredData, "loadedSource": false })
                 }
+
+                let enrichedData = attachConversion(allIngredData);
+
+                // Pass global conversion factor into filter so 'each' searches can normalize to grams
+                // This is what allows "1 each carrot" and "60g carrot" to compare against the same product list
+                if (conversion && conversion.grams_per_each) {
+                    filterDetails.grams_per_each = conversion.grams_per_each;
+                }
+
+                // Final filtering
+                let filteredIngredData = filter(enrichedData, filterDetails)
+                return res.status(200).send({ success: true, res: filteredIngredData, "loadedSource": loadedFromSource })
             }
         } else if (req.method === "DELETE") {
             try {
@@ -142,7 +181,10 @@ export default async function handler(req, res) {
                     if (userData.role !== "admin") {
                         return res.status(403).json({ success: false, message: "Insufficient Privileges" });
                     } else {
+                        // Global reset: Delete all ingredients, search logs, and conversions
                         IngredData = await Ingredients.deleteMany({}).exec();
+                        await SearchLog.deleteMany({}).exec();
+                        await IngredientConversion.deleteMany({}).exec();
                     }
                 }
                 return res.status(200).json({ success: true, data: IngredData, message: "Success" });

@@ -1,4 +1,4 @@
-import { convertKitchenMetrics, getShorthandForMeasure } from "./conversion";
+import { convertKitchenMetrics, getShorthandForMeasure, normalizeToGrams, getMaxSize } from "./conversion";
 import { safeToObject } from "./utils";
 function calculateEfficiency(neededAmount, minPurchase) {
     const efficiency = (neededAmount / (Math.ceil(neededAmount / minPurchase) * minPurchase)) * 100;
@@ -7,8 +7,8 @@ function calculateEfficiency(neededAmount, minPurchase) {
 
 export function filter(itemList, filterObj) {
     let validList = []
-    // console.log(itemList)
-    console.log(filterObj)
+    const skipConversion = filterObj.skipConversion === 'true' || filterObj.skipConversion === true;
+
     for (let item in itemList) {
         let current = itemList[item];
         let unit_price_converted = current.unit_price
@@ -16,31 +16,71 @@ export function filter(itemList, filterObj) {
         let total_price;
         let match_efficiency;
 
-        // Convert what we are requesting into grams
-        let conversion = convertKitchenMetrics(filterObj.quantity_unit, filterObj.quantity)
+        // Normalize requested quantity unit. If "any", try to treat as "each" for comparison.
+        const requestedUnit = (filterObj.quantity_unit === "any" || !filterObj.quantity_unit) ? "each" : filterObj.quantity_unit;
 
-        // Convert what we have into grams
-        let currentConversion = convertKitchenMetrics(current.quantity_unit, current.quantity)
+        if (!skipConversion) {
+            // ─── Step 1: Normalize requested qty to grams ───────────────────────
+            // Use the global grams_per_each (from SearchLogLookup) if it's available and positive.
+            // This is the key that lets "1 each carrot" and "60g carrot" both resolve to the same gram value.
+            const globalGramsPerEach = (filterObj.grams_per_each && Number(filterObj.grams_per_each) > 0)
+                ? Number(filterObj.grams_per_each)
+                : (current.grams_per_each && current.grams_per_each > 0 ? current.grams_per_each : null);
 
-        if (conversion !== null && currentConversion !== null) {
-            let grams = currentConversion.gram
-            // Calculate the unit price p/ gram
-            unit_price_converted = current.price / grams
-            unit_price_converted_type = "gram"
+            let targetNorm = normalizeToGrams(requestedUnit, filterObj.quantity, globalGramsPerEach);
+            let itemNorm = normalizeToGrams(current.quantity_unit, current.quantity, (current.grams_per_each && current.grams_per_each > 0) ? current.grams_per_each : globalGramsPerEach);
 
-            total_price = unit_price_converted * conversion.gram
+            let targetGrams = targetNorm.value;
+            let itemGrams = itemNorm.value;
+            let conversion_source = itemNorm.source;
 
-            match_efficiency = calculateEfficiency(conversion.gram, currentConversion.gram)
-        } else {
-            // If we cant match, then just go through and filter out those with unmatching quantity
+            if (targetGrams !== null && itemGrams !== null) {
+                // ─── Step 2: Apply max size normalization ────────────────────────
+                // Determine the max comparison size. It can be an explicit amount (e.g., 1000g)
+                // or derived from the item's unit type.
+                let comparisonGrams: number;
 
-            if (!(matchQuantityType(current, filterObj))) {
-                filterObj.quantity_unit
-                continue
+                if (filterObj.maxSize && filterObj.maxSizeUnit) {
+                    // Explicit max size was passed (e.g., maxSize=1000 maxSizeUnit=gram)
+                    const maxNorm = normalizeToGrams(filterObj.maxSizeUnit, parseFloat(filterObj.maxSize), current.grams_per_each);
+                    comparisonGrams = maxNorm.value !== null ? maxNorm.value : targetGrams;
+                } else {
+                    // Derive from defaults: use the unit type of the item/request to pick max
+                    const unitType = current.quantity_unit === 'each' ? 'each' :
+                        (convertKitchenMetrics(current.quantity_unit, 1) ? 'weight' : 'each');
+                    const maxSizeDef = getMaxSize(unitType, filterObj.category || null, filterObj.customMaxSizes || null);
+                    const maxNorm = normalizeToGrams(maxSizeDef.unit, maxSizeDef.quantity, current.grams_per_each);
+                    comparisonGrams = maxNorm.value !== null ? maxNorm.value : targetGrams;
+                }
+
+                // ─── Step 3: Price at max comparison size ────────────────────────
+                // If the requested amount exceeds the max size, scale up to the next whole multiple
+                // e.g., 2000g requested, max=1000g → comparisonGrams = 2000g (2× max)
+                if (targetGrams > comparisonGrams) {
+                    const multiples = Math.ceil(targetGrams / comparisonGrams);
+                    comparisonGrams = comparisonGrams * multiples;
+                }
+
+                const gramPrice = current.price / itemGrams;           // price per gram
+                unit_price_converted = gramPrice;
+                unit_price_converted_type = "gram";
+                total_price = gramPrice * comparisonGrams;             // total at comparison size
+                match_efficiency = calculateEfficiency(targetGrams, itemGrams);
+            } else {
+                // Can't normalize — fall through to quantity-type matching
+                if (!(matchQuantityType(current, filterObj))) {
+                    continue;
+                }
+                total_price = (filterObj.quantity / current.quantity) * current.price;
+                match_efficiency = 100;
             }
-            total_price = (filterObj.quantity / current.quantity) * current.price
-            // current.unit_price_converted_type = "gram"
-            match_efficiency = 100
+        } else {
+            // skipConversion path — no normalization
+            if (!(matchQuantityType(current, filterObj))) {
+                continue;
+            }
+            total_price = (filterObj.quantity / current.quantity) * current.price;
+            match_efficiency = 100;
         }
 
         // Only if we have a price!
@@ -48,31 +88,25 @@ export function filter(itemList, filterObj) {
             continue
         }
 
-        // if (!(matchSupplier(current, filterObj))) {
-        //     continue
-        // }
-
-        // if (!(matchName(current, filterObj))) {
-        //     continue
-        // }
         try {
-            // current.score = similarity(current.name.toLowerCase(),filterObj.search_term.toLowerCase())
-            // validList.push(current.toObject())
-            validList.push({ ...safeToObject(current), "unit_price_converted_type": unit_price_converted_type, "unit_price_converted": unit_price_converted, "total_price": total_price, "match_efficiency": match_efficiency })
+            validList.push({
+                ...safeToObject(current),
+                "unit_price_converted_type": unit_price_converted_type,
+                "unit_price_converted": unit_price_converted,
+                "total_price": total_price,
+                "match_efficiency": match_efficiency,
+                "conversion_source": skipConversion ? null : (itemList[item] as any).conversion_source
+            })
         } catch (e) {
             console.log(e)
             console.log("failed to push")
         }
     }
 
-
-    // let ranks = validList.map(e => e.totalCost).sort((a, b) => b - a)
     let ranked = [...validList].sort((b, a) => b.total_price - a.total_price)
         .map((e, i) => ({ rank: i + 1, ...e }))
-    // let ranked = validList.map(e => ({ ...e, rank: (ranks.indexOf(e.price) + 1) }));
     if (filterObj.returnN) {
         return ranked.filter(e => (e.rank <= filterObj.returnN))
-
     }
     return ranked
 }
