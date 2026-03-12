@@ -37,7 +37,7 @@ function IngredientCardProduct({ ingredient, handleDeleteIngredient, essential, 
                 <div className="flex flex-row items-baseline gap-1 font-semibold text-foreground text-sm">
                     <span>${(ingredient?.total_price || 0).toFixed(2)}</span>
                     <span className="text-xs text-muted-foreground font-normal">
-                        (${((ingredient?.total_price || 0) / (matchEfficiency || 100) * 100).toFixed(2)} adj)
+                        (${(((ingredient?.total_price || 0) * (matchEfficiency || 100)) / 100).toFixed(2)} wanted, ${(ingredient?.price || 0).toFixed(2)}/ea)
                     </span>
                 </div>
 

@@ -33,7 +33,7 @@ export default function Home() {
     })
 
     const [filters, setFilters] = useState(["complete"])
-    const [pricingStrategy, setPricingStrategy] = useState("match")
+    const [pricingStrategy, setPricingStrategy] = useState("value")
     const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type", "category_simple"]
 
     useEffect(() => {
