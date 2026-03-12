@@ -25,9 +25,10 @@ export default async function handler(req, res) {
         
 Guidelines:
 1. Return a JSON array of strings containing ONLY the names that are highly relevant to the search term.
-2. If the search term is a raw/unprocessed ingredient (e.g., 'potato'), EXCLUDE processed, mixed, or branded products (e.g., 'Heinz Babyfood Pumpkin and Corn').
-3. If the search term is a specific product or processed good (e.g., 'potato chips'), include only those specific items and exclude the raw ingredient if it's too generic (e.g., exclude 'Potato' if 'Potato Chips' was searched).
-4. Strictly NO conversational filler or markdown. Provide ONLY the JSON array.`
+2. Semantic Identity: The item MUST match the core identity of the search term. For example, if the search term is 'Kombucha', DO NOT include 'Iced Tea' or 'Soda', even if they are in the same overall category (Beverages). If it doesn't say it IS the search term or a variant of it, exclude it.
+3. If the search term is a raw/unprocessed ingredient (e.g., 'potato'), EXCLUDE processed, mixed, or branded products (e.g., 'Heinz Babyfood Pumpkin and Corn').
+4. If the search term is a specific product or processed good (e.g., 'potato chips'), include only those specific items and exclude the raw ingredient if it's too generic (e.g., exclude 'Potato' if 'Potato Chips' was searched).
+5. Strictly NO conversational filler or markdown. Provide ONLY the JSON array. Output format: ["name1", "name2"]`
       },
       {
         role: "user",

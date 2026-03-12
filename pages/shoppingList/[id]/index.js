@@ -23,8 +23,7 @@ export default function Home() {
     const [matchedListIngreds, setMatchedListIngreds] = useState([])
     const [isLoading, setLoading] = useState(false)
     const [createNewIngredOpen, setCreateNewIngredOpen] = useState(false)
-    const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA", "Aldi"])
-    // , "Coles"
+    const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA", "Aldi", "Coles"])
     const [pendingSuppliers, setPendingSuppliers] = useState({
         "/WW.png": true,
         "/Panetta.png": true,

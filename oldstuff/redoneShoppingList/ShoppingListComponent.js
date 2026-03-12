@@ -11,8 +11,8 @@ import NewIngredientTable from './NewIngredientTable';
 export function ShoppingListComponent({ ingredients }) {
   const [matchedListIngreds, setMatchedListIngreds] = useState([]);
   const [createNewIngredOpen, setCreateNewIngredOpen] = useState(false);
-  const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA", "Aldi"]);
-  // , "Coles"
+  const [enabledSuppliers, setEnabledSuppliers] = useState(["WW", "Panetta", "IGA", "Aldi", "Coles"]);
+  // , 
   const [filters, setFilters] = useState(["complete", "supplier"]);
 
   useEffect(() => {

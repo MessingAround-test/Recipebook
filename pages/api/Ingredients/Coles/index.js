@@ -5,6 +5,7 @@ import User from '../../../../models/User'
 import Ingredients from '../../../../models/Ingredients'
 import axios from 'axios';
 import { convertMetricReading } from '../../../../lib/conversion'
+import { filterValidEntries } from '../../../../lib/commonAPIs'
 
 export default async function handler(req, res) {
     let search_term = req.query.name
@@ -35,12 +36,19 @@ export default async function handler(req, res) {
 
                 const response = await axios({
                     method: 'get',
-                    url: `https://www.coles.com.au/_next/data/20240119.01_v3.64.0/en/search.json?q=${search_term}`,
+                    url: `https://www.coles.com.au/_next/data/20260310.4-d51173fab603623c68e557a054992d8939a1a9e7/en/search/products.json?q=${search_term}`,
                     headers: {
-                        'User-Agent': 'PostmanRuntime/7.28.4',
-                        'Accept': 'application/json, text/plain, */*',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Referer': 'https://www.coles.com.au'
+                        'accept': '*/*',
+                        'accept-language': 'en-GB,en;q=0.6',
+                        'referer': 'https://www.coles.com.au/',
+                        'sec-ch-ua': '"Chromium";v="146", "Not-A.Brand";v="24", "Brave";v="146"',
+                        'sec-ch-ua-mobile': '?1',
+                        'sec-ch-ua-platform': '"Android"',
+                        'sec-fetch-dest': 'empty',
+                        'sec-fetch-mode': 'cors',
+                        'sec-fetch-site': 'same-origin',
+                        'user-agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36',
+                        'x-nextjs-data': '1'
                     }
                 })
 
@@ -86,19 +94,22 @@ export default async function handler(req, res) {
                                 "search_term": search_term,
                                 "source": source,
                             }
-
-                            await Ingredients.findOneAndUpdate(
-                                { id: filteredObj.id },
-                                filteredObj,
-                                { upsert: true }
-                            );
                             filteredDataArray.push(filteredObj)
                         } catch (innerError) {
                             console.error("Error processing Coles item:", innerError.message);
                         }
                     }
                 }
-                return res.status(200).send({ res: filteredDataArray, success: true })
+
+                let validatedEntries = await filterValidEntries(filteredDataArray, search_term, req.headers.edgetoken || req.query.EDGEtoken)
+                for (let ingredient of validatedEntries) {
+                    await Ingredients.findOneAndUpdate(
+                        { id: ingredient.id },
+                        ingredient,
+                        { upsert: true }
+                    );
+                }
+                return res.status(200).send({ res: validatedEntries, success: true })
             }
         } else {
             return res.status(405).json({ success: false, message: "Method Not Allowed" })

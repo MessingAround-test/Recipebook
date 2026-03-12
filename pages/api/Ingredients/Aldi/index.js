@@ -7,6 +7,7 @@ import Ingredients from '../../../../models/Ingredients'
 import axios from 'axios';
 import JSSoup from 'jssoup';
 import { convertMetricReading } from '../../../../lib/conversion'
+import { filterValidEntries } from '../../../../lib/commonAPIs'
 
 function calculateLevenshteinDistance(a, b) {
     if (a.length === 0) return b.length;
@@ -211,19 +212,22 @@ export default async function handler(req, res) {
                     for (const product of products) {
                         try {
                             const filteredObj = mapAldiProduct(product, search_term, source, formattedDateTime);
-
-                            await Ingredients.findOneAndUpdate(
-                                { id: filteredObj.id },
-                                filteredObj,
-                                { upsert: true }
-                            );
                             filteredDataArray.push(filteredObj);
                         } catch (innerError) {
                             console.error("Error processing Aldi item:", innerError.message);
                         }
                     }
                 }
-                return res.status(200).send({ res: filteredDataArray, success: true })
+
+                let validatedEntries = await filterValidEntries(filteredDataArray, search_term, req.headers.edgetoken || req.query.EDGEtoken)
+                for (let ingredient of validatedEntries) {
+                    await Ingredients.findOneAndUpdate(
+                        { id: ingredient.id },
+                        ingredient,
+                        { upsert: true }
+                    );
+                }
+                return res.status(200).send({ res: validatedEntries, success: true })
             } else {
                 let IngredData = await AldiIngredient.find({}).lean().exec()
                 return res.status(200).send({ success: true, res: IngredData })
