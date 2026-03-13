@@ -63,7 +63,7 @@ export default function Home() {
         })
         let data = await res.json()
         if (data.loadedSource) {
-            let resLoaded = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=1&supplier=${enabledSuppliers.join(',')}`, {
+            let resLoaded = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&quantity=${ingredient.quantity}&returnN=1&supplier=${enabledSuppliers.join(',')}`, {
                 headers: { 'edgetoken': localStorage.getItem('Token') || "" }
             })
             data = await resLoaded.json()

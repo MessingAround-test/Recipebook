@@ -19,25 +19,7 @@ export default async function handler(req, res) {
         // 1. Fetch all search logs
         const logs = await SearchLog.find({}).sort({ last_fetched: -1 }).lean().exec();
 
-        // 2. Fetch all unique conversions needed for these logs
-        const uniqueTerms = [...new Set(logs.map(log => log.search_term))];
-        const conversions = await IngredientConversion.find({
-            ingredient_name: { $in: uniqueTerms }
-        }).lean().exec();
-
-        // Create a map for easy lookup
-        const conversionMap = {};
-        conversions.forEach(c => {
-            conversionMap[c.ingredient_name] = c.grams_per_each;
-        });
-
-        // 3. Attach conversion factor to logs
-        const enrichedLogs = logs.map(log => ({
-            ...log,
-            grams_per_each: conversionMap[log.search_term] || 0
-        }));
-
-        return res.status(200).json({ success: true, res: enrichedLogs });
+        return res.status(200).json({ success: true, res: logs });
     } catch (error) {
         console.error("Failed to fetch SearchLog entries:", error);
         return res.status(500).json({ success: false, message: error.message });

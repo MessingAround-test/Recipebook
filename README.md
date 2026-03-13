@@ -45,7 +45,6 @@ https://medium.com/idomongodb/how-to-npm-run-start-at-the-background-%EF%B8%8F-6
 pm2 ps
 
 
-mongod -u user -p password
 
 https://app.woolworthsonline.com.au/apis/v2/swagger-ui/index.html
 
@@ -72,3 +71,19 @@ Gemini crap was done on brynsbrews@gmail.com
 
 Think about this... to compare prices better
 Provide an output for carrots with conversions between grams, milliliters, and each (whole units). respond with only this JSON format:{'item': {g: <grams>,ml: <milliliters>,each: <quantity>}}
+
+
+## Important commaands 
+<!-- Connect to DB docker -->
+docker exec -it <container-name-or-id> /bin/bash
+<!-- Connect to DB mongo shell -->
+mongosh -u username -p password
+<!-- List collections -->
+db.getCollectionNames()
+<!-- Find all users -->
+db.users.find({})
+<!-- Update user role -->
+db.users.updateOne({"email": "EMAIL"}, {$set: {role: "admin"}})
+<!-- Remove field from collection -->
+db.users.updateMany({}, { $unset: { password: "" } })
+

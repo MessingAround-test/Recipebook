@@ -59,8 +59,8 @@ export default function SearchLogs() {
         if (!token) return
 
         try {
-            // Call the supplier API with force=true to bypass cache
-            const endpoint = `/api/Ingredients/${source}?name=${encodeURIComponent(searchTerm)}&force=true`
+            // Call the base API with force=true and specific supplier
+            const endpoint = `/api/Ingredients/?name=${encodeURIComponent(searchTerm)}&supplier=${source}&force=true`
             const res = await fetch(endpoint, {
                 headers: { 'edgetoken': token }
             })
@@ -105,7 +105,7 @@ export default function SearchLogs() {
                                         <th className="p-4">Search Term</th>
                                         <th className="p-4">Source</th>
                                         <th className="p-4">Status</th>
-                                        <th className="p-4">Shared Factor</th>
+                                        <th className="p-4">Records</th>
                                         <th className="p-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -137,7 +137,7 @@ export default function SearchLogs() {
                                                 )}
                                             </td>
                                             <td className="p-4 font-mono font-bold">
-                                                {log.grams_per_each ? `${log.grams_per_each}g` : '-'}
+                                                {log.records_count !== undefined && log.records_count !== null ? log.records_count : '?'}
                                             </td>
                                             <td className="p-4 text-right">
                                                 <button

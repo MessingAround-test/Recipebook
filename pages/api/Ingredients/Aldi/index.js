@@ -115,7 +115,7 @@ export default async function handler(req, res) {
 
                 // Log successful search and get conversion
 
-                return res.status(200).send({ res: validatedEntries, success: true })
+                return res.status(200).send({ res: validatedEntries, success: true, count: validatedEntries.length })
             } else {
                 let IngredData = await AldiIngredient.find({}).lean().exec()
                 return res.status(200).send({ success: true, res: IngredData })

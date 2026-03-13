@@ -1,6 +1,6 @@
 import { useEffect, useState, FormEvent, ChangeEvent } from 'react'
 import Head from 'next/head'
-import Router from 'next/router'
+import Router, { useRouter } from 'next/router'
 import { Layout } from '../components/Layout'
 import { PageHeader } from '../components/PageHeader'
 import { FormField } from '../components/FormField'
@@ -41,6 +41,10 @@ export default function CreateRecipe() {
     const [imageData, setImageData] = useState<string | undefined>()
     const [recipeName, setRecipeName] = useState("")
     const [quantityTypes, setQuantityTypes] = useState({})
+    
+    const router = useRouter();
+    const { id } = router.query || {};
+    const isEditMode = id !== undefined;
 
     const blobToBase64 = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -97,8 +101,10 @@ export default function CreateRecipe() {
         }
 
         const token = localStorage.getItem('Token')
-        const res = await fetch("/api/Recipe", {
-            method: 'POST',
+        const url = isEditMode ? `/api/Recipe/${id}` : "/api/Recipe"
+        const method = isEditMode ? 'PUT' : 'POST'
+        const res = await fetch(url, {
+            method: method,
             headers: {
                 'Content-Type': 'application/json',
                 'edgetoken': token || ''
@@ -218,6 +224,35 @@ export default function CreateRecipe() {
         setQuantityTypes(quantity_unit_conversions)
     }, [])
 
+    useEffect(() => {
+        const fetchRecipeForEdit = async () => {
+            if (isEditMode) {
+                setLoading(true)
+                try {
+                    const res = await fetch(`/api/Recipe/${id}`, {
+                        headers: { 'edgetoken': localStorage.getItem('Token') || '' }
+                    })
+                    const data = await res.json()
+                    if (data.res) {
+                        setRecipeName(data.res.name)
+                        setImageData(data.res.image)
+                        setInstructions(data.res.instructions.map((i: any) => ({ Text: i.Text, Note: i.note })))
+                        setIngreds(data.res.ingredients.map((i: any) => ({
+                            Name: i.name,
+                            Amount: i.quantity,
+                            AmountType: i.quantity_type,
+                            Note: i.note
+                        })))
+                    }
+                } catch (error) {
+                    console.error("Error fetching recipe for edit:", error)
+                }
+                setLoading(false)
+            }
+        }
+        if (id) fetchRecipeForEdit()
+    }, [id])
+
     const getBase64 = function (file: File, cb: (data: string) => void) {
         let reader = new FileReader();
         reader.readAsDataURL(file);
@@ -232,8 +267,8 @@ export default function CreateRecipe() {
     if (!isAuthed) return null
 
     return (
-        <Layout title="Create Recipe" description="Add a new recipe to your collection">
-            <PageHeader title="Create new Recipe" />
+        <Layout title={isEditMode ? "Edit Recipe" : "Create Recipe"} description={isEditMode ? "Modify your recipe" : "Add a new recipe to your collection"}>
+            <PageHeader title={isEditMode ? "Edit Recipe" : "Create new Recipe"} />
 
             <div className="flex flex-col gap-6 w-full">
                 {/* General Details & Import Row */}

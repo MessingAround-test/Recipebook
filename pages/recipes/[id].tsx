@@ -68,7 +68,7 @@ export default function Home() {
         })
         let data = await res.json()
         if (data.loadedSource) {
-            let resLoaded = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${returnN}&supplier=${enabledSuppliers.join(',')}`, {
+            let resLoaded = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&quantity=${ingredient.quantity}&returnN=${returnN}${supplierParam}`, {
                 headers: { 'edgetoken': token }
             })
             data = await resLoaded.json()
@@ -112,7 +112,7 @@ export default function Home() {
         setRecipeName(data.res.name)
     }
 
-    const getAproxTotalRecipeCostUnit = () => {
+    const getAproxTotalRecipeCost = () => {
         let total = 0
         for (const ingredient of matchedListIngreds) {
             const current = ingredient.options?.[0]
@@ -120,16 +120,16 @@ export default function Home() {
                 total += Number(current.total_price)
             }
         }
-        return total.toFixed(2)
+        return isNaN(total) ? "0.00" : total.toFixed(2)
     }
 
-    const getAproxTotalRecipeCost = () => {
+    const getAproxTotalRecipeCostUnit = () => {
         let total = 0
         for (const ingredient of matchedListIngreds) {
             const current = ingredient.options?.[0]
             if (current !== undefined && current.total_price !== undefined) {
                 const efficiency = Number(current.match_efficiency) || 100
-                total += (Number(current.total_price) / efficiency) * 100
+                total += Number(current.total_price) * (efficiency / 100)
             }
         }
         return isNaN(total) ? "0.00" : total.toFixed(2)
@@ -239,12 +239,21 @@ export default function Home() {
                 <div className="bg-card text-card-foreground rounded-2xl border border-border shadow-sm p-4 md:p-8 mb-8">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-4 border-b border-border">
                         <h1 className="text-3xl md:text-4xl font-bold">{recipeName}</h1>
-                        <Button
-                            onClick={() => setIsCookingMode(true)}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-6 px-8 rounded-xl shadow-lg transition-all hover:scale-105"
-                        >
-                            👨‍🍳 Start Cooking
-                        </Button>
+                        <div className="flex gap-3">
+                            <Button
+                                onClick={() => router.push(`/createRecipe?id=${id}`)}
+                                variant="outline"
+                                className="font-bold py-6 px-8 rounded-xl shadow-lg transition-all hover:scale-105"
+                            >
+                                ✏️ Edit Recipe
+                            </Button>
+                            <Button
+                                onClick={() => setIsCookingMode(true)}
+                                className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-6 px-8 rounded-xl shadow-lg transition-all hover:scale-105"
+                            >
+                                👨‍🍳 Start Cooking
+                            </Button>
+                        </div>
                     </div>
 
                     <div className="flex justify-between items-center mb-6">
@@ -267,7 +276,7 @@ export default function Home() {
                             </div>
                         )}
                         {matchedListIngreds.map((ingred, idx) => (
-                            <IngredientCard key={idx} ingredient={ingred} filters={filters} openModal={openModal} />
+                            <IngredientCard key={idx} ingredient={ingred} filters={filters} openModal={openModal} hideDelete={true} />
                         ))}
                     </div>
 

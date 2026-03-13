@@ -2,7 +2,7 @@ import React from 'react';
 import Modal from 'react-modal';
 import IngredientResearchComponent from './IngredientResearchComponent';
 
-const CardListModal = ({ ingredient, show, onHide, filters, enabledSuppliers = [], handleDeleteItem }: any) => {
+const CardListModal = ({ ingredient, show, onHide, filters, enabledSuppliers = [], handleDeleteItem, hideDelete = false }: any) => {
 
     return (
         <Modal
@@ -38,18 +38,20 @@ const CardListModal = ({ ingredient, show, onHide, filters, enabledSuppliers = [
                         <p className="text-sm text-muted-foreground">Detail & Advanced Research</p>
                     </div>
                     <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => {
-                                if (confirm(`Are you sure you want to remove ${ingredient?.name} from the list?`)) {
-                                    handleDeleteItem(null, ingredient?._id);
-                                    onHide();
-                                }
-                            }}
-                            className="text-xs font-bold uppercase tracking-widest text-red-500 border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 py-1.5 px-3 rounded-lg transition-all"
-                            title="Remove from Shopping List"
-                        >
-                            🗑️ Remove from List
-                        </button>
+                        {handleDeleteItem && !hideDelete && (
+                            <button
+                                onClick={() => {
+                                    if (confirm(`Are you sure you want to remove ${ingredient?.name} from the list?`)) {
+                                        handleDeleteItem(null, ingredient?._id);
+                                        onHide();
+                                    }
+                                }}
+                                className="text-xs font-bold uppercase tracking-widest text-red-500 border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 py-1.5 px-3 rounded-lg transition-all"
+                                title="Remove from Shopping List"
+                            >
+                                🗑️ Remove from List
+                            </button>
+                        )}
                         <button onClick={onHide} className="text-muted-foreground hover:text-foreground text-3xl leading-none transition-colors">&times;</button>
                     </div>
                 </div>

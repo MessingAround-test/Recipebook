@@ -7,7 +7,7 @@ import CardListModal from './CardListModal';
 import IngredientCardProduct from './IngredientCardProduct';
 import Skeleton from './Skeleton';
 
-function IngredientCard({ ingredient, essential = true, openModal = undefined, handleCheckboxChange = undefined, markAsIncorrect = undefined, handleDeleteItem = undefined, filters = [], modalVersion = false, enabledSuppliers = [], groupColor = undefined, pricingStrategy = 'match' }) {
+function IngredientCard({ ingredient, essential = true, openModal = undefined, handleCheckboxChange = undefined, markAsIncorrect = undefined, handleDeleteItem = undefined, filters = [], modalVersion = false, enabledSuppliers = [], groupColor = undefined, pricingStrategy = 'match', hideDelete = false }) {
     const [otherOptionsModalIsOpen, setOtherOptionsModalIsOpen] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -162,7 +162,7 @@ function IngredientCard({ ingredient, essential = true, openModal = undefined, h
                             </div>
                         </div>
                     )}
-                    <CardListModal handleDeleteItem={handleDeleteItem} filters={filters} ingredient={ingredient} show={otherOptionsModalIsOpen} onHide={() => setOtherOptionsModalIsOpen(false)} enabledSuppliers={enabledSuppliers}></CardListModal>
+                    <CardListModal handleDeleteItem={handleDeleteItem} filters={filters} ingredient={ingredient} show={otherOptionsModalIsOpen} onHide={() => setOtherOptionsModalIsOpen(false)} enabledSuppliers={enabledSuppliers} hideDelete={hideDelete}></CardListModal>
                 </div>
             </div >
         </div >

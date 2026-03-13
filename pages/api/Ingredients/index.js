@@ -51,6 +51,7 @@ export default async function handler(req, res) {
                 let IngredData = await Ingredients.find({}).exec()
                 return res.status(200).send({ res: IngredData })
             } else {
+                const force = req.query.force === 'true';
                 let search_query = { search_term: search_term }
                 let companies = ["WW", "IGA", "Panetta", "Aldi", "Coles"]
                 const supplierParam = req.query.supplier;
@@ -66,9 +67,9 @@ export default async function handler(req, res) {
                     search_query["source"] = { "$in": companies }
                 }
 
-                let IngredData = await Ingredients.find(search_query).exec()
+                let IngredData = force ? [] : await Ingredients.find(search_query).exec()
                 const existingSuppliers = new Set(IngredData.map(i => i.source));
-                const missingSuppliers = companies.filter(c => !existingSuppliers.has(c));
+                const missingSuppliers = companies.filter(c => force || !existingSuppliers.has(c));
 
                 // NEW: Attach global conversion factor to ingredients
                 const searchLogLookup = await axios.get(
@@ -95,6 +96,28 @@ export default async function handler(req, res) {
                     loadedFromSource = true;
                     for (let supplierName of missingSuppliers) {
                         try {
+                            // NEW: Check if we've already tried this supplier recently and it failed
+                            const recentLog = await SearchLog.findOne({
+                                search_term: search_term,
+                                source: supplierName
+                            }).lean();
+
+                            // If it failed recently (e.g. within last 1 hour) or was empty, maybe skip
+                            // For now, let's just skip if it failed recently to honor the "avoid re-attempting" request
+                            if (recentLog && !recentLog.success && !force) {
+                                let oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                                if (new Date(recentLog.last_fetched) > oneHourAgo) {
+                                    console.log(`Skipping supplier ${supplierName} for ${search_term} due to recent failure.`);
+                                    continue;
+                                }
+                            }
+
+                            // DELETE orphaned records before re-scraping if forcing or missing
+                            await Ingredients.deleteMany({
+                                search_term: search_term,
+                                source: supplierName
+                            });
+
                             const newIngredData = await axios({
                                 method: 'get',
                                 url: `http://localhost:8080/api/Ingredients/${supplierName}/?name=${search_term}`,
@@ -107,11 +130,11 @@ export default async function handler(req, res) {
                                 if (newIngredData.data.res.length > 0) {
                                     allIngredData = allIngredData.concat(newIngredData.data.res);
                                 }
-                                // Log success for this supplier
-                                await logSearchAndGetConversion(search_term, supplierName, true, "", req.headers.edgetoken);
+                                // Treat 0 results as a successful scrape (just no results) to avoid re-scraping
+                                await logSearchAndGetConversion(search_term, supplierName, true, "", req.headers.edgetoken, newIngredData.data.count);
                             } else {
                                 // If the API returned a failure message, log it
-                                await logSearchAndGetConversion(search_term, supplierName, false, newIngredData.data.message || "Unknown error", req.headers.edgetoken);
+                                await logSearchAndGetConversion(search_term, supplierName, false, newIngredData.data.message || "Scraper returned success:false", req.headers.edgetoken);
                             }
                         } catch (error) {
                             console.error(`API Call to ${supplierName} failed:`, error.message)

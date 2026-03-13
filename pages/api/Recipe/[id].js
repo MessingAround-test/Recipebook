@@ -57,7 +57,6 @@ export default async function handler(req, res) {
 
   } else if (req.method === "PUT") {
     try {
-      // Allows update of image
       await dbConnect()
 
       let db_id = decoded.id
@@ -65,10 +64,7 @@ export default async function handler(req, res) {
 
       if (userData === undefined) {
         return res.status(400).json({ res: "user not found, please relog" })
-      } else if (req.body.image === undefined || req.body.image === "") {
-        return res.status(400).json({ res: "No image attached to update" })
       } else {
-
         let RecipeData = await Recipe.findOne({ _id: recipe_id })
         if (!RecipeData) {
           return res.status(404).json({ res: "Recipe not found" })
@@ -78,12 +74,22 @@ export default async function handler(req, res) {
           return res.status(403).json({ res: "Forbidden: You do not own this recipe" })
         }
 
-        let responseData = await Recipe.findOneAndUpdate({ _id: recipe_id }, { $set: { _id: recipe_id, image: req.body.image } });
-        return res.status(200).json({ res: "DONE" })
+        let updateData = {};
+        if (req.body.image !== undefined) updateData.image = req.body.image;
+        if (req.body.name !== undefined) updateData.name = req.body.name;
+        if (req.body.ingreds !== undefined) updateData.ingredients = req.body.ingreds;
+        if (req.body.instructions !== undefined) updateData.instructions = req.body.instructions;
+
+        if (Object.keys(updateData).length === 0) {
+          return res.status(400).json({ res: "No data provided to update" })
+        }
+
+        await Recipe.findOneAndUpdate({ _id: recipe_id }, { $set: updateData });
+        return res.status(200).json({ success: true, message: "Recipe updated successfully" })
       }
     } catch (e) {
       console.log(e)
-      return res.status(400).json({ res: "Failed request" })
+      return res.status(400).json({ res: "Failed request: " + e.message })
     }
   } else if (req.method === "DELETE") {
     await dbConnect()

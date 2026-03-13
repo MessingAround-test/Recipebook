@@ -47,8 +47,9 @@ export default async function handler(req, res) {
             if (!search_term || !source) continue;
 
             try {
+                const count = await Ingredients.countDocuments({ search_term, source });
                 // This call will create a SearchLog entry AND populate IngredientConversion on-demand
-                await logSearchAndGetConversion(search_term, source, true, "", req.headers.edgetoken || req.query.EDGEtoken || "");
+                await logSearchAndGetConversion(search_term, source, true, "", req.headers.edgetoken || req.query.EDGEtoken || "", count);
                 processed++;
             } catch (err) {
                 console.error(`Error processing ${search_term} (${source}):`, err.message);

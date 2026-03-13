@@ -54,10 +54,10 @@ export default async function handler(req, res) {
                 if (matchedIngredData.length > 0) {
                     let json_text = String(matchedIngredData[0]).replace("pysOptions =", "").replace(";", "")
                     let json_data = JSON.parse(json_text)
-                    json_data = json_data.staticEvents.ga.woo_view_item_list_search
+                    json_data = json_data?.staticEvents?.ga?.woo_view_item_list_search
 
-                    if (json_data.length > 0) {
-                        let item_list = json_data[0].params.items
+                    if (json_data && json_data.length > 0) {
+                        let item_list = json_data[0]?.params?.items || []
                         for (let ingredData in item_list) {
                             try {
                                 let filteredData = item_list[ingredData]
@@ -104,7 +104,7 @@ export default async function handler(req, res) {
                     );
                 }
 
-                return res.status(200).send({ res: validatedEntries, success: true })
+                return res.status(200).send({ res: validatedEntries, success: true, count: validatedEntries.length })
             }
         } else {
             return res.status(405).json({ success: false, message: "Method Not Allowed" })

@@ -150,7 +150,7 @@ export default async function handler(req, res) {
 
                 // Log successful search and get conversion
 
-                return res.status(200).send({ res: validatedEntries, success: true })
+                return res.status(200).send({ res: validatedEntries, success: true, count: validatedEntries.length })
             }
         } else {
             return res.status(405).json({ success: false, message: "Method Not Allowed" })
