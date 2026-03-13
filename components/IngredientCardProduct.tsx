@@ -37,7 +37,10 @@ function IngredientCardProduct({ ingredient, handleDeleteIngredient, essential, 
                 <div className="flex flex-row items-baseline gap-1 font-semibold text-foreground text-sm">
                     <span>${(ingredient?.total_price || 0).toFixed(2)}</span>
                     <span className="text-xs text-muted-foreground font-normal">
-                        (${(((ingredient?.total_price || 0) * (matchEfficiency || 100)) / 100).toFixed(2)} wanted, ${(ingredient?.price || 0).toFixed(2)}/ea)
+                        ({ingredient?.units_needed > 1 ? `${ingredient.units_needed}x ` : ''}${(ingredient?.price || 0).toFixed(2)}/ea)
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-normal opacity-60 ml-1">
+                        &bull; ${(((ingredient?.total_price || 0) * (matchEfficiency || 100)) / 100).toFixed(2)} wanted
                     </span>
                 </div>
 

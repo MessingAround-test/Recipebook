@@ -34,6 +34,7 @@ export default function Home() {
 
     const [filters, setFilters] = useState(["complete"])
     const [pricingStrategy, setPricingStrategy] = useState("value")
+    const [isGrouped, setIsGrouped] = useState(true)
     const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type", "category_simple"]
 
     useEffect(() => {
@@ -49,7 +50,7 @@ export default function Home() {
         if (list._id !== undefined) {
             getShoppingListItems()
         }
-    }, [list._id])
+    }, [list._id, isGrouped])
 
     const reloadAllIngredients = async () => {
         const Token = localStorage.getItem('Token');
@@ -60,8 +61,8 @@ export default function Home() {
             return listIngreds.map(ingred => {
                 const existing = prevMatched.find(p => p._id === ingred._id);
                 if (existing) {
-                    // Item exists, keep its previous state (options, loading, etc.)
-                    return { ...ingred, ...existing };
+                    // Merge: Keep existing options/loading but take everything else from the fresh ingred
+                    return { ...ingred, options: existing.options, loading: existing.loading };
                 }
                 // New item, initialize it with loading state
                 return { ...ingred, options: [], loading: true };
@@ -110,7 +111,8 @@ export default function Home() {
     }, [listIngreds])
 
     async function getShoppingListItems() {
-        let res = await fetch(`/api/ShoppingListItem/?shoppingListId=${id}`, {
+        const apiPath = isGrouped ? `/api/ShoppingList/GroupedIngredients/?shoppingListId=${id}` : `/api/ShoppingListItem/?shoppingListId=${id}`;
+        let res = await fetch(apiPath, {
             headers: {
                 'edgetoken': localStorage.getItem('Token') || ''
             }
@@ -221,9 +223,26 @@ export default function Home() {
     async function handleCheckboxChange(ingred) {
         const updatedIngredients = [...matchedListIngreds];
         let index = await searchForIndex(ingred._id, "_id", updatedIngredients)
-        updatedIngredients[index].complete = !updatedIngredients[index].complete;
-        setMatchedListIngreds(updatedIngredients);
-        await updateCompleteInDB(updatedIngredients[index]._id, updatedIngredients[index].complete)
+        if (index === -1) return;
+
+        const isGroup = !!updatedIngredients[index].items;
+        const newComplete = !updatedIngredients[index].complete;
+
+        if (isGroup) {
+            // Update all sub-items
+            updatedIngredients[index].items = updatedIngredients[index].items.map(item => ({ ...item, complete: newComplete }));
+            updatedIngredients[index].complete = newComplete;
+            setMatchedListIngreds(updatedIngredients);
+
+            // Update all in DB
+            for (const item of updatedIngredients[index].items) {
+                await updateCompleteInDB(item._id, newComplete);
+            }
+        } else {
+            updatedIngredients[index].complete = newComplete;
+            setMatchedListIngreds(updatedIngredients);
+            await updateCompleteInDB(updatedIngredients[index]._id, newComplete)
+        }
     };
 
     async function updateCompleteInDB(id, complete) {
@@ -289,7 +308,7 @@ export default function Home() {
         let total = 0;
         items.forEach((item) => {
             const opt = calculateItemCost(item, suppliers, strategy);
-            if (opt) total += opt.price;
+            if (opt) total += (opt.total_price ?? opt.price);
         });
         return total.toFixed(2);
     }
@@ -304,7 +323,7 @@ export default function Home() {
             items.forEach(item => {
                 const opt = calculateItemCost(item, [supplier], strategy);
                 if (opt) {
-                    cost += opt.price;
+                    cost += (opt.total_price ?? opt.price);
                     itemsFound += 1;
                 }
             });
@@ -325,7 +344,7 @@ export default function Home() {
                 items.forEach(item => {
                     const opt = calculateItemCost(item, supplierPair, strategy);
                     if (opt) {
-                        cost += opt.price;
+                        cost += (opt.total_price ?? opt.price);
                         itemsFound += 1;
                     }
                 });
@@ -517,6 +536,18 @@ export default function Home() {
                                     onClick={() => setCreateNewIngredOpen(true)}
                                 >
                                     ➕ ADD ITEM
+                                </button>
+                            )}
+                            {/* Grouping Toggle */}
+                            {!isListEmpty && (
+                                <button
+                                    className={`btn-modern !py-1.5 !px-3 text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all ${isGrouped ? 'bg-[var(--accent)] text-black' : 'bg-transparent text-gray-400 border border-[var(--glass-border)] hover:text-white'}`}
+                                    onClick={() => {
+                                        const newVal = !isGrouped;
+                                        setIsGrouped(newVal);
+                                    }}
+                                >
+                                    {isGrouped ? '📦 Grouped' : '📄 Individual'}
                                 </button>
                             )}
                             {!isListEmpty && (

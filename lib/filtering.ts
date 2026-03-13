@@ -35,17 +35,15 @@ export function filter(itemList, filterObj) {
             let conversion_source = itemNorm.source;
 
             if (targetGrams !== null && itemGrams !== null) {
-                // ─── Step 2: Apply max size normalization ────────────────────────
-                // Determine the max comparison size. It can be an explicit amount (e.g., 1000g)
-                // or derived from the item's unit type.
-                let comparisonGrams: number;
+                const unitsNeeded = Math.ceil(targetGrams / itemGrams);
+                const purchasePrice = current.price * unitsNeeded;
 
+                // ─── Step 3: Price at max comparison size (for ranking) ──────────
+                let comparisonGrams;
                 if (filterObj.maxSize && filterObj.maxSizeUnit) {
-                    // Explicit max size was passed (e.g., maxSize=1000 maxSizeUnit=gram)
                     const maxNorm = normalizeToGrams(filterObj.maxSizeUnit, parseFloat(filterObj.maxSize), current.grams_per_each);
                     comparisonGrams = maxNorm.value !== null ? maxNorm.value : targetGrams;
                 } else {
-                    // Derive from defaults: use the unit type of the item/request to pick max
                     const unitType = current.quantity_unit === 'each' ? 'each' :
                         (convertKitchenMetrics(current.quantity_unit, 1) ? 'weight' : 'each');
                     const maxSizeDef = getMaxSize(unitType, filterObj.category || null, filterObj.customMaxSizes || null);
@@ -53,25 +51,30 @@ export function filter(itemList, filterObj) {
                     comparisonGrams = maxNorm.value !== null ? maxNorm.value : targetGrams;
                 }
 
-                // ─── Step 3: Price at max comparison size ────────────────────────
-                // If the requested amount exceeds the max size, scale up to the next whole multiple
-                // e.g., 2000g requested, max=1000g → comparisonGrams = 2000g (2× max)
                 if (targetGrams > comparisonGrams) {
                     const multiples = Math.ceil(targetGrams / comparisonGrams);
                     comparisonGrams = comparisonGrams * multiples;
                 }
 
-                const gramPrice = current.price / itemGrams;           // price per gram
+                const gramPrice = current.price / itemGrams;
                 unit_price_converted = gramPrice;
                 unit_price_converted_type = "gram";
-                total_price = gramPrice * comparisonGrams;             // total at comparison size
+
+                // total_price is now the ACTUAL purchase price for requested amount
+                total_price = purchasePrice;
+                // Add units_needed for UI info
+                (current as any).units_needed = unitsNeeded;
+                (current as any).normalized_price = gramPrice * comparisonGrams;
+
                 match_efficiency = calculateEfficiency(targetGrams, itemGrams);
             } else {
                 // Can't normalize — fall through to quantity-type matching
                 if (!(matchQuantityType(current, filterObj))) {
                     continue;
                 }
-                total_price = (filterObj.quantity / current.quantity) * current.price;
+                const unitsNeeded = Math.ceil(filterObj.quantity / current.quantity);
+                total_price = unitsNeeded * current.price;
+                (current as any).units_needed = unitsNeeded;
                 match_efficiency = 100;
             }
         } else {
@@ -79,7 +82,9 @@ export function filter(itemList, filterObj) {
             if (!(matchQuantityType(current, filterObj))) {
                 continue;
             }
-            total_price = (filterObj.quantity / current.quantity) * current.price;
+            const unitsNeeded = Math.ceil(filterObj.quantity / current.quantity);
+            total_price = unitsNeeded * current.price;
+            (current as any).units_needed = unitsNeeded;
             match_efficiency = 100;
         }
 
