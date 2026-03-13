@@ -87,7 +87,7 @@ function IngredientCard({ ingredient, essential, handleCheckboxChange, markAsInc
                         }}>
                             {`${ingredient.name.toUpperCase()}`}
                             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginLeft: '0.5rem', fontWeight: '500' }}>
-                                &bull; {ingredient.totalString || `${ingredient.quantity} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`}
+                                &bull; {isGroup ? (ingredient.totalString || `${ingredient.quantity} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`) : `${ingredient.quantity} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`}
                             </span>
                         </div>
                         {isGroup && (

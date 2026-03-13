@@ -129,13 +129,10 @@ export default async function handler(req, res) {
                 quantity_unit = "each";
             }
 
-            // If there's only one item in the group, don't treat it as a group
             if (group.items.length === 1) {
                 const singleItem = group.items[0];
                 return {
                     ...singleItem,
-                    // Ensure it has weight info if it was convertible
-                    totalString: group.totalGrams > 0 ? `${group.totalGrams.toFixed(0)}${getShorthandForMeasure('gram')}` : null,
                     isGroup: false
                 };
             }
