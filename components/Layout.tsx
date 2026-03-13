@@ -1,6 +1,6 @@
 import Head from 'next/head'
 import { ReactNode } from 'react'
-import { Toolbar } from '../pages/Toolbar'
+import { Toolbar } from './Toolbar'
 import styles from '../styles/Home.module.css'
 
 interface LayoutProps {

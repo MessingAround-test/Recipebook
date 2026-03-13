@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import Head from 'next/head';
-import IngredientResearchComponent from './IngredientResearchComponent';
+import IngredientResearchComponent from '../components/IngredientResearchComponent';
 
 function SamplePage() {
   const [searchTerm, setSearchTerm] = useState('');

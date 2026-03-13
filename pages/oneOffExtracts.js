@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import Image from 'next/image'
 import styles from '../styles/Home.module.css'
-import { Toolbar } from './Toolbar'
+import { Toolbar } from '../components/Toolbar'
 import { useEffect, useState } from 'react'
 import { Button } from '../components/ui/button'
 import Router from 'next/router'

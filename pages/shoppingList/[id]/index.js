@@ -1,6 +1,6 @@
 import Head from 'next/head'
 import styles from '../../../styles/Home.module.css'
-import { Toolbar } from '../../Toolbar'
+import { Toolbar } from '../../../components/Toolbar'
 import { useEffect, useState } from 'react'
 import Router from 'next/router'
 import { useRouter } from 'next/router'

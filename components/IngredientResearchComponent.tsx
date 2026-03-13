@@ -55,13 +55,21 @@ export default function IngredientResearchComponent({
     const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
     const [chosenProductId, setChosenProductId] = useState<string | null>(null);
     const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>(['WW', 'Coles', 'Aldi', 'IGA', 'Panetta']);
-    const [skipConversion, setSkipConversion] = useState<boolean>(() => localStorage.getItem('skipConversion') === 'true');
+    const [skipConversion, setSkipConversion] = useState<boolean>(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('skipConversion') === 'true';
+        }
+        return false;
+    });
     const [comparisonView, setComparisonView] = useState<'table' | 'cards'>('cards');
     const [showSettings, setShowSettings] = useState<boolean>(false);
 
     // Max size overrides — persisted in localStorage
     const [maxSizeOverrides, setMaxSizeOverrides] = useState<Record<string, { quantity: number; unit: string }>>(() => {
-        try { return JSON.parse(localStorage.getItem('maxSizeOverrides') || '{}'); } catch { return {}; }
+        if (typeof window !== 'undefined') {
+            try { return JSON.parse(localStorage.getItem('maxSizeOverrides') || '{}'); } catch { return {}; }
+        }
+        return {};
     });
 
     const deletingIds = useState<Set<string>>(new Set())[0];

@@ -9,7 +9,12 @@ export default function Profile() {
     const isAuthed = useAuthGuard()
     const [userData, setUserData] = useState<Record<string, string>>({})
 
-    const [skipConversion, setSkipConversion] = useState(localStorage.getItem('skipConversion') === 'true')
+    const [skipConversion, setSkipConversion] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('skipConversion') === 'true'
+        }
+        return false
+    })
 
     async function getUserDetails() {
         const token = localStorage.getItem('Token')
