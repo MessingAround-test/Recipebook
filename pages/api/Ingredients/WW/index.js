@@ -63,7 +63,7 @@ export default async function handler(req, res) {
                     let name = filteredData.Name
 
                     // Woolworths API: price is typically the package price, CupPrice is comparison price
-                    let price = filteredData.price
+                    let price = filteredData.Price || filteredData.price
                     let quantity_unit = filteredData.PackageSize || filteredData.measure || filteredData.CupMeasure
                     let quantity = 1
                     let quantity_type = "each"

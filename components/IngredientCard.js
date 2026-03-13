@@ -108,7 +108,15 @@ function IngredientCard({ ingredient, essential, handleCheckboxChange, markAsInc
                             {ingredient.items.map((item, idx) => (
                                 <div key={item._id || idx} className="flex justify-between items-center text-xs text-[var(--text-secondary)]">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: item.complete ? 'var(--accent)' : 'gray', opacity: 0.5 }}></div>
+                                        <input
+                                            type="checkbox"
+                                            checked={item.complete}
+                                            onChange={(e) => {
+                                                e.stopPropagation();
+                                                handleCheckboxChange(item);
+                                            }}
+                                            className="w-3 h-3 rounded cursor-pointer accent-accent"
+                                        />
                                         <span>{item.quantity} {item.quantity_type_shorthand || item.quantity_type || 'each'}</span>
                                         {item.note && <span className="italic opacity-60">({item.note})</span>}
                                     </div>

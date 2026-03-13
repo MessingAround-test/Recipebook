@@ -222,27 +222,51 @@ export default function Home() {
 
     async function handleCheckboxChange(ingred) {
         const updatedIngredients = [...matchedListIngreds];
-        let index = await searchForIndex(ingred._id, "_id", updatedIngredients)
-        if (index === -1) return;
 
-        const isGroup = !!updatedIngredients[index].items;
-        const newComplete = !updatedIngredients[index].complete;
+        // 1. Try to find the item (either top-level or as a sub-item)
+        let topLevelIndex = await searchForIndex(ingred._id, "_id", updatedIngredients);
 
-        if (isGroup) {
-            // Update all sub-items
-            updatedIngredients[index].items = updatedIngredients[index].items.map(item => ({ ...item, complete: newComplete }));
-            updatedIngredients[index].complete = newComplete;
-            setMatchedListIngreds(updatedIngredients);
+        if (topLevelIndex !== -1) {
+            // Top-level item toggle
+            const item = updatedIngredients[topLevelIndex];
+            const isGroup = !!item.items;
+            const newComplete = !item.complete;
 
-            // Update all in DB
-            for (const item of updatedIngredients[index].items) {
+            if (isGroup) {
+                // Bulk update group
+                item.items = item.items.map(sub => ({ ...sub, complete: newComplete }));
+                item.complete = newComplete;
+                for (const sub of item.items) {
+                    await updateCompleteInDB(sub._id, newComplete);
+                }
+            } else {
+                // Normal item
+                item.complete = newComplete;
                 await updateCompleteInDB(item._id, newComplete);
             }
         } else {
-            updatedIngredients[index].complete = newComplete;
-            setMatchedListIngreds(updatedIngredients);
-            await updateCompleteInDB(updatedIngredients[index]._id, newComplete)
+            // 2. Search deeper for a sub-item
+            for (let i = 0; i < updatedIngredients.length; i++) {
+                if (updatedIngredients[i].items) {
+                    const subIndex = updatedIngredients[i].items.findIndex(sub => sub._id === ingred._id);
+                    if (subIndex !== -1) {
+                        const subItem = updatedIngredients[i].items[subIndex];
+                        const newSubComplete = !subItem.complete;
+
+                        // Update specific sub-item
+                        updatedIngredients[i].items[subIndex].complete = newSubComplete;
+
+                        // Recalculate group completion
+                        updatedIngredients[i].complete = updatedIngredients[i].items.every(sub => sub.complete);
+
+                        await updateCompleteInDB(subItem._id, newSubComplete);
+                        break;
+                    }
+                }
+            }
         }
+
+        setMatchedListIngreds(updatedIngredients);
     };
 
     async function updateCompleteInDB(id, complete) {
