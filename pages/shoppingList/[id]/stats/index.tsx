@@ -58,7 +58,7 @@ export default function Home() {
     }, [listIngreds])
 
     async function getGroceryStoreProducts(ingredient: any) {
-        let res = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=1&supplier=${enabledSuppliers.join(',')}`, {
+        let res = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&quantity=${ingredient.quantity}&returnN=1&supplier=${enabledSuppliers.join(',')}`, {
             headers: { 'edgetoken': localStorage.getItem('Token') || "" }
         })
         let data = await res.json()

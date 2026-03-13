@@ -149,7 +149,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
     }, []);
 
     return (
-        <div className="glass-card w-full max-w-[500px] mx-auto mb-4 p-8 border border-[var(--glass-border)] relative">
+        <div className="glass-card w-full max-w-[500px] mx-auto mb-4 p-4 md:p-8 border border-[var(--glass-border)] relative">
             {onCancel && (
                 <button
                     type="button"

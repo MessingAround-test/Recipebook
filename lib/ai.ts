@@ -1,8 +1,58 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 export const GROQ_MODELS = {
     PRIMARY: 'llama-3.3-70b-versatile',
     FALLBACK: 'llama-3.1-8b-instant',
     AUDIO: 'whisper-large-v3'
 };
+
+export const IMAGEN_MODELS = {
+    PRIMARY: 'imagen-4.0-generate-001',
+    FALLBACK_FAST: 'imagen-4.0-fast-generate-001',
+    FALLBACK_ULTRA: 'imagen-4.0-ultra-generate-001'
+};
+
+export async function generateGeminiImage(prompt: string): Promise<string> {
+    const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        throw new Error('GOOGLE_API_KEY or GEMINI_API_KEY is not defined');
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+
+    async function attemptImageGeneration(modelName: string): Promise<string> {
+        console.log(`Attempting image generation with model: ${modelName}`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        
+        const candidates = response.candidates;
+        if (candidates && candidates[0] && candidates[0].content && candidates[0].content.parts[0].inlineData) {
+            const imageData = candidates[0].content.parts[0].inlineData.data;
+            const mimeType = candidates[0].content.parts[0].inlineData.mimeType;
+            return `data:${mimeType};base64,${imageData}`;
+        }
+        throw new Error("No image data returned from Gemini");
+    }
+
+    try {
+        return await attemptImageGeneration(IMAGEN_MODELS.PRIMARY);
+    } catch (error: any) {
+        // Handle rate limit (429) fallback
+        if (error.message?.includes('429') || error.status === 429) {
+            console.warn(`Primary Imagen model rate limited. Retrying with fallback: ${IMAGEN_MODELS.FALLBACK_FAST}`);
+            try {
+                return await attemptImageGeneration(IMAGEN_MODELS.FALLBACK_FAST);
+            } catch (fallbackError: any) {
+                console.warn(`Fallback fast model failed. Retrying with ultra: ${IMAGEN_MODELS.FALLBACK_ULTRA}`);
+                return await attemptImageGeneration(IMAGEN_MODELS.FALLBACK_ULTRA);
+            }
+        }
+        
+        console.error("Gemini Image Generation Error:", error.message);
+        throw error;
+    }
+}
 
 export async function callGroqWithFallback(body: any) {
     const apiKey = process.env.GROQ_API_KEY;
@@ -83,3 +133,4 @@ export async function callGroqChat(messages: any[], jsonMode: boolean = false) {
     const data = await response.json();
     return data.choices[0].message.content;
 }
+

@@ -53,21 +53,35 @@ export default function CreateRecipe() {
         return await blobToBase64(blob);
     }
 
-    async function generateImage(prompt: string) {
+    async function generateImage(recipeName: string) {
         try {
-            if (prompt !== undefined && prompt !== "") {
-                let promptImage = await (await fetch(`https://image.pollinations.ai/prompt/${prompt}%20realistic`, {
-                    method: 'GET'
-                })).blob();
+            if (recipeName !== undefined && recipeName !== "") {
+                // First, get a better prompt from Groq
+                const token = localStorage.getItem('Token')
+                const promptRes = await fetch(`/api/ai/generate_image_prompt?recipeName=${encodeURIComponent(recipeName)}`, {
+                    headers: { 'edgetoken': token || '' }
+                })
+                const promptData = await promptRes.json()
+                const refinedPrompt = promptData.success ? promptData.prompt : recipeName;
+                const generatedImage = promptData.success ? promptData.image : null;
 
-                let resData = await convertBlobToBase64(promptImage)
-                setImageData(resData)
+                console.log("Refined Prompt:", refinedPrompt)
+
+                if (generatedImage) {
+                    setImageData(generatedImage)
+                    setLoading(false)
+                    return generatedImage
+                }
+
+                // Fallback for whatever reason if Gemini didn't return an image but we have a prompt
+                console.warn("Gemini image failed, no fallback provided for now.")
                 setLoading(false)
-                return resData
+                return undefined
             } else {
                 alert("Please set a Recipe Name")
             }
         } catch (e) {
+            console.error("Error generating image:", e)
             setLoading(false)
         }
     }
@@ -252,15 +266,15 @@ export default function CreateRecipe() {
                 </div>
 
                 {/* Builder Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full px-2 sm:px-0">
                     {/* Add Ingredients */}
-                    <div className="glass-card">
+                    <div className="glass-card p-4 md:p-8">
                         <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Add Ingredients</h2>
                         <AddShoppingItem handleSubmit={onSubmitIngred} hideCategories={true} />
                     </div>
 
                     {/* Current Ingredients */}
-                    <div className="glass-card">
+                    <div className="glass-card p-4 md:p-8">
                         <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Current Ingredients</h2>
                         {ingreds.length === 0 ? (
                             <p className="text-muted-foreground italic">No ingredients added yet.</p>
@@ -286,7 +300,7 @@ export default function CreateRecipe() {
                     </div>
 
                     {/* Add Instructions */}
-                    <div className="glass-card">
+                    <div className="glass-card p-4 md:p-8">
                         <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Instructions</h2>
                         <form onSubmit={onSubmitInstruc} className="flex flex-col gap-4">
                             <FormField
@@ -305,7 +319,7 @@ export default function CreateRecipe() {
                     </div>
 
                     {/* Current Instructions */}
-                    <div className="glass-card">
+                    <div className="glass-card p-4 md:p-8">
                         <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Step-by-Step</h2>
                         {instructions.length === 0 ? (
                             <p className="text-muted-foreground italic">No instructions added yet.</p>

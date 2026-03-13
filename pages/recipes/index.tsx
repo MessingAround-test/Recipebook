@@ -99,12 +99,12 @@ export default function Recipes() {
                 }
             />
 
-            <div className="mb-8">
+            <div className="mb-8 px-4 sm:px-0">
                 <Input
                     placeholder="Search recipes..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="max-w-md"
+                    className="w-full sm:max-w-md"
                 />
             </div>
 

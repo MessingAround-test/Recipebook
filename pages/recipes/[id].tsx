@@ -23,6 +23,8 @@ export default function Home() {
     const [selectedIngred, setSelectedIngred] = useState("")
     const [filters, setFilters] = useState<string[]>([])
     const [loading, setLoading] = useState(false)
+    const [isCookingMode, setIsCookingMode] = useState(false)
+    const [currentStep, setCurrentStep] = useState(0)
 
     async function openModal(ingredName: string) {
         setIsOpen(true)
@@ -60,7 +62,8 @@ export default function Home() {
     }
 
     async function getGroceryStoreProducts(ingredient: any, returnN: number, enabledSuppliers: string[], token: string) {
-        let res = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&returnN=${returnN}&supplier=${enabledSuppliers.join(',')}`, {
+        const supplierParam = enabledSuppliers.length > 0 ? `&supplier=${enabledSuppliers.join(',')}` : '';
+        let res = await fetch(`/api/Ingredients/?name=${ingredient.name}&qType=${ingredient.quantity_type}&quantity=${ingredient.quantity}&returnN=${returnN}${supplierParam}`, {
             headers: { 'edgetoken': token }
         })
         let data = await res.json()
@@ -111,10 +114,10 @@ export default function Home() {
 
     const getAproxTotalRecipeCostUnit = () => {
         let total = 0
-        for (let ingredient in matchedListIngreds) {
-            let current = matchedListIngreds[ingredient].options[0]
-            if (current !== undefined) {
-                total = total + current.total_price
+        for (const ingredient of matchedListIngreds) {
+            const current = ingredient.options?.[0]
+            if (current !== undefined && current.total_price !== undefined) {
+                total += Number(current.total_price)
             }
         }
         return total.toFixed(2)
@@ -122,13 +125,14 @@ export default function Home() {
 
     const getAproxTotalRecipeCost = () => {
         let total = 0
-        for (let ingredient in matchedListIngreds) {
-            let current = matchedListIngreds[ingredient].options[0]
-            if (current !== undefined) {
-                total = total + current.total_price / current.match_efficiency * 100
+        for (const ingredient of matchedListIngreds) {
+            const current = ingredient.options?.[0]
+            if (current !== undefined && current.total_price !== undefined) {
+                const efficiency = Number(current.match_efficiency) || 100
+                total += (Number(current.total_price) / efficiency) * 100
             }
         }
-        return total.toFixed(2)
+        return isNaN(total) ? "0.00" : total.toFixed(2)
     }
 
     const compressImage = async (base64String: string | ArrayBuffer | null): Promise<string> => {
@@ -232,8 +236,16 @@ export default function Home() {
     return (
         <Layout title={recipeName || "Recipe"}>
             <div className="max-w-6xl mx-auto mt-6 pb-12">
-                <div className="bg-card text-card-foreground rounded-2xl border border-border shadow-sm p-8 mb-8">
-                    <h1 className="text-4xl font-bold mb-8 pb-4 border-b border-border">{recipeName}</h1>
+                <div className="bg-card text-card-foreground rounded-2xl border border-border shadow-sm p-4 md:p-8 mb-8">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-4 border-b border-border">
+                        <h1 className="text-3xl md:text-4xl font-bold">{recipeName}</h1>
+                        <Button
+                            onClick={() => setIsCookingMode(true)}
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-6 px-8 rounded-xl shadow-lg transition-all hover:scale-105"
+                        >
+                            👨‍🍳 Start Cooking
+                        </Button>
+                    </div>
 
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-bold">Ingredients</h2>
@@ -268,9 +280,6 @@ export default function Home() {
                         <div>
                             <p className="text-sm text-muted-foreground mb-1">Estimated Unit Usage Cost</p>
                             <h3 className="text-3xl font-bold text-primary">${getAproxTotalRecipeCostUnit()}</h3>
-                        </div>
-                        <div className="ml-auto">
-                            <Button onClick={() => reloadAllIngredients()} variant="outline">Refresh Grocery Data</Button>
                         </div>
                     </div>
 
@@ -355,6 +364,80 @@ export default function Home() {
                     </div>
                     <IngredientSearchList search_term={selectedIngred} />
                 </Modal>
+
+                {isCookingMode && (
+                    <div className="cooking-mode-overlay">
+                        <div className="cooking-mode-header">
+                            <h2 className="text-xl font-bold truncate pr-4">{recipeName}</h2>
+                            <Button variant="ghost" size="sm" onClick={() => setIsCookingMode(false)} className="rounded-full w-10 h-10 p-0">
+                                <img src="/cross.png" className="w-4 h-4 invert-[.25] dark:invert" alt="close" />
+                            </Button>
+                        </div>
+
+                        <div className="cooking-mode-content">
+                            <div className="mb-8">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-bold">
+                                        Step {currentStep + 1} of {instructions.length}
+                                    </span>
+                                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-emerald-500 transition-all duration-300"
+                                            style={{ width: `${((currentStep + 1) / instructions.length) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+
+                                <div className="cooking-mode-step bg-[var(--cooking-card-bg)] border border-[var(--cooking-border)] rounded-2xl p-6 md:p-10 shadow-xl min-h-[300px] flex flex-col justify-center">
+                                    <p className="text-2xl md:text-3xl font-bold leading-relaxed text-center sm:text-left text-[var(--cooking-text)]">
+                                        {instructions[currentStep]?.Text}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="mb-8">
+                                <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-[var(--cooking-text)]">
+                                    <span className="w-2 h-6 bg-emerald-500 rounded-full"></span>
+                                    Ingredients for this recipe
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {listIngreds.map((ingred, idx) => (
+                                        <div key={idx} className="bg-[var(--cooking-card-bg)] p-4 rounded-lg flex justify-between items-center border border-[var(--cooking-border)] shadow-sm">
+                                            <span className="font-bold text-base text-[var(--cooking-text)]">{ingred.name}</span>
+                                            <span className="text-sm font-semibold text-emerald-600 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                                                {ingred.quantity} {ingred.quantity_type_shorthand || ingred.quantity_type}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="cooking-mode-controls">
+                            <Button
+                                variant="outline"
+                                className="flex-1 py-8 text-lg font-bold rounded-2xl"
+                                onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
+                                disabled={currentStep === 0}
+                            >
+                                Previous
+                            </Button>
+                            <Button
+                                className="flex-[2] py-8 text-lg font-bold rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white"
+                                onClick={() => {
+                                    if (currentStep < instructions.length - 1) {
+                                        setCurrentStep(currentStep + 1)
+                                    } else {
+                                        setIsCookingMode(false)
+                                        setCurrentStep(0)
+                                    }
+                                }}
+                            >
+                                {currentStep === instructions.length - 1 ? "Finish Cooking!" : "Next Step"}
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </div>
         </Layout>
     )

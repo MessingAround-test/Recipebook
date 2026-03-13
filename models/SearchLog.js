@@ -7,7 +7,6 @@ const SearchLogSchema = new mongoose.Schema(
         source: { type: String, required: true, index: true },
         success: { type: Boolean, required: true },
         error_message: { type: String, required: false },
-        error_message: { type: String, required: false },
         last_fetched: { type: Date, default: Date.now },
     },
     { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }

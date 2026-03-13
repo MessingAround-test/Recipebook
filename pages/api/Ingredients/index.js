@@ -39,7 +39,7 @@ export default async function handler(req, res) {
                 "optionSort": req.query.sort,
                 "returnN": req.query.returnN,
                 "quantity_unit": qType,
-                "quantity": req.query.quantity,
+                "quantity": req.query.quantity || 1,
                 "skipConversion": req.query.skipConversion,
                 "maxSize": req.query.maxSize,
                 "maxSizeUnit": req.query.maxSizeUnit,
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
                 let companies = ["WW", "IGA", "Panetta", "Aldi", "Coles"]
                 const supplierParam = req.query.supplier;
 
-                if (supplierParam !== undefined) {
+                if (supplierParam !== undefined && supplierParam !== "") {
                     if (supplierParam.includes(',')) {
                         companies = supplierParam.split(',');
                     } else if (Array.isArray(supplierParam) && supplierParam.length === 0) {

@@ -16,6 +16,12 @@
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --glass-border: rgba(0, 0, 0, 0.1);
+
+  /* Cooking Mode - Light (Paper/Sepia) */
+  --cooking-bg: #fdfaf0;
+  --cooking-card-bg: #ffffff;
+  --cooking-text: #1a1a1a;
+  --cooking-border: #e2e8f0;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -31,6 +37,12 @@
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --glass-border: rgba(255, 255, 255, 0.1);
+
+    /* Cooking Mode - Dark */
+    --cooking-bg: #0f172a;
+    --cooking-card-bg: #1e293b;
+    --cooking-text: #f8fafc;
+    --cooking-border: rgba(255, 255, 255, 0.1);
   }
 }
 
@@ -390,4 +402,78 @@ a {
   html {
     @apply font-sans;
   }
+}
+
+/* Mobile Typography & Utilities */
+@media (max-width: 768px) {
+  .mobile-text-large {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+  
+  .mobile-heading-xl {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+
+  .mobile-touch-target {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Cooking Mode Styles */
+.cooking-mode-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: var(--cooking-bg);
+  color: var(--cooking-text);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.cooking-mode-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--cooking-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  background-color: var(--cooking-bg);
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
+
+.cooking-mode-content {
+  flex: 1;
+  padding: 2.5rem 1.5rem;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.cooking-mode-step {
+  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cooking-mode-controls {
+  padding: 1.5rem;
+  border-top: 1px solid var(--cooking-border);
+  display: flex;
+  gap: 1rem;
+  position: sticky;
+  bottom: 0;
+  background-color: var(--cooking-bg);
+  z-index: 10;
 }

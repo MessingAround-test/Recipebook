@@ -57,14 +57,14 @@ function IngredientCard({ ingredient, essential = true, openModal = undefined, h
                 />
 
                 {handleCheckboxChange !== undefined && (
-                    <div style={{ display: 'flex', justifyContent: 'center', minWidth: '40px' }}>
+                    <div className="mobile-touch-target" style={{ display: 'flex', justifyContent: 'center', minWidth: '48px' }}>
                         <input
                             type="checkbox"
                             checked={ingredient.complete}
                             onChange={() => handleCheckboxChange(ingredient)}
                             style={{
-                                width: '1.5rem',
-                                height: '1.5rem',
+                                width: '1.75rem',
+                                height: '1.75rem',
                                 cursor: 'pointer',
                                 accentColor: accentColor,
                                 borderRadius: '0.25rem'
@@ -76,8 +76,8 @@ function IngredientCard({ ingredient, essential = true, openModal = undefined, h
                 <div style={{ flex: 1 }} className="flex-col gap-1">
                     <div className="flex items-center justify-between">
                         <div onClick={() => isGroup ? setIsExpanded(!isExpanded) : setOtherOptionsModalIsOpen(true)} className="hover-accent transition-all hover:translate-x-1" style={{
-                            fontSize: '1rem',
-                            lineHeight: '1.2',
+                            fontSize: '1.1rem',
+                            lineHeight: '1.3',
                             fontWeight: '700',
                             color: 'var(--text-primary)',
                             cursor: 'pointer',
@@ -86,17 +86,17 @@ function IngredientCard({ ingredient, essential = true, openModal = undefined, h
                             display: 'inline-block'
                         }}>
                             {`${ingredient.name.toUpperCase()}`}
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginLeft: '0.5rem', fontWeight: '500' }}>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginLeft: '0.5rem', fontWeight: '500' }}>
                                 &bull; {isGroup ? (ingredient.totalString || `${ingredient.quantity} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`) : `${ingredient.quantity} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`}
                             </span>
                         </div>
                         {isGroup && (
                             <button
                                 onClick={() => setIsExpanded(!isExpanded)}
-                                className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
-                                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
+                                className={`transition-transform duration-300 mobile-touch-target ${isExpanded ? 'rotate-180' : ''}`}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '8px' }}
                             >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <polyline points="6 9 12 15 18 9"></polyline>
                                 </svg>
                             </button>
@@ -104,10 +104,10 @@ function IngredientCard({ ingredient, essential = true, openModal = undefined, h
                     </div>
 
                     {isExpanded && isGroup && (
-                        <div className="mt-2 ml-2 pl-4 border-l-2 border-[var(--glass-border)] flex flex-col gap-2">
+                        <div className="mt-3 ml-2 pl-4 border-l-2 border-[var(--glass-border)] flex flex-col gap-3">
                             {ingredient.items.map((item, idx) => (
-                                <div key={item._id || idx} className="flex justify-between items-center text-xs text-[var(--text-secondary)]">
-                                    <div className="flex items-center gap-2">
+                                <div key={item._id || idx} className="flex justify-between items-center text-sm text-[var(--text-secondary)] py-1">
+                                    <div className="flex items-center gap-3">
                                         <input
                                             type="checkbox"
                                             checked={item.complete}
@@ -115,20 +115,20 @@ function IngredientCard({ ingredient, essential = true, openModal = undefined, h
                                                 e.stopPropagation();
                                                 handleCheckboxChange(item);
                                             }}
-                                            className="w-3 h-3 rounded cursor-pointer accent-accent"
+                                            className="w-4 h-4 rounded cursor-pointer accent-accent"
                                         />
-                                        <span>{item.quantity} {item.quantity_type_shorthand || item.quantity_type || 'each'}</span>
-                                        {item.note && <span className="italic opacity-60">({item.note})</span>}
+                                        <span className="mobile-text-large">{item.quantity} {item.quantity_type_shorthand || item.quantity_type || 'each'}</span>
+                                        {item.note && <span className="italic opacity-60 text-xs">({item.note})</span>}
                                     </div>
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-4">
                                         <span className="font-mono opacity-80">{item.compositionPercentage}%</span>
                                         {handleDeleteItem && (
                                             <button
                                                 onClick={(e) => handleDeleteItem(e, item._id)}
-                                                className="text-red-400 hover:text-red-300 opacity-60 hover:opacity-100 transition-opacity"
+                                                className="text-red-400 hover:text-red-300 opacity-60 hover:opacity-100 transition-opacity p-2"
                                                 title="Delete this specific entry"
                                             >
-                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                     <path d="M3 6h18"></path>
                                                     <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
                                                     <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
