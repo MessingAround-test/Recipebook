@@ -29,7 +29,6 @@ async function createUser(body) {
         const res = User.create({
             username: username,
             email: email,
-            password: password,
             passwordHash: await hashval,
             approved: approved,
             role: role,
@@ -40,27 +39,4 @@ async function createUser(body) {
         console.log(error)
         return { success: false, data: error, message: "Incorrect data input" }
     }
-
-
-
-    // let response = hash(password, 10, async function (err, hash) {
-    //     try {
-    //         const res = User.create({
-    //             username: username,
-    //             email: email,
-    //             password: password,
-    //             passwordHash: hash,
-    //             approved: approved,
-    //             role: role,
-    //         });
-    //         console.log(await res);
-    //         return res;
-    //     } catch (error) {
-    //         console.log(error)
-    //         return error
-    //     }
-
-    // })
-
-    // return await response
 }

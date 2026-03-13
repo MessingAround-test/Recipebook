@@ -5,13 +5,39 @@ import Router from 'next/router'
 export default function SearchLogs() {
     const [logs, setLogs] = useState([])
     const [loading, setLoading] = useState(true)
+    const [isAuthorized, setIsAuthorized] = useState(false)
 
-    async function fetchLogs() {
+    useEffect(() => {
+        checkAuth()
+    }, [])
+
+    async function checkAuth() {
         const token = localStorage.getItem('Token')
         if (!token) {
             Router.push("/login")
             return
         }
+
+        try {
+            const res = await fetch("/api/UserDetails", {
+                headers: { 'edgetoken': token }
+            })
+            const data = await res.json()
+            if (data.res && data.res.role === 'admin') {
+                setIsAuthorized(true)
+                fetchLogs()
+            } else {
+                Router.push("/")
+            }
+        } catch (error) {
+            console.error("Auth check failed:", error)
+            Router.push("/")
+        }
+    }
+
+    async function fetchLogs() {
+        const token = localStorage.getItem('Token')
+        if (!token) return
 
         try {
             const res = await fetch("/api/Ingredients/SearchLogEntries", {
@@ -52,9 +78,7 @@ export default function SearchLogs() {
         }
     }
 
-    useEffect(() => {
-        fetchLogs()
-    }, [])
+    if (!isAuthorized) return null
 
     return (
         <Layout title="Search Logs">

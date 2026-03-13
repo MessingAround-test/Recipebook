@@ -24,3 +24,17 @@ export async function verifyToken(req: any, res: any): Promise<any> {
         });
     });
 }
+/**
+ * Verifies the EDGEtoken and ensures the user has an 'admin' role.
+ */
+export async function verifyAdmin(req: any, res: any): Promise<any> {
+    const decoded = await verifyToken(req, res);
+    if (!decoded) return null;
+
+    if (decoded.role !== 'admin') {
+        res.status(403).json({ success: false, message: "Forbidden: Admin access only" });
+        return null;
+    }
+
+    return decoded;
+}

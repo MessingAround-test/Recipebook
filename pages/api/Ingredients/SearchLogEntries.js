@@ -1,11 +1,11 @@
 import dbConnect from '../../../lib/dbConnect';
 import SearchLog from '../../../models/SearchLog';
 import IngredientConversion from '../../../models/IngredientConversion';
-import { verifyToken } from "../../../lib/auth.ts";
+import { verifyToken, verifyAdmin } from "../../../lib/auth.ts";
 import { logAPI } from '../../../lib/logger.ts';
 
 export default async function handler(req, res) {
-    const decoded = await verifyToken(req, res);
+    const decoded = await verifyAdmin(req, res);
     if (!decoded) return;
     logAPI(req)
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Router from 'next/router'
 import { Layout } from '../components/Layout'
 import { useAuthGuard } from '../lib/useAuthGuard'
@@ -6,14 +6,35 @@ import styles from '../styles/Home.module.css'
 
 export default function Home() {
     const isAuthed = useAuthGuard()
+    const [userRole, setUserRole] = useState<string | null>(null)
 
-    const [pages] = useState([
-        { name: "Recipes", _id: "/recipes", image: "/cookbook_oragami.png" },
-        { name: "Shopping List", _id: "/shoppingList", image: "/shop_list_oragami.png" },
-        { name: "One Off Extracts", _id: "/oneOffExtracts", image: "/forklift_oragami.png" },
-        { name: "Search Logs", _id: "/searchLogs", image: "/avo xl.png" },
-        { name: "Migrate Search Logs", _id: "MIGRATE", image: "/avo.ico" }
+    const [allPages] = useState([
+        { name: "Recipes", _id: "/recipes", image: "/cookbook_oragami.png", adminOnly: false },
+        { name: "Shopping List", _id: "/shoppingList", image: "/shop_list_oragami.png", adminOnly: false },
+        { name: "Admin", _id: "/admin", image: "/avo xl.png", adminOnly: true }
     ])
+
+    useEffect(() => {
+        if (isAuthed) {
+            fetchUserDetails()
+        }
+    }, [isAuthed])
+
+    async function fetchUserDetails() {
+        const token = localStorage.getItem('Token')
+        if (!token) return
+        try {
+            const res = await fetch("/api/UserDetails", {
+                headers: { 'edgetoken': token }
+            })
+            const data = await res.json()
+            if (data.res && data.res.role) {
+                setUserRole(data.res.role)
+            }
+        } catch (error) {
+            console.error("Failed to fetch user details:", error)
+        }
+    }
 
     const redirect = async (page: string) => {
         if (page === "MIGRATE") {
@@ -38,10 +59,12 @@ export default function Home() {
 
     if (!isAuthed) return null
 
+    const visiblePages = allPages.filter(page => !page.adminOnly || userRole === 'admin')
+
     return (
         <Layout title="Collection" description="Modern recipe and shopping management">
             <div className={styles.card_grid}>
-                {pages.map((page) => (
+                {visiblePages.map((page) => (
                     <div
                         key={page._id}
                         className={styles.paperCard}
