@@ -13,7 +13,7 @@ export default async function handler(req, res) {
       await dbConnect()
 
       let db_id = decoded.id
-      let userData = await User.findOne({ id: db_id });
+      let userData = await User.findById(db_id);
       if (!userData) {
         return res.status(404).json({ res: "user not found, please relog" })
       } else {
@@ -22,7 +22,20 @@ export default async function handler(req, res) {
     } else if (req.method === "PUT") {
       try {
         await dbConnect()
-        let updateRes = await User.findOneAndUpdate({ id: req.body._id }, { "$set": req.body })
+        let db_id = decoded.id
+        
+        // Security check: Only allow users to update their own profile unless they are an admin
+        if (decoded.role !== 'admin' && String(db_id) !== String(req.body._id)) {
+            return res.status(403).json({ success: false, message: "Forbidden: You can only update your own profile" })
+        }
+
+        // Prevent non-admins from changing their role or approval status
+        if (decoded.role !== 'admin') {
+            delete req.body.role;
+            delete req.body.approved;
+        }
+
+        let updateRes = await User.findOneAndUpdate({ _id: req.body._id }, { "$set": req.body })
         return res.status(200).json({ success: true, res: "allgood" })
       } catch (error) {
         return res.status(500).json({ success: false, message: "ERROR: " + String(error) })

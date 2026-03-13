@@ -12,13 +12,17 @@ export default async function handler(req, res) {
   try {
     await dbConnect()
     let db_id = decoded.id
-    let userData = await User.findOne({ id: db_id });
+    let userData = await User.findById(db_id);
     if (!userData) {
       return res.status(404).json({ res: "user not found, please relog" })
     }
 
     if (req.method === "GET") {
-      let RecipeData = await Recipe.find({})
+      let query = {}
+      if (decoded.role !== 'admin') {
+        query.creator_email = userData.email
+      }
+      let RecipeData = await Recipe.find(query)
       return res.status(200).json({ res: RecipeData })
     } else if (req.method === "POST") {
       try {

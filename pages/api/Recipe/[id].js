@@ -33,12 +33,20 @@ export default async function handler(req, res) {
     await dbConnect()
 
     let db_id = decoded.id
-    let userData = await User.findOne({ id: db_id });
+    let userData = await User.findById(db_id);
     if (userData === undefined) {
       return res.status(400).json({ res: "user not found, please relog" })
     } else {
 
       let RecipeData = await Recipe.findOne({ _id: recipe_id })
+      if (!RecipeData) {
+        return res.status(404).json({ res: "Recipe not found" })
+      }
+
+      if (decoded.role !== "admin" && RecipeData.creator_email !== userData.email) {
+        return res.status(403).json({ res: "Forbidden: You do not own this recipe" })
+      }
+
       const responseData = {
         ...safeToObject(RecipeData),
         ingredients: convertIngredients(RecipeData.ingredients)
@@ -53,7 +61,7 @@ export default async function handler(req, res) {
       await dbConnect()
 
       let db_id = decoded.id
-      let userData = await User.findOne({ id: db_id });
+      let userData = await User.findById(db_id);
 
       if (userData === undefined) {
         return res.status(400).json({ res: "user not found, please relog" })
@@ -62,6 +70,14 @@ export default async function handler(req, res) {
       } else {
 
         let RecipeData = await Recipe.findOne({ _id: recipe_id })
+        if (!RecipeData) {
+          return res.status(404).json({ res: "Recipe not found" })
+        }
+
+        if (decoded.role !== "admin" && RecipeData.creator_email !== userData.email) {
+          return res.status(403).json({ res: "Forbidden: You do not own this recipe" })
+        }
+
         let responseData = await Recipe.findOneAndUpdate({ _id: recipe_id }, { $set: { _id: recipe_id, image: req.body.image } });
         return res.status(200).json({ res: "DONE" })
       }
@@ -73,7 +89,7 @@ export default async function handler(req, res) {
     await dbConnect()
 
     let db_id = decoded.id
-    let userData = await User.findOne({ id: db_id });
+    let userData = await User.findById(db_id);
     if (userData === undefined) {
       return res.status(400).json({ message: "user not found, please relog" })
     } else if (userData.role !== "admin") {

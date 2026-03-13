@@ -15,19 +15,36 @@ export default async function handler(req, res) {
 
     if (req.method === "GET") {
       let db_id = decoded.id
-      let userData = await User.findOne({ id: db_id });
+      let userData = await User.findById(db_id);
+      if (!userData) {
+        return res.status(404).json({ message: "user not found, please relog" })
+      } else {
+      let DbData = await ShoppingList.findOne({ _id: id })
+      if (!DbData) {
+        return res.status(404).json({ res: "Shopping list not found" })
+      }
+
+      if (decoded.role !== "admin" && String(DbData.createdBy) !== String(userData._id)) {
+        return res.status(403).json({ res: "Forbidden: You do not own this shopping list" })
+      }
+
+      return res.status(200).json({ res: DbData })
+      }
+    } else if (req.method === "PUT") {
+      let db_id = decoded.id
+      let userData = await User.findById(db_id);
       if (!userData) {
         return res.status(404).json({ message: "user not found, please relog" })
       } else {
         let DbData = await ShoppingList.findOne({ _id: id })
-        return res.status(200).json({ res: DbData })
-      }
-    } else if (req.method === "PUT") {
-      let db_id = decoded.id
-      let userData = await User.findOne({ id: db_id });
-      if (!userData) {
-        return res.status(404).json({ message: "user not found, please relog" })
-      } else {
+        if (!DbData) {
+          return res.status(404).json({ res: "Shopping list not found" })
+        }
+
+        if (decoded.role !== "admin" && String(DbData.createdBy) !== String(userData._id)) {
+          return res.status(403).json({ res: "Forbidden: You do not own this shopping list" })
+        }
+
         let updateData = {};
         if (req.body.complete !== undefined) {
           updateData.complete = req.body.complete === "true" || req.body.complete === true ? true : false;
@@ -40,7 +57,7 @@ export default async function handler(req, res) {
       }
     } else if (req.method === "DELETE") {
       let db_id = decoded.id
-      let userData = await User.findOne({ id: db_id });
+      let userData = await User.findById(db_id);
       if (!userData) {
         return res.status(404).json({ res: "user not found, please relog" })
       } else if (userData.role !== "admin") {

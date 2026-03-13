@@ -21,8 +21,8 @@ const instructionsSchema = new mongoose.Schema(
 
 const RecipeSchema = new mongoose.Schema(
     {
-        creator_username: { type: String, index: true, required: true },
-        creator_email: { type: String, required: true },
+        creator_username: { type: String, index: true, required: false },
+        creator_email: { type: String, required: false },
         name: { type: String, required: true },
         ingredients: [ingredsSchema],
         instructions: [instructionsSchema],

@@ -25,7 +25,7 @@ export function Layout({ title, description = 'Premium Culinary Management', chi
                 </main>
 
                 <footer className={styles.footer}>
-                    &copy; {new Date().getFullYear()} Recipebook &bull; Premium Culinary Management
+                    {/* &copy; {new Date().getFullYear()} Recipebook &bull; Premium Culinary Management */}
                 </footer>
             </div>
         </div>
