@@ -30,4 +30,5 @@ jobs:
           git pull origin main
           git status
           npm install
-          pm2 restart "npm run dev"
+          npm run build
+          pm2 restart "npm run start"
