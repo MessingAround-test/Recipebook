@@ -7,7 +7,7 @@ import CardListModal from './CardListModal';
 import IngredientCardProduct from './IngredientCardProduct';
 import Skeleton from './Skeleton';
 
-function IngredientCard({ ingredient, essential, handleCheckboxChange, markAsIncorrect, handleDeleteItem, filters, modalVersion, enabledSuppliers = [], groupColor, pricingStrategy = 'match' }) {
+function IngredientCard({ ingredient, essential = true, openModal = undefined, handleCheckboxChange = undefined, markAsIncorrect = undefined, handleDeleteItem = undefined, filters = [], modalVersion = false, enabledSuppliers = [], groupColor = undefined, pricingStrategy = 'match' }) {
     const [otherOptionsModalIsOpen, setOtherOptionsModalIsOpen] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -172,9 +172,15 @@ function IngredientCard({ ingredient, essential, handleCheckboxChange, markAsInc
 IngredientCard.propTypes = {
     ingredient: PropTypes.object.isRequired,
     essential: PropTypes.bool,
-    openModal: PropTypes.func.isRequired,
+    openModal: PropTypes.func,
     handleCheckboxChange: PropTypes.func,
     markAsIncorrect: PropTypes.func,
+    handleDeleteItem: PropTypes.func,
+    filters: PropTypes.array,
+    modalVersion: PropTypes.bool,
+    enabledSuppliers: PropTypes.array,
+    groupColor: PropTypes.string,
+    pricingStrategy: PropTypes.string,
 };
 
 export default IngredientCard;
