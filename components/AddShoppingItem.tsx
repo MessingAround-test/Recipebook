@@ -225,7 +225,9 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                                     required
                                     className="input-modern bg-[var(--bg-secondary)]"
                                 >
-                                    {Object.keys(quantity_unit_conversions).map((item) => <option key={item} value={item}>{item}</option>)}
+                                    {Object.keys(quantity_unit_conversions)
+                                        .filter(item => !["can", "bottle", "package", "stick", "bunch", "head", "stalk", "stem", "bag", "box", "tray", "tub"].includes(item))
+                                        .map((item) => <option key={item} value={item}>{item}</option>)}
                                 </select>
                             </div>
                         </div>
