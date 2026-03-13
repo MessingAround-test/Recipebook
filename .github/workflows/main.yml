@@ -31,4 +31,3 @@ jobs:
           git status
           npm install
           npm run build
-          pm2 restart "npm run start"
