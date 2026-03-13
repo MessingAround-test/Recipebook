@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 8080",
     "lint": "next lint",
-    "test": "jest"
+    "test": "jest",
+    "version-inc": "node scripts/increment-version.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",

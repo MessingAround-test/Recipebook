@@ -3,6 +3,8 @@ import { ReactNode } from 'react'
 import { Toolbar } from './Toolbar'
 import styles from '../styles/Home.module.css'
 
+import versionData from '../version.json'
+
 interface LayoutProps {
     title: string
     description?: string
@@ -25,7 +27,7 @@ export function Layout({ title, description = 'Premium Culinary Management', chi
                 </main>
 
                 <footer className={styles.footer}>
-                    {/* &copy; {new Date().getFullYear()} Recipebook &bull; Premium Culinary Management */}
+                    &copy; {new Date().getFullYear()} Recipebook &bull; v{versionData.version}
                 </footer>
             </div>
         </div>

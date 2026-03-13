@@ -31,4 +31,5 @@ jobs:
           git status
           npm install
           npm run build
+          npm run version-inc
           pm2 restart all

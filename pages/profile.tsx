@@ -67,7 +67,7 @@ export default function Profile() {
                 <div className="glass-card">
                     <form onSubmit={updateUserDetails}>
                         {Object.keys(userData).map((key) => {
-                            if (key === '_id') return null // Optionally hide the internal _id
+                            if (key === '_id' || key === 'passwordHash' || key === '__v') return null // Hide internal/sensitive fields
 
                             return (
                                 <FormField
