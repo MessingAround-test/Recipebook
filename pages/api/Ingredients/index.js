@@ -108,13 +108,21 @@ export default async function handler(req, res) {
                                 source: supplierName
                             }).lean();
 
-                            // If it failed recently (e.g. within last 1 hour) or was empty, maybe skip
-                            // For now, let's just skip if it failed recently to honor the "avoid re-attempting" request
-                            if (recentLog && !recentLog.success && !force) {
-                                let oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-                                if (new Date(recentLog.last_fetched) > oneHourAgo) {
-                                    console.log(`Skipping supplier ${supplierName} for ${search_term} due to recent failure.`);
-                                    continue;
+                            // Skip if it failed recently (1h) OR if it was successful with 0 results recently (24h)
+                            if (recentLog && !force) {
+                                const lastFetched = new Date(recentLog.last_fetched);
+                                if (!recentLog.success) {
+                                    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                                    if (lastFetched > oneHourAgo) {
+                                        console.log(`Skipping supplier ${supplierName} for ${search_term} due to recent failure.`);
+                                        continue;
+                                    }
+                                } else if (recentLog.records_count === 0) {
+                                    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                                    if (lastFetched > twentyFourHoursAgo) {
+                                        console.log(`Skipping supplier ${supplierName} for ${search_term} due to recent 0-result success.`);
+                                        continue;
+                                    }
                                 }
                             }
 

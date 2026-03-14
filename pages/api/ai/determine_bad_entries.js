@@ -1,6 +1,8 @@
 import { verifyToken } from "../../../lib/auth";
 import { logAPI } from '../../../lib/logger'
 import { callGroqChat } from '../../../lib/ai';
+import AIResultCache from '../../../models/AIResultCache';
+import crypto from 'crypto';
 
 export default async function handler(req, res) {
   logAPI(req)
@@ -17,6 +19,21 @@ export default async function handler(req, res) {
     if (!returned_terms || !search_term) {
       return res.status(400).json({ message: "Missing search term or list of entries" });
     }
+
+    // --- Caching Logic ---
+    const sortedTerms = [...returned_terms].sort();
+    const inputHash = crypto.createHash('md5').update(JSON.stringify(sortedTerms)).digest('hex');
+
+    const cachedResult = await AIResultCache.findOne({
+      search_term: search_term.toLowerCase(),
+      input_hash: inputHash
+    }).lean();
+
+    if (cachedResult) {
+      console.log(`AI Cache Hit for [${search_term}] with hash [${inputHash}]`);
+      return res.status(200).json({ success: true, data: cachedResult.results, cached: true });
+    }
+    // ----------------------
 
     const messages = [
       {
@@ -54,6 +71,13 @@ Returned Terms: ${JSON.stringify(returned_terms)}`
     if (!Array.isArray(parsedData)) {
       console.warn("AI did not return an array, fallback to all terms");
       parsedData = returned_terms;
+    } else {
+      // Save to cache
+      await AIResultCache.findOneAndUpdate(
+        { search_term: search_term.toLowerCase(), input_hash: inputHash },
+        { results: parsedData, last_updated: Date.now() },
+        { upsert: true }
+      );
     }
 
     return res.status(200).json({ success: true, data: parsedData })
