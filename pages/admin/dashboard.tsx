@@ -279,6 +279,18 @@ export default function AdminDashboard() {
     const { labels: growthLabels, datasets: growthDatasets } = trimLeadingZeros(rawGrowthLabels, growthRawDatasets);
     const growthData = { labels: growthLabels, datasets: growthDatasets };
 
+    // --- Summary Calculations ---
+    const totalApiCount = apiUsageDatasets[0]?.data.reduce((a: number, b: number) => a + b, 0) || 0;
+    const totalOverloadCount = apiUsageDatasets[1]?.data.reduce((a: number, b: number) => a + b, 0) || 0;
+    
+    const totalKeyCalls = keyComparisonData.datasets[0].data.reduce((a: number, b: number) => a + b, 0) || 0;
+
+    const totalCacheHits = extractionDatasets[0]?.data.reduce((a: number, b: number) => a + b, 0) || 0;
+    const totalExtractions = extractionDatasets[1]?.data.reduce((a: number, b: number) => a + b, 0) || 0;
+
+    const totalGrowthRecipes = growthDatasets[0]?.data.reduce((a: number, b: number) => a + b, 0) || 0;
+    const totalGrowthUsers = growthDatasets[1]?.data.reduce((a: number, b: number) => a + b, 0) || 0;
+
     return (
         <Layout title="Admin Dashboard">
             <div className="max-w-7xl mx-auto px-4 py-8">
@@ -334,9 +346,13 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                     {/* API Usage Chart */}
                     <div className="lg:col-span-2 glass-card">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-emerald-500 mb-6 flex justify-between">
+                        <h3 className="text-sm font-black uppercase tracking-widest text-emerald-500 mb-6 flex justify-between items-center">
                             <span>API Usage Over Time</span>
-                            <span className="text-[10px] text-gray-500">{range}</span>
+                            <div className="flex items-center gap-4">
+                                <span className="text-[10px] text-emerald-400/70">{totalApiCount.toLocaleString()} Calls</span>
+                                <span className="text-[10px] text-red-400/70">{totalOverloadCount.toLocaleString()} 429s</span>
+                                <span className="text-[11px] font-bold text-gray-500 bg-white/5 px-2 py-0.5 rounded">{range}</span>
+                            </div>
                         </h3>
                         <div className="h-[300px]">
                             <Line 
@@ -353,7 +369,10 @@ export default function AdminDashboard() {
 
                     {/* Key Distribution Chart */}
                     <div className="glass-card">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-blue-500 mb-6">Key Usage Comparison</h3>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-blue-500 mb-6 flex justify-between items-center">
+                            <span>Key Usage Comparison</span>
+                            <span className="text-[10px] font-bold text-blue-400/70 bg-blue-400/10 px-2 py-0.5 rounded">{totalKeyCalls.toLocaleString()} Total Calls</span>
+                        </h3>
                         <div className="h-[300px] flex items-center justify-center">
                             <Pie 
                                 data={keyComparisonData} 
@@ -370,9 +389,13 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     {/* Extraction vs Cache Chart */}
                     <div className="glass-card">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-yellow-500 mb-6 flex justify-between">
+                        <h3 className="text-sm font-black uppercase tracking-widest text-yellow-500 mb-6 flex justify-between items-center">
                             <span>Ingredient Retrieval</span>
-                            <span className="text-[10px] text-gray-500">{range}</span>
+                            <div className="flex items-center gap-4">
+                                <span className="text-[10px] text-emerald-400/70">{totalCacheHits.toLocaleString()} Hits</span>
+                                <span className="text-[10px] text-yellow-400/70">{totalExtractions.toLocaleString()} Scrapes</span>
+                                <span className="text-[11px] font-bold text-gray-500 bg-white/5 px-2 py-0.5 rounded">{range}</span>
+                            </div>
                         </h3>
                         <div className="h-[300px]">
                             <Line 
@@ -389,9 +412,13 @@ export default function AdminDashboard() {
 
                     {/* Database Growth Chart */}
                     <div className="glass-card">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-purple-500 mb-6 flex justify-between">
+                        <h3 className="text-sm font-black uppercase tracking-widest text-purple-500 mb-6 flex justify-between items-center">
                             <span>Record Growth</span>
-                            <span className="text-[10px] text-gray-500">Last 30 Days</span>
+                            <div className="flex items-center gap-4">
+                                <span className="text-[10px] text-emerald-400/70">+{totalGrowthRecipes.toLocaleString()} Recipes</span>
+                                <span className="text-[10px] text-blue-400/70">+{totalGrowthUsers.toLocaleString()} Users</span>
+                                <span className="text-[11px] font-bold text-gray-500 bg-white/5 px-2 py-0.5 rounded">30D</span>
+                            </div>
                         </h3>
                         <div className="h-[300px]">
                             <Line 
