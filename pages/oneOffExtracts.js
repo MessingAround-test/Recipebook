@@ -1,20 +1,13 @@
 import Head from 'next/head'
-import Image from 'next/image'
 import styles from '../styles/Home.module.css'
 import { Toolbar } from '../components/Toolbar'
 import { useEffect, useState } from 'react'
 import { Button } from '../components/ui/button'
+import { useAdminGuard } from '../lib/useAdminGuard'
 import Router from 'next/router'
 
 export default function Home() {
-    const [userData, setUserData] = useState({})
-
-    async function getUserDetails() {
-        let data = await (await fetch("/api/UserDetails", {
-            headers: { 'edgetoken': localStorage.getItem('Token') }
-        })).json()
-        setUserData(data.res)
-    }
+    const isAuthorized = useAdminGuard()
 
     async function ExtractFromAldi(e) {
         e.preventDefault();
@@ -54,11 +47,7 @@ export default function Home() {
         }
     }
 
-    useEffect(() => {
-        if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
-            Router.push("/login")
-        }
-    }, [])
+    if (!isAuthorized) return null
 
     return (
         <div>

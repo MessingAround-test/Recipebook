@@ -2,44 +2,25 @@ import React, { useEffect, useState } from 'react'
 import { Layout } from '../../components/Layout'
 import { PageHeader } from '../../components/PageHeader'
 import { Button } from '../../components/ui/button'
+import { useAdminGuard } from '../../lib/useAdminGuard'
 import Router from 'next/router'
 import { FiSearch, FiEdit2, FiTrash2, FiPlus, FiChevronRight, FiChevronDown } from 'react-icons/fi'
 
 export default function DbInspector() {
+    const isAuthorized = useAdminGuard()
     const [collections, setCollections] = useState<string[]>([])
     const [selectedCollection, setSelectedCollection] = useState<string>('')
     const [documents, setDocuments] = useState<any[]>([])
     const [searchQuery, setSearchQuery] = useState<string>('{}')
     const [loading, setLoading] = useState<boolean>(false)
-    const [isAuthorized, setIsAuthorized] = useState<boolean>(false)
     const [editingDoc, setEditingDoc] = useState<any>(null)
     const [editData, setEditData] = useState<string>('')
 
     useEffect(() => {
-        checkAuth()
-    }, [])
-
-    async function checkAuth() {
-        const token = localStorage.getItem('Token')
-        if (!token) {
-            Router.push("/login")
-            return
+        if (isAuthorized) {
+            fetchCollections()
         }
-        try {
-            const res = await fetch("/api/UserDetails", {
-                headers: { 'edgetoken': token }
-            })
-            const data = await res.json()
-            if (data.res && data.res.role === 'admin') {
-                setIsAuthorized(true)
-                fetchCollections()
-            } else {
-                Router.push("/")
-            }
-        } catch (error) {
-            Router.push("/")
-        }
-    }
+    }, [isAuthorized])
 
     useEffect(() => {
         if (selectedCollection) {

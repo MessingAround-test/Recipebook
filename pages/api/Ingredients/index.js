@@ -1,7 +1,7 @@
 import Ingredients from '../../../models/Ingredients'
 import SearchLog from '../../../models/SearchLog'
 import IngredientConversion from '../../../models/IngredientConversion'
-import { logSearchAndGetConversion } from '../../../lib/searchLogger'
+import { logSearchAndGetConversion, logExtractionStats } from '../../../lib/searchLogger'
 import axios from 'axios';
 import { filter } from '../../../lib/filtering'
 import { convertMetricReading } from '../../../lib/conversion'
@@ -68,6 +68,12 @@ export default async function handler(req, res) {
                 }
 
                 let IngredData = force ? [] : await Ingredients.find(search_query).exec()
+                
+                // LOG CACHE HITS
+                if (IngredData.length > 0) {
+                    await logExtractionStats('CACHE', IngredData.length);
+                }
+
                 const existingSuppliers = new Set(IngredData.map(i => i.source));
                 const missingSuppliers = companies.filter(c => force || !existingSuppliers.has(c));
 
@@ -129,6 +135,8 @@ export default async function handler(req, res) {
                             if (newIngredData.data.success === true) {
                                 if (newIngredData.data.res.length > 0) {
                                     allIngredData = allIngredData.concat(newIngredData.data.res);
+                                    // LOG EXTRACTION HITS
+                                    await logExtractionStats('EXTRACTION', newIngredData.data.res.length);
                                 }
                                 // Treat 0 results as a successful scrape (just no results) to avoid re-scraping
                                 await logSearchAndGetConversion(search_term, supplierName, true, "", req.headers.edgetoken, newIngredData.data.count);

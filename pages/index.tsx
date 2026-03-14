@@ -11,6 +11,7 @@ export default function Home() {
     const [allPages] = useState([
         { name: "Recipes", _id: "/recipes", image: "/cookbook_oragami.png", adminOnly: false },
         { name: "Shopping List", _id: "/shoppingList", image: "/shop_list_oragami.png", adminOnly: false },
+        { name: "DB Inspector", _id: "/admin/dbInspector", image: "/avo.ico", adminOnly: true },
         { name: "Admin", _id: "/admin", image: "/avo xl.png", adminOnly: true }
     ])
 

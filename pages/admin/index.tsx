@@ -1,49 +1,22 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useAdminGuard } from '../../lib/useAdminGuard'
 import Router from 'next/router'
 import { Layout } from '../../components/Layout'
-import { useAuthGuard } from '../../lib/useAuthGuard'
 import styles from '../../styles/Home.module.css'
 import { PageHeader } from '../../components/PageHeader'
 
 export default function AdminDashboard() {
-    const isAuthed = useAuthGuard()
-    const [isAuthorized, setIsAuthorized] = useState(false)
+    const isAuthorized = useAdminGuard()
 
     const [adminPages] = useState([
+        { name: "Analytics Dashboard", _id: "/admin/dashboard", image: "/avo xl.png" },
         { name: "Search Logs", _id: "/searchLogs", image: "/avo xl.png" },
         { name: "Migrate Search Logs", _id: "MIGRATE", image: "/avo.ico" },
         { name: "DB Inspector", _id: "/admin/dbInspector", image: "/avo.ico" },
         { name: "One Off Extracts", _id: "/oneOffExtracts", image: "/forklift_oragami.png" }
     ])
 
-    useEffect(() => {
-        if (isAuthed) {
-            checkAuth()
-        }
-    }, [isAuthed])
-
-    async function checkAuth() {
-        const token = localStorage.getItem('Token')
-        if (!token) {
-            Router.push("/login")
-            return
-        }
-
-        try {
-            const res = await fetch("/api/UserDetails", {
-                headers: { 'edgetoken': token }
-            })
-            const data = await res.json()
-            if (data.res && data.res.role === 'admin') {
-                setIsAuthorized(true)
-            } else {
-                Router.push("/")
-            }
-        } catch (error) {
-            console.error("Auth check failed:", error)
-            Router.push("/")
-        }
-    }
+    if (!isAuthorized) return null
 
     const redirect = async (page: string) => {
         if (page === "MIGRATE") {

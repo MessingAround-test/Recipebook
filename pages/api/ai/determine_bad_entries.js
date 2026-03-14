@@ -58,7 +58,12 @@ Returned Terms: ${JSON.stringify(returned_terms)}`
 
     return res.status(200).json({ success: true, data: parsedData })
   } catch (error) {
-    console.error("Error calling Groq API, falling back to all entries:", error);
+    if (error.message === 'JSON_VALIDATION_FAILED') {
+      console.warn("Groq JSON validation failed twice. Falling back to all terms to save quota.");
+    } else {
+      console.error("Error calling Groq API, falling back to all entries:", error);
+    }
+
     try {
       const fallbackTerms = req.body.returned_terms;
       if (fallbackTerms && Array.isArray(fallbackTerms)) {

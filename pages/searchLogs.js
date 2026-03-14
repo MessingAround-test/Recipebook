@@ -1,39 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Layout } from '../components/Layout'
+import { useAdminGuard } from '../lib/useAdminGuard'
 import Router from 'next/router'
 
 export default function SearchLogs() {
+    const isAuthorized = useAdminGuard()
     const [logs, setLogs] = useState([])
     const [loading, setLoading] = useState(true)
-    const [isAuthorized, setIsAuthorized] = useState(false)
 
     useEffect(() => {
-        checkAuth()
-    }, [])
-
-    async function checkAuth() {
-        const token = localStorage.getItem('Token')
-        if (!token) {
-            Router.push("/login")
-            return
+        if (isAuthorized) {
+            fetchLogs()
         }
-
-        try {
-            const res = await fetch("/api/UserDetails", {
-                headers: { 'edgetoken': token }
-            })
-            const data = await res.json()
-            if (data.res && data.res.role === 'admin') {
-                setIsAuthorized(true)
-                fetchLogs()
-            } else {
-                Router.push("/")
-            }
-        } catch (error) {
-            console.error("Auth check failed:", error)
-            Router.push("/")
-        }
-    }
+    }, [isAuthorized])
 
     async function fetchLogs() {
         const token = localStorage.getItem('Token')
