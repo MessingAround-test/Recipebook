@@ -314,6 +314,12 @@ a {
     --chart-4: oklch(0.488 0.243 264.376);
     --chart-5: oklch(0.424 0.199 265.638);
     --radius: 0.625rem;
+
+    /* Cooking Mode Variables - Dark */
+    --cooking-bg: oklch(0.1 0.02 240);
+    --cooking-text: oklch(0.98 0.01 240);
+    --cooking-border: oklch(1 0 0 / 10%);
+    --cooking-card-bg: oklch(0.14 0.03 240);
   }
 
   .light {
@@ -336,6 +342,12 @@ a {
     --input: oklch(0.7 0.03 240 / 40%);
     --ring: oklch(0.1 0.03 240 / 50%);
     --glass-border: oklch(0 0 0 / 10%); /* New variable */
+
+    /* Cooking Mode Variables - Light */
+    --cooking-bg: oklch(0.95 0.01 240);
+    --cooking-text: oklch(0.1 0.03 240);
+    --cooking-border: oklch(0 0 0 / 10%);
+    --cooking-card-bg: oklch(1 0 0);
   }
 
   .theme {

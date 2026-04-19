@@ -3,6 +3,11 @@ import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
 import Recipe from '../../../models/Recipe'
 import ShoppingList from '../../../models/ShoppingList'
+import ShoppingListItem from '../../../models/ShoppingListItem'
+import IngredientConversion from '../../../models/IngredientConversion'
+import { logAPI } from "../../../lib/logger.ts";
+import { determineCategory } from '../../../lib/categoryDetermination';
+import { callGroqChat } from '../../../lib/ai';
 
 // Centralized logic moved to lib/categoryDetermination.ts
 
