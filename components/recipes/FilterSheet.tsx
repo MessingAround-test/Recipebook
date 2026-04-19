@@ -13,6 +13,8 @@ interface FilterSheetProps {
     setFilterGenre: (v: string) => void
     filterCooked: string
     setFilterCooked: (v: string) => void
+    filterMealTypes: string[]
+    setFilterMealTypes: (v: string[]) => void
     clearFilters: () => void
     hasActiveFilters: boolean
 }
@@ -34,6 +36,7 @@ const GENRE_OPTIONS = [
     'French', 'Middle Eastern', 'Thai', 'Japanese', 'Korean', 'Greek',
     'Chinese', 'Vietnamese', 'Other'
 ]
+const MEAL_OPTIONS = ['Breakfast', 'Lunch', 'Main', 'Entree', 'Dessert', 'Snack']
 
 export function FilterSheet({
     isOpen,
@@ -46,6 +49,8 @@ export function FilterSheet({
     setFilterGenre,
     filterCooked,
     setFilterCooked,
+    filterMealTypes,
+    setFilterMealTypes,
     clearFilters,
     hasActiveFilters
 }: FilterSheetProps) {
@@ -63,9 +68,9 @@ export function FilterSheet({
                 onClick={onClose}
             />
             
-            <div className="relative w-full max-w-md bg-card border-t sm:border border-border rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-300 ease-out">
+            <div className="relative w-full max-w-md bg-card border-t sm:border border-border/10 rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-8 duration-300 ease-out">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 pb-4 border-b border-border/50 bg-card/80 backdrop-blur-md shrink-0">
+                <div className="flex items-center justify-between p-6 pb-4 border-b border-border/10 bg-card/80 backdrop-blur-md shrink-0">
                     <div>
                         <h2 className="text-xl font-black tracking-tight">Filter Recipes</h2>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold opacity-60">Refine your collection</p>
@@ -93,7 +98,7 @@ export function FilterSheet({
                                     className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${
                                         filterTime.includes(opt.id)
                                             ? 'bg-accent/10 border-accent ring-1 ring-accent/50'
-                                            : 'bg-secondary/30 border-border/50 hover:border-accent/30'
+                                            : 'bg-secondary/30 border-border/10 hover:border-accent/30'
                                     }`}
                                 >
                                     <div className="flex items-center gap-3">
@@ -124,7 +129,7 @@ export function FilterSheet({
                                     className={`px-4 py-2.5 rounded-xl text-xs font-bold border flex items-center gap-2 transition-all duration-300 ${
                                         filterPrice.includes(opt.id)
                                             ? `${opt.color} text-white border-transparent shadow-lg shadow-${opt.color.split('-')[1]}-500/20`
-                                            : 'bg-secondary/30 border-border/50 hover:border-accent/30'
+                                            : 'bg-secondary/30 border-border/10 hover:border-accent/30'
                                     }`}
                                 >
                                     <span className="flex items-center opacity-80">{opt.icon}</span>
@@ -145,7 +150,7 @@ export function FilterSheet({
                                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 ${
                                         filterGenre === g
                                             ? 'bg-accent text-accent-foreground shadow-md'
-                                            : 'bg-secondary/30 border border-border/50 text-muted-foreground hover:text-foreground hover:border-accent/30'
+                                            : 'bg-secondary/30 border border-border/10 text-muted-foreground hover:text-foreground hover:border-accent/30'
                                     }`}
                                 >
                                     {g}
@@ -163,7 +168,7 @@ export function FilterSheet({
                                 className={`flex items-center gap-3 p-4 rounded-2xl border transition-all duration-300 ${
                                     filterCooked === 'cooked'
                                         ? 'bg-accent/10 border-accent text-accent ring-1 ring-accent/50'
-                                        : 'bg-secondary/30 border-border/50 text-muted-foreground hover:border-accent/30'
+                                        : 'bg-secondary/30 border-border/10 text-muted-foreground hover:border-accent/30'
                                 }`}
                             >
                                 <div className={`p-1.5 rounded-full ${filterCooked === 'cooked' ? 'bg-accent text-accent-foreground' : 'bg-secondary'}`}>
@@ -176,7 +181,7 @@ export function FilterSheet({
                                 className={`flex items-center gap-3 p-4 rounded-2xl border transition-all duration-300 ${
                                     filterCooked === 'uncooked'
                                         ? 'bg-accent/10 border-accent text-accent ring-1 ring-accent/50'
-                                        : 'bg-secondary/30 border-border/50 text-muted-foreground hover:border-accent/30'
+                                        : 'bg-secondary/30 border-border/10 text-muted-foreground hover:border-accent/30'
                                 }`}
                             >
                                 <div className={`p-1.5 rounded-full ${filterCooked === 'uncooked' ? 'bg-accent text-accent-foreground' : 'bg-secondary'}`}>
@@ -186,10 +191,32 @@ export function FilterSheet({
                             </button>
                         </div>
                     </div>
+
+                    {/* Meal Type */}
+                    <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                            🍽️ Meal Type
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                            {MEAL_OPTIONS.map(m => (
+                                <button
+                                    key={m}
+                                    onClick={() => toggleMulti(m, filterMealTypes, setFilterMealTypes)}
+                                    className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all duration-300 ${
+                                        filterMealTypes.includes(m)
+                                            ? 'bg-accent text-accent-foreground border-accent shadow-lg shadow-accent/20'
+                                            : 'bg-secondary/30 border-border/10 text-muted-foreground hover:border-accent/30'
+                                    }`}
+                                >
+                                    {m}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Footer */}
-                <div className="p-6 bg-card border-t border-border flex gap-3 shrink-0">
+                <div className="p-6 bg-card border-t border-border/10 flex gap-3 shrink-0">
                     {hasActiveFilters && (
                         <Button 
                             variant="outline" 

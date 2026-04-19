@@ -29,9 +29,9 @@ const timeConfig: Record<string, { label: string; icon: React.ReactNode; color: 
 }
 
 const priceConfig: Record<string, { label: string; color: string }> = {
-    cheap: { label: '$', color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' },
-    medium: { label: '$$', color: 'text-amber-400 bg-amber-400/10 border-amber-400/20' },
-    expensive: { label: '$$$', color: 'text-rose-400 bg-rose-400/10 border-rose-400/20' }
+    cheap: { label: '$', color: 'text-emerald-400 bg-emerald-400/10' },
+    medium: { label: '$$', color: 'text-amber-400 bg-amber-400/10' },
+    expensive: { label: '$$$', color: 'text-rose-400 bg-rose-400/10' }
 }
 
 export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, cardHeight = '14rem' }: ImageCardProps) {
@@ -57,7 +57,7 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
 
     return (
         <div 
-            className="group relative flex flex-col bg-secondary/30 backdrop-blur-md border border-border/50 rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:border-accent/40 hover:shadow-2xl hover:shadow-accent/5 cursor-pointer"
+            className="group relative flex flex-col bg-secondary/30 backdrop-blur-md rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:bg-secondary/40 hover:shadow-2xl hover:shadow-accent/5 cursor-pointer"
             style={{ height: cardHeight }}
             onClick={() => handleRedirect(`${currentPath}/${recipe._id}`)}
         >
@@ -72,7 +72,7 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
             )}
 
             {/* Image Section */}
-            <div className="relative w-full h-[60%] shrink-0 overflow-hidden border-b border-border/20">
+            <div className="relative w-full h-[60%] shrink-0 overflow-hidden">
                 {recipe.image ? (
                     <img
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -87,7 +87,7 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
                         <Utensils size={40} className="text-white/10" />
                         
                         {currentPath.includes('shoppingList') && (
-                            <div className="absolute bottom-2 right-2 bg-black/40 backdrop-blur-md px-2 py-1 rounded-lg text-[10px] font-bold text-white border border-white/10">
+                            <div className="absolute bottom-2 right-2 bg-black/40 backdrop-blur-md px-2 py-1 rounded-lg text-[10px] font-bold text-white uppercase">
                                 {recipe.cost !== undefined ? `$${recipe.cost.toFixed(2)}` : '?'}
                             </div>
                         )}
@@ -99,14 +99,14 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
                 
                 {/* Quick Genre Badge if available and image exists */}
                 {recipe.genre && (
-                    <div className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-black/40 backdrop-blur-md text-[9px] font-bold text-white border border-white/10 uppercase tracking-wider">
+                    <div className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-black/40 backdrop-blur-md text-[9px] font-bold text-white uppercase tracking-wider">
                         {recipe.genre}
                     </div>
                 )}
             </div>
 
             {/* Info Section */}
-            <div className="flex flex-col flex-1 p-3 gap-2 justify-between">
+            <div className="flex flex-col flex-1 p-3 gap-2 justify-between bg-accent/5 backdrop-blur-sm">
                 <h3 className="text-sm font-bold leading-tight line-clamp-2 tracking-tight">
                     {recipe.name}
                 </h3>

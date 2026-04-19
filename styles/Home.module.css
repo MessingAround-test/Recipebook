@@ -25,7 +25,8 @@
     background: var(--bg-card);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--glass-border);
+    /* border: 1px solid var(--glass-border); */
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     border-radius: 1.5rem;
     overflow: hidden;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -47,7 +48,8 @@
 
 .paperCard:hover {
     transform: translateY(-8px) scale(1.02);
-    border-color: var(--accent);
+    /* border-color: var(--accent); */
+    box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--accent);
     box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8);
 }
 
@@ -91,9 +93,10 @@
 
 .footer {
     margin-top: 4rem;
-    padding: 2rem 0;
+    padding: 3rem 0;
     text-align: center;
-    border-top: 1px solid var(--glass-border);
+    border-top: 1px solid var(--border);
+    background: color-mix(in oklch, var(--muted), transparent 95%);
     color: var(--text-secondary);
     font-size: 0.875rem;
 }

@@ -31,6 +31,7 @@ const RecipeSchema = new mongoose.Schema(
         approxCost: { type: Number, required: false }, // Store the initial calculated cost
         time: { type: String, enum: ['short', 'medium', 'long'], required: false },
         genre: { type: String, required: false },
+        mealTypes: { type: [String], required: false },
         priceCategory: { type: String, enum: ['cheap', 'medium', 'expensive'], required: false },
         timesCooked: { type: Number, default: 0 },
         feedback: { type: String, required: false }

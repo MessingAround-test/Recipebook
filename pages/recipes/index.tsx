@@ -28,6 +28,7 @@ export default function Recipes() {
     const [filterPrice, setFilterPrice] = useState<string[]>([])
     const [filterGenre, setFilterGenre] = useState<string>('')
     const [filterCooked, setFilterCooked] = useState<string>('')
+    const [filterMealTypes, setFilterMealTypes] = useState<string[]>([])
     const [showFilters, setShowFilters] = useState(false)
     const [loading, setLoading] = useState(true)
 
@@ -74,13 +75,14 @@ export default function Recipes() {
         redirect(`/recipes/${randomRecipe._id}`);
     }
 
-    const hasActiveFilters = filterTime.length > 0 || filterPrice.length > 0 || filterGenre !== '' || filterCooked !== ''
+    const hasActiveFilters = filterTime.length > 0 || filterPrice.length > 0 || filterGenre !== '' || filterCooked !== '' || filterMealTypes.length > 0
 
     const clearFilters = () => {
         setFilterTime([])
         setFilterPrice([])
         setFilterGenre('')
         setFilterCooked('')
+        setFilterMealTypes([])
     }
 
     const filteredRecipes = recipes
@@ -97,6 +99,10 @@ export default function Recipes() {
             if (filterGenre && recipe.genre !== filterGenre) return false
             if (filterCooked === 'cooked' && (recipe.timesCooked || 0) === 0) return false
             if (filterCooked === 'uncooked' && (recipe.timesCooked || 0) > 0) return false
+            if (filterMealTypes.length > 0) {
+                const recipeMeals = recipe.mealTypes || []
+                if (!filterMealTypes.some(meal => recipeMeals.includes(meal))) return false
+            }
             return true
         })
         .sort((a, b) => (b.timesCooked || 0) - (a.timesCooked || 0))
@@ -124,7 +130,7 @@ export default function Recipes() {
         <Layout title="Your Recipes" description="View and manage your recipes">
             <div className="relative min-h-screen pb-24">
                 {/* Modern Header */}
-                <header className="sticky top-0 z-40 -mx-6 sm:-mx-8 px-6 sm:px-8 py-4 bg-background/80 backdrop-blur-xl border-b border-border/50">
+                <header className="sticky top-0 z-40 -mx-6 sm:-mx-8 px-6 sm:px-8 py-4 bg-background/80 backdrop-blur-xl shadow-sm">
                     <div className="flex flex-col gap-4">
                         <div className="flex items-center justify-between">
                             <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
@@ -164,8 +170,8 @@ export default function Recipes() {
                             >
                                 <SlidersHorizontal size={20} />
                                 {hasActiveFilters && (
-                                    <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-background">
-                                        {filterTime.length + filterPrice.length + (filterGenre ? 1 : 0) + (filterCooked ? 1 : 0)}
+                                    <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-background shadow-lg">
+                                        {filterTime.length + filterPrice.length + (filterGenre ? 1 : 0) + (filterCooked ? 1 : 0) + filterMealTypes.length}
                                     </span>
                                 )}
                             </Button>
@@ -183,29 +189,34 @@ export default function Recipes() {
                     </div>
                 </header>
 
-                {/* Active Filter Chips (Scrollable Row) */}
+                 {/* Active Filter Chips (Scrollable Row) */}
                 {hasActiveFilters && (
                     <div className="flex items-center gap-2 py-4 overflow-x-auto no-scrollbar -mx-6 px-6 sm:mx-0 sm:px-0">
                          {filterTime.map(t => (
-                            <button key={t} onClick={() => setFilterTime(prev => prev.filter(i => i !== t))} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold flex items-center gap-1">
+                            <button key={t} onClick={() => setFilterTime(prev => prev.filter(i => i !== t))} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-1 shadow-sm">
                                 {t} <Plus size={12} className="rotate-45" />
                             </button>
                         ))}
                         {filterPrice.map(p => (
-                            <button key={p} onClick={() => setFilterPrice(prev => prev.filter(i => i !== p))} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold flex items-center gap-1">
+                            <button key={p} onClick={() => setFilterPrice(prev => prev.filter(i => i !== p))} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-1 shadow-sm">
                                 {p === 'cheap' ? '$' : p === 'medium' ? '$$' : '$$$'} <Plus size={12} className="rotate-45" />
                             </button>
                         ))}
                         {filterGenre && (
-                            <button onClick={() => setFilterGenre('')} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold flex items-center gap-1">
+                            <button onClick={() => setFilterGenre('')} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-1 shadow-sm">
                                 {filterGenre} <Plus size={12} className="rotate-45" />
                             </button>
                         )}
                          {filterCooked && (
-                            <button onClick={() => setFilterCooked('')} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold flex items-center gap-1">
+                            <button onClick={() => setFilterCooked('')} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-1 shadow-sm">
                                 {filterCooked === 'cooked' ? '👨‍🍳 Already Cooked' : '📝 Never Cooked'} <Plus size={12} className="rotate-45" />
                             </button>
                         )}
+                        {filterMealTypes.map(m => (
+                            <button key={m} onClick={() => setFilterMealTypes(prev => prev.filter(i => i !== m))} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-1 shadow-sm">
+                                🍽️ {m} <Plus size={12} className="rotate-45" />
+                            </button>
+                        ))}
                         <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-rose-500 whitespace-nowrap px-2">
                             Clear all
                         </button>
@@ -228,7 +239,7 @@ export default function Recipes() {
                         <p className="text-sm font-medium text-muted-foreground">Fetching your cookbook...</p>
                     </div>
                 ) : filteredRecipes.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-24 text-center px-6 border-2 border-dashed border-border rounded-3xl bg-secondary/10">
+                    <div className="flex flex-col items-center justify-center py-24 text-center px-6 border border-dashed border-border/10 rounded-3xl bg-secondary/50 shadow-inner">
                         <div className="w-20 h-20 bg-secondary/50 rounded-full flex items-center justify-center mb-6 text-4xl">
                             🍳
                         </div>
@@ -275,6 +286,8 @@ export default function Recipes() {
                 setFilterGenre={setFilterGenre}
                 filterCooked={filterCooked}
                 setFilterCooked={setFilterCooked}
+                filterMealTypes={filterMealTypes}
+                setFilterMealTypes={setFilterMealTypes}
                 clearFilters={clearFilters}
                 hasActiveFilters={hasActiveFilters}
             />

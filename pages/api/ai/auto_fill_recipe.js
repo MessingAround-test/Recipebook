@@ -9,6 +9,7 @@ const VALID_GENRES = [
 ];
 
 const VALID_TIMES = ['short', 'medium', 'long'];
+const VALID_MEALS = ['Breakfast', 'Lunch', 'Main', 'Entree', 'Dessert', 'Snack'];
 
 export default async function handler(req, res) {
     logAPI(req)
@@ -29,8 +30,9 @@ export default async function handler(req, res) {
                 content: `You are a culinary assistant. Given a recipe name and its ingredients, determine:
 1. 'time': How long it takes to prepare and cook. Use exactly one of: "short" (under 30 min), "medium" (30-60 min), "long" (over 60 min).
 2. 'genre': The cuisine genre. Use exactly one of: ${VALID_GENRES.join(', ')}.
+3. 'mealType': The course or meal category. Use exactly one of: ${VALID_MEALS.join(', ')}.
 
-Output MUST be a single JSON object with keys "time" and "genre". Nothing else.`
+Output MUST be a single JSON object with keys "time", "genre", and "mealType". Nothing else.`
             },
             {
                 role: "user",
@@ -48,6 +50,9 @@ Output MUST be a single JSON object with keys "time" and "genre". Nothing else.`
         }
         if (data.genre && VALID_GENRES.includes(data.genre)) {
             result.genre = data.genre;
+        }
+        if (data.mealType && VALID_MEALS.includes(data.mealType)) {
+            result.mealType = data.mealType;
         }
 
         return res.status(200).json({ success: true, data: result });

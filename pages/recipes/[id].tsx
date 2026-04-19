@@ -49,6 +49,7 @@ export default function RecipeDetail() {
     // Metadata fields
     const [recipeTime, setRecipeTime] = useState<string>('')
     const [recipeGenre, setRecipeGenre] = useState<string>('')
+    const [recipeMealTypes, setRecipeMealTypes] = useState<string[]>([])
     const [recipePriceCategory, setRecipePriceCategory] = useState<string>('')
     const [approxCost, setApproxCost] = useState<number | null>(null)
     const [aiFilledFields, setAiFilledFields] = useState<string[]>([])
@@ -155,6 +156,7 @@ export default function RecipeDetail() {
         setRecipeName(data.res.name)
         setRecipeTime(data.res.time || '')
         setRecipeGenre(data.res.genre || '')
+        setRecipeMealTypes(data.res.mealTypes || [])
         setRecipePriceCategory(data.res.priceCategory || '')
         setTimesCooked(data.res.timesCooked || 0)
         setFeedback(data.res.feedback || "")
@@ -210,7 +212,8 @@ export default function RecipeDetail() {
         if (!id) return
         const missingTime = !recipeTime
         const missingGenre = !recipeGenre
-        if (!missingTime && !missingGenre) return
+        const missingMealTypes = !recipeMealTypes || recipeMealTypes.length === 0
+        if (!missingTime && !missingGenre && !missingMealTypes) return
 
         try {
             const token = localStorage.getItem('Token') || ""
@@ -233,6 +236,11 @@ export default function RecipeDetail() {
                 setRecipeGenre(data.data.genre)
                 updates.genre = data.data.genre
                 filled.push('genre')
+            }
+            if (missingMealTypes && data.data.mealType) {
+                setRecipeMealTypes([data.data.mealType])
+                updates.mealTypes = [data.data.mealType]
+                filled.push('mealType')
             }
 
             if (Object.keys(updates).length > 0) {
@@ -455,7 +463,7 @@ export default function RecipeDetail() {
         <Layout title={recipeName || "Recipe"}>
             <div className="max-w-4xl mx-auto pb-12">
                 {/* Hero Header */}
-                <div className="relative bg-card text-card-foreground rounded-2xl border border-border/50 shadow-sm overflow-hidden mb-8">
+                <div className="relative bg-card text-card-foreground rounded-2xl border border-border/20 shadow-xl overflow-hidden mb-8">
                     {imageData && (
                         <div className="relative min-h-[20rem] sm:h-80 md:h-96 w-full cursor-pointer group" onClick={handleClick}>
                             <img src={imageData} alt={recipeName} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -463,24 +471,29 @@ export default function RecipeDetail() {
                                 <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-2 drop-shadow-lg leading-tight">{recipeName}</h1>
                                 <div className="flex flex-wrap gap-2">
                                     {recipeTime && timeLabelMap[recipeTime] && (
-                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg ${timeLabelMap[recipeTime].color} border-white/10`}>
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg ${timeLabelMap[recipeTime].color} border-white/5`}>
                                             {timeLabelMap[recipeTime].icon} {timeLabelMap[recipeTime].label}
                                         </span>
                                     )}
                                     {recipeGenre && (
-                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-purple-500/20 text-purple-200 border-white/10`}>
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-purple-500/20 text-purple-200 border-white/5`}>
                                             🍳 {recipeGenre}
                                         </span>
                                     )}
+                                    {recipeMealTypes && recipeMealTypes.map(type => (
+                                        <span key={type} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-indigo-500/20 text-indigo-200 border-white/5`}>
+                                            🍽️ {type}
+                                        </span>
+                                    ))}
                                     {displayPriceCategory && priceLabelMap[displayPriceCategory] && (
-                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg ${priceLabelMap[displayPriceCategory].color} border-white/10`}>
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg ${priceLabelMap[displayPriceCategory].color} border-white/5`}>
                                             💰 {priceLabelMap[displayPriceCategory].label}
                                         </span>
                                     )}
                                 </div>
 
                                 {/* Inline Cost Display */}
-                                <div className="mt-4 flex flex-col sm:flex-row gap-4 sm:gap-6 text-white border-t border-white/5 pt-4">
+                                <div className="mt-4 flex flex-col sm:flex-row gap-4 sm:gap-6 text-white border-t border-white/[0.03] pt-4">
                                     <div className="flex sm:block items-center justify-between gap-4">
                                         <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60 mb-0.5">Approx. Cost</p>
                                         {isCalculatingCost ? (
@@ -489,7 +502,7 @@ export default function RecipeDetail() {
                                             <p className="text-xl font-black">${displayCost.toFixed(2)}</p>
                                         )}
                                     </div>
-                                    <div className="border-t sm:border-t-0 sm:border-l border-white/5 pt-4 sm:pt-0 sm:pl-6 flex sm:block items-center justify-between gap-4">
+                                    <div className="border-t sm:border-t-0 sm:border-l border-white/[0.03] pt-4 sm:pt-0 sm:pl-6 flex sm:block items-center justify-between gap-4">
                                         <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60 mb-0.5">Unit Cost</p>
                                         {isCalculatingCost ? (
                                             <Loader2 className="w-4 h-4 animate-spin opacity-40" />
@@ -521,7 +534,7 @@ export default function RecipeDetail() {
                                 )}
                             </div>
 
-                            <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 border-t border-border pt-4">
+                            <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 border-t border-border/10 pt-4">
                                 <div className="flex sm:block items-center justify-between gap-4">
                                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mb-1">Total Approx. Cost</p>
                                     {isCalculatingCost ? (
@@ -530,7 +543,7 @@ export default function RecipeDetail() {
                                         <p className="text-2xl font-black">${displayCost.toFixed(2)}</p>
                                     )}
                                 </div>
-                                <div className="border-t sm:border-t-0 sm:border-l border-border pt-4 sm:pt-0 sm:pl-8 flex sm:block items-center justify-between gap-4">
+                                <div className="border-t sm:border-t-0 sm:border-l border-border/10 pt-4 sm:pt-0 sm:pl-8 flex sm:block items-center justify-between gap-4">
                                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mb-1">Estimated Unit Cost</p>
                                     {isCalculatingCost ? (
                                         <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/30" />
@@ -542,7 +555,7 @@ export default function RecipeDetail() {
                         </div>
                     )}
 
-                    <div className="p-6 md:p-8 border-t border-border bg-muted/10">
+                    <div className="p-6 md:p-8 border-t border-border/5 bg-muted/10">
                         <div className="flex flex-col sm:flex-row gap-3">
                             <Button
                                 onClick={() => setIsCookingMode(true)}
@@ -572,11 +585,11 @@ export default function RecipeDetail() {
                     </div>
                 </div>
 
-                <div className="bg-card text-card-foreground rounded-[2.5rem] border border-border/20 shadow-sm p-2 sm:p-4 md:p-6 mb-8 transition-shadow duration-500 hover:shadow-md overflow-hidden">
+                <div className="bg-card text-card-foreground rounded-[2.5rem] border border-border/10 shadow-sm p-2 sm:p-4 md:p-6 mb-8 transition-shadow duration-500 hover:shadow-md overflow-hidden">
                     {/* Ingredients Section */}
                     <div className="pt-10 pb-14 px-6 sm:px-10 bg-emerald-500/[0.02]">
                         <div className="flex items-center gap-4 mb-10">
-                            <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shadow-sm shadow-emerald-500/5">
+                            <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/10 shadow-sm shadow-emerald-500/5">
                                 <ShoppingBasket className="w-6 h-6 sm:w-8 sm:h-8" />
                             </div>
                             <div>
@@ -629,9 +642,9 @@ export default function RecipeDetail() {
 
                     {/* Instructions Section */}
                     {instructions.length > 0 && (
-                        <div className="py-14 px-6 sm:px-10 border-t border-border/20 bg-indigo-500/[0.02]">
+                        <div className="py-14 px-6 sm:px-10 border-t border-border/10 bg-indigo-500/[0.02]">
                             <div className="flex items-center gap-4 mb-10">
-                                <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 shadow-sm shadow-indigo-500/5">
+                                <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/10 shadow-sm shadow-indigo-500/5">
                                     <ListOrdered className="w-6 h-6 sm:w-8 sm:h-8" />
                                 </div>
                                 <div>
@@ -642,10 +655,10 @@ export default function RecipeDetail() {
                             <div className="flex flex-col gap-8">
                                 {instructions.map((instruction, index) => (
                                     <div key={index} className="flex gap-4 sm:gap-8 group">
-                                        <div className="flex-shrink-0 w-11 h-11 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-center font-black text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300 shadow-sm">
+                                        <div className="flex-shrink-0 w-11 h-11 rounded-2xl bg-indigo-500/5 border border-indigo-500/5 flex items-center justify-center font-black text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300 shadow-sm">
                                             {index + 1}
                                         </div>
-                                        <div className="flex-1 pt-1.5 border-b border-border/20 pb-8 group-last:border-0">
+                                        <div className="flex-1 pt-1.5 border-b border-border/10 pb-8 group-last:border-0">
                                             <p className="text-foreground/80 leading-relaxed text-base sm:text-xl font-medium">{instruction.Text}</p>
                                         </div>
                                     </div>
@@ -657,10 +670,10 @@ export default function RecipeDetail() {
 
 
                     {/* Feedback & Reflection Section */}
-                    <div className="py-14 px-6 sm:px-10 border-t border-border/20 bg-amber-500/[0.02]">
+                    <div className="py-14 px-6 sm:px-10 border-t border-border/10 bg-amber-500/[0.02]">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
                             <div className="flex items-center gap-4">
-                                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-sm shadow-amber-500/5">
+                                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/10 shadow-sm shadow-amber-500/5">
                                     <MessageSquare className="w-6 h-6 sm:w-8 sm:h-8" />
                                 </div>
                                 <div>
@@ -709,7 +722,7 @@ export default function RecipeDetail() {
                                 onChange={(e) => setFeedback(e.target.value)}
                                 onBlur={(e) => saveFeedback(e.target.value)}
                                 placeholder="How did it turn out? Any tweaks for next time? (Auto-saves on blur)"
-                                className="w-full min-h-[140px] rounded-2xl border border-border/20 bg-secondary px-5 py-4 text-sm focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/10 focus:bg-emerald-500/[0.04] transition-all duration-300 resize-none placeholder:text-muted-foreground/30 shadow-inner"
+                                className="w-full min-h-[140px] rounded-2xl border border-border/10 bg-secondary px-5 py-4 text-sm focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/10 focus:bg-emerald-500/[0.04] transition-all duration-300 resize-none placeholder:text-muted-foreground/30 shadow-inner"
                             />
                             {isSavingFeedback && <div className="text-[10px] font-bold text-emerald-500 animate-pulse text-right pr-2 uppercase tracking-widest">Saving changes...</div>}
                         </div>
@@ -745,7 +758,7 @@ export default function RecipeDetail() {
                         accept="image/*"
                     />
 
-                    <div className="flex justify-between items-center mt-8 pt-6 border-t border-border">
+                    <div className="flex justify-between items-center mt-8 pt-6 border-t border-border/10">
                         <span className="text-xs text-muted-foreground font-mono">ID: {id}</span>
                         <Button variant="destructive" onClick={deleteRecipe} size="sm">
                             Delete Recipe

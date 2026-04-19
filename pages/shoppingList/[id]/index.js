@@ -544,7 +544,7 @@ export default function Home() {
                         <div className="flex flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto flex-wrap">
                             {/* Pricing Strategy Toggle */}
                             {!isListEmpty && (
-                                <div className="flex rounded-lg overflow-hidden border border-[var(--glass-border)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
+                                <div className="flex rounded-lg overflow-hidden border border-[var(--border)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
                                     <button
                                         onClick={() => setPricingStrategy('match')}
                                         className={`px-2 py-1.5 transition-colors ${pricingStrategy === 'match' ? 'bg-[var(--accent)] text-black' : 'bg-transparent text-gray-400 hover:text-white'}`}
@@ -566,7 +566,7 @@ export default function Home() {
                             {/* Grouping Toggle */}
                             {!isListEmpty && (
                                 <button
-                                    className={`btn-modern !py-1.5 !px-3 text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all ${isGrouped ? 'bg-[var(--accent)] text-black' : 'bg-transparent text-gray-400 border border-[var(--glass-border)] hover:text-white'}`}
+                                    className={`btn-modern !py-1.5 !px-3 text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all ${isGrouped ? 'bg-[var(--accent)] text-black' : 'bg-transparent text-gray-400 border border-[var(--border)] hover:text-white'}`}
                                     onClick={() => {
                                         const newVal = !isGrouped;
                                         setIsGrouped(newVal);
@@ -638,7 +638,7 @@ export default function Home() {
 
                                 return (
                                     <div key={group} className="glass-card w-full" style={{ padding: '0', overflow: 'hidden' }}>
-                                        <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--glass-border)', backgroundColor: 'var(--bg-secondary)' }}>
+                                        <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
                                             <div className="flex justify-between items-center gap-2">
                                                 <h6 className="font-bold uppercase tracking-wider text-xs sm:text-base m-0 flex flex-wrap items-center">
                                                     {(() => {
@@ -705,7 +705,7 @@ export default function Home() {
                     )}
 
                     {/* Footer Actions */}
-                    <div className="flex flex-col items-center gap-4 mt-8 pb-8 w-full border-t border-[var(--glass-border)] pt-8">
+                    <div className="flex flex-col items-center gap-4 mt-8 pb-8 w-full border-t border-[var(--border)] pt-8">
 
                         {!isListEmpty && (
                             <div className="w-full mb-6">
@@ -715,7 +715,7 @@ export default function Home() {
                                     <div
                                         onClick={resetToDefault}
                                         className="glass-card flex flex-col items-center justify-center p-3 sm:p-4 w-full sm:w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer group hover:border-gray-500"
-                                        style={{ borderColor: 'var(--glass-border)' }}
+                                        style={{ borderColor: 'var(--border)' }}
                                     >
                                         <div className="text-2xl mb-1 group-hover:rotate-12 transition-transform">🔄</div>
                                         <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Reset View</div>
@@ -798,7 +798,7 @@ export default function Home() {
                                                     </div>
 
                                                     {/* Footer: Details */}
-                                                    <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
+                                                    <div className="mt-4 pt-3 border-t border-white/[0.03] flex items-center justify-between">
                                                         <div className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5 ${allFound ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
                                                             <span>{option.itemsFound} found</span>
                                                             <Info
@@ -822,7 +822,7 @@ export default function Home() {
                         {!isListEmpty && <CopyToClipboard listIngreds={listIngreds} />}
                         <button
                             onClick={() => markListAsComplete()}
-                            className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 border border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 py-2 px-6 rounded-lg transition-all"
+                            className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 border border-emerald-500/10 bg-emerald-500/5 hover:bg-emerald-500/10 py-2 px-6 rounded-lg transition-all"
                         >
                             ✅ Mark List as Complete
                         </button>

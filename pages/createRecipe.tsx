@@ -43,6 +43,7 @@ export default function CreateRecipe() {
     const [quantityTypes, setQuantityTypes] = useState({})
     const [recipeTime, setRecipeTime] = useState<string>("")
     const [recipeGenre, setRecipeGenre] = useState<string>("")
+    const [recipeMealTypes, setRecipeMealTypes] = useState<string[]>([])
 
     const router = useRouter();
     const { id } = router.query || {};
@@ -117,7 +118,8 @@ export default function CreateRecipe() {
                 "image": localImage,
                 "name": recipeName,
                 "time": recipeTime || undefined,
-                "genre": recipeGenre || undefined
+                "genre": recipeGenre || undefined,
+                "mealTypes": recipeMealTypes
             })
         })
 
@@ -242,6 +244,7 @@ export default function CreateRecipe() {
                         setImageData(data.res.image)
                         setRecipeTime(data.res.time || "")
                         setRecipeGenre(data.res.genre || "")
+                        setRecipeMealTypes(data.res.mealTypes || [])
                         setInstructions(data.res.instructions.map((i: any) => ({ Text: i.Text, Note: i.note })))
                         setIngreds(data.res.ingredients.map((i: any) => ({
                             Name: i.name,
@@ -321,6 +324,33 @@ export default function CreateRecipe() {
                                     <option key={g} value={g}>{g}</option>
                                 ))}
                             </select>
+                        </div>
+                        <div className="col-span-1 sm:col-span-2">
+                            <label className="label-modern text-sm font-medium mb-3 block">
+                                🍽️ Meal Type <span className="text-muted-foreground font-normal">(select one or more — AI will guess if blank)</span>
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                                {['Breakfast', 'Lunch', 'Main', 'Entree', 'Dessert', 'Snack'].map(type => (
+                                    <button
+                                        key={type}
+                                        type="button"
+                                        onClick={() => {
+                                            if (recipeMealTypes.includes(type)) {
+                                                setRecipeMealTypes(recipeMealTypes.filter(t => t !== type))
+                                            } else {
+                                                setRecipeMealTypes([...recipeMealTypes, type])
+                                            }
+                                        }}
+                                        className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all duration-300 ${
+                                            recipeMealTypes.includes(type)
+                                                ? 'bg-accent text-accent-foreground border-accent shadow-lg shadow-accent/20'
+                                                : 'bg-secondary/30 border-border/10 text-muted-foreground hover:border-accent/30 hover:bg-secondary/50'
+                                        }`}
+                                    >
+                                        {type}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
 

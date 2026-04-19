@@ -6,7 +6,7 @@
   background: oklch(0.18 0.03 240 / 85%); /* Rich Midnight Slate highlight */
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid oklch(1 0 0 / 4%);
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
 }
 

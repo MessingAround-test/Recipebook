@@ -59,7 +59,7 @@ function IngredientCard({
                 key={ingredient._id}
                 className={`flex-row align-center gap-4 ${isMinimal ? 'py-2 px-0' : 'py-4 px-6'} relative transition-colors duration-200 hover:bg-accent/5`}
                 style={{
-                    borderBottom: isMinimal ? 'none' : '1px solid var(--glass-border)'
+                    borderBottom: isMinimal ? 'none' : '1px solid var(--border)'
                 }}
             >
 
@@ -113,7 +113,7 @@ function IngredientCard({
                     </div>
 
                     {isExpanded && isGroup && (
-                        <div className="mt-3 ml-2 pl-4 border-l-2 border-[var(--glass-border)] flex flex-col gap-3">
+                        <div className="mt-3 ml-2 pl-4 border-l border-border/10 flex flex-col gap-3">
                             {ingredient.items.map((item, idx) => (
                                 <div key={item._id || idx} className="flex justify-between items-center text-sm text-[var(--text-secondary)] py-1">
                                     <div className="flex items-center gap-3">

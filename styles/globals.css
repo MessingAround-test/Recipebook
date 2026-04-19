@@ -109,7 +109,7 @@ a {
   background: var(--bg-card);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--border);
   border-radius: 1.25rem;
   padding: 1.5rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -183,7 +183,7 @@ a {
 
 .btn-modern.btn-outline {
   background: transparent;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--border);
   color: var(--accent);
 }
 
@@ -299,9 +299,10 @@ a {
     --accent: oklch(0.3 0.03 240);
     --accent-foreground: oklch(0.98 0.01 240);
     --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.98 0.01 240);
+    --border: oklch(1 0 0 / 6%); /* Softened from 10% */
+    --input: oklch(1 0 0 / 8%); /* Softened from 15% */
+    --ring: oklch(1 0 0 / 20%); /* Softened from solid light */
+    --glass-border: oklch(1 0 0 / 8%); /* New variable */
     --chart-1: oklch(0.809 0.105 251.813);
     --chart-2: oklch(0.623 0.214 259.815);
     --chart-3: oklch(0.546 0.245 262.881);
@@ -326,9 +327,10 @@ a {
     --accent: oklch(0.78 0.03 240);
     --accent-foreground: oklch(0.1 0.03 240);
     --destructive: oklch(0.58 0.22 27);
-    --border: oklch(0.7 0.03 240);
-    --input: oklch(0.7 0.03 240);
-    --ring: oklch(0.1 0.03 240);
+    --border: oklch(0.7 0.03 240 / 30%); /* Softened */
+    --input: oklch(0.7 0.03 240 / 40%);
+    --ring: oklch(0.1 0.03 240 / 50%);
+    --glass-border: oklch(0 0 0 / 10%); /* New variable */
   }
 
   .theme {
