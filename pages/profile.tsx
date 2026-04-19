@@ -4,9 +4,12 @@ import { FormField } from '../components/FormField'
 import { Button } from '../components/ui/button'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import { PageHeader } from '../components/PageHeader'
+import { useRouter } from 'next/router'
+import { MdLogout } from 'react-icons/md'
 
 export default function Profile() {
     const isAuthed = useAuthGuard()
+    const router = useRouter()
     const [userData, setUserData] = useState<Record<string, string>>({})
 
     const [theme, setTheme] = useState(() => {
@@ -145,6 +148,23 @@ export default function Profile() {
                                 window.dispatchEvent(new Event('storage'));
                             }}
                         />
+                    </div>
+
+                    {/* Logout Button */}
+                    <div className="mt-8 pt-4 border-t border-border/10">
+                        <Button
+                            variant="outline"
+                            className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
+                            onClick={() => {
+                                if (confirm('Are you sure you want to logout?')) {
+                                    localStorage.removeItem('Token')
+                                    router.push('/login')
+                                }
+                            }}
+                        >
+                            <MdLogout className="mr-2" size={20} />
+                            Logout from Account
+                        </Button>
                     </div>
                 </div>
 

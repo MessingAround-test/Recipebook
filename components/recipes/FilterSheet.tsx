@@ -62,7 +62,7 @@ export function FilterSheet({
     }
 
     return (
-        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[2000] flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
             <div 
                 className="absolute inset-0 cursor-pointer" 
                 onClick={onClose}

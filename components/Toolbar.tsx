@@ -1,14 +1,11 @@
 import React from "react"
 import { AiFillPlusCircle } from "react-icons/ai"
+import { MdOutlineMenuBook, MdSearch, MdShoppingCart, MdHome } from 'react-icons/md'
 import Link from 'next/link'
 import styles from '../styles/Toolbar.module.css'
-import { CgProfile } from 'react-icons/cg'
-import { MdLogout } from 'react-icons/md'
+import { HiOutlineCog } from 'react-icons/hi'
 
 export function Toolbar() {
-    const clearCookie = () => {
-        localStorage.removeItem("Token")
-    }
 
     return (
         <header className={styles.Container}>
@@ -17,27 +14,42 @@ export function Toolbar() {
 
                 <ul className={styles.nav_links}>
                     <li className={styles.nav_item}>
-                        <Link href="/recipes" className={styles.nav_link}>Recipes</Link>
+                        <Link href="/" className={styles.nav_link}>
+                            <MdHome size={24} />
+                            <span className={styles.nav_label}>Home</span>
+                        </Link>
                     </li>
                     <li className={styles.nav_item}>
-                        <Link href="/createRecipe" className={styles.nav_link}><AiFillPlusCircle size={20} /></Link>
+                        <Link href="/recipes" className={styles.nav_link}>
+                            <MdOutlineMenuBook size={24} />
+                            <span className={styles.nav_label}>Recipes</span>
+                        </Link>
                     </li>
                     <li className={styles.nav_item}>
-                        <Link href="/ingredientResearch" className={styles.nav_link}>Research</Link>
+                        <Link href="/createRecipe" className={styles.nav_link}>
+                            <AiFillPlusCircle size={24} />
+                            <span className={styles.nav_label}>Create</span>
+                        </Link>
                     </li>
                     <li className={styles.nav_item}>
-                        <Link href="/shoppingList" className={styles.nav_link}>Shopping List</Link>
+                        <Link href="/ingredientResearch" className={styles.nav_link}>
+                            <MdSearch size={24} />
+                            <span className={styles.nav_label}>Research</span>
+                        </Link>
+                    </li>
+                    <li className={styles.nav_item}>
+                        <Link href="/shoppingList" className={styles.nav_link}>
+                            <MdShoppingCart size={24} />
+                            <span className={styles.nav_label}>Shopping</span>
+                        </Link>
+                    </li>
+                    <li className={styles.nav_item}>
+                        <Link href="/profile" className={styles.nav_link}>
+                            <HiOutlineCog size={24} />
+                            <span className={styles.nav_label}>Settings</span>
+                        </Link>
                     </li>
                 </ul>
-
-                <div className={styles.nav_right}>
-                    <Link href="/profile" className={styles.nav_link}>
-                        <CgProfile size={25} />
-                    </Link>
-                    <Link href="/login" className={styles.nav_link} onClick={clearCookie}>
-                        <MdLogout size={25} />
-                    </Link>
-                </div>
             </nav>
         </header>
     )

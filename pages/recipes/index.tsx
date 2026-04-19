@@ -269,7 +269,7 @@ export default function Recipes() {
                 {/* Mobile Floating Action Button */}
                 <Button
                     onClick={() => redirect("/createRecipe")}
-                    className="fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-2xl shadow-accent/40 bg-accent text-accent-foreground hover:scale-110 active:scale-95 transition-all z-50 p-0"
+                    className="fixed bottom-24 sm:bottom-6 right-6 w-14 h-14 rounded-full shadow-2xl shadow-accent/40 bg-accent text-accent-foreground hover:scale-110 active:scale-95 transition-all z-50 p-0"
                 >
                     <Plus size={28} />
                 </Button>
