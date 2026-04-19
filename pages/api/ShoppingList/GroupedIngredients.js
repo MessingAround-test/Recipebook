@@ -3,7 +3,7 @@ import ShoppingListItem from '../../../models/ShoppingListItem'
 import IngredientConversion from '../../../models/IngredientConversion'
 import { verifyToken } from "../../../lib/auth.ts";
 import { logAPI } from '../../../lib/logger.ts';
-import { normalizeToGrams, getShorthandForMeasure, resolveUnitKey } from '../../../lib/conversion'
+import { normalizeToGrams, getShorthandForMeasure, resolveUnitKey, addCalculatedFields } from '../../../lib/conversion'
 
 export default async function handler(req, res) {
     logAPI(req)
@@ -47,7 +47,8 @@ export default async function handler(req, res) {
                     totalGrams: 0,
                     totalEach: 0,
                     items: [],
-                    gramsPerEach: conversionMap[nameKey] || 0
+                    gramsPerEach: conversionMap[nameKey] || 0,
+                    category: item.category
                 };
             }
 
@@ -149,7 +150,9 @@ export default async function handler(req, res) {
             };
         });
 
-        return res.status(200).json({ success: true, res: result });
+        const finalizedResult = addCalculatedFields(result);
+
+        return res.status(200).json({ success: true, res: finalizedResult });
     } catch (error) {
         console.error("GroupedIngredients API failed:", error);
         return res.status(500).json({ success: false, message: error.message });

@@ -3,21 +3,30 @@ import { verifyToken } from "../../../lib/auth.ts";
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
 import Recipe from '../../../models/Recipe'
-import { getShorthandForMeasure } from '../../../lib/conversion'
+import ShoppingListItem from '../../../models/ShoppingListItem'
+import IngredientConversion from '../../../models/IngredientConversion'
+import { getShorthandForMeasure, addCalculatedFields } from '../../../lib/conversion'
 import { logAPI } from "../../../lib/logger.ts";
 import { safeToObject } from "../../../lib/utils";
+import { determineCategory } from '../../../lib/categoryDetermination';
+import { callGroqChat } from '../../../lib/ai';
 
 
-function convertIngredients(originalObject) {
+async function convertIngredients(originalObject) {
+  const ingredients = await Promise.all(originalObject.map(async (item) => {
+    const category = await determineCategory(item.Name, { IngredientConversion, ShoppingListItem }, callGroqChat);
 
-  return originalObject.map(item => ({
-    "_id": item._id,
-    "name": item.Name,
-    "quantity": item.Amount,
-    "quantity_type": item.AmountType,
-    "quantity_type_shorthand": getShorthandForMeasure(item.AmountType)
+    return {
+      "_id": item._id,
+      "name": item.Name,
+      "quantity": item.Amount,
+      "quantity_type": item.AmountType,
+      "quantity_type_shorthand": getShorthandForMeasure(item.AmountType),
+      "category": category
+    };
   }));
 
+  return addCalculatedFields(ingredients);
 }
 
 
@@ -49,7 +58,7 @@ export default async function handler(req, res) {
 
       const responseData = {
         ...safeToObject(RecipeData),
-        ingredients: convertIngredients(RecipeData.ingredients)
+        ingredients: await convertIngredients(RecipeData.ingredients)
       }
       return res.status(200).json({ res: responseData })
     }

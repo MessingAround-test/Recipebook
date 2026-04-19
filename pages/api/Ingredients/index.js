@@ -4,7 +4,7 @@ import IngredientConversion from '../../../models/IngredientConversion'
 import { logSearchAndGetConversion, logExtractionStats } from '../../../lib/searchLogger'
 import axios from 'axios';
 import { filter } from '../../../lib/filtering'
-import { convertMetricReading } from '../../../lib/conversion'
+import { convertMetricReading, addCalculatedFields } from '../../../lib/conversion'
 import dbConnect from '../../../lib/dbConnect'
 import { verifyToken } from "../../../lib/auth.ts";
 import { logAPI } from '../../../lib/logger.ts';
@@ -169,7 +169,7 @@ export default async function handler(req, res) {
                 }
 
                 // Final filtering
-                let filteredIngredData = filter(enrichedData, filterDetails)
+                let filteredIngredData = addCalculatedFields(filter(enrichedData, filterDetails))
                 return res.status(200).send({ success: true, res: filteredIngredData, "loadedSource": loadedFromSource })
             }
         } else if (req.method === "DELETE") {

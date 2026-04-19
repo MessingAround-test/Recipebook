@@ -2,7 +2,7 @@ import { Layout } from '../../components/Layout'
 import { PageHeader } from '../../components/PageHeader'
 import { useEffect, useState, useRef } from 'react'
 import { Button } from '../../components/ui/button'
-import { Flame, DollarSign, Clock, Utensils, Trash2, ChefHat, Check, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Flame, DollarSign, Clock, Utensils, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus } from 'lucide-react'
 import Router, { useRouter } from 'next/router'
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
 import IngredientCard from '../../components/IngredientCard'
@@ -55,6 +55,8 @@ export default function RecipeDetail() {
     const [timesCooked, setTimesCooked] = useState(0)
     const [feedback, setFeedback] = useState("")
     const [isSavingFeedback, setIsSavingFeedback] = useState(false)
+    const [isCalculatingCost, setIsCalculatingCost] = useState(false)
+    const [showNutrients, setShowNutrients] = useState(false)
 
     // Add to shopping list modal
     const [shopModalOpen, setShopModalOpen] = useState(false)
@@ -75,6 +77,7 @@ export default function RecipeDetail() {
     }
 
     const reloadAllIngredients = async () => {
+        setIsCalculatingCost(true)
         let updatedListIngreds = listIngreds.map((ingred) => ({
             ...ingred,
             options: [],
@@ -98,6 +101,7 @@ export default function RecipeDetail() {
                 console.error(`Error updating ingredient: ${error.message}`)
             }
         }
+        setIsCalculatingCost(false)
     }
 
     async function getGroceryStoreProducts(ingredient: any, returnN: number, enabledSuppliers: string[], token: string) {
@@ -450,192 +454,289 @@ export default function RecipeDetail() {
     return (
         <Layout title={recipeName || "Recipe"}>
             <div className="max-w-4xl mx-auto pb-12">
-                <div className="bg-card text-card-foreground rounded-2xl border border-border shadow-sm p-4 sm:p-6 md:p-8 mb-8">
+                {/* Hero Header */}
+                <div className="relative bg-card text-card-foreground rounded-2xl border border-border shadow-sm overflow-hidden mb-8">
+                    {imageData && (
+                        <div className="relative h-64 sm:h-80 md:h-96 w-full cursor-pointer group" onClick={handleClick}>
+                            <img src={imageData} alt={recipeName} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6 md:p-8">
+                                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-2 drop-shadow-lg leading-tight">{recipeName}</h1>
+                                <div className="flex flex-wrap gap-2">
+                                    {recipeTime && timeLabelMap[recipeTime] && (
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg ${timeLabelMap[recipeTime].color} border-white/20`}>
+                                            {timeLabelMap[recipeTime].icon} {timeLabelMap[recipeTime].label}
+                                        </span>
+                                    )}
+                                    {recipeGenre && (
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-purple-500/20 text-purple-200 border-white/20">
+                                            🍳 {recipeGenre}
+                                        </span>
+                                    )}
+                                    {displayPriceCategory && priceLabelMap[displayPriceCategory] && (
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg ${priceLabelMap[displayPriceCategory].color} border-white/20`}>
+                                            💰 {priceLabelMap[displayPriceCategory].label}
+                                        </span>
+                                    )}
+                                </div>
 
-                    {/* Header — title + actions */}
-                    <div className="mb-6 pb-4 border-b border-border">
-                        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">{recipeName}</h1>
-
-                        {/* Metadata badges */}
-                        <div className="flex flex-wrap gap-2 mb-4">
-                            {recipeTime && timeLabelMap[recipeTime] && (
-                                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${timeLabelMap[recipeTime].color}`}>
-                                    {timeLabelMap[recipeTime].icon} {timeLabelMap[recipeTime].label}
-                                    {aiFilledFields.includes('time') && <span title="AI generated" className="ml-1 opacity-60">✨</span>}
-                                </span>
-                            )}
-                            {recipeGenre && (
-                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border bg-purple-500/15 text-purple-400 border-purple-500/30">
-                                    🍳 {recipeGenre}
-                                    {aiFilledFields.includes('genre') && <span title="AI generated" className="ml-1 opacity-60">✨</span>}
-                                </span>
-                            )}
-                            {displayPriceCategory && priceLabelMap[displayPriceCategory] && (
-                                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${priceLabelMap[displayPriceCategory].color}`}>
-                                    💰 {priceLabelMap[displayPriceCategory].label}
-                                </span>
-                            )}
-                            {timesCooked > 0 && (
-                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
-                                    👨‍🍳 Cooked {timesCooked} time{timesCooked !== 1 ? 's' : ''}
-                                </span>
-                            )}
+                                {/* Inline Cost Display */}
+                                <div className="mt-4 flex flex-col sm:flex-row gap-4 sm:gap-6 text-white border-t border-white/10 pt-4">
+                                    <div className="flex sm:block items-center justify-between gap-4">
+                                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60 mb-0.5">Approx. Cost</p>
+                                        {isCalculatingCost ? (
+                                            <Loader2 className="w-4 h-4 animate-spin opacity-40" />
+                                        ) : (
+                                            <p className="text-xl font-black">${displayCost.toFixed(2)}</p>
+                                        )}
+                                    </div>
+                                    <div className="border-t sm:border-t-0 sm:border-l border-white/10 pt-4 sm:pt-0 sm:pl-6 flex sm:block items-center justify-between gap-4">
+                                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60 mb-0.5">Unit Cost</p>
+                                        {isCalculatingCost ? (
+                                            <Loader2 className="w-4 h-4 animate-spin opacity-40" />
+                                        ) : (
+                                            <p className="text-xl font-black">${getAproxTotalRecipeCostUnit()}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="bg-black/60 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm font-semibold text-center">Change<br />Image</span>
+                            </div>
                         </div>
+                    )}
 
-                        {/* Action buttons — multi-row on mobile */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <Button
-                                onClick={() => router.push(`/createRecipe?id=${id}`)}
-                                variant="outline"
-                                className="w-full py-5 font-semibold"
-                            >
-                                ✏️ Edit Recipe
-                            </Button>
-                            <Button
-                                onClick={openShopModal}
-                                variant="outline"
-                                className="w-full py-5 font-semibold border-emerald-500/40 hover:bg-emerald-500/10 hover:border-emerald-500 text-emerald-500"
-                            >
-                                🛒 Add to Shopping List
-                            </Button>
+                    {!imageData && (
+                        <div className="p-8 pb-4">
+                            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-4 leading-tight">{recipeName}</h1>
+                            <div className="flex flex-wrap gap-2 mb-6">
+                                {recipeTime && timeLabelMap[recipeTime] && (
+                                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${timeLabelMap[recipeTime].color}`}>
+                                        {timeLabelMap[recipeTime].icon} {timeLabelMap[recipeTime].label}
+                                    </span>
+                                )}
+                                {recipeGenre && (
+                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border bg-purple-500/15 text-purple-400 border-purple-500/30">
+                                        🍳 {recipeGenre}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 border-t border-border pt-4">
+                                <div className="flex sm:block items-center justify-between gap-4">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mb-1">Total Approx. Cost</p>
+                                    {isCalculatingCost ? (
+                                        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/30" />
+                                    ) : (
+                                        <p className="text-2xl font-black">${displayCost.toFixed(2)}</p>
+                                    )}
+                                </div>
+                                <div className="border-t sm:border-t-0 sm:border-l border-border pt-4 sm:pt-0 sm:pl-8 flex sm:block items-center justify-between gap-4">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mb-1">Estimated Unit Cost</p>
+                                    {isCalculatingCost ? (
+                                        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/30" />
+                                    ) : (
+                                        <p className="text-2xl font-black text-primary border-primary/20">${getAproxTotalRecipeCostUnit()}</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="p-6 md:p-8 border-t border-border bg-muted/10">
+                        <div className="flex flex-col sm:flex-row gap-3">
                             <Button
                                 onClick={() => setIsCookingMode(true)}
-                                className="w-full py-5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold"
+                                className="flex-[2] py-7 sm:py-8 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xl shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                             >
-                                👨‍🍳 Start Cooking
+                                <ChefHat className="w-6 h-6" />
+                                Start Cooking
                             </Button>
-                        </div>
-                    </div>
-
-                    {/* Ingredients */}
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl sm:text-2xl font-bold">Ingredients</h2>
-                        <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold">
-                            <input
-                                type="checkbox"
-                                checked={filters.includes("supplier")}
-                                onChange={() => filters.includes("supplier") ? setFilters([]) : setFilters(["supplier"])}
-                                className="w-4 h-4 rounded border-input"
-                            />
-                            <span className="hidden sm:inline">Show Grocery Products</span>
-                            <span className="sm:hidden">Prices</span>
-                        </label>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-                        {loading && (
-                            <div className="col-span-full flex justify-center py-8">
-                                <object type="image/svg+xml" data="/loading.svg" className="w-12 h-12">loading...</object>
+                            <div className="flex flex-1 gap-2">
+                                <Button
+                                    onClick={openShopModal}
+                                    variant="outline"
+                                    className="flex-1 py-7 sm:py-8 font-bold border-emerald-500/40 hover:bg-emerald-500/10 hover:border-emerald-500 text-emerald-500 transition-all flex flex-col sm:flex-row items-center justify-center gap-2"
+                                >
+                                    <Plus className="w-5 h-5 hidden sm:block" />
+                                    <span>List</span>
+                                </Button>
+                                <Button
+                                    onClick={() => router.push(`/createRecipe?id=${id}`)}
+                                    variant="outline"
+                                    className="flex-1 py-7 sm:py-8 font-bold hover:bg-accent/10 transition-all flex flex-col sm:flex-row items-center justify-center gap-2"
+                                >
+                                    ✏️ <span className="hidden sm:inline">Edit</span>
+                                </Button>
                             </div>
-                        )}
-                        {matchedListIngreds.map((ingred, idx) => (
-                            <IngredientCard key={idx} ingredient={ingred} filters={filters} openModal={openModal} hideDelete={true} />
-                        ))}
-                    </div>
-
-                    {/* Cost summary */}
-                    <div className="bg-muted/30 rounded-xl p-4 sm:p-6 mb-6 grid grid-cols-2 gap-4">
-                        <div>
-                            <p className="text-xs text-muted-foreground mb-1">Total Approx. Cost</p>
-                            <p className="text-2xl sm:text-3xl font-bold">${displayCost.toFixed(2)}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-muted-foreground mb-1">Estimated Unit Cost</p>
-                            <p className="text-2xl sm:text-3xl font-bold text-primary">${getAproxTotalRecipeCostUnit()}</p>
                         </div>
                     </div>
+                </div>
 
-                    {/* Instructions */}
+                <div className="bg-card text-card-foreground rounded-[2.5rem] border border-border/30 shadow-sm p-2 sm:p-4 md:p-6 mb-8 transition-shadow duration-500 hover:shadow-md overflow-hidden">
+                    {/* Ingredients Section */}
+                    <div className="pt-10 pb-14 px-6 sm:px-10 bg-emerald-500/[0.02]">
+                        <div className="flex items-center gap-4 mb-10">
+                            <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shadow-sm shadow-emerald-500/5">
+                                <ShoppingBasket className="w-6 h-6 sm:w-8 sm:h-8" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground/90">Ingredients</h2>
+                                <p className="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest mt-1">Fresh & Pantry Staples</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-10">
+                            {Object.entries(
+                                matchedListIngreds.reduce((acc: any, ingred) => {
+                                    const cat = ingred.category_simple || ingred.category || 'Other';
+                                    if (!acc[cat]) acc[cat] = [];
+                                    acc[cat].push(ingred);
+                                    return acc;
+                                }, {})
+                            ).sort(([a], [b]) => {
+                                // Priority categories first (using simplified names)
+                                const priority = ['Fresh Produce', 'Fridge', 'Freezer', 'Staple Food'];
+                                const aIdx = priority.indexOf(a);
+                                const bIdx = priority.indexOf(b);
+                                if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+                                if (aIdx !== -1) return -1;
+                                if (bIdx !== -1) return 1;
+                                return a.localeCompare(b);
+                            }).map(([category, ingredients]: [string, any[]]) => (
+                                <div key={category} className="animate-in fade-in slide-in-from-left-4 duration-500">
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500/60 mb-6 flex items-center gap-4">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/40"></span>
+                                        {category}
+                                        <span className="flex-1 h-px bg-emerald-500/10"></span>
+                                        <span className="opacity-40">{ingredients.length} items</span>
+                                    </h3>
+                                    <div className="flex flex-col ml-1">
+                                        {ingredients.map((ingred, idx) => (
+                                            <IngredientCard
+                                                key={idx}
+                                                ingredient={ingred}
+                                                variant="minimal"
+                                                filters={filters}
+                                                openModal={openModal}
+                                                hideDelete={true}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Instructions Section */}
                     {instructions.length > 0 && (
-                        <div className="mb-8">
-                            <h2 className="text-xl sm:text-2xl font-bold mb-4">Instructions</h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="py-14 px-6 sm:px-10 border-t border-border/30 bg-indigo-500/[0.02]">
+                            <div className="flex items-center gap-4 mb-10">
+                                <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 shadow-sm shadow-indigo-500/5">
+                                    <ListOrdered className="w-6 h-6 sm:w-8 sm:h-8" />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground/90">Instructions</h2>
+                                    <p className="text-[10px] font-bold text-indigo-500/60 uppercase tracking-widest mt-1">Step-by-step Process</p>
+                                </div>
+                            </div>
+                            <div className="flex flex-col gap-8">
                                 {instructions.map((instruction, index) => (
-                                    <div key={index} className="bg-muted/10 rounded-xl p-4 sm:p-5 border border-border/50">
-                                        <div className="text-primary font-bold mb-2 uppercase tracking-wider text-xs">Step {index + 1}</div>
-                                        <p className="text-foreground/90 leading-relaxed text-sm">{instruction.Text}</p>
+                                    <div key={index} className="flex gap-4 sm:gap-8 group">
+                                        <div className="flex-shrink-0 w-11 h-11 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-center font-black text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300 shadow-sm">
+                                            {index + 1}
+                                        </div>
+                                        <div className="flex-1 pt-1.5 border-b border-border/40 pb-8 group-last:border-0">
+                                            <p className="text-foreground/80 leading-relaxed text-base sm:text-xl font-medium">{instruction.Text}</p>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     )}
 
-                    {/* Nutrients */}
-                    <div className="mb-8">
-                        <h2 className="text-xl sm:text-2xl font-bold mb-4">Nutrients</h2>
-                        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-white/10">
-                            <IngredientNutrientGraph ingredients={matchedListIngreds} />
-                        </div>
-                    </div>
 
-                    {/* Feedback & Cooked Status */}
-                    <div className="mb-8 p-6 rounded-2xl border border-[var(--accent)]/20 bg-[var(--accent)]/5 shadow-sm">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                            <div>
-                                <h2 className="text-xl sm:text-2xl font-bold mb-1">Cooking Reflection</h2>
-                                <p className="text-sm text-muted-foreground">Track your progress and notes for this recipe</p>
+
+                    {/* Feedback & Reflection Section */}
+                    <div className="py-14 px-6 sm:px-10 border-t border-border/30 bg-amber-500/[0.02]">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-sm shadow-amber-500/5">
+                                    <MessageSquare className="w-6 h-6 sm:w-8 sm:h-8" />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground/90">Cooking Reflection</h2>
+                                    <p className="text-[10px] font-bold text-amber-500/60 uppercase tracking-widest mt-1">Results & Notes</p>
+                                </div>
                             </div>
-                            <div className="flex items-center bg-background/50 border border-border rounded-xl p-1 shadow-inner translate-y-[-4px]">
-                                <Button 
-                                    onClick={() => updateTimesCooked(timesCooked - 1)}
-                                    variant="ghost" 
-                                    size="sm"
-                                    className="h-10 w-10 p-0 rounded-lg hover:bg-rose-500/10 hover:text-rose-500"
-                                    disabled={timesCooked <= 0}
-                                >
-                                    -
-                                </Button>
-                                <input
-                                    type="number"
-                                    value={timesCooked}
-                                    onChange={(e) => updateTimesCooked(parseInt(e.target.value) || 0)}
-                                    className="w-12 text-center bg-transparent font-black text-lg focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                />
-                                <Button 
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1 group">
+                                    <Button
+                                        onClick={() => updateTimesCooked(timesCooked - 1)}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-9 w-9 p-0 rounded-full hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
+                                        disabled={timesCooked <= 0}
+                                    >
+                                        -
+                                    </Button>
+                                    <input
+                                        type="number"
+                                        value={timesCooked}
+                                        onChange={(e) => updateTimesCooked(parseInt(e.target.value) || 0)}
+                                        className="w-10 text-center bg-transparent font-black text-lg focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    />
+                                    <Button
+                                        onClick={() => updateTimesCooked(timesCooked + 1)}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-9 w-9 p-0 rounded-full hover:bg-emerald-500/10 hover:text-emerald-500 transition-colors"
+                                    >
+                                        +
+                                    </Button>
+                                </div>
+                                <Button
                                     onClick={() => updateTimesCooked(timesCooked + 1)}
-                                    variant="ghost" 
-                                    size="sm"
-                                    className="h-10 w-10 p-0 rounded-lg hover:bg-emerald-500/10 hover:text-emerald-500"
+                                    className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold h-11 px-5 rounded-xl flex items-center gap-2.5 transition-all active:scale-95 shadow-md shadow-emerald-500/10"
                                 >
-                                    +
-                                </Button>
-                                <div className="h-6 w-[1px] bg-border mx-2" />
-                                <Button 
-                                    onClick={() => updateTimesCooked(timesCooked + 1)}
-                                    className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold h-10 px-4 rounded-lg flex items-center gap-2 transition-all active:scale-95"
-                                >
-                                    <ChefHat size={16} /> Mark as Cooked
+                                    <ChefHat size={18} /> <span className="hidden sm:inline">Mark as Cooked</span>
                                 </Button>
                             </div>
                         </div>
 
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                <span>Feedback & Result Notes</span>
-                                {isSavingFeedback && <span className="animate-pulse text-emerald-500">Saving...</span>}
-                            </div>
+                        <div className="space-y-4">
                             <textarea
                                 value={feedback}
                                 onChange={(e) => setFeedback(e.target.value)}
                                 onBlur={(e) => saveFeedback(e.target.value)}
                                 placeholder="How did it turn out? Any tweaks for next time? (Auto-saves on blur)"
-                                className="w-full min-h-[120px] rounded-xl border border-border bg-background/50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all resize-none"
+                                className="w-full min-h-[140px] rounded-2xl border border-border/40 bg-muted/10 px-5 py-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all resize-none placeholder:text-muted-foreground/40"
                             />
+                            {isSavingFeedback && <div className="text-[10px] font-bold text-emerald-500 animate-pulse text-right pr-2 uppercase tracking-widest">Saving changes...</div>}
                         </div>
                     </div>
 
-                    {/* Recipe Image */}
-                    {imageData && (
-                        <div className="mb-8">
-                            <h2 className="text-xl sm:text-2xl font-bold mb-4">Recipe Image</h2>
-                            <div className="group relative rounded-xl overflow-hidden border border-border shadow-md cursor-pointer" onClick={handleClick}>
-                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
-                                    <span className="text-white font-semibold">Change Image</span>
-                                </div>
-                                <img src={imageData} alt={recipeName} className="w-full h-auto object-cover max-h-96" />
+                    {/* Nutrients density — TOGGLEABLE & SUBTLE */}
+                    <div className="py-10 px-6 sm:px-10 border-t border-border/20 bg-muted/[0.01]">
+                        <button
+                            onClick={() => setShowNutrients(!showNutrients)}
+                            className="flex items-center gap-2 group text-muted-foreground/60 hover:text-rose-400 transition-all duration-300"
+                        >
+                            <Sparkles className={`w-4 h-4 transition-transform duration-500 ${showNutrients ? 'rotate-180 scale-110' : ''}`} />
+                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] group-hover:opacity-100 transition-opacity">
+                                Nutritional Density
+                            </h2>
+                            <span className={`text-[10px] transition-transform duration-300 ${showNutrients ? 'rotate-180' : ''}`}>
+                                ▼
+                            </span>
+                        </button>
+
+                        {showNutrients && (
+                            <div className="mt-6 bg-muted/10 backdrop-blur-sm rounded-3xl p-6 border border-border/40 animate-in fade-in slide-in-from-top-4 duration-500">
+                                <IngredientNutrientGraph ingredients={matchedListIngreds} />
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
+
 
                     <input
                         type="file"
@@ -696,21 +797,24 @@ export default function RecipeDetail() {
                             backgroundColor: 'var(--background)',
                             borderColor: 'var(--border)',
                             color: 'var(--foreground)',
-                            maxWidth: '480px',
+                            maxWidth: '520px',
+                            width: '100%',
                             margin: '0 auto',
                             padding: '1.5rem',
-                            borderRadius: '0.75rem',
-                            inset: '1rem auto',
+                            borderRadius: '1.5rem 1.5rem 0 0',
+                            inset: 'auto 0 0 0',
                             height: 'fit-content',
-                            maxHeight: '90vh',
+                            maxHeight: '85vh',
                             overflowY: 'auto',
+                            boxShadow: '0 -20px 40px rgba(0,0,0,0.4)',
+                            borderBottom: 'none'
                         },
                         overlay: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                            backdropFilter: 'blur(4px)',
-                            zIndex: 50,
+                            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                            backdropFilter: 'blur(8px)',
+                            zIndex: 100,
                             display: 'flex',
-                            alignItems: 'center',
+                            alignItems: 'flex-end',
                             justifyContent: 'center'
                         }
                     }}

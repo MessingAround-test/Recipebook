@@ -5,6 +5,7 @@ import ShoppingListItem from '../../../models/ShoppingListItem'
 
 import ShoppingList from '../../../models/ShoppingList'
 import Ingredient from '../../../models/Ingredients'
+import IngredientConversion from '../../../models/IngredientConversion'
 import { getShorthandForMeasure, addCalculatedFields } from '../../../lib/conversion'
 import { logAPI } from "../../../lib/logger";
 import { safeToObject } from "../../../lib/utils";
@@ -91,7 +92,7 @@ export default async function handler(req, res) {
                 throw "ShoppingList does not exist"
             }
 
-            const response = ShoppingListItem.create({
+            const response = await ShoppingListItem.create({
                 name: req.body.name,
                 createdBy: userData._id,
                 deleted: false,
@@ -103,7 +104,26 @@ export default async function handler(req, res) {
                 ingredientId: req.body.ingredientId,
                 category: req.body.category,
             });
-            console.log(await response);
+
+            // Update or create IngredientConversion if a category is provided
+            if (req.body.category && req.body.name) {
+                try {
+                    await IngredientConversion.findOneAndUpdate(
+                        { ingredient_name: req.body.name.toLowerCase() },
+                        {
+                            $set: {
+                                category: req.body.category,
+                                last_updated: new Date()
+                            }
+                        },
+                        { upsert: true }
+                    );
+                } catch (e) {
+                    console.error('Failed to update IngredientConversion from ShoppingListItem POST:', e);
+                }
+            }
+
+            console.log(response);
 
             return res.status(200).json({ success: true, data: [], message: "Allgood" })
         } catch (error) {

@@ -1,4 +1,5 @@
 import ShoppingListItem from '../../../models/ShoppingListItem'
+import IngredientConversion from '../../../models/IngredientConversion'
 // Function to count occurrences of values for a specific key in the list of objects
 
 function countValuesForKey(listOfObjects, key, disallowedValues) {
@@ -62,6 +63,26 @@ export default async function handler(req, res) {
                     { name: 'quantity', disallowed: [] },
                   ];
                 const mostCommonValues = findCountsForKeys(ShoppingListItemData, keysToCheck)
+
+                // 2. Check IngredientConversion for an explicit preference
+                try {
+                    const conversion = await IngredientConversion.findOne({ ingredient_name: search_term });
+                    if (conversion && conversion.category) {
+                        // Prepend or prioritize the saved category if it's not already the most common
+                        if (!mostCommonValues.category.find(c => c.value === conversion.category)) {
+                            mostCommonValues.category.unshift({ value: conversion.category, count: 999 });
+                        } else {
+                            // If it exists, move it to the top
+                            mostCommonValues.category = [
+                                { value: conversion.category, count: 999 },
+                                ...mostCommonValues.category.filter(c => c.value !== conversion.category)
+                            ];
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error checking IngredientConversion in options API:', e);
+                }
+
                 res.status(200).json({ success: true, data: mostCommonValues })
             } else {
                 res.status(400).json({ success: false, data: [], message: "No Search Term" })

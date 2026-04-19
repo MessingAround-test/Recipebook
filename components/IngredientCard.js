@@ -7,7 +7,22 @@ import CardListModal from './CardListModal';
 import IngredientCardProduct from './IngredientCardProduct';
 import Skeleton from './Skeleton';
 
-function IngredientCard({ ingredient, essential = true, openModal = undefined, handleCheckboxChange = undefined, markAsIncorrect = undefined, handleDeleteItem = undefined, filters = [], modalVersion = false, enabledSuppliers = [], groupColor = undefined, pricingStrategy = 'match', hideDelete = false }) {
+function IngredientCard({ 
+    ingredient, 
+    variant = 'default',
+    essential = true, 
+    openModal = undefined, 
+    handleCheckboxChange = undefined, 
+    markAsIncorrect = undefined, 
+    handleDeleteItem = undefined, 
+    filters = [], 
+    modalVersion = false, 
+    enabledSuppliers = [], 
+    groupColor = undefined, 
+    pricingStrategy = 'match', 
+    hideDelete = false 
+}) {
+    const isMinimal = variant === 'minimal';
     const [otherOptionsModalIsOpen, setOtherOptionsModalIsOpen] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -42,19 +57,12 @@ function IngredientCard({ ingredient, essential = true, openModal = undefined, h
         <div style={{ opacity: ingredient.complete ? 0.6 : 1, width: '100%' }}>
             <div
                 key={ingredient._id}
-                className="flex-row align-center gap-4 py-4 px-6 relative transition-colors duration-200 hover:bg-accent/5"
+                className={`flex-row align-center gap-4 ${isMinimal ? 'py-2 px-0' : 'py-4 px-6'} relative transition-colors duration-200 hover:bg-accent/5`}
                 style={{
-                    borderBottom: '1px solid var(--glass-border)'
+                    borderBottom: isMinimal ? 'none' : '1px solid var(--glass-border)'
                 }}
             >
-                {/* Subtle left border hint for color */}
-                <div
-                    className="absolute left-0 top-0 bottom-0 w-1 transition-all duration-300"
-                    style={{
-                        backgroundColor: ingredient.complete ? 'transparent' : accentColor,
-                        opacity: 0.8
-                    }}
-                />
+
 
                 {handleCheckboxChange !== undefined && (
                     <div className="mobile-touch-target" style={{ display: 'flex', justifyContent: 'center', minWidth: '48px' }}>
@@ -76,15 +84,16 @@ function IngredientCard({ ingredient, essential = true, openModal = undefined, h
                 <div style={{ flex: 1 }} className="flex-col gap-1">
                     <div className="flex items-center justify-between">
                         <div onClick={() => isGroup ? setIsExpanded(!isExpanded) : setOtherOptionsModalIsOpen(true)} className="hover-accent transition-all hover:translate-x-1" style={{
-                            fontSize: '1.1rem',
+                            fontSize: isMinimal ? '1rem' : '1.1rem',
                             lineHeight: '1.3',
-                            fontWeight: '700',
+                            fontWeight: isMinimal ? '600' : '700',
                             color: 'var(--text-primary)',
                             cursor: 'pointer',
                             textDecoration: ingredient.complete ? 'line-through' : 'none',
                             letterSpacing: '-0.01em',
                             display: 'inline-block'
                         }}>
+                            {isMinimal && <span className="mr-3 opacity-40">•</span>}
                             {`${ingredient.name.toUpperCase()}`}
                             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginLeft: '0.5rem', fontWeight: '500' }}>
                                 &bull; {isGroup ? (ingredient.totalString || `${ingredient.quantity} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`) : `${ingredient.quantity} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`}
@@ -141,7 +150,7 @@ function IngredientCard({ ingredient, essential = true, openModal = undefined, h
                         </div>
                     )}
 
-                    {ingredient.loading && (
+                    {ingredient.loading && filters.includes("supplier") && (
                         <div className="mt-2 w-full">
                             <Skeleton height="3rem" className="w-full opacity-50" />
                         </div>

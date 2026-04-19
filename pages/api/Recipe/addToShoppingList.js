@@ -3,67 +3,8 @@ import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
 import Recipe from '../../../models/Recipe'
 import ShoppingList from '../../../models/ShoppingList'
-import ShoppingListItem from '../../../models/ShoppingListItem'
-import { logAPI } from "../../../lib/logger.ts";
-import { callGroqChat } from '../../../lib/ai';
 
-const VALID_CATEGORIES = [
-    'Fresh Produce', 'Dairy and Eggs', 'Bakery', 'Meat and Seafood',
-    'Canned Goods', 'Pasta and Grains', 'Condiments and Sauces', 'Snacks',
-    'Beverages', 'Frozen Foods', 'Cereal and Breakfast Foods', 'Baking Supplies',
-    'Household and Cleaning', 'Personal Care', 'Health and Wellness',
-    'International Foods', 'Deli and Prepared Foods', 'Home and Garden'
-];
-
-async function determineCategory(ingredientName) {
-    // First check if we have historical data for this ingredient
-    try {
-        const existingItems = await ShoppingListItem.find({
-            name: { $regex: new RegExp(`^${ingredientName}$`, 'i') }
-        });
-
-        if (existingItems.length > 0) {
-            // Count categories and pick the most common
-            const categoryCounts = {};
-            existingItems.forEach(item => {
-                if (item.category && VALID_CATEGORIES.includes(item.category)) {
-                    categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
-                }
-            });
-
-            const sorted = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
-            if (sorted.length > 0) {
-                return sorted[0][0];
-            }
-        }
-    } catch (e) {
-        console.error('Error checking existing items for category:', e);
-    }
-
-    // Fall back to AI
-    try {
-        const messages = [
-            {
-                role: "system",
-                content: `You are a grocery organization assistant. Given an ingredient name, respond with a JSON object containing only 'category'. Valid categories: ${VALID_CATEGORIES.join(', ')}. Output MUST be a single JSON object.`
-            },
-            {
-                role: "user",
-                content: `Ingredient: "${ingredientName}"`
-            }
-        ];
-
-        const responseText = await callGroqChat(messages, true);
-        const data = JSON.parse(responseText);
-        if (data.category && VALID_CATEGORIES.includes(data.category)) {
-            return data.category;
-        }
-    } catch (e) {
-        console.error('AI category determination failed:', e);
-    }
-
-    return 'Fresh Produce'; // sensible default
-}
+// Centralized logic moved to lib/categoryDetermination.ts
 
 export default async function handler(req, res) {
     logAPI(req);
@@ -107,7 +48,7 @@ export default async function handler(req, res) {
         // Add each ingredient to the shopping list
         let added = 0;
         for (const ingredient of recipe.ingredients) {
-            const category = await determineCategory(ingredient.Name);
+            const category = await determineCategory(ingredient.Name, { IngredientConversion, ShoppingListItem }, callGroqChat);
 
             await ShoppingListItem.create({
                 name: ingredient.Name.toLowerCase(),
