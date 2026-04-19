@@ -1,0 +1,58 @@
+import { verifyToken } from "../../../lib/auth";
+import { logAPI } from '../../../lib/logger'
+import { callGroqChat } from '../../../lib/ai';
+
+const VALID_GENRES = [
+    'Italian', 'Mexican', 'Asian', 'Indian', 'Mediterranean', 'American',
+    'French', 'Middle Eastern', 'Thai', 'Japanese', 'Korean', 'Greek',
+    'Chinese', 'Vietnamese', 'Other'
+];
+
+const VALID_TIMES = ['short', 'medium', 'long'];
+
+export default async function handler(req, res) {
+    logAPI(req)
+    const decoded = await verifyToken(req, res);
+    if (!decoded) return;
+
+    try {
+        const recipeName = req.query.recipeName;
+        const ingredients = req.query.ingredients;
+
+        if (!recipeName) {
+            return res.status(400).json({ success: false, message: "Missing recipeName" });
+        }
+
+        const messages = [
+            {
+                role: "system",
+                content: `You are a culinary assistant. Given a recipe name and its ingredients, determine:
+1. 'time': How long it takes to prepare and cook. Use exactly one of: "short" (under 30 min), "medium" (30-60 min), "long" (over 60 min).
+2. 'genre': The cuisine genre. Use exactly one of: ${VALID_GENRES.join(', ')}.
+
+Output MUST be a single JSON object with keys "time" and "genre". Nothing else.`
+            },
+            {
+                role: "user",
+                content: `Recipe: "${recipeName}"${ingredients ? `\nIngredients: ${ingredients}` : ''}`
+            }
+        ];
+
+        const responseText = await callGroqChat(messages, true);
+        const data = JSON.parse(responseText);
+
+        // Validate the returned values
+        const result = {};
+        if (data.time && VALID_TIMES.includes(data.time)) {
+            result.time = data.time;
+        }
+        if (data.genre && VALID_GENRES.includes(data.genre)) {
+            result.genre = data.genre;
+        }
+
+        return res.status(200).json({ success: true, data: result });
+    } catch (error) {
+        console.error("Error calling AI for recipe auto-fill:", error);
+        return res.status(500).json({ success: false, message: "Error processing request" });
+    }
+}

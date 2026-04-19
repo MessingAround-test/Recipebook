@@ -41,7 +41,9 @@ export default function CreateRecipe() {
     const [imageData, setImageData] = useState<string | undefined>()
     const [recipeName, setRecipeName] = useState("")
     const [quantityTypes, setQuantityTypes] = useState({})
-    
+    const [recipeTime, setRecipeTime] = useState<string>("")
+    const [recipeGenre, setRecipeGenre] = useState<string>("")
+
     const router = useRouter();
     const { id } = router.query || {};
     const isEditMode = id !== undefined;
@@ -113,7 +115,9 @@ export default function CreateRecipe() {
                 "ingreds": ingreds,
                 "instructions": instructions,
                 "image": localImage,
-                "name": recipeName
+                "name": recipeName,
+                "time": recipeTime || undefined,
+                "genre": recipeGenre || undefined
             })
         })
 
@@ -236,6 +240,8 @@ export default function CreateRecipe() {
                     if (data.res) {
                         setRecipeName(data.res.name)
                         setImageData(data.res.image)
+                        setRecipeTime(data.res.time || "")
+                        setRecipeGenre(data.res.genre || "")
                         setInstructions(data.res.instructions.map((i: any) => ({ Text: i.Text, Note: i.note })))
                         setIngreds(data.res.ingredients.map((i: any) => ({
                             Name: i.name,
@@ -283,6 +289,39 @@ export default function CreateRecipe() {
                             value={recipeName}
                             onChange={(e) => setRecipeName(e.target.value)}
                         />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label className="label-modern text-sm font-medium mb-1 block">
+                                ⏱️ Cook Time <span className="text-muted-foreground font-normal">(optional — AI will guess if blank)</span>
+                            </label>
+                            <select
+                                value={recipeTime}
+                                onChange={(e) => setRecipeTime(e.target.value)}
+                                className="input-modern"
+                            >
+                                <option value="">Select time...</option>
+                                <option value="short">⚡ Short (under 30 min)</option>
+                                <option value="medium">⏱️ Medium (30–60 min)</option>
+                                <option value="long">🍲 Long (over 60 min)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="label-modern text-sm font-medium mb-1 block">
+                                🍳 Cuisine Genre <span className="text-muted-foreground font-normal">(optional — AI will guess if blank)</span>
+                            </label>
+                            <select
+                                value={recipeGenre}
+                                onChange={(e) => setRecipeGenre(e.target.value)}
+                                className="input-modern"
+                            >
+                                <option value="">Select genre...</option>
+                                {['Italian', 'Mexican', 'Asian', 'Indian', 'Mediterranean', 'American', 'French', 'Middle Eastern', 'Thai', 'Japanese', 'Korean', 'Greek', 'Chinese', 'Vietnamese', 'Other'].map(g => (
+                                    <option key={g} value={g}>{g}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
                     <form onSubmit={onSubmitRecipeSiteImport} className="flex flex-row items-end gap-2">

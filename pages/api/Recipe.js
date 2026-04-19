@@ -32,7 +32,9 @@ export default async function handler(req, res) {
           ingredients: req.body.ingreds,
           instructions: req.body.instructions,
           image: req.body.image,
-          name: req.body.name
+          name: req.body.name,
+          time: req.body.time,
+          genre: req.body.genre
         });
         return res.status(200).json({ success: true, data: response, message: "Success" })
       } catch (error) {

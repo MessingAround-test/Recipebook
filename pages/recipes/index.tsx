@@ -2,11 +2,21 @@ import Head from 'next/head'
 import { useEffect, useState } from 'react'
 import Router from 'next/router'
 import { Layout } from '../../components/Layout'
-import { PageHeader } from '../../components/PageHeader'
 import ImageCard from '../../components/ImageCard'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { useAuthGuard } from '../../lib/useAuthGuard'
+import { 
+    Search, 
+    SlidersHorizontal, 
+    Plus, 
+    Dices, 
+    Calendar,
+    ArrowUpDown,
+    ChefHat,
+    Loader2
+} from 'lucide-react'
+import { FilterSheet } from '../../components/recipes/FilterSheet'
 
 export default function Recipes() {
     const isAuthed = useAuthGuard()
@@ -14,6 +24,12 @@ export default function Recipes() {
     const [recipes, setRecipes] = useState<any[]>([])
     const [searchTerm, setSearchTerm] = useState('')
     const [allowDelete, setAllowDelete] = useState(false)
+    const [filterTime, setFilterTime] = useState<string[]>([])
+    const [filterPrice, setFilterPrice] = useState<string[]>([])
+    const [filterGenre, setFilterGenre] = useState<string>('')
+    const [filterCooked, setFilterCooked] = useState<string>('')
+    const [showFilters, setShowFilters] = useState(false)
+    const [loading, setLoading] = useState(true)
 
     async function getUserDetails() {
         const token = localStorage.getItem('Token')
@@ -26,13 +42,18 @@ export default function Recipes() {
     }
 
     async function getRecipeDetails() {
+        setLoading(true)
         const token = localStorage.getItem('Token')
         if (!token) return
-        let res = await fetch("/api/Recipe", {
-            headers: { 'edgetoken': token }
-        })
-        let data = await res.json()
-        setRecipes(data.res || [])
+        try {
+            let res = await fetch("/api/Recipe", {
+                headers: { 'edgetoken': token }
+            })
+            let data = await res.json()
+            setRecipes(data.res || [])
+        } finally {
+            setLoading(false)
+        }
     }
 
     useEffect(() => {
@@ -46,18 +67,39 @@ export default function Recipes() {
         Router.push(page)
     }
 
-    function filterList(list: any[], term: string) {
-        if (term) {
-            return list.filter(item =>
-                Object.values(item).some(value =>
-                    String(value).toLowerCase().includes(term.toLowerCase())
-                )
-            )
-        }
-        return list
+    const pickRandomRecipe = () => {
+        if (filteredRecipes.length === 0) return;
+        const randomIndex = Math.floor(Math.random() * filteredRecipes.length);
+        const randomRecipe = filteredRecipes[randomIndex];
+        redirect(`/recipes/${randomRecipe._id}`);
     }
 
-    const filteredRecipes = filterList(recipes, searchTerm)
+    const hasActiveFilters = filterTime.length > 0 || filterPrice.length > 0 || filterGenre !== '' || filterCooked !== ''
+
+    const clearFilters = () => {
+        setFilterTime([])
+        setFilterPrice([])
+        setFilterGenre('')
+        setFilterCooked('')
+    }
+
+    const filteredRecipes = recipes
+        .filter(recipe => {
+            if (searchTerm) {
+                const term = searchTerm.toLowerCase()
+                const matches = ['name', 'genre', 'time', 'priceCategory'].some(key =>
+                    String(recipe[key] || '').toLowerCase().includes(term)
+                )
+                if (!matches) return false
+            }
+            if (filterTime.length > 0 && !filterTime.includes(recipe.time)) return false
+            if (filterPrice.length > 0 && !filterPrice.includes(recipe.priceCategory)) return false
+            if (filterGenre && recipe.genre !== filterGenre) return false
+            if (filterCooked === 'cooked' && (recipe.timesCooked || 0) === 0) return false
+            if (filterCooked === 'uncooked' && (recipe.timesCooked || 0) > 0) return false
+            return true
+        })
+        .sort((a, b) => (b.timesCooked || 0) - (a.timesCooked || 0))
 
     const deleteRecipe = async (id: string) => {
         const token = localStorage.getItem('Token')
@@ -80,45 +122,172 @@ export default function Recipes() {
 
     return (
         <Layout title="Your Recipes" description="View and manage your recipes">
-            <PageHeader
-                title="Your Recipes"
-                actions={
-                    <>
-                        <Button onClick={() => redirect("/createRecipe")}>
-                            Add recipe
-                        </Button>
-                        {userData?.role === "admin" && (
+            <div className="relative min-h-screen pb-24">
+                {/* Modern Header */}
+                <header className="sticky top-0 z-40 -mx-6 sm:-mx-8 px-6 sm:px-8 py-4 bg-background/80 backdrop-blur-xl border-b border-border/50">
+                    <div className="flex flex-col gap-4">
+                        <div className="flex items-center justify-between">
+                            <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
+                                <ChefHat className="text-accent" />
+                                Your Recipes
+                            </h1>
+                            <div className="flex items-center gap-2">
+                                {userData?.role === "admin" && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setAllowDelete(!allowDelete)}
+                                        className={allowDelete ? "text-rose-500 bg-rose-500/10" : "text-muted-foreground"}
+                                    >
+                                        Mass Delete
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Search Bar Group */}
+                        <div className="flex items-center gap-2">
+                            <div className="relative flex-1 group">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-accent" size={18} />
+                                <Input
+                                    placeholder="Search recipes..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-10 h-12 bg-secondary/50 border-none rounded-2xl focus-visible:ring-2 focus-visible:ring-accent/50"
+                                />
+                            </div>
                             <Button
-                                variant={allowDelete ? "destructive" : "outline"}
-                                onClick={() => setAllowDelete(!allowDelete)}
+                                size="icon"
+                                variant={hasActiveFilters ? "default" : "secondary"}
+                                onClick={() => setShowFilters(true)}
+                                className={`h-12 w-12 rounded-2xl shrink-0 transition-all ${hasActiveFilters ? 'bg-accent text-accent-foreground shadow-lg shadow-accent/20' : 'bg-secondary/50'}`}
                             >
-                                {allowDelete ? "Disable Mass Delete" : "Allow Mass Delete"}
+                                <SlidersHorizontal size={20} />
+                                {hasActiveFilters && (
+                                    <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-background">
+                                        {filterTime.length + filterPrice.length + (filterGenre ? 1 : 0) + (filterCooked ? 1 : 0)}
+                                    </span>
+                                )}
                             </Button>
+                            <Button
+                                size="icon"
+                                variant="secondary"
+                                onClick={pickRandomRecipe}
+                                disabled={filteredRecipes.length === 0}
+                                className="h-12 w-12 rounded-2xl shrink-0 bg-secondary/50 hover:bg-accent/20 hover:text-accent transition-colors"
+                                title="Pick for me"
+                            >
+                                <Dices size={20} />
+                            </Button>
+                        </div>
+                    </div>
+                </header>
+
+                {/* Active Filter Chips (Scrollable Row) */}
+                {hasActiveFilters && (
+                    <div className="flex items-center gap-2 py-4 overflow-x-auto no-scrollbar -mx-6 px-6 sm:mx-0 sm:px-0">
+                         {filterTime.map(t => (
+                            <button key={t} onClick={() => setFilterTime(prev => prev.filter(i => i !== t))} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold flex items-center gap-1">
+                                {t} <Plus size={12} className="rotate-45" />
+                            </button>
+                        ))}
+                        {filterPrice.map(p => (
+                            <button key={p} onClick={() => setFilterPrice(prev => prev.filter(i => i !== p))} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold flex items-center gap-1">
+                                {p === 'cheap' ? '$' : p === 'medium' ? '$$' : '$$$'} <Plus size={12} className="rotate-45" />
+                            </button>
+                        ))}
+                        {filterGenre && (
+                            <button onClick={() => setFilterGenre('')} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold flex items-center gap-1">
+                                {filterGenre} <Plus size={12} className="rotate-45" />
+                            </button>
                         )}
-                    </>
-                }
+                         {filterCooked && (
+                            <button onClick={() => setFilterCooked('')} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold flex items-center gap-1">
+                                {filterCooked === 'cooked' ? '👨‍🍳 Already Cooked' : '📝 Never Cooked'} <Plus size={12} className="rotate-45" />
+                            </button>
+                        )}
+                        <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-rose-500 whitespace-nowrap px-2">
+                            Clear all
+                        </button>
+                    </div>
+                )}
+
+                {/* Results Info */}
+                <div className="flex items-center justify-between py-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                    <span>{filteredRecipes.length} Recipes</span>
+                    <div className="flex items-center gap-1 hover:text-foreground cursor-pointer transition-colors">
+                        <ArrowUpDown size={12} />
+                        Sort
+                    </div>
+                </div>
+
+                {/* Grid */}
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-24 gap-4">
+                        <Loader2 className="animate-spin text-accent" size={32} />
+                        <p className="text-sm font-medium text-muted-foreground">Fetching your cookbook...</p>
+                    </div>
+                ) : filteredRecipes.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-24 text-center px-6 border-2 border-dashed border-border rounded-3xl bg-secondary/10">
+                        <div className="w-20 h-20 bg-secondary/50 rounded-full flex items-center justify-center mb-6 text-4xl">
+                            🍳
+                        </div>
+                        <h2 className="text-xl font-bold mb-2">No recipes found</h2>
+                        <p className="text-sm text-muted-foreground max-w-[240px] mb-6">
+                            Try adjusting your filters or search terms to find what you're looking for.
+                        </p>
+                        <Button onClick={clearFilters} variant="outline" className="rounded-xl">
+                            Reset Filters
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                        {filteredRecipes.map((recipe, index) => (
+                            <div key={recipe._id} className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${index * 50}ms` }}>
+                                <ImageCard
+                                    recipe={recipe}
+                                    allowDelete={allowDelete}
+                                    onDelete={deleteRecipe}
+                                    onRedirect={redirect}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Mobile Floating Action Button */}
+                <Button
+                    onClick={() => redirect("/createRecipe")}
+                    className="fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-2xl shadow-accent/40 bg-accent text-accent-foreground hover:scale-110 active:scale-95 transition-all z-50 p-0"
+                >
+                    <Plus size={28} />
+                </Button>
+            </div>
+
+            <FilterSheet
+                isOpen={showFilters}
+                onClose={() => setShowFilters(false)}
+                filterTime={filterTime}
+                setFilterTime={setFilterTime}
+                filterPrice={filterPrice}
+                setFilterPrice={setFilterPrice}
+                filterGenre={filterGenre}
+                setFilterGenre={setFilterGenre}
+                filterCooked={filterCooked}
+                setFilterCooked={setFilterCooked}
+                clearFilters={clearFilters}
+                hasActiveFilters={hasActiveFilters}
             />
 
-            <div className="mb-8 px-4 sm:px-0">
-                <Input
-                    placeholder="Search recipes..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full sm:max-w-md"
-                />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                {filteredRecipes.map((recipe) => (
-                    <ImageCard
-                        key={recipe._id}
-                        recipe={recipe}
-                        allowDelete={allowDelete}
-                        onDelete={deleteRecipe}
-                        onRedirect={redirect}
-                    />
-                ))}
-            </div>
+            <style jsx global>{`
+                .no-scrollbar::-webkit-scrollbar {
+                    display: none;
+                }
+                .no-scrollbar {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
+            `}</style>
         </Layout>
     )
 }

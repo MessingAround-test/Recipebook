@@ -79,6 +79,12 @@ export default async function handler(req, res) {
         if (req.body.name !== undefined) updateData.name = req.body.name;
         if (req.body.ingreds !== undefined) updateData.ingredients = req.body.ingreds;
         if (req.body.instructions !== undefined) updateData.instructions = req.body.instructions;
+        if (req.body.approxCost !== undefined) updateData.approxCost = req.body.approxCost;
+        if (req.body.time !== undefined) updateData.time = req.body.time;
+        if (req.body.genre !== undefined) updateData.genre = req.body.genre;
+        if (req.body.priceCategory !== undefined) updateData.priceCategory = req.body.priceCategory;
+        if (req.body.timesCooked !== undefined) updateData.timesCooked = req.body.timesCooked;
+        if (req.body.feedback !== undefined) updateData.feedback = req.body.feedback;
 
         if (Object.keys(updateData).length === 0) {
           return res.status(400).json({ res: "No data provided to update" })

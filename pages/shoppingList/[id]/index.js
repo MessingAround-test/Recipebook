@@ -4,6 +4,7 @@ import { Toolbar } from '../../../components/Toolbar'
 import { useEffect, useState } from 'react'
 import Router from 'next/router'
 import { useRouter } from 'next/router'
+import Link from 'next/link'
 import ImageList from '../../../components/ImageList'
 import CopyToClipboard from '../../../components/CopyToClipboard'
 import AddShoppingItem from '../../../components/AddShoppingItem'
@@ -35,7 +36,7 @@ export default function Home() {
     const [filters, setFilters] = useState(["complete"])
     const [pricingStrategy, setPricingStrategy] = useState("value")
     const [isGrouped, setIsGrouped] = useState(true)
-    const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type", "category_simple"]
+    const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type", "category_simple", "recipe_name"]
 
     useEffect(() => {
         if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
@@ -650,16 +651,31 @@ export default function Home() {
                                                             return <span className="text-white">OTHER</span>;
                                                         }
 
-                                                        return parts.map((part, index) => (
-                                                            <span key={index} className="flex items-center">
-                                                                <span style={{ color: getColorForCategory(part) || 'white' }}>
-                                                                    {part === "Other (No Match)" ? "⚠️ Figure This Out" : part}
+                                                        return parts.map((part, index) => {
+                                                            let recipeId = null;
+                                                            if (activeFilters.includes("recipe_name")) {
+                                                                const matchingItem = ingredientsInGroup.find(i => i.recipe_name === part && i.recipe_id);
+                                                                if (matchingItem) recipeId = matchingItem.recipe_id;
+                                                            }
+
+                                                            return (
+                                                                <span key={index} className="flex items-center">
+                                                                    {recipeId ? (
+                                                                        <Link href={`/recipes/${recipeId}`} className="hover:underline flex items-center gap-1.5" style={{ color: 'var(--accent)' }}>
+                                                                            <span>🍳</span>
+                                                                            <span>{part}</span>
+                                                                        </Link>
+                                                                    ) : (
+                                                                        <span style={{ color: getColorForCategory(part) || 'white' }}>
+                                                                            {part === "Other (No Match)" ? "⚠️ Figure This Out" : part}
+                                                                        </span>
+                                                                    )}
+                                                                    {index < parts.length - 1 && (
+                                                                        <span className="mx-1 sm:mx-2 text-gray-500 opacity-50">&</span>
+                                                                    )}
                                                                 </span>
-                                                                {index < parts.length - 1 && (
-                                                                    <span className="mx-1 sm:mx-2 text-gray-500 opacity-50">&</span>
-                                                                )}
-                                                            </span>
-                                                        ));
+                                                            );
+                                                        });
                                                     })()}
                                                 </h6>
                                                 <div className="text-right flex flex-col justify-center min-w-[60px]">

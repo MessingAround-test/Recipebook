@@ -10,6 +10,8 @@ const ShoppingListItem = new mongoose.Schema(
         category: { type: String, required: false },
         shoppingListId: { type: String, required: true },
         selectedIngredientId: { type: String, required: false },
+        recipe_id: { type: String, required: false },
+        recipe_name: { type: String, required: false },
         complete: { type: Boolean, required: true },
         createdBy: { type: String, required: true },
         deleted: { type: Boolean, required: false },
@@ -24,4 +26,5 @@ const ShoppingListItem = new mongoose.Schema(
 // mongoose.model('IngredSchema', IngredSchema).createIndexes();
 
 
-export default mongoose.models.ShoppingListItem || mongoose.model('ShoppingListItem', ShoppingListItem)
+delete mongoose.models.ShoppingListItem;
+export default mongoose.model('ShoppingListItem', ShoppingListItem)

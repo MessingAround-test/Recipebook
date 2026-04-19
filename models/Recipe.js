@@ -27,9 +27,15 @@ const RecipeSchema = new mongoose.Schema(
         ingredients: [ingredsSchema],
         instructions: [instructionsSchema],
         image: { type: String },
-        cost: { type: Number }
+        cost: { type: Number },
+        approxCost: { type: Number, required: false }, // Store the initial calculated cost
+        time: { type: String, enum: ['short', 'medium', 'long'], required: false },
+        genre: { type: String, required: false },
+        priceCategory: { type: String, enum: ['cheap', 'medium', 'expensive'], required: false },
+        timesCooked: { type: Number, default: 0 },
+        feedback: { type: String, required: false }
     },
     { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 )
-
-export default mongoose.models.Recipe || mongoose.model('Recipe', RecipeSchema)
+delete mongoose.models.Recipe;
+export default mongoose.model('Recipe', RecipeSchema)
