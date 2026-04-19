@@ -3,10 +3,22 @@
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: rgba(5, 5, 5, 0.85);
+  background: oklch(0.18 0.03 240 / 85%); /* Rich Midnight Slate highlight */
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+}
+
+.Container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.4;
 }
 
 .nav_wrapper {
@@ -45,14 +57,14 @@
 
 .nav_link {
   text-decoration: none;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.7);
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
 }
 
 .nav_link:hover {
-  color: var(--text-primary);
+  color: white;
   transform: translateY(-1px);
 }
 

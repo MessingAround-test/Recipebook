@@ -54,7 +54,7 @@ function IngredientCard({
     }, [ingredient.options, enabledSuppliers, pricingStrategy]);
 
     return (
-        <div style={{ opacity: ingredient.complete ? 0.6 : 1, width: '100%' }}>
+        <div style={{ opacity: ingredient.complete ? 0.8 : 1, width: '100%' }}>
             <div
                 key={ingredient._id}
                 className={`flex-row align-center gap-4 ${isMinimal ? 'py-2 px-0' : 'py-4 px-6'} relative transition-colors duration-200 hover:bg-accent/5`}
@@ -84,18 +84,18 @@ function IngredientCard({
                 <div style={{ flex: 1 }} className="flex-col gap-1">
                     <div className="flex items-center justify-between">
                         <div onClick={() => isGroup ? setIsExpanded(!isExpanded) : setOtherOptionsModalIsOpen(true)} className="hover-accent transition-all hover:translate-x-1" style={{
-                            fontSize: isMinimal ? '1rem' : '1.1rem',
-                            lineHeight: '1.3',
-                            fontWeight: isMinimal ? '600' : '700',
-                            color: 'var(--text-primary)',
+                            fontSize: isMinimal ? '1rem' : '1.15rem',
+                            lineHeight: '1.4',
+                            fontWeight: isMinimal ? '600' : '800',
+                            color: 'var(--foreground)',
                             cursor: 'pointer',
                             textDecoration: ingredient.complete ? 'line-through' : 'none',
-                            letterSpacing: '-0.01em',
+                            letterSpacing: '-0.02em',
                             display: 'inline-block'
                         }}>
-                            {isMinimal && <span className="mr-3 opacity-40">•</span>}
-                            {`${ingredient.name.toUpperCase()}`}
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginLeft: '0.5rem', fontWeight: '500' }}>
+                            {isMinimal && <span className="mr-3 opacity-60 text-primary">•</span>}
+                            {ingredient.name}
+                            <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)', marginLeft: '0.6rem', fontWeight: '600' }}>
                                 &bull; {isGroup ? (ingredient.totalString || `${ingredient.quantity} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`) : `${ingredient.quantity} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`}
                             </span>
                         </div>

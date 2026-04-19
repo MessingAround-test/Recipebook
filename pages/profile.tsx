@@ -9,6 +9,13 @@ export default function Profile() {
     const isAuthed = useAuthGuard()
     const [userData, setUserData] = useState<Record<string, string>>({})
 
+    const [theme, setTheme] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('theme') || 'dark'
+        }
+        return 'dark'
+    })
+
     const [skipConversion, setSkipConversion] = useState(() => {
         if (typeof window !== 'undefined') {
             return localStorage.getItem('skipConversion') === 'true'
@@ -93,10 +100,39 @@ export default function Profile() {
 
                 <div className="glass-card mt-8">
                     <h3 className="text-sm font-black uppercase tracking-widest text-emerald-500 mb-4">General Settings</h3>
-                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10">
+                    
+                    {/* Theme Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-muted/20 rounded-lg border border-border/20 mb-4 transition-colors">
                         <div>
-                            <p className="font-semibold text-white">Automatic Quantity Conversion</p>
-                            <p className="text-sm text-gray-400">Normalize prices across different units using shared factors.</p>
+                            <p className="font-semibold text-foreground">Interface Theme</p>
+                            <p className="text-sm text-muted-foreground">Select between deep Midnight Dark or clean Slate Light mode.</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className={`text-xs font-bold uppercase tracking-widest ${theme === 'light' ? 'text-primary' : 'text-muted-foreground opacity-50'}`}>Light</span>
+                            <input
+                                type="checkbox"
+                                className="toggle toggle-emerald"
+                                checked={theme === 'dark'}
+                                onChange={(e) => {
+                                    const newTheme = e.target.checked ? 'dark' : 'light';
+                                    setTheme(newTheme);
+                                    localStorage.setItem('theme', newTheme);
+                                    if (newTheme === 'light') {
+                                        document.documentElement.classList.add('light');
+                                    } else {
+                                        document.documentElement.classList.remove('light');
+                                    }
+                                }}
+                            />
+                            <span className={`text-xs font-bold uppercase tracking-widest ${theme === 'dark' ? 'text-primary' : 'text-muted-foreground opacity-50'}`}>Dark</span>
+                        </div>
+                    </div>
+
+                    {/* Conversion Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-muted/20 rounded-lg border border-border/20 transition-colors">
+                        <div>
+                            <p className="font-semibold text-foreground">Automatic Quantity Conversion</p>
+                            <p className="text-sm text-muted-foreground">Normalize prices across different units using shared factors.</p>
                         </div>
                         <input
                             type="checkbox"
