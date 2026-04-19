@@ -95,6 +95,7 @@ export default async function handler(req, res) {
         if (req.body.priceCategory !== undefined) updateData.priceCategory = req.body.priceCategory;
         if (req.body.timesCooked !== undefined) updateData.timesCooked = req.body.timesCooked;
         if (req.body.feedback !== undefined) updateData.feedback = req.body.feedback;
+        if (req.body.servings !== undefined) updateData.servings = req.body.servings;
 
         if (Object.keys(updateData).length === 0) {
           return res.status(400).json({ res: "No data provided to update" })

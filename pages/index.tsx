@@ -4,11 +4,18 @@ import { Layout } from '../components/Layout'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import styles from '../styles/Home.module.css'
 
+interface NavPage {
+    name: string
+    _id: string
+    image: string
+    adminOnly: boolean
+}
+
 export default function Home() {
     const isAuthed = useAuthGuard()
     const [userRole, setUserRole] = useState<string | null>(null)
 
-    const [allPages] = useState([
+    const [allPages] = useState<NavPage[]>([
         { name: "Recipes", _id: "/recipes", image: "/cookbook_oragami.png", adminOnly: false },
         { name: "Shopping List", _id: "/shoppingList", image: "/shop_list_oragami.png", adminOnly: false },
         { name: "DB Inspector", _id: "/admin/dbInspector", image: "/avo.ico", adminOnly: true },
@@ -72,7 +79,6 @@ export default function Home() {
                         onClick={() => redirect(page._id)}
                     >
                         <div className={styles.card_image_wrapper}>
-                            {/* @ts-ignore */}
                             <img src={page.image} alt={page.name} />
                         </div>
                         <div className={styles.card_body}>

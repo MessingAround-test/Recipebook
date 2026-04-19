@@ -19,6 +19,7 @@ export default async function handler(req, res) {
     try {
         const recipeName = req.query.recipeName;
         const ingredients = req.query.ingredients;
+        const existingMealType = req.query.mealType;
 
         if (!recipeName) {
             return res.status(400).json({ success: false, message: "Missing recipeName" });
@@ -31,12 +32,13 @@ export default async function handler(req, res) {
 1. 'time': How long it takes to prepare and cook. Use exactly one of: "short" (under 30 min), "medium" (30-60 min), "long" (over 60 min).
 2. 'genre': The cuisine genre. Use exactly one of: ${VALID_GENRES.join(', ')}.
 3. 'mealType': The course or meal category. Use exactly one of: ${VALID_MEALS.join(', ')}.
+4. 'servings': How many people this recipe typically feeds (as a number).
 
-Output MUST be a single JSON object with keys "time", "genre", and "mealType". Nothing else.`
+Output MUST be a single JSON object with keys "time", "genre", "mealType", and "servings". Nothing else.`
             },
             {
                 role: "user",
-                content: `Recipe: "${recipeName}"${ingredients ? `\nIngredients: ${ingredients}` : ''}`
+                content: `Recipe: "${recipeName}"${ingredients ? `\nIngredients: ${ingredients}` : ''}${existingMealType ? `\nExisting Meal Type (reference): ${existingMealType}` : ''}`
             }
         ];
 
@@ -53,6 +55,9 @@ Output MUST be a single JSON object with keys "time", "genre", and "mealType". N
         }
         if (data.mealType && VALID_MEALS.includes(data.mealType)) {
             result.mealType = data.mealType;
+        }
+        if (data.servings && !isNaN(Number(data.servings))) {
+            result.servings = Number(data.servings);
         }
 
         return res.status(200).json({ success: true, data: result });

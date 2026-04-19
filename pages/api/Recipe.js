@@ -35,7 +35,8 @@ export default async function handler(req, res) {
           name: req.body.name,
           time: req.body.time,
           genre: req.body.genre,
-          mealTypes: req.body.mealTypes
+          mealTypes: req.body.mealTypes,
+          servings: req.body.servings
         });
         return res.status(200).json({ success: true, data: response, message: "Success" })
       } catch (error) {

@@ -106,13 +106,18 @@ a {
 
 /* Modern Glass Card */
 .glass-card {
-  background: var(--bg-card);
+  background: var(--card);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--border);
   border-radius: 1.25rem;
   padding: 1.5rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.group-highlight {
+  background: color-mix(in oklch, var(--card), var(--accent) 5%);
+  border-left: 4px solid var(--accent);
 }
 
 .glass-card:hover {

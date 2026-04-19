@@ -34,7 +34,8 @@ const RecipeSchema = new mongoose.Schema(
         mealTypes: { type: [String], required: false },
         priceCategory: { type: String, enum: ['cheap', 'medium', 'expensive'], required: false },
         timesCooked: { type: Number, default: 0 },
-        feedback: { type: String, required: false }
+        feedback: { type: String, required: false },
+        servings: { type: Number, required: false }
     },
     { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 )

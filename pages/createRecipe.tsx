@@ -6,7 +6,7 @@ import { PageHeader } from '../components/PageHeader'
 import { FormField } from '../components/FormField'
 import { Button } from '../components/ui/button'
 import { quantity_unit_conversions } from "../lib/conversion"
-import { RiDeleteBin7Line } from 'react-icons/ri'
+import { RiDeleteBin7Line, RiArrowDownSLine, RiArrowUpSLine } from 'react-icons/ri'
 import AddShoppingItem from '../components/AddShoppingItem'
 import { useAuthGuard } from '../lib/useAuthGuard'
 
@@ -44,6 +44,8 @@ export default function CreateRecipe() {
     const [recipeTime, setRecipeTime] = useState<string>("")
     const [recipeGenre, setRecipeGenre] = useState<string>("")
     const [recipeMealTypes, setRecipeMealTypes] = useState<string[]>([])
+    const [recipeServings, setRecipeServings] = useState<number | string>("")
+    const [showAdvanced, setShowAdvanced] = useState(false)
 
     const router = useRouter();
     const { id } = router.query || {};
@@ -119,7 +121,8 @@ export default function CreateRecipe() {
                 "name": recipeName,
                 "time": recipeTime || undefined,
                 "genre": recipeGenre || undefined,
-                "mealTypes": recipeMealTypes
+                "mealTypes": recipeMealTypes,
+                "servings": recipeServings !== "" ? Number(recipeServings) : undefined
             })
         })
 
@@ -245,6 +248,7 @@ export default function CreateRecipe() {
                         setRecipeTime(data.res.time || "")
                         setRecipeGenre(data.res.genre || "")
                         setRecipeMealTypes(data.res.mealTypes || [])
+                        setRecipeServings(data.res.servings || "")
                         setInstructions(data.res.instructions.map((i: any) => ({ Text: i.Text, Note: i.note })))
                         setIngreds(data.res.ingredients.map((i: any) => ({
                             Name: i.name,
@@ -281,7 +285,7 @@ export default function CreateRecipe() {
 
             <div className="flex flex-col gap-6 w-full">
                 {/* General Details & Import Row */}
-                <div className="glass-card w-full">
+                <div className="glass-card group-highlight w-full">
                     <h2 className="text-xl font-bold mb-4">General</h2>
 
                     <div className="mb-6">
@@ -294,67 +298,90 @@ export default function CreateRecipe() {
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                        <div>
-                            <label className="label-modern text-sm font-medium mb-1 block">
-                                ⏱️ Cook Time <span className="text-muted-foreground font-normal">(optional — AI will guess if blank)</span>
-                            </label>
-                            <select
-                                value={recipeTime}
-                                onChange={(e) => setRecipeTime(e.target.value)}
-                                className="input-modern"
-                            >
-                                <option value="">Select time...</option>
-                                <option value="short">⚡ Short (under 30 min)</option>
-                                <option value="medium">⏱️ Medium (30–60 min)</option>
-                                <option value="long">🍲 Long (over 60 min)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="label-modern text-sm font-medium mb-1 block">
-                                🍳 Cuisine Genre <span className="text-muted-foreground font-normal">(optional — AI will guess if blank)</span>
-                            </label>
-                            <select
-                                value={recipeGenre}
-                                onChange={(e) => setRecipeGenre(e.target.value)}
-                                className="input-modern"
-                            >
-                                <option value="">Select genre...</option>
-                                {['Italian', 'Mexican', 'Asian', 'Indian', 'Mediterranean', 'American', 'French', 'Middle Eastern', 'Thai', 'Japanese', 'Korean', 'Greek', 'Chinese', 'Vietnamese', 'Other'].map(g => (
-                                    <option key={g} value={g}>{g}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="col-span-1 sm:col-span-2">
-                            <label className="label-modern text-sm font-medium mb-3 block">
-                                🍽️ Meal Type <span className="text-muted-foreground font-normal">(select one or more — AI will guess if blank)</span>
-                            </label>
-                            <div className="flex flex-wrap gap-2">
-                                {['Breakfast', 'Lunch', 'Main', 'Entree', 'Dessert', 'Snack'].map(type => (
-                                    <button
-                                        key={type}
-                                        type="button"
-                                        onClick={() => {
-                                            if (recipeMealTypes.includes(type)) {
-                                                setRecipeMealTypes(recipeMealTypes.filter(t => t !== type))
-                                            } else {
-                                                setRecipeMealTypes([...recipeMealTypes, type])
-                                            }
-                                        }}
-                                        className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all duration-300 ${
-                                            recipeMealTypes.includes(type)
-                                                ? 'bg-accent text-accent-foreground border-accent shadow-lg shadow-accent/20'
-                                                : 'bg-secondary/30 border-border/10 text-muted-foreground hover:border-accent/30 hover:bg-secondary/50'
-                                        }`}
-                                    >
-                                        {type}
-                                    </button>
-                                ))}
+                    <div className="mb-6">
+                        <button
+                            type="button"
+                            onClick={() => setShowAdvanced(!showAdvanced)}
+                            className="flex items-center gap-2 text-sm font-bold text-accent hover:text-accent-hover transition-colors mb-4"
+                        >
+                            {showAdvanced ? <RiArrowUpSLine size={20} /> : <RiArrowDownSLine size={20} />}
+                            {showAdvanced ? "Hide Additional Details" : "Show Additional Details (Cook Time, Genre, etc.)"}
+                        </button>
+
+                        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 transition-all duration-300 overflow-hidden ${showAdvanced ? 'max-h-[500px] opacity-100 mb-6' : 'max-h-0 opacity-0'}`}>
+                            <div>
+                                <label className="label-modern text-sm font-medium mb-1 block">
+                                    ⏱️ Cook Time <span className="text-muted-foreground font-normal">(optional — AI will guess if blank)</span>
+                                </label>
+                                <select
+                                    value={recipeTime}
+                                    onChange={(e) => setRecipeTime(e.target.value)}
+                                    className="input-modern"
+                                >
+                                    <option value="">Select time...</option>
+                                    <option value="short">⚡ Short (under 30 min)</option>
+                                    <option value="medium">⏱️ Medium (30–60 min)</option>
+                                    <option value="long">🍲 Long (over 60 min)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="label-modern text-sm font-medium mb-1 block">
+                                    🍳 Cuisine Genre <span className="text-muted-foreground font-normal">(optional — AI will guess if blank)</span>
+                                </label>
+                                <select
+                                    value={recipeGenre}
+                                    onChange={(e) => setRecipeGenre(e.target.value)}
+                                    className="input-modern"
+                                >
+                                    <option value="">Select genre...</option>
+                                    {['Italian', 'Mexican', 'Asian', 'Indian', 'Mediterranean', 'American', 'French', 'Middle Eastern', 'Thai', 'Japanese', 'Korean', 'Greek', 'Chinese', 'Vietnamese', 'Other'].map(g => (
+                                        <option key={g} value={g}>{g}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="label-modern text-sm font-medium mb-1 block">
+                                    🍽️ Servings <span className="text-muted-foreground font-normal">(optional — AI will guess if blank)</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    value={recipeServings}
+                                    onChange={(e) => setRecipeServings(e.target.value)}
+                                    placeholder="Number of people..."
+                                    className="input-modern"
+                                />
+                            </div>
+                            <div className="col-span-1 sm:col-span-2">
+                                <label className="label-modern text-sm font-medium mb-3 block">
+                                    🍽️ Meal Type <span className="text-muted-foreground font-normal">(select one or more — AI will guess if blank)</span>
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {['Breakfast', 'Lunch', 'Main', 'Entree', 'Dessert', 'Snack'].map(type => (
+                                        <button
+                                            key={type}
+                                            type="button"
+                                            onClick={() => {
+                                                if (recipeMealTypes.includes(type)) {
+                                                    setRecipeMealTypes(recipeMealTypes.filter(t => t !== type))
+                                                } else {
+                                                    setRecipeMealTypes([...recipeMealTypes, type])
+                                                }
+                                            }}
+                                            className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all duration-300 ${
+                                                recipeMealTypes.includes(type)
+                                                    ? 'bg-accent text-accent-foreground border-accent shadow-lg shadow-accent/20'
+                                                    : 'bg-secondary/30 border-border/10 text-muted-foreground hover:border-accent/30 hover:bg-secondary/50'
+                                            }`}
+                                        >
+                                            {type}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <form onSubmit={onSubmitRecipeSiteImport} className="flex flex-row items-end gap-2">
+                    <form onSubmit={onSubmitRecipeSiteImport} className="flex flex-row items-end gap-2 border-t border-border pt-6">
                         <div className="flex-1">
                             <FormField
                                 label="Import from site"
@@ -372,13 +399,13 @@ export default function CreateRecipe() {
                 {/* Builder Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full px-2 sm:px-0">
                     {/* Add Ingredients */}
-                    <div className="glass-card p-4 md:p-8">
+                    <div className="glass-card group-highlight p-4 md:p-8">
                         <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Add Ingredients</h2>
                         <AddShoppingItem handleSubmit={onSubmitIngred} hideCategories={true} />
                     </div>
 
                     {/* Current Ingredients */}
-                    <div className="glass-card p-4 md:p-8">
+                    <div className="glass-card group-highlight p-4 md:p-8">
                         <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Current Ingredients</h2>
                         {ingreds.length === 0 ? (
                             <p className="text-muted-foreground italic">No ingredients added yet.</p>
@@ -404,7 +431,7 @@ export default function CreateRecipe() {
                     </div>
 
                     {/* Add Instructions */}
-                    <div className="glass-card p-4 md:p-8">
+                    <div className="glass-card group-highlight p-4 md:p-8">
                         <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Instructions</h2>
                         <form onSubmit={onSubmitInstruc} className="flex flex-col gap-4">
                             <FormField
@@ -423,7 +450,7 @@ export default function CreateRecipe() {
                     </div>
 
                     {/* Current Instructions */}
-                    <div className="glass-card p-4 md:p-8">
+                    <div className="glass-card group-highlight p-4 md:p-8">
                         <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Step-by-Step</h2>
                         {instructions.length === 0 ? (
                             <p className="text-muted-foreground italic">No instructions added yet.</p>
@@ -447,7 +474,7 @@ export default function CreateRecipe() {
                     </div>
 
                     {/* Add Image */}
-                    <div className="glass-card md:col-span-2">
+                    <div className="glass-card group-highlight md:col-span-2">
                         <h2 className="text-xl font-bold mb-2 border-b border-border pb-2">Recipe Image</h2>
                         <p className="text-sm text-muted-foreground mb-4">Upload an image or leave blank to AI-generate one based on the recipe name.</p>
 

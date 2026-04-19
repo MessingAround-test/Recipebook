@@ -2,7 +2,7 @@ import Head from 'next/head'
 import { useEffect, useState } from 'react'
 import Router from 'next/router'
 import { Layout } from '../../components/Layout'
-import ImageCard from '../../components/ImageCard'
+import ImageCard, { Recipe } from '../../components/ImageCard'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { useAuthGuard } from '../../lib/useAuthGuard'
@@ -18,10 +18,17 @@ import {
 } from 'lucide-react'
 import { FilterSheet } from '../../components/recipes/FilterSheet'
 
+interface UserData {
+    _id: string
+    username: string
+    role: string
+    email?: string
+}
+
 export default function Recipes() {
     const isAuthed = useAuthGuard()
-    const [userData, setUserData] = useState<any>({})
-    const [recipes, setRecipes] = useState<any[]>([])
+    const [userData, setUserData] = useState<UserData | null>(null)
+    const [recipes, setRecipes] = useState<Recipe[]>([])
     const [searchTerm, setSearchTerm] = useState('')
     const [allowDelete, setAllowDelete] = useState(false)
     const [filterTime, setFilterTime] = useState<string[]>([])
@@ -130,11 +137,11 @@ export default function Recipes() {
         <Layout title="Your Recipes" description="View and manage your recipes">
             <div className="relative min-h-screen pb-24">
                 {/* Modern Header */}
-                <header className="sticky top-0 z-40 -mx-6 sm:-mx-8 px-6 sm:px-8 py-4 bg-background/80 backdrop-blur-xl shadow-sm">
-                    <div className="flex flex-col gap-4">
+                <header className="sticky top-0 z-40 -mx-6 sm:-mx-8 px-6 sm:px-8 py-2 bg-background/80 backdrop-blur-xl shadow-sm">
+                    <div className="flex flex-col gap-2">
                         <div className="flex items-center justify-between">
-                            <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-                                <ChefHat className="text-accent" />
+                            <h1 className="text-xl font-black tracking-tight flex items-center gap-2">
+                                <ChefHat className="text-accent" size={20} />
                                 Your Recipes
                             </h1>
                             <div className="flex items-center gap-2">
@@ -159,16 +166,16 @@ export default function Recipes() {
                                     placeholder="Search recipes..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 h-12 bg-secondary/50 border-none rounded-2xl focus-visible:ring-2 focus-visible:ring-accent/50"
+                                    className="pl-10 h-10 bg-secondary/50 border-none rounded-xl focus-visible:ring-2 focus-visible:ring-accent/50 text-sm"
                                 />
                             </div>
                             <Button
                                 size="icon"
                                 variant={hasActiveFilters ? "default" : "secondary"}
                                 onClick={() => setShowFilters(true)}
-                                className={`h-12 w-12 rounded-2xl shrink-0 transition-all ${hasActiveFilters ? 'bg-accent text-accent-foreground shadow-lg shadow-accent/20' : 'bg-secondary/50'}`}
+                                className={`h-10 w-10 rounded-xl shrink-0 transition-all ${hasActiveFilters ? 'bg-accent text-accent-foreground shadow-lg shadow-accent/20' : 'bg-secondary/50'}`}
                             >
-                                <SlidersHorizontal size={20} />
+                                <SlidersHorizontal size={18} />
                                 {hasActiveFilters && (
                                     <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-background shadow-lg">
                                         {filterTime.length + filterPrice.length + (filterGenre ? 1 : 0) + (filterCooked ? 1 : 0) + filterMealTypes.length}
@@ -180,10 +187,10 @@ export default function Recipes() {
                                 variant="secondary"
                                 onClick={pickRandomRecipe}
                                 disabled={filteredRecipes.length === 0}
-                                className="h-12 w-12 rounded-2xl shrink-0 bg-secondary/50 hover:bg-accent/20 hover:text-accent transition-colors"
+                                className="h-10 w-10 rounded-xl shrink-0 bg-secondary/50 hover:bg-accent/20 hover:text-accent transition-colors"
                                 title="Pick for me"
                             >
-                                <Dices size={20} />
+                                <Dices size={18} />
                             </Button>
                         </div>
                     </div>
@@ -224,10 +231,10 @@ export default function Recipes() {
                 )}
 
                 {/* Results Info */}
-                <div className="flex items-center justify-between py-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                <div className="flex items-center justify-between py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                     <span>{filteredRecipes.length} Recipes</span>
                     <div className="flex items-center gap-1 hover:text-foreground cursor-pointer transition-colors">
-                        <ArrowUpDown size={12} />
+                        <ArrowUpDown size={10} />
                         Sort
                     </div>
                 </div>
@@ -252,7 +259,7 @@ export default function Recipes() {
                         </Button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
                         {filteredRecipes.map((recipe, index) => (
                             <div key={recipe._id} className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${index * 50}ms` }}>
                                 <ImageCard

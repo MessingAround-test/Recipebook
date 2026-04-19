@@ -58,6 +58,7 @@ export default function RecipeDetail() {
     const [isSavingFeedback, setIsSavingFeedback] = useState(false)
     const [isCalculatingCost, setIsCalculatingCost] = useState(false)
     const [showNutrients, setShowNutrients] = useState(false)
+    const [recipeServings, setRecipeServings] = useState<number>(0)
 
     // Add to shopping list modal
     const [shopModalOpen, setShopModalOpen] = useState(false)
@@ -160,6 +161,7 @@ export default function RecipeDetail() {
         setRecipePriceCategory(data.res.priceCategory || '')
         setTimesCooked(data.res.timesCooked || 0)
         setFeedback(data.res.feedback || "")
+        setRecipeServings(data.res.servings || 0)
         if (data.res.approxCost != null) setApproxCost(data.res.approxCost)
         costSavedRef.current = false // allow re-save on each page load
     }
@@ -213,12 +215,14 @@ export default function RecipeDetail() {
         const missingTime = !recipeTime
         const missingGenre = !recipeGenre
         const missingMealTypes = !recipeMealTypes || recipeMealTypes.length === 0
-        if (!missingTime && !missingGenre && !missingMealTypes) return
+        const missingServings = !recipeServings || recipeServings === 0
+        if (!missingTime && !missingGenre && !missingMealTypes && !missingServings) return
 
         try {
             const token = localStorage.getItem('Token') || ""
             const ingredNames = ingreds.map(i => i.name).join(', ')
-            const res = await fetch(`/api/ai/auto_fill_recipe?recipeName=${encodeURIComponent(name)}&ingredients=${encodeURIComponent(ingredNames)}`, {
+            const mealTypeQuery = recipeMealTypes.length > 0 ? `&mealType=${encodeURIComponent(recipeMealTypes.join(','))}` : ""
+            const res = await fetch(`/api/ai/auto_fill_recipe?recipeName=${encodeURIComponent(name)}&ingredients=${encodeURIComponent(ingredNames)}${mealTypeQuery}`, {
                 headers: { 'edgetoken': token }
             })
             const data = await res.json()
@@ -241,6 +245,11 @@ export default function RecipeDetail() {
                 setRecipeMealTypes([data.data.mealType])
                 updates.mealTypes = [data.data.mealType]
                 filled.push('mealType')
+            }
+            if (missingServings && data.data.servings) {
+                setRecipeServings(data.data.servings)
+                updates.servings = data.data.servings
+                filled.push('servings')
             }
 
             if (Object.keys(updates).length > 0) {
@@ -490,6 +499,11 @@ export default function RecipeDetail() {
                                             💰 {priceLabelMap[displayPriceCategory].label}
                                         </span>
                                     )}
+                                    {recipeServings > 0 && (
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-emerald-500/20 text-emerald-200 border-white/5`}>
+                                            👥 Feeds {recipeServings}
+                                        </span>
+                                    )}
                                 </div>
 
                                 {/* Inline Cost Display */}
@@ -510,6 +524,16 @@ export default function RecipeDetail() {
                                             <p className="text-xl font-black">${getAproxTotalRecipeCostUnit()}</p>
                                         )}
                                     </div>
+                                    {recipeServings > 0 && (
+                                        <div className="border-t sm:border-t-0 sm:border-l border-white/[0.03] pt-4 sm:pt-0 sm:pl-6 flex sm:block items-center justify-between gap-4">
+                                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60 mb-0.5">Per Person</p>
+                                            {isCalculatingCost ? (
+                                                <Loader2 className="w-4 h-4 animate-spin opacity-40" />
+                                            ) : (
+                                                <p className="text-xl font-black text-emerald-400">${(displayCost / recipeServings).toFixed(2)}</p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -532,6 +556,11 @@ export default function RecipeDetail() {
                                         🍳 {recipeGenre}
                                     </span>
                                 )}
+                                {recipeServings > 0 && (
+                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+                                        👥 Feeds {recipeServings}
+                                    </span>
+                                )}
                             </div>
 
                             <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 border-t border-border/10 pt-4">
@@ -551,6 +580,16 @@ export default function RecipeDetail() {
                                         <p className="text-2xl font-black text-primary border-primary/20">${getAproxTotalRecipeCostUnit()}</p>
                                     )}
                                 </div>
+                                {recipeServings > 0 && (
+                                    <div className="border-t sm:border-t-0 sm:border-l border-border/10 pt-4 sm:pt-0 sm:pl-8 flex sm:block items-center justify-between gap-4">
+                                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mb-1">Per Person</p>
+                                        {isCalculatingCost ? (
+                                            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/30" />
+                                        ) : (
+                                            <p className="text-2xl font-black text-emerald-500">${(displayCost / recipeServings).toFixed(2)}</p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

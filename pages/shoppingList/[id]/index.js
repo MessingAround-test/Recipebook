@@ -15,6 +15,39 @@ import { groupByKeys } from '../../../lib/grouping'
 import { getColorForCategory, getLightColorForCategory } from '../../../lib/colors'
 import { Info } from 'lucide-react'
 
+const FRIENDLY_NAMES = {
+    'Fresh Produce': '🥦 Fresh Produce',
+    'Dairy and Eggs': '🥛 Dairy & Eggs',
+    'Bakery': '🍞 Bakery',
+    'Meat and Seafood': '🥩 Meat & Seafood',
+    'Canned Goods': '🥫 Pantry (Canned)',
+    'Pasta and Grains': '🍝 Pasta & Grains',
+    'Condiments and Sauces': '🧴 Sauces & Condiments',
+    'Snacks': '🍿 Snacks',
+    'Beverages': '🥤 Beverages',
+    'Frozen Foods': '❄️ Frozen Foods',
+    'Cereal and Breakfast Foods': '🥣 Breakfast',
+    'Baking Supplies': '🧁 Baking',
+    'Household and Cleaning': '🧺 Household',
+    'Personal Care': '🧴 Personal Care',
+    'Health and Wellness': '💊 Health',
+    'International Foods': '🌏 International',
+    'Deli and Prepared Foods': '🍱 Deli',
+    'Home and Garden': '🏡 Home',
+    'WW': 'Woolworths',
+    'Coles': 'Coles',
+    'Aldi': 'Aldi',
+    'IGA': 'IGA',
+    'Panetta': 'Panetta',
+    'category_simple': 'Simple Category',
+    'category': 'Broad Category',
+    'supplier': 'Supplier',
+    'recipe_name': 'Recipe',
+    'price_category': 'Price',
+    'quantity_type': 'Unit',
+    'Other (No Match)': '⚠️ Figure This Out'
+};
+
 export default function Home() {
     const [userData, setUserData] = useState({})
     const router = useRouter()
@@ -33,7 +66,7 @@ export default function Home() {
         "/Coles.png": true
     })
 
-    const [filters, setFilters] = useState(["complete"])
+    const [filters, setFilters] = useState(["complete", "category_simple"])
     const [pricingStrategy, setPricingStrategy] = useState("value")
     const [isGrouped, setIsGrouped] = useState(true)
     const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type", "category_simple", "recipe_name"]
@@ -401,7 +434,7 @@ export default function Home() {
             "/Aldi.png": true,
             "/Coles.png": true
         });
-        setFilters(["complete"]);
+        setFilters(["complete", "category_simple"]);
     };
 
     const handleSupplierClick = (suppliersInput) => {
@@ -578,10 +611,11 @@ export default function Home() {
                             {!isListEmpty && (
                                 <div className="flex-1 sm:min-w-[170px] sm:flex-none">
                                     <ToggleList
-                                        inputList={availableFilters}
-                                        onUpdateList={(currentState) => setFilters(currentState)}
+                                        inputList={availableFilters.filter(f => f !== 'complete')}
+                                        onUpdateList={(currentState) => setFilters(currentState.includes('complete') ? currentState : [...currentState, 'complete'])}
                                         value={filters}
                                         text={"Group By"}
+                                        mapping={FRIENDLY_NAMES}
                                     />
                                 </div>
                             )}
@@ -661,13 +695,13 @@ export default function Home() {
                                                             return (
                                                                 <span key={index} className="flex items-center">
                                                                     {recipeId ? (
-                                                                        <Link href={`/recipes/${recipeId}`} className="hover:underline flex items-center gap-1.5" style={{ color: 'var(--accent)' }}>
+                                                                     <Link href={`/recipes/${recipeId}`} className="hover:underline flex items-center gap-1.5" style={{ color: 'var(--accent)' }}>
                                                                             <span>🍳</span>
-                                                                            <span>{part}</span>
+                                                                            <span>{FRIENDLY_NAMES[part] || part}</span>
                                                                         </Link>
                                                                     ) : (
                                                                         <span style={{ color: getColorForCategory(part) || 'white' }}>
-                                                                            {part === "Other (No Match)" ? "⚠️ Figure This Out" : part}
+                                                                            {FRIENDLY_NAMES[part] || part}
                                                                         </span>
                                                                     )}
                                                                     {index < parts.length - 1 && (
