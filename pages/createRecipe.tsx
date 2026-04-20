@@ -46,6 +46,10 @@ export default function CreateRecipe() {
     const [recipeMealTypes, setRecipeMealTypes] = useState<string[]>([])
     const [recipeServings, setRecipeServings] = useState<number | string>("")
     const [showAdvanced, setShowAdvanced] = useState(false)
+    const [recipeNotes, setRecipeNotes] = useState("")
+    const [isExtracting, setIsExtracting] = useState(false)
+    const [creationMethod, setCreationMethod] = useState<'url' | 'notes' | 'manual' | null>(null)
+    const [formPhase, setFormPhase] = useState<'setup' | 'builder'>('setup')
 
     const router = useRouter();
     const { id } = router.query || {};
@@ -93,6 +97,25 @@ export default function CreateRecipe() {
             console.error("Error generating image:", e)
             setLoading(false)
         }
+    }
+
+    const confirmOverwrite = () => {
+        if (ingreds.length > 0 || instructions.length > 0) {
+            return confirm("This will overwrite your current ingredients and instructions. Are you sure you want to proceed?");
+        }
+        return true;
+    }
+
+    const handleContinue = () => {
+        if (!recipeName.trim()) {
+            alert("Please enter a Recipe Name first!");
+            return;
+        }
+        setFormPhase('builder');
+    }
+
+    const handleBack = () => {
+        setFormPhase('setup');
     }
 
     const onSubmitRecipe = async () => {
@@ -160,42 +183,101 @@ export default function CreateRecipe() {
             return
         }
 
-        const res = await fetch(`/api/recipeSiteExtract/${siteProvider}?url=${tasteURL}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'edgetoken': token || ''
-            }
-        })
-        const data = await res.json()
+        if (!confirmOverwrite()) return;
 
-        let tasteIngredsList: Ingredient[] = []
-        data.data.ingredients.forEach(function (ingred: any) {
-            if (ingred.converted !== undefined) {
-                let IngredObj = {
-                    "Name": ingred.converted.name,
-                    "Amount": ingred.converted.quantity,
-                    "AmountType": ingred.converted.quantity_unit,
-                    "Note": "Imported from Taste"
+        setLoading(true)
+        try {
+            const res = await fetch(`/api/recipeSiteExtract/${siteProvider}?url=${tasteURL}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'edgetoken': token || ''
                 }
-                tasteIngredsList.push(IngredObj)
-            }
-        })
-        setIngreds(tasteIngredsList)
+            })
+            const data = await res.json()
 
-        let tasteInstructionList: Instruction[] = []
-        data.data.instructions.forEach(function (instruction: any) {
-            let InstructObj = {
-                "Text": instruction.instruction,
-                "Note": instruction.stepNumber
-            }
-            tasteInstructionList.push(InstructObj)
-        })
-        setInstructions(tasteInstructionList)
+            if (data.success) {
+                let tasteIngredsList: Ingredient[] = []
+                data.data.ingredients.forEach(function (ingred: any) {
+                    if (ingred.converted !== undefined) {
+                        let IngredObj = {
+                            "Name": ingred.converted.name,
+                            "Amount": ingred.converted.quantity,
+                            "AmountType": ingred.converted.quantity_unit,
+                            "Note": "Imported from Taste"
+                        }
+                        tasteIngredsList.push(IngredObj)
+                    }
+                })
+                setIngreds(tasteIngredsList)
 
-        if (data.data.name !== undefined) {
-            setRecipeName(data.data.name)
+                let tasteInstructionList: Instruction[] = []
+                data.data.instructions.forEach(function (instruction: any) {
+                    let InstructObj = {
+                        "Text": instruction.instruction,
+                        "Note": instruction.stepNumber
+                    }
+                    tasteInstructionList.push(InstructObj)
+                })
+                setInstructions(tasteInstructionList)
+
+                if (data.data.name !== undefined) {
+                    setRecipeName(data.data.name)
+                }
+                setFormPhase('builder')
+            } else {
+                alert(data.message || "Failed to import from site.")
+            }
+        } catch (error) {
+            console.error("Import error:", error)
+            alert("An error occurred during import.")
         }
+        setLoading(false)
+    }
+
+    const onSubmitNotesExtract = async () => {
+        if (!recipeNotes.trim()) {
+            alert("Please paste some notes first!")
+            return
+        }
+
+        if (!confirmOverwrite()) return;
+
+        setIsExtracting(true)
+        try {
+            const token = localStorage.getItem('Token')
+            const res = await fetch('/api/ai/extract_from_notes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'edgetoken': token || ''
+                },
+                body: JSON.stringify({ notes: recipeNotes })
+            })
+
+            const result = await res.json()
+            if (result.success && result.data) {
+                const { name, ingredients, instructions, time, genre, mealTypes, servings } = result.data
+
+                if (name) setRecipeName(name)
+                if (ingredients) setIngreds(ingredients)
+                if (instructions) setInstructions(instructions)
+                if (time) setRecipeTime(time)
+                if (genre) setRecipeGenre(genre)
+                if (mealTypes) setRecipeMealTypes(mealTypes)
+                if (servings) setRecipeServings(servings)
+
+                setRecipeNotes("") // Clear notes after successful extraction
+                setFormPhase('builder')
+                alert("Recipe extracted successfully!")
+            } else {
+                alert(result.message || "Failed to extract recipe.")
+            }
+        } catch (error) {
+            console.error("Extraction error:", error)
+            alert("An error occurred during extraction.")
+        }
+        setIsExtracting(false)
     }
 
     const onSubmitIngred = async (e: any) => {
@@ -216,13 +298,13 @@ export default function CreateRecipe() {
         e.preventDefault();
         const target = e.target as typeof e.target & {
             instructText: { value: string }
-            instructNote: { value: string }
+            instructNote?: { value: string }
             reset: () => void
         }
 
         let InstructObj: Instruction = {
             "Text": target.instructText.value,
-            "Note": target.instructNote.value
+            "Note": target.instructNote?.value || ""
         }
 
         setInstructions([...instructions, InstructObj])
@@ -277,6 +359,14 @@ export default function CreateRecipe() {
         };
     }
 
+    // Always show full form in edit mode
+    useEffect(() => {
+        if (isEditMode) {
+            setCreationMethod('manual');
+            setFormPhase('builder');
+        }
+    }, [isEditMode]);
+
     if (!isAuthed) return null
 
     return (
@@ -284,243 +374,367 @@ export default function CreateRecipe() {
             <PageHeader title={isEditMode ? "Edit Recipe" : "Create new Recipe"} />
 
             <div className="flex flex-col gap-6 w-full">
-                {/* General Details & Import Row */}
-                <div className="glass-card group-highlight w-full">
-                    <h2 className="text-xl font-bold mb-4">General</h2>
+                {/* Phase 1: Setup */}
+                {formPhase === 'setup' && (
+                    <div className="glass-card group-highlight w-full animate-in fade-in slide-in-from-top-4 duration-500">
+                        <h2 className="text-xl font-bold mb-4">Recipe Setup</h2>
 
-                    <div className="mb-6">
-                        <FormField
-                            label="Recipe Name"
-                            id="recipeName"
-                            placeholder="Enter Recipe Name"
-                            value={recipeName}
-                            onChange={(e) => setRecipeName(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="mb-6">
-                        <button
-                            type="button"
-                            onClick={() => setShowAdvanced(!showAdvanced)}
-                            className="flex items-center gap-2 text-sm font-bold text-accent hover:text-accent-hover transition-colors mb-4"
-                        >
-                            {showAdvanced ? <RiArrowUpSLine size={20} /> : <RiArrowDownSLine size={20} />}
-                            {showAdvanced ? "Hide Additional Details" : "Show Additional Details (Cook Time, Genre, etc.)"}
-                        </button>
-
-                        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 transition-all duration-300 overflow-hidden ${showAdvanced ? 'max-h-[500px] opacity-100 mb-6' : 'max-h-0 opacity-0'}`}>
-                            <div>
-                                <label className="label-modern text-sm font-medium mb-1 block">
-                                    ⏱️ Cook Time <span className="text-muted-foreground font-normal">(optional — AI will guess if blank)</span>
-                                </label>
-                                <select
-                                    value={recipeTime}
-                                    onChange={(e) => setRecipeTime(e.target.value)}
-                                    className="input-modern"
-                                >
-                                    <option value="">Select time...</option>
-                                    <option value="short">⚡ Short (under 30 min)</option>
-                                    <option value="medium">⏱️ Medium (30–60 min)</option>
-                                    <option value="long">🍲 Long (over 60 min)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="label-modern text-sm font-medium mb-1 block">
-                                    🍳 Cuisine Genre <span className="text-muted-foreground font-normal">(optional — AI will guess if blank)</span>
-                                </label>
-                                <select
-                                    value={recipeGenre}
-                                    onChange={(e) => setRecipeGenre(e.target.value)}
-                                    className="input-modern"
-                                >
-                                    <option value="">Select genre...</option>
-                                    {['Italian', 'Mexican', 'Asian', 'Indian', 'Mediterranean', 'American', 'French', 'Middle Eastern', 'Thai', 'Japanese', 'Korean', 'Greek', 'Chinese', 'Vietnamese', 'Other'].map(g => (
-                                        <option key={g} value={g}>{g}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="label-modern text-sm font-medium mb-1 block">
-                                    🍽️ Servings <span className="text-muted-foreground font-normal">(optional — AI will guess if blank)</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    value={recipeServings}
-                                    onChange={(e) => setRecipeServings(e.target.value)}
-                                    placeholder="Number of people..."
-                                    className="input-modern"
-                                />
-                            </div>
-                            <div className="col-span-1 sm:col-span-2">
-                                <label className="label-modern text-sm font-medium mb-3 block">
-                                    🍽️ Meal Type <span className="text-muted-foreground font-normal">(select one or more — AI will guess if blank)</span>
-                                </label>
-                                <div className="flex flex-wrap gap-2">
-                                    {['Breakfast', 'Lunch', 'Main', 'Entree', 'Dessert', 'Snack'].map(type => (
-                                        <button
-                                            key={type}
-                                            type="button"
-                                            onClick={() => {
-                                                if (recipeMealTypes.includes(type)) {
-                                                    setRecipeMealTypes(recipeMealTypes.filter(t => t !== type))
-                                                } else {
-                                                    setRecipeMealTypes([...recipeMealTypes, type])
-                                                }
-                                            }}
-                                            className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all duration-300 ${
-                                                recipeMealTypes.includes(type)
-                                                    ? 'bg-accent text-accent-foreground border-accent shadow-lg shadow-accent/20'
-                                                    : 'bg-secondary/30 border-border/10 text-muted-foreground hover:border-accent/30 hover:bg-secondary/50'
-                                            }`}
-                                        >
-                                            {type}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <form onSubmit={onSubmitRecipeSiteImport} className="flex flex-row items-end gap-2 border-t border-border pt-6">
-                        <div className="flex-1">
+                        <div className="mb-6">
                             <FormField
-                                label="Import from site"
-                                id="tasteURL"
-                                placeholder="Paste URL (Taste.com, recipetineats.com, vegkit.com)"
-                                className="w-full"
+                                label="Recipe Name"
+                                id="recipeName"
+                                placeholder="What are we cooking?"
+                                value={recipeName}
+                                onChange={(e) => setRecipeName(e.target.value)}
                             />
                         </div>
-                        <div className="mb-3">
-                            <Button type="submit" variant="outline">Import</Button>
+
+                        <div className="mb-6">
+                            <label className="label-modern text-sm font-medium mb-3 block">
+                                How would you like to start?
+                            </label>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setCreationMethod('url')}
+                                    className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center transition-all duration-300 ${creationMethod === 'url'
+                                        ? 'bg-accent text-accent-foreground border-accent shadow-lg shadow-accent/20'
+                                        : 'bg-secondary/30 border-border/10 text-muted-foreground hover:border-accent/30 hover:bg-secondary/50'
+                                        }`}
+                                >
+                                    <span className="text-2xl mb-1">🌐</span>
+                                    <span className="font-bold text-sm">Web URL</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setCreationMethod('notes')}
+                                    className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center transition-all duration-300 ${creationMethod === 'notes'
+                                        ? 'bg-accent text-accent-foreground border-accent shadow-lg shadow-accent/20'
+                                        : 'bg-secondary/30 border-border/10 text-muted-foreground hover:border-accent/30 hover:bg-secondary/50'
+                                        }`}
+                                >
+                                    <span className="text-2xl mb-1">🪄</span>
+                                    <span className="font-bold text-sm">AI Notes</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setCreationMethod('manual')}
+                                    className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center transition-all duration-300 ${creationMethod === 'manual'
+                                        ? 'bg-accent text-accent-foreground border-accent shadow-lg shadow-accent/20'
+                                        : 'bg-secondary/30 border-border/10 text-muted-foreground hover:border-accent/30 hover:bg-secondary/50'
+                                        }`}
+                                >
+                                    <span className="text-2xl mb-1">✍️</span>
+                                    <span className="font-bold text-sm">Manually</span>
+                                </button>
+                            </div>
                         </div>
-                    </form>
-                </div>
 
-                {/* Builder Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full px-2 sm:px-0">
-                    {/* Add Ingredients */}
-                    <div className="glass-card group-highlight p-4 md:p-8">
-                        <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Add Ingredients</h2>
-                        <AddShoppingItem handleSubmit={onSubmitIngred} hideCategories={true} />
-                    </div>
+                        {creationMethod === 'url' && (
+                            <form onSubmit={onSubmitRecipeSiteImport} className="border-t border-border pt-6 mb-2 animate-in fade-in slide-in-from-top-4">
+                                <FormField
+                                    label="Source URL"
+                                    id="tasteURL"
+                                    placeholder="Paste URL (Taste, RecipeTinEats, VegKit)"
+                                    className="w-full mb-4"
+                                />
+                                <Button type="submit" className="w-full bg-accent hover:bg-accent-hover font-bold" disabled={loading}>
+                                    {loading ? "Parsing Recipe..." : "Import & Continue"}
+                                </Button>
+                            </form>
+                        )}
 
-                    {/* Current Ingredients */}
-                    <div className="glass-card group-highlight p-4 md:p-8">
-                        <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Current Ingredients</h2>
-                        {ingreds.length === 0 ? (
-                            <p className="text-muted-foreground italic">No ingredients added yet.</p>
-                        ) : (
-                            <ul className="flex flex-col gap-2">
-                                {ingreds.map((ingred, i) => (
-                                    <li key={i} className="flex flex-row justify-between items-center p-2 rounded-lg bg-secondary/50 border border-glass-border">
-                                        <span className="text-sm">
-                                            <span className="font-bold">{ingred.Amount} {ingred.AmountType}</span> - {ingred.Name}
-                                        </span>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="text-destructive hover:text-white hover:bg-destructive"
-                                            onClick={() => setIngreds(ingreds.filter((item) => item.Name !== ingred.Name))}
-                                        >
-                                            <RiDeleteBin7Line />
-                                        </Button>
-                                    </li>
-                                ))}
-                            </ul>
+                        {creationMethod === 'notes' && (
+                            <div className="border-t border-border pt-6 mb-2 animate-in fade-in slide-in-from-top-4">
+                                <label className="label-modern text-sm font-medium mb-2 block">Recipe Snippet</label>
+                                <textarea
+                                    value={recipeNotes}
+                                    onChange={(e) => setRecipeNotes(e.target.value)}
+                                    placeholder="Paste ingredients or method here..."
+                                    className="input-modern min-h-[150px] mb-4 resize-none"
+                                />
+                                <Button
+                                    type="button"
+                                    onClick={onSubmitNotesExtract}
+                                    disabled={isExtracting}
+                                    className="w-full bg-accent hover:bg-accent-hover font-bold flex items-center justify-center gap-2"
+                                >
+                                    {isExtracting ? "AI is working..." : "Extract & Continue"}
+                                </Button>
+                            </div>
+                        )}
+
+                        {creationMethod === 'manual' && (
+                            <div className="border-t border-border pt-6 animate-in fade-in slide-in-from-top-4">
+                                <Button
+                                    type="button"
+                                    onClick={handleContinue}
+                                    className="w-full bg-accent hover:bg-accent-hover font-bold"
+                                >
+                                    Start Building
+                                </Button>
+                            </div>
                         )}
                     </div>
+                )}
 
-                    {/* Add Instructions */}
-                    <div className="glass-card group-highlight p-4 md:p-8">
-                        <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Instructions</h2>
-                        <form onSubmit={onSubmitInstruc} className="flex flex-col gap-4">
-                            <FormField
-                                label="Step Description"
-                                id="instructText"
-                                placeholder="What to do..."
-                                required
-                            />
-                            <FormField
-                                label="Note (Optional)"
-                                id="instructNote"
-                                placeholder="Additional details..."
-                            />
-                            <Button type="submit">Add Instruction</Button>
-                        </form>
-                    </div>
-
-                    {/* Current Instructions */}
-                    <div className="glass-card group-highlight p-4 md:p-8">
-                        <h2 className="text-xl font-bold mb-4 border-b border-border pb-2">Step-by-Step</h2>
-                        {instructions.length === 0 ? (
-                            <p className="text-muted-foreground italic">No instructions added yet.</p>
-                        ) : (
-                            <ol className="list-decimal list-inside flex flex-col gap-2">
-                                {instructions.map((instruction, i) => (
-                                    <li key={i} className="p-2 rounded-lg bg-secondary/50 border border-glass-border flex flex-row justify-between items-center">
-                                        <span className="text-sm pr-4">{instruction.Text}</span>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="text-destructive hover:text-white hover:bg-destructive shrink-0"
-                                            onClick={() => setInstructions(instructions.filter((item) => item.Text !== instruction.Text))}
-                                        >
-                                            <RiDeleteBin7Line />
-                                        </Button>
-                                    </li>
-                                ))}
-                            </ol>
-                        )}
-                    </div>
-
-                    {/* Add Image */}
-                    <div className="glass-card group-highlight md:col-span-2">
-                        <h2 className="text-xl font-bold mb-2 border-b border-border pb-2">Recipe Image</h2>
-                        <p className="text-sm text-muted-foreground mb-4">Upload an image or leave blank to AI-generate one based on the recipe name.</p>
-
-                        <div className="flex flex-col md:flex-row gap-4 items-start">
-                            <div className="flex-1">
-                                <input
-                                    accept="image/*"
-                                    type="file"
-                                    className="file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer"
-                                    onChange={(e) => { e.target.files && e.target.files[0] ? getBase64(e.target.files[0], (data) => setImageData(data)) : undefined }}
-                                />
-                            </div>
-
-                            {imageData && (
-                                <div className="relative w-full max-w-[300px] aspect-video rounded-lg overflow-hidden border border-border">
-                                    <img src={imageData} alt="Recipe Preview" className="w-full h-full object-cover" />
-                                    <Button
-                                        variant="destructive"
-                                        size="sm"
-                                        className="absolute top-2 right-2 rounded-full w-8 h-8 p-0"
-                                        onClick={() => setImageData(undefined)}
-                                    >
-                                        x
-                                    </Button>
-                                </div>
+                {/* Phase 2: Builder */}
+                {formPhase === 'builder' && (
+                    <div className="flex flex-col gap-8 w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        {/* Navigation & Prominent Recipe Title */}
+                        <div className="flex flex-col gap-4">
+                            {!isEditMode && (
+                                <button
+                                    onClick={handleBack}
+                                    className="flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-accent transition-colors w-fit"
+                                >
+                                    ⬅️ Back to Setup
+                                </button>
                             )}
+                            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 border-b border-border/10 pb-4">
+                                <h2 className="text-4xl font-black tracking-tight bg-clip-text from-foreground to-foreground/60 leading-tight">
+                                    {recipeName || "Untitled Recipe"}
+                                </h2>
+                                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-accent/60 bg-accent/5 px-3 py-1 rounded-full border border-accent/10 w-fit">
+                                    {creationMethod || 'manual'} builder
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Main Interaction Area: Ingredients & Instructions */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                            {/* Ingredients Module: Grouped Add + List */}
+                            <div className="glass-card group-highlight p-0 overflow-hidden border-t-4 border-t-accent">
+                                <div className="p-6 md:p-8 bg-gradient-to-b from-accent/5 to-transparent">
+                                    <h3 className="text-xl font-bold mb-6 flex items-center gap-3">
+                                        <span className="bg-accent text-accent-foreground w-8 h-8 rounded-lg flex items-center justify-center text-sm">🛒</span>
+                                        Ingredients
+                                    </h3>
+                                    <AddShoppingItem handleSubmit={onSubmitIngred} hideCategories={true} />
+                                </div>
+
+                                <div className="p-6 md:p-8 pt-0">
+                                    <div className="bg-secondary/20 rounded-2xl p-4 md:p-6 border border-border/5">
+                                        <h4 className="text-xs font-black uppercase text-muted-foreground tracking-widest mb-4">Current List</h4>
+                                        {ingreds.length === 0 ? (
+                                            <div className="py-12 flex flex-col items-center justify-center text-center opacity-30 select-none">
+                                                <div className="text-5xl mb-4">🥫</div>
+                                                <p className="text-sm italic">Nothing in the pantry yet...</p>
+                                            </div>
+                                        ) : (
+                                            <ul className="flex flex-col gap-3">
+                                                {ingreds.map((ingred, i) => (
+                                                    <li key={i} className="flex items-center justify-between p-4 rounded-xl bg-background/40 border border-border/10 group hover:border-accent/40 hover:shadow-lg hover:shadow-accent/5 transition-all duration-300">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-bold flex items-center gap-2">
+                                                                <span className="text-accent underline decoration-accent/30 underline-offset-4">{ingred.Amount} {ingred.AmountType}</span>
+                                                                {ingred.Name}
+                                                            </span>
+                                                            {ingred.Note && <span className="text-[10px] text-muted-foreground italic mt-0.5">{ingred.Note}</span>}
+                                                        </div>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-muted-foreground hover:text-white hover:bg-destructive rounded-lg h-9 w-9 p-0 opacity-0 group-hover:opacity-100 transition-all"
+                                                            onClick={() => setIngreds(ingreds.filter((item) => item.Name !== ingred.Name))}
+                                                        >
+                                                            <RiDeleteBin7Line size={16} />
+                                                        </Button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Instructions Module: Grouped Add + List */}
+                            <div className="glass-card group-highlight p-0 overflow-hidden border-t-4 border-t-accent-hover">
+                                <div className="p-6 md:p-8 bg-gradient-to-b from-accent-hover/5 to-transparent">
+                                    <h3 className="text-xl font-bold mb-6 flex items-center gap-3">
+                                        <span className="bg-accent-hover text-accent-foreground w-8 h-8 rounded-lg flex items-center justify-center text-sm">🔥</span>
+                                        Cooking Method
+                                    </h3>
+                                    <form onSubmit={onSubmitInstruc} className="flex flex-col gap-4">
+                                        <textarea
+                                            id="instructText"
+                                            required
+                                            placeholder="What's the next step?"
+                                            className="input-modern min-h-[100px] text-sm resize-none"
+                                        />
+                                        <div className="flex flex-col gap-2">
+                                            <label htmlFor="instructNote" className="text-[10px] font-black uppercase text-muted-foreground/60 ml-1">Step Note (Optional)</label>
+                                            <input
+                                                id="instructNote"
+                                                placeholder="e.g. medium heat, 5 mins"
+                                                className="input-modern py-2 text-xs bg-background/30"
+                                            />
+                                        </div>
+                                        <Button type="submit" className="bg-secondary/50 hover:bg-secondary text-foreground font-black py-4 h-auto rounded-xl">
+                                            Add This Step
+                                        </Button>
+                                    </form>
+                                </div>
+
+                                <div className="p-6 md:p-8 pt-0">
+                                    <div className="bg-secondary/20 rounded-2xl p-4 md:p-6 border border-border/5">
+                                        <h4 className="text-xs font-black uppercase text-muted-foreground tracking-widest mb-4">Step-by-Step</h4>
+                                        {instructions.length === 0 ? (
+                                            <div className="py-12 flex flex-col items-center justify-center text-center opacity-30 select-none">
+                                                <div className="text-5xl mb-4">📖</div>
+                                                <p className="text-sm italic">The story starts here...</p>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col gap-6">
+                                                {instructions.map((instruction, i) => (
+                                                    <div key={i} className="flex gap-5 group relative">
+                                                        <div className="flex flex-col items-center">
+                                                            <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/30 text-accent flex items-center justify-center text-xs font-black shrink-0 z-10">
+                                                                {i + 1}
+                                                            </div>
+                                                            {i !== instructions.length - 1 && (
+                                                                <div className="w-0.5 h-full bg-gradient-to-b from-accent/20 to-transparent absolute top-8 left-4 -ml-[1px]"></div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 pb-4 border-b border-border/5 group-last:border-0">
+                                                            <div className="flex justify-between items-start">
+                                                                <p className="text-sm leading-relaxed font-medium pt-1.5">{instruction.Text}</p>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                                                                    onClick={() => setInstructions(instructions.filter((item) => item.Text !== instruction.Text))}
+                                                                >
+                                                                    <RiDeleteBin7Line size={16} />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Mid Section: Recipe Image */}
+                        <div className="glass-card group-highlight p-6 md:p-8">
+                            <h3 className="text-xl font-bold mb-6 flex items-center gap-3">
+                                <span className="bg-muted-foreground/20 text-muted-foreground w-8 h-8 rounded-lg flex items-center justify-center text-sm">🖼️</span>
+                                Recipe Visuals
+                            </h3>
+                            <div className="flex flex-col md:flex-row gap-8 items-start">
+                                <div className="flex-1 w-full">
+                                    <label className="block w-full border-2 border-dashed border-border/20 rounded-3xl p-10 text-center cursor-pointer hover:bg-accent/5 hover:border-accent/40 transition-all duration-300 group">
+                                        <input
+                                            accept="image/*"
+                                            type="file"
+                                            className="hidden"
+                                            onChange={(e) => { e.target.files && e.target.files[0] ? getBase64(e.target.files[0], (data) => setImageData(data)) : undefined }}
+                                        />
+                                        <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📸</div>
+                                        <span className="text-sm font-bold block mb-1">Click to upload cover photo</span>
+                                        <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-black">AI will generate one if left blank</p>
+                                    </label>
+                                </div>
+
+                                {imageData && (
+                                    <div className="relative w-full md:w-64 aspect-video md:aspect-square rounded-3xl overflow-hidden border-2 border-accent/20 group shadow-2xl shadow-accent/10">
+                                        <img src={imageData} alt="Recipe Preview" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                                        <button
+                                            onClick={() => setImageData(undefined)}
+                                            className="absolute top-3 right-3 bg-destructive/90 backdrop-blur-md text-white p-2 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0"
+                                        >
+                                            <RiDeleteBin7Line size={18} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Bottom Section: Advanced Details (Collapsed by default) */}
+                        <div className="glass-card border-none bg-secondary/10 p-0 overflow-hidden rounded-3xl">
+                            <button
+                                type="button"
+                                onClick={() => setShowAdvanced(!showAdvanced)}
+                                className="w-full flex items-center justify-between p-6 md:p-8 hover:bg-secondary/20 transition-colors group"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="text-lg">⚙️</span>
+                                    <span className="font-black text-sm uppercase tracking-widest text-muted-foreground group-hover:text-foreground transition-colors">Advanced Recipe Metadata</span>
+                                </div>
+                                <div className={`transition-transform duration-500 ${showAdvanced ? 'rotate-180 text-accent' : 'text-muted-foreground'}`}>
+                                    <RiArrowDownSLine size={24} />
+                                </div>
+                            </button>
+
+                            <div className={`transition-all duration-700 ease-in-out overflow-hidden ${showAdvanced ? 'max-h-[800px] opacity-100 pointer-events-auto' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 p-6 md:p-8 pt-0 animate-in fade-in slide-in-from-top-4">
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground block ml-1 underline decoration-accent/20 underline-offset-4">Prep Time</label>
+                                        <select value={recipeTime} onChange={(e) => setRecipeTime(e.target.value)} className="input-modern bg-background/50 border-border/10 focus:ring-accent/20">
+                                            <option value="">Unknown</option>
+                                            <option value="short">Zap (Under 30min)</option>
+                                            <option value="medium">Standard (30-60min)</option>
+                                            <option value="long">Slow Roast (60min+)</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground block ml-1 underline decoration-accent/20 underline-offset-4">Cuisine Style</label>
+                                        <select value={recipeGenre} onChange={(e) => setRecipeGenre(e.target.value)} className="input-modern bg-background/50 border-border/10 focus:ring-accent/20">
+                                            <option value="">Uncategorized</option>
+                                            {['Italian', 'Mexican', 'Asian', 'Indian', 'Mediterranean', 'American', 'French', 'Middle Eastern', 'Thai', 'Japanese', 'Korean', 'Greek', 'Chinese', 'Vietnamese', 'Other'].map(g => (
+                                                <option key={g} value={g}>{g}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground block ml-1 underline decoration-accent/20 underline-offset-4">Target Servings</label>
+                                        <div className="relative">
+                                            <input type="number" value={recipeServings} onChange={(e) => setRecipeServings(e.target.value)} className="input-modern bg-background/50 border-border/10 pr-12" placeholder="4" />
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-muted-foreground uppercase">px</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground block ml-1 underline decoration-accent/20 underline-offset-4">Meal Occasions</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {['Breakfast', 'Lunch', 'Main', 'Snack'].map(type => (
+                                                <button
+                                                    key={type}
+                                                    type="button"
+                                                    onClick={() => recipeMealTypes.includes(type) ? setRecipeMealTypes(recipeMealTypes.filter(t => t !== type)) : setRecipeMealTypes([...recipeMealTypes, type])}
+                                                    className={`px-3 py-1.5 rounded-xl border text-[10px] font-black transition-all duration-300 ${recipeMealTypes.includes(type) ? 'bg-accent/10 border-accent text-accent' : 'border-border/10 text-muted-foreground hover:border-accent/40'}`}
+                                                >
+                                                    {type}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Final Action - Large and Bold */}
+                        <div className="flex justify-center pt-10 pb-32">
+                            <Button
+                                onClick={onSubmitRecipe}
+                                size="lg"
+                                className="w-full max-w-xl font-black text-2xl h-24 bg-accent text-accent-foreground hover:bg-accent-hover shadow-[0_10px_50px_rgba(235,53,101,0.2)] hover:shadow-accent/40 hover:-translate-y-1 transition-all rounded-[2rem]"
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-6 h-6 rounded-full border-4 border-accent-foreground border-t-transparent animate-spin"></div>
+                                        <span>Curating...</span>
+                                    </div>
+                                ) : (
+                                    "✨ Publish to Collection"
+                                )}
+                            </Button>
                         </div>
                     </div>
-                </div>
-
-                {/* Submit Action */}
-                <div className="flex justify-center mt-6 mb-12">
-                    <Button
-                        onClick={onSubmitRecipe}
-                        size="lg"
-                        className="w-full max-w-sm font-bold text-lg bg-accent text-accent-foreground hover:bg-accent-hover"
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin"></div>
-                                Saving...
-                            </div>
-                        ) : "Save and Submit"}
-                    </Button>
-                </div>
+                )}
             </div>
         </Layout>
     )
