@@ -492,10 +492,14 @@ export default function CreateRecipe() {
                                 </button>
                             )}
                             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 border-b border-border/10 pb-4">
-                                <h2 className="text-4xl font-black tracking-tight bg-clip-text from-foreground to-foreground/60 leading-tight">
-                                    {recipeName || "Untitled Recipe"}
-                                </h2>
-                                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-accent/60 bg-accent/5 px-3 py-1 rounded-full border border-accent/10 w-fit">
+                                <input
+                                    type="text"
+                                    value={recipeName}
+                                    onChange={(e) => setRecipeName(e.target.value)}
+                                    placeholder="Untitled Recipe"
+                                    className="text-4xl font-black tracking-tight bg-transparent border-none outline-none focus:ring-0 p-0 text-foreground w-full placeholder:text-foreground/30 leading-tight focus:bg-background/20 rounded transition-colors"
+                                />
+                                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-accent/60 bg-accent/5 px-3 py-1 rounded-full border border-accent/10 w-fit shrink-0">
                                     {creationMethod || 'manual'} builder
                                 </div>
                             </div>
