@@ -1,6 +1,6 @@
 import React from "react"
 import { AiFillPlusCircle } from "react-icons/ai"
-import { MdOutlineMenuBook, MdSearch, MdShoppingCart, MdHome } from 'react-icons/md'
+import { MdOutlineMenuBook, MdSearch, MdShoppingCart, MdHome, MdTimeline } from 'react-icons/md'
 import Link from 'next/link'
 import styles from '../styles/Toolbar.module.css'
 import { HiOutlineCog } from 'react-icons/hi'
@@ -41,6 +41,12 @@ export function Toolbar() {
                         <Link href="/shoppingList" className={styles.nav_link}>
                             <MdShoppingCart size={24} />
                             <span className={styles.nav_label}>Shopping</span>
+                        </Link>
+                    </li>
+                    <li className={styles.nav_item}>
+                        <Link href="/dailyTracker" className={styles.nav_link}>
+                            <MdTimeline size={24} />
+                            <span className={styles.nav_label}>Intake</span>
                         </Link>
                     </li>
                     <li className={styles.nav_item}>

@@ -222,7 +222,7 @@ export default function DbInspector() {
                                                     <th className="p-4">_id</th>
                                                     {Array.from(new Set(documents.flatMap(doc => Object.keys(doc))))
                                                         .filter(key => key !== '_id' && key !== '__v')
-                                                        .slice(0, 8) // Limit columns to avoid horizontal overflow nightmare
+                                                        .slice(0, 50) // Show up to 50 columns to include new nutritional fields
                                                         .map(key => (
                                                             <th key={key} className="p-4">{key}</th>
                                                         ))
@@ -233,7 +233,7 @@ export default function DbInspector() {
                                                 {documents.map(doc => {
                                                     const keys = Array.from(new Set(documents.flatMap(d => Object.keys(d))))
                                                         .filter(key => key !== '_id' && key !== '__v')
-                                                        .slice(0, 8);
+                                                        .slice(0, 50);
                                                     
                                                     return (
                                                         <tr key={doc._id} className="border-b border-white/5 hover:bg-white/5 transition-colors">

@@ -8,6 +8,12 @@ const UserSchema = new mongoose.Schema(
     approved: { type: Boolean, required: true },
     passwordHash: String,
     environment: { type: String },
+    age: { type: Number },
+    gender: { type: String, enum: ['male', 'female', 'other'] },
+    weight_kg: { type: Number },
+    height_cm: { type: Number },
+    activity_level: { type: String, enum: ['sedentary', 'light', 'moderate', 'active', 'very_active'] },
+    daily_exercise_kj: { type: Number, default: 0 },
 
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }

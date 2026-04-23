@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import { PageHeader } from '../components/PageHeader'
 import { useRouter } from 'next/router'
-import { MdLogout } from 'react-icons/md'
+import { MdLogout, MdArrowForward, MdMonitorHeart } from 'react-icons/md'
 
 export default function Profile() {
     const isAuthed = useAuthGuard()
@@ -99,6 +99,26 @@ export default function Profile() {
                             </Button>
                         </div>
                     </form>
+                </div>
+
+                {/* Daily Intake Link */}
+                <div className="glass-card mt-8 border-emerald-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                        <MdMonitorHeart className="text-emerald-500" size={20} />
+                        <h3 className="text-sm font-black uppercase tracking-widest text-emerald-500">Daily Intake Profile</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-4">
+                        Set your age, weight, height and activity level to get personalised daily nutritional targets used across the app.
+                    </p>
+                    <Button
+                        id="goto-daily-intake"
+                        variant="outline"
+                        className="w-full sm:w-auto border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                        onClick={() => router.push('/dailyIntake')}
+                    >
+                        Manage Daily Intake
+                        <MdArrowForward className="ml-2" size={16} />
+                    </Button>
                 </div>
 
                 <div className="glass-card mt-8">

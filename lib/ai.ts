@@ -28,7 +28,7 @@ export async function generateGeminiImage(prompt: string): Promise<string> {
         const model = genAI.getGenerativeModel({ model: modelName });
         const result = await model.generateContent(prompt);
         const response = await result.response;
-        
+
         const candidates = response.candidates;
         if (candidates && candidates[0] && candidates[0].content && candidates[0].content.parts[0].inlineData) {
             const imageData = candidates[0].content.parts[0].inlineData.data;
@@ -51,7 +51,7 @@ export async function generateGeminiImage(prompt: string): Promise<string> {
                 return await attemptImageGeneration(IMAGEN_MODELS.FALLBACK_ULTRA);
             }
         }
-        
+
         console.error("Gemini Image Generation Error:", error.message);
         throw error;
     }
@@ -103,11 +103,11 @@ async function logUsage(index: number, modelType: 'PRIMARY' | 'FALLBACK', isOver
 
         await ApiKeyUsage.findOneAndUpdate(
             { keyIndex: index, modelType, hour: startOfHour },
-            { 
-                $inc: { 
-                    callCount: 1, 
-                    overloadCount: isOverload ? 1 : 0 
-                } 
+            {
+                $inc: {
+                    callCount: 1,
+                    overloadCount: isOverload ? 1 : 0
+                }
             },
             { upsert: true, new: true }
         );
@@ -118,7 +118,7 @@ async function logUsage(index: number, modelType: 'PRIMARY' | 'FALLBACK', isOver
 
 export async function callGroqWithFallback(body: any) {
     await ensureApiKeyStatuses();
-    
+
     // Get all statuses and sort by the oldest "last overloaded" time
     const statuses = await ApiKeyStatus.find().sort({
         // Use the older of the two overloaded dates to determine priority
@@ -129,26 +129,22 @@ export async function callGroqWithFallback(body: any) {
     const primaryModel = GROQ_MODELS.PRIMARY;
     const fallbackModel = GROQ_MODELS.FALLBACK;
 
-    // Iterate through keys in sorted order
     for (const keyStatus of statuses) {
         const index = keyStatus.keyIndex;
         const apiKey = process.env[`GROQ_API_KEY_${index}`] || (index === 1 ? process.env.GROQ_API_KEY : null);
-        
-        if (!apiKey) {
-            console.warn(`GROQ_API_KEY_${index} is not defined, skipping.`);
-            continue;
-        }
 
-        // 1. Try Primary Model on this key
-        if (keyStatus.primaryStatus === 'AVAILABLE' || statuses.every(s => s.primaryStatus === 'OVERLOADED')) {
-            let retryCount = 0;
-            const maxRetries = 1;
+        if (!apiKey) continue;
 
-            while (retryCount <= maxRetries) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // Strict 10s timeout
+
+        const now = Date.now();
+        try {
+            // 1. Try Primary Model on this key
+            const isPrimaryAvailable = keyStatus.primaryStatus === 'AVAILABLE' || (now - new Date(keyStatus.primaryLastOverloaded).getTime() > 60000);
+            if (isPrimaryAvailable) {
                 try {
-                    console.log(`Attempting Groq [Key ${index}] with primary model: ${primaryModel}${retryCount > 0 ? ' (Retry)' : ''}`);
                     await logUsage(index, 'PRIMARY', false);
-
                     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                         method: 'POST',
                         headers: {
@@ -156,52 +152,27 @@ export async function callGroqWithFallback(body: any) {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({ ...body, model: primaryModel }),
+                        signal: controller.signal
                     });
 
                     if (response.status === 429) {
-                        console.warn(`Groq Key ${index} Primary rate limited.`);
                         await updateKeyStatus(index, 'PRIMARY', 'OVERLOADED');
                         await logUsage(index, 'PRIMARY', true);
-                        break; // Move to fallback on same key
-                    } else if (response.status === 400) {
-                        const errorData = await response.json().catch(() => ({}));
-                        if (errorData.error?.code === 'json_validate_failed' && retryCount < maxRetries) {
-                            console.warn(`Groq Key ${index} Primary JSON validation failed, retrying once...`);
-                            retryCount++;
-                            continue;
-                        }
-                        // Non-retryable 400 or out of retries
-                        console.error(`Groq Key ${index} Primary Error (400 - Final):`, errorData);
-                        if (errorData.error?.code === 'json_validate_failed') {
-                            throw new Error('JSON_VALIDATION_FAILED');
-                        }
-                        break; // Stop retrying this model
-                    } else if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({}));
-                        console.error(`Groq Key ${index} Primary Error (${response.status}):`, errorData);
-                        break;
-                    } else {
+                    } else if (response.ok) {
+                        clearTimeout(timeoutId);
                         if (keyStatus.primaryStatus === 'OVERLOADED') await updateKeyStatus(index, 'PRIMARY', 'AVAILABLE');
                         return response;
                     }
-                } catch (err: any) {
-                    if (err.message === 'JSON_VALIDATION_FAILED') throw err;
-                    console.error(`Fetch error for Key ${index} Primary:`, err);
-                    break;
+                } catch (err) {
+                    // Fail fast
                 }
             }
-        }
 
-        // 2. Try Fallback Model on this key
-        if (keyStatus.fallbackStatus === 'AVAILABLE' || statuses.every(s => s.fallbackStatus === 'OVERLOADED')) {
-            let retryCount = 0;
-            const maxRetries = 1;
-
-            while (retryCount <= maxRetries) {
+            // 2. Try Fallback Model on this key
+            const isFallbackAvailable = keyStatus.fallbackStatus === 'AVAILABLE' || (now - new Date(keyStatus.fallbackLastOverloaded).getTime() > 60000);
+            if (isFallbackAvailable) {
                 try {
-                    console.log(`Attempting Groq [Key ${index}] with fallback model: ${fallbackModel}${retryCount > 0 ? ' (Retry)' : ''}`);
                     await logUsage(index, 'FALLBACK', false);
-
                     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                         method: 'POST',
                         headers: {
@@ -209,39 +180,23 @@ export async function callGroqWithFallback(body: any) {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({ ...body, model: fallbackModel }),
+                        signal: controller.signal
                     });
 
                     if (response.status === 429) {
-                        console.warn(`Groq Key ${index} Fallback rate limited.`);
                         await updateKeyStatus(index, 'FALLBACK', 'OVERLOADED');
                         await logUsage(index, 'FALLBACK', true);
-                        break; // Move to next key
-                    } else if (response.status === 400) {
-                        const errorData = await response.json().catch(() => ({}));
-                        if (errorData.error?.code === 'json_validate_failed' && retryCount < maxRetries) {
-                            console.warn(`Groq Key ${index} Fallback JSON validation failed, retrying once...`);
-                            retryCount++;
-                            continue;
-                        }
-                        console.error(`Groq Key ${index} Fallback Error (400 - Final):`, errorData);
-                        if (errorData.error?.code === 'json_validate_failed') {
-                            throw new Error('JSON_VALIDATION_FAILED');
-                        }
-                        break;
-                    } else if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({}));
-                        console.error(`Groq Key ${index} Fallback Error (${response.status}):`, errorData);
-                        break;
-                    } else {
+                    } else if (response.ok) {
+                        clearTimeout(timeoutId);
                         if (keyStatus.fallbackStatus === 'OVERLOADED') await updateKeyStatus(index, 'FALLBACK', 'AVAILABLE');
                         return response;
                     }
-                } catch (err: any) {
-                    if (err.message === 'JSON_VALIDATION_FAILED') throw err;
-                    console.error(`Fetch error for Key ${index} Fallback:`, err);
-                    break;
+                } catch (err) {
+                    // Fail fast
                 }
             }
+        } finally {
+            clearTimeout(timeoutId);
         }
     }
 
@@ -258,6 +213,7 @@ export async function callGroqChat(messages: any[], jsonMode: boolean = false) {
     }
 
     const response = await callGroqWithFallback(body);
+    if (!response.ok) throw new Error(`Groq API call failed with status ${response.status}`);
     const data = await response.json();
     return data.choices[0].message.content;
 }

@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Modal from 'react-modal';
 import IngredientResearchComponent from './IngredientResearchComponent';
+import IngredientNutrientGraph from './IngredientNutrientGraph';
 
 const CardListModal = ({ ingredient, show, onHide, filters, enabledSuppliers = [], handleDeleteItem, hideDelete = false }: any) => {
+    const [showNutrition, setShowNutrition] = useState(false);
 
     return (
         <Modal
@@ -38,6 +40,16 @@ const CardListModal = ({ ingredient, show, onHide, filters, enabledSuppliers = [
                         <p className="text-sm text-muted-foreground">Detail & Advanced Research</p>
                     </div>
                     <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setShowNutrition(!showNutrition)}
+                            className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all border ${
+                                showNutrition 
+                                ? 'bg-emerald-500 text-white border-emerald-400' 
+                                : 'bg-white/5 text-muted-foreground border-white/10 hover:text-white hover:bg-white/10'
+                            }`}
+                        >
+                            {showNutrition ? '📊 Hide Nutrition' : '🥗 Show Nutrition'}
+                        </button>
                         {handleDeleteItem && !hideDelete && (
                             <button
                                 onClick={() => {
@@ -49,7 +61,7 @@ const CardListModal = ({ ingredient, show, onHide, filters, enabledSuppliers = [
                                 className="text-xs font-bold uppercase tracking-widest text-red-500 border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 py-1.5 px-3 rounded-lg transition-all"
                                 title="Remove from Shopping List"
                             >
-                                🗑️ Remove from List
+                                🗑️ Remove
                             </button>
                         )}
                         <button onClick={onHide} className="text-muted-foreground hover:text-foreground text-3xl leading-none transition-colors">&times;</button>
@@ -57,6 +69,15 @@ const CardListModal = ({ ingredient, show, onHide, filters, enabledSuppliers = [
                 </div>
 
                 <div className="flex flex-col gap-8">
+                    {showNutrition && (
+                        <div className="glass-card bg-white/5 border-emerald-500/20 p-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-emerald-400 mb-6 flex items-center gap-2">
+                                <span>🥗</span> Nutritional Profile (Per Ingredient Quantity)
+                            </h3>
+                            <IngredientNutrientGraph ingredients={[ingredient]} />
+                        </div>
+                    )}
+
                     <IngredientResearchComponent
                         initialSearchTerm={ingredient?.name}
                         initialQuantity={ingredient?.quantity || 1}

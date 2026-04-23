@@ -407,6 +407,34 @@ export default function RecipeDetail() {
         })
     }
 
+    const logRecipeServe = async () => {
+        const token = localStorage.getItem('Token');
+        if (!token || !recipe) return;
+        
+        try {
+            const res = await fetch('/api/dailyLog', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': token },
+                body: JSON.stringify({
+                    date: new Date().toISOString().split('T')[0],
+                    type: 'recipe',
+                    name: recipe.name,
+                    recipe_id: id,
+                    quantity: 1, // 1 serve
+                    quantity_unit: 'serving'
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`✅ Logged 1 serving of ${recipe.name}!`);
+            } else {
+                alert(`❌ Failed: ${data.message}`);
+            }
+        } catch (err) {
+            alert("❌ Logging failed");
+        }
+    };
+
     const saveFeedback = async (value: string) => {
         setIsSavingFeedback(true)
         const token = localStorage.getItem('Token') || ""
@@ -784,7 +812,11 @@ export default function RecipeDetail() {
 
                         {showNutrients && (
                             <div className="mt-6 bg-muted/10 backdrop-blur-sm rounded-3xl p-6 border border-border/20 animate-in fade-in slide-in-from-top-4 duration-500">
-                                <IngredientNutrientGraph ingredients={matchedListIngreds} />
+                                <IngredientNutrientGraph 
+                                    ingredients={matchedListIngreds} 
+                                    onLogServe={logRecipeServe} 
+                                    logLabel="Log 1 Serve"
+                                />
                             </div>
                         )}
                     </div>

@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   try {
     if (req.method === "GET") {
       await dbConnect()
-
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
       let db_id = decoded.id
       let userData = await User.findById(db_id).select('-passwordHash -__v');
       if (!userData) {
@@ -23,26 +23,34 @@ export default async function handler(req, res) {
       try {
         await dbConnect()
         let db_id = decoded.id
-        
-        // Security check: Only allow users to update their own profile unless they are an admin
-        if (decoded.role !== 'admin' && String(db_id) !== String(req.body._id)) {
-            return res.status(403).json({ success: false, message: "Forbidden: You can only update your own profile" })
+        let targetId = db_id;
+        if (decoded.role === 'admin' && req.body._id) {
+          targetId = req.body._id;
         }
 
-        // Prevent non-admins from changing their role or approval status
         if (decoded.role !== 'admin') {
             delete req.body.role;
             delete req.body.approved;
         }
-
-        // Prevent overwriting sensitive fields from the profile form
         delete req.body.passwordHash;
-        delete req.body.password; // Just in case
+        delete req.body.password;
         delete req.body.__v;
+        delete req.body._id;
 
-        let updateRes = await User.findOneAndUpdate({ _id: req.body._id }, { "$set": req.body })
-        return res.status(200).json({ success: true, res: "allgood" })
+        const updatedUser = await User.findByIdAndUpdate(
+            targetId, 
+            { "$set": req.body },
+            { new: true, runValidators: true }
+        ).select('-passwordHash -__v');
+
+        if (!updatedUser) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        console.log(`User ${targetId} updated successfully with:`, req.body);
+        return res.status(200).json({ success: true, res: updatedUser })
       } catch (error) {
+        console.error("PUT UserDetails error:", error);
         return res.status(500).json({ success: false, message: "ERROR: " + String(error) })
       }
     } else {

@@ -1,6 +1,5 @@
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
-import NutritionalInfo from '../../../models/NutritionalInfo'
 import { promises as fs } from 'fs';
 import { parse } from 'csv-parse';
 import { convertMetricReading, convertKitchenMetrics, extractProduct } from '../../../lib/conversion'
@@ -109,21 +108,51 @@ export default async function handler(req, res) {
                 if (quantity === null || quantity === undefined) {
                     return res.status(400).json({ success: false, message: "Bad quantity passed" })
                 } else {
-                    let NutritionalInfoData = await NutritionalInfo.find({ name: search_term.toLowerCase() })
-                    if (NutritionalInfoData.length === 0) {
-                        let new_term = extractProduct(search_term)
-                        NutritionalInfoData = await NutritionalInfo.find({ name: new_term.toLowerCase() })
+                if (quantity === null || quantity === undefined) {
+                    return res.status(400).json({ success: false, message: "Bad quantity passed" })
+                } else {
+                    const { logSearchAndGetConversion } = require('../../../lib/searchLogger');
+                    const conversion = await logSearchAndGetConversion(search_term, "NutritionAPI", true, "", req.headers.edgetoken || "");
+
+                    if (!conversion) {
+                        return res.status(200).json({ success: true, data: [], conversion: { qType: qType, quantity: quantity } });
                     }
 
-                    if (NutritionalInfoData.length > 0) {
-                        let nutrition_quantity = NutritionalInfoData[0].quantity
-                        let quantity_ratio = quantity / nutrition_quantity
-                        NutritionalInfoData = NutritionalInfoData[0].toObject()
-                        NutritionalInfoData.quantity = quantity
-                        NutritionalInfoData.nutrition_info = convertNumbersToFloat(NutritionalInfoData.nutrition_info, quantity_ratio);
-                    }
-                    const finalData = (Array.isArray(NutritionalInfoData) && NutritionalInfoData.length === 0) ? [] : [NutritionalInfoData];
-                    return res.status(200).json({ success: true, data: finalData, conversion: { qType: qType, quantity: quantity } })
+                    // Scale nutrients
+                    // All nutrients in IngredientConversion are per 100g
+                    const { normalizeToGrams } = require('../../../lib/conversion');
+                    const { value: grams } = normalizeToGrams(qType, Number(quantity), conversion.grams_per_each);
+                    const ratio = (grams ?? 0) / 100;
+
+                    const scaledNutrients = {
+                        protein: (conversion.protein_g || 0) * ratio,
+                        fat: (conversion.fat_g || 0) * ratio,
+                        carbohydrates: (conversion.carbohydrates_g || 0) * ratio,
+                        fiber: (conversion.fiber_g || 0) * ratio,
+                        energy: (conversion.energy_kcal || 0) * ratio,
+                        // Compatibility for older UI expectations
+                        iron: (conversion.iron_mg || 0) * ratio
+                    };
+
+                    const result = {
+                        name: conversion.ingredient_name,
+                        quantity: quantity,
+                        quantity_unit: qType,
+                        nutrition_info: scaledNutrients,
+                    };
+
+                    // Scale all other keys from IngredientConversion
+                    const raw = conversion.toObject();
+                    Object.keys(raw).forEach(key => {
+                        if (typeof raw[key] === 'number' && key !== 'nutrients_version' && key !== 'grams_per_each') {
+                            result[key] = raw[key] * ratio;
+                        } else if (!result[key]) {
+                            result[key] = raw[key];
+                        }
+                    });
+
+                    return res.status(200).json({ success: true, data: [result], conversion: { qType: qType, quantity: quantity } })
+                }
                 }
             } else {
                 return res.status(400).json({ success: false, message: "Missing query parameters: search_term, qType and quantity are required" })
