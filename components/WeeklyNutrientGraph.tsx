@@ -55,7 +55,7 @@ export default function WeeklyNutrientGraph() {
     const [dailyTotals, setDailyTotals] = useState<Record<string, Record<string, number>>>({});
     const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState<'all' | 'macro' | 'mineral' | 'vitamin' | 'custom'>('all');
-    const [customFilters, setCustomFilters] = useState<string[]>([]);
+    const [customFilters, setCustomFilters] = useState<(keyof DailyIntakeTargets)[]>([]);
     
     const [endDateStr, setEndDateStr] = useState<string>(() => {
         const d = new Date();
@@ -158,7 +158,7 @@ export default function WeeklyNutrientGraph() {
         '#14b8a6', '#6366f1'
     ];
 
-    let activeKeys = ALL_KEYS;
+    let activeKeys: (keyof DailyIntakeTargets)[] = ALL_KEYS;
     if (filter === 'macro') activeKeys = MACRO_KEYS;
     if (filter === 'mineral') activeKeys = MINERAL_KEYS;
     if (filter === 'vitamin') activeKeys = VITAMIN_KEYS;

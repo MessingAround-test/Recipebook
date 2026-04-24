@@ -116,7 +116,7 @@ async function logUsage(index: number, modelType: 'PRIMARY' | 'FALLBACK', isOver
     }
 }
 
-export async function callGroqWithFallback(body: any) {
+export async function callGroqWithFallback(body: any, modelOverride?: string) {
     await ensureApiKeyStatuses();
 
     // Get all statuses and sort by the oldest "last overloaded" time
@@ -126,8 +126,8 @@ export async function callGroqWithFallback(body: any) {
         fallbackLastOverloaded: 1
     });
 
-    const primaryModel = GROQ_MODELS.PRIMARY;
-    const fallbackModel = GROQ_MODELS.FALLBACK;
+    const primaryModel = modelOverride || GROQ_MODELS.PRIMARY;
+    const fallbackModel = modelOverride || GROQ_MODELS.FALLBACK;
 
     for (const keyStatus of statuses) {
         const index = keyStatus.keyIndex;
@@ -216,5 +216,36 @@ export async function callGroqChat(messages: any[], jsonMode: boolean = false) {
     if (!response.ok) throw new Error(`Groq API call failed with status ${response.status}`);
     const data = await response.json();
     return data.choices[0].message.content;
+}
+
+export async function callGeminiVision(prompt: string, base64Image: string, mimeType: string, jsonMode: boolean = false): Promise<string> {
+    const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        throw new Error('GOOGLE_API_KEY or GEMINI_API_KEY is not defined');
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+
+    const imageParts = [
+        {
+            inlineData: {
+                data: base64Image,
+                mimeType
+            }
+        }
+    ];
+
+    const config: any = {};
+    if (jsonMode) {
+        config.responseMimeType = "application/json";
+    }
+
+    const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }, ...imageParts] }],
+        generationConfig: config
+    });
+
+    return result.response.text();
 }
 

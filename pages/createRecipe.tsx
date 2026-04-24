@@ -48,7 +48,9 @@ export default function CreateRecipe() {
     const [showAdvanced, setShowAdvanced] = useState(false)
     const [recipeNotes, setRecipeNotes] = useState("")
     const [isExtracting, setIsExtracting] = useState(false)
-    const [creationMethod, setCreationMethod] = useState<'url' | 'notes' | 'manual' | null>(null)
+    const [creationMethod, setCreationMethod] = useState<'url' | 'notes' | 'manual' | 'image' | null>(null)
+    const [imageNotes, setImageNotes] = useState("")
+    const [extractImage, setExtractImage] = useState<string | undefined>()
     const [formPhase, setFormPhase] = useState<'setup' | 'builder'>('setup')
 
     const router = useRouter();
@@ -280,6 +282,53 @@ export default function CreateRecipe() {
         setIsExtracting(false)
     }
 
+    const onSubmitImageExtract = async () => {
+        if (!extractImage) {
+            alert("Please provide an image first!")
+            return
+        }
+
+        if (!confirmOverwrite()) return;
+
+        setIsExtracting(true)
+        try {
+            const token = localStorage.getItem('Token')
+            const res = await fetch('/api/ai/extract_from_image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'edgetoken': token || ''
+                },
+                body: JSON.stringify({ image: extractImage, notes: imageNotes })
+            })
+
+            const result = await res.json()
+            if (result.success && result.data) {
+                const { name, ingredients, instructions, time, genre, mealTypes, servings } = result.data
+
+                if (name) setRecipeName(name)
+                if (ingredients) setIngreds(ingredients)
+                if (instructions) setInstructions(instructions)
+                if (time) setRecipeTime(time)
+                if (genre) setRecipeGenre(genre)
+                if (mealTypes) setRecipeMealTypes(mealTypes)
+                if (servings) setRecipeServings(servings)
+                setImageData(extractImage)
+
+                setExtractImage(undefined) 
+                setImageNotes("") 
+                setFormPhase('builder')
+                alert("Recipe extracted successfully!")
+            } else {
+                alert(result.message || "Failed to extract recipe.")
+            }
+        } catch (error) {
+            console.error("Extraction error:", error)
+            alert("An error occurred during extraction.")
+        }
+        setIsExtracting(false)
+    }
+
     const onSubmitIngred = async (e: any) => {
         e.preventDefault();
         let IngredObj: Ingredient = {
@@ -393,7 +442,18 @@ export default function CreateRecipe() {
                             <label className="label-modern text-sm font-medium mb-3 block">
                                 How would you like to start?
                             </label>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setCreationMethod('image')}
+                                    className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center transition-all duration-300 ${creationMethod === 'image'
+                                        ? 'bg-accent text-accent-foreground border-accent shadow-lg shadow-accent/20'
+                                        : 'bg-secondary/30 border-border/10 text-muted-foreground hover:border-accent/30 hover:bg-secondary/50'
+                                        }`}
+                                >
+                                    <span className="text-2xl mb-1">📸</span>
+                                    <span className="font-bold text-sm">Photo</span>
+                                </button>
                                 <button
                                     type="button"
                                     onClick={() => setCreationMethod('url')}
@@ -460,6 +520,51 @@ export default function CreateRecipe() {
                                     className="w-full bg-accent hover:bg-accent-hover font-bold flex items-center justify-center gap-2"
                                 >
                                     {isExtracting ? "AI is working..." : "Extract & Continue"}
+                                </Button>
+                            </div>
+                        )}
+
+                        {creationMethod === 'image' && (
+                            <div className="border-t border-border pt-6 mb-2 animate-in fade-in slide-in-from-top-4">
+                                <label className="block w-full border-2 border-dashed border-border/20 rounded-3xl p-6 text-center cursor-pointer hover:bg-accent/5 hover:border-accent/40 transition-all duration-300 group mb-4">
+                                    <input
+                                        accept="image/*"
+                                        capture="environment"
+                                        type="file"
+                                        className="hidden"
+                                        onChange={(e) => { e.target.files && e.target.files[0] ? getBase64(e.target.files[0], (data) => setExtractImage(data)) : undefined }}
+                                    />
+                                    {extractImage ? (
+                                        <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-md">
+                                            <img src={extractImage} alt="Recipe Preview" className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-sm">
+                                                Click to change photo
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📷</div>
+                                            <span className="text-sm font-bold block mb-1">Take a photo or upload</span>
+                                            <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-black">Supported formats: JPG, PNG</p>
+                                        </>
+                                    )}
+                                </label>
+                                
+                                <label className="label-modern text-sm font-medium mb-2 block">Adaptation Notes (Optional)</label>
+                                <input
+                                    type="text"
+                                    value={imageNotes}
+                                    onChange={(e) => setImageNotes(e.target.value)}
+                                    placeholder="e.g., Make it vegetarian, double the serving size..."
+                                    className="input-modern mb-4 w-full"
+                                />
+                                <Button
+                                    type="button"
+                                    onClick={onSubmitImageExtract}
+                                    disabled={isExtracting}
+                                    className="w-full bg-accent hover:bg-accent-hover font-bold flex items-center justify-center gap-2"
+                                >
+                                    {isExtracting ? "AI is analyzing image..." : "Extract from Photo & Continue"}
                                 </Button>
                             </div>
                         )}
