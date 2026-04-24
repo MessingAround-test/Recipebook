@@ -281,6 +281,9 @@ export default function DailyTracker() {
                                             </div>
                                             
                                             <SearchableDropdown
+                                                name="recipe-search"
+                                                value={selectedRecipe?.name || ""}
+                                                onComplete={() => {}}
                                                 options={recipes.map(r => ({ value: r._id, label: r.name }))}
                                                 onChange={(e) => {
                                                     const val = e.target.value;
