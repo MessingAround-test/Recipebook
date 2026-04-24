@@ -526,29 +526,46 @@ export default function CreateRecipe() {
 
                         {creationMethod === 'image' && (
                             <div className="border-t border-border pt-6 mb-2 animate-in fade-in slide-in-from-top-4">
-                                <label className="block w-full border-2 border-dashed border-border/20 rounded-3xl p-6 text-center cursor-pointer hover:bg-accent/5 hover:border-accent/40 transition-all duration-300 group mb-4">
-                                    <input
-                                        accept="image/*"
-                                        capture="environment"
-                                        type="file"
-                                        className="hidden"
-                                        onChange={(e) => { e.target.files && e.target.files[0] ? getBase64(e.target.files[0], (data) => setExtractImage(data)) : undefined }}
-                                    />
-                                    {extractImage ? (
+                                {extractImage ? (
+                                    <label className="block w-full border-2 border-dashed border-border/20 rounded-3xl p-6 text-center cursor-pointer hover:bg-accent/5 hover:border-accent/40 transition-all duration-300 group mb-4">
+                                        <input
+                                            accept="image/*"
+                                            type="file"
+                                            className="hidden"
+                                            onChange={(e) => { e.target.files && e.target.files[0] ? getBase64(e.target.files[0], (data) => setExtractImage(data)) : undefined }}
+                                        />
                                         <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-md">
                                             <img src={extractImage} alt="Recipe Preview" className="w-full h-full object-cover" />
                                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-sm">
                                                 Click to change photo
                                             </div>
                                         </div>
-                                    ) : (
-                                        <>
-                                            <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📷</div>
-                                            <span className="text-sm font-bold block mb-1">Take a photo or upload</span>
-                                            <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-black">Supported formats: JPG, PNG</p>
-                                        </>
-                                    )}
-                                </label>
+                                    </label>
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <label className="block border-2 border-dashed border-border/20 rounded-3xl p-6 text-center cursor-pointer hover:bg-accent/5 hover:border-accent/40 transition-all duration-300 group">
+                                            <input
+                                                accept="image/*"
+                                                capture="environment"
+                                                type="file"
+                                                className="hidden"
+                                                onChange={(e) => { e.target.files && e.target.files[0] ? getBase64(e.target.files[0], (data) => setExtractImage(data)) : undefined }}
+                                            />
+                                            <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">📸</div>
+                                            <span className="text-xs font-bold block">Camera</span>
+                                        </label>
+                                        <label className="block border-2 border-dashed border-border/20 rounded-3xl p-6 text-center cursor-pointer hover:bg-accent/5 hover:border-accent/40 transition-all duration-300 group">
+                                            <input
+                                                accept="image/*"
+                                                type="file"
+                                                className="hidden"
+                                                onChange={(e) => { e.target.files && e.target.files[0] ? getBase64(e.target.files[0], (data) => setExtractImage(data)) : undefined }}
+                                            />
+                                            <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">🖼️</div>
+                                            <span className="text-xs font-bold block">Gallery</span>
+                                        </label>
+                                    </div>
+                                )}
                                 
                                 <label className="label-modern text-sm font-medium mb-2 block">Adaptation Notes (Optional)</label>
                                 <input
@@ -735,17 +752,30 @@ export default function CreateRecipe() {
                             </h3>
                             <div className="flex flex-col md:flex-row gap-8 items-start">
                                 <div className="flex-1 w-full">
-                                    <label className="block w-full border-2 border-dashed border-border/20 rounded-3xl p-10 text-center cursor-pointer hover:bg-accent/5 hover:border-accent/40 transition-all duration-300 group">
-                                        <input
-                                            accept="image/*"
-                                            type="file"
-                                            className="hidden"
-                                            onChange={(e) => { e.target.files && e.target.files[0] ? getBase64(e.target.files[0], (data) => setImageData(data)) : undefined }}
-                                        />
-                                        <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📸</div>
-                                        <span className="text-sm font-bold block mb-1">Click to upload cover photo</span>
-                                        <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-black">AI will generate one if left blank</p>
-                                    </label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <label className="block w-full border-2 border-dashed border-border/20 rounded-3xl p-8 text-center cursor-pointer hover:bg-accent/5 hover:border-accent/40 transition-all duration-300 group">
+                                            <input
+                                                accept="image/*"
+                                                capture="environment"
+                                                type="file"
+                                                className="hidden"
+                                                onChange={(e) => { e.target.files && e.target.files[0] ? getBase64(e.target.files[0], (data) => setImageData(data)) : undefined }}
+                                            />
+                                            <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">📸</div>
+                                            <span className="text-sm font-bold block">Camera</span>
+                                        </label>
+                                        <label className="block w-full border-2 border-dashed border-border/20 rounded-3xl p-8 text-center cursor-pointer hover:bg-accent/5 hover:border-accent/40 transition-all duration-300 group">
+                                            <input
+                                                accept="image/*"
+                                                type="file"
+                                                className="hidden"
+                                                onChange={(e) => { e.target.files && e.target.files[0] ? getBase64(e.target.files[0], (data) => setImageData(data)) : undefined }}
+                                            />
+                                            <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">🖼️</div>
+                                            <span className="text-sm font-bold block">Gallery</span>
+                                        </label>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground/30 uppercase tracking-widest font-black mt-4 text-center">AI will generate a cover if left blank</p>
                                 </div>
 
                                 {imageData && (
