@@ -9,6 +9,7 @@ import { quantity_unit_conversions } from "../lib/conversion"
 import { RiDeleteBin7Line, RiArrowDownSLine, RiArrowUpSLine } from 'react-icons/ri'
 import AddShoppingItem from '../components/AddShoppingItem'
 import { useAuthGuard } from '../lib/useAuthGuard'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
 
 interface Ingredient {
     Name: string
@@ -52,6 +53,7 @@ export default function CreateRecipe() {
     const [imageNotes, setImageNotes] = useState("")
     const [extractImage, setExtractImage] = useState<string | undefined>()
     const [formPhase, setFormPhase] = useState<'setup' | 'builder'>('setup')
+    const [extractionStatus, setExtractionStatus] = useState("")
 
     const router = useRouter();
     const { id } = router.query || {};
@@ -291,8 +293,13 @@ export default function CreateRecipe() {
         if (!confirmOverwrite()) return;
 
         setIsExtracting(true)
+        setExtractionStatus("Analyzing visual data...")
         try {
             const token = localStorage.getItem('Token')
+
+            // Artificial delay for first step to show status
+            setTimeout(() => setExtractionStatus("Uploading to Gemini Vision..."), 800);
+
             const res = await fetch('/api/ai/extract_from_image', {
                 method: 'POST',
                 headers: {
@@ -302,8 +309,11 @@ export default function CreateRecipe() {
                 body: JSON.stringify({ image: extractImage, notes: imageNotes })
             })
 
+            setExtractionStatus("Extracting recipe details...")
             const result = await res.json()
+
             if (result.success && result.data) {
+                setExtractionStatus("Finalizing recipe structure...")
                 const { name, ingredients, instructions, time, genre, mealTypes, servings } = result.data
 
                 if (name) setRecipeName(name)
@@ -315,8 +325,8 @@ export default function CreateRecipe() {
                 if (servings) setRecipeServings(servings)
                 setImageData(extractImage)
 
-                setExtractImage(undefined) 
-                setImageNotes("") 
+                setExtractImage(undefined)
+                setImageNotes("")
                 setFormPhase('builder')
                 alert("Recipe extracted successfully!")
             } else {
@@ -327,6 +337,7 @@ export default function CreateRecipe() {
             alert("An error occurred during extraction.")
         }
         setIsExtracting(false)
+        setExtractionStatus("")
     }
 
     const onSubmitIngred = async (e: any) => {
@@ -397,11 +408,55 @@ export default function CreateRecipe() {
         if (id) fetchRecipeForEdit()
     }, [id])
 
+    const compressImage = async (base64String: string, maxMB: number = 2): Promise<string> => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.src = base64String;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                const maxDim = 1600;
+                if (width > maxDim || height > maxDim) {
+                    if (width > height) {
+                        height = (height / width) * maxDim;
+                        width = maxDim;
+                    } else {
+                        width = (width / height) * maxDim;
+                        height = maxDim;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+
+                let quality = 0.8;
+                let dataUrl = canvas.toDataURL('image/jpeg', quality);
+
+                while (dataUrl.length > maxMB * 1024 * 1024 * 1.33 && quality > 0.1) {
+                    quality -= 0.1;
+                    dataUrl = canvas.toDataURL('image/jpeg', quality);
+                }
+
+                resolve(dataUrl);
+            };
+        });
+    };
+
     const getBase64 = function (file: File, cb: (data: string) => void) {
         let reader = new FileReader();
         reader.readAsDataURL(file);
-        reader.onload = function () {
-            cb(reader.result as string)
+        reader.onload = async function () {
+            let base64 = reader.result as string;
+            if (file.size > 2 * 1024 * 1024) {
+                setExtractionStatus("Compressing image...");
+                base64 = await compressImage(base64);
+                setExtractionStatus("");
+            }
+            cb(base64)
         };
         reader.onerror = function (error) {
             console.log('Error: ', error);
@@ -566,7 +621,7 @@ export default function CreateRecipe() {
                                         </label>
                                     </div>
                                 )}
-                                
+
                                 <label className="label-modern text-sm font-medium mb-2 block">Adaptation Notes (Optional)</label>
                                 <input
                                     type="text"
@@ -579,9 +634,23 @@ export default function CreateRecipe() {
                                     type="button"
                                     onClick={onSubmitImageExtract}
                                     disabled={isExtracting}
-                                    className="w-full bg-accent hover:bg-accent-hover font-bold flex items-center justify-center gap-2"
+                                    className="w-full bg-accent hover:bg-accent-hover font-bold flex flex-col items-center justify-center gap-1 py-6"
                                 >
-                                    {isExtracting ? "AI is analyzing image..." : "Extract from Photo & Continue"}
+                                    <div className="flex items-center gap-2">
+                                        {isExtracting ? (
+                                            <>
+                                                <LoadingSpinner />
+                                                <span>Working on it...</span>
+                                            </>
+                                        ) : (
+                                            "Extract from Photo & Continue"
+                                        )}
+                                    </div>
+                                    {extractionStatus && (
+                                        <span className="text-[10px] font-medium text-accent-foreground/70 animate-pulse uppercase tracking-wider">
+                                            {extractionStatus}
+                                        </span>
+                                    )}
                                 </Button>
                             </div>
                         )}
