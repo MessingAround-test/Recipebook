@@ -270,9 +270,7 @@ export default function DailyTracker() {
                                 </div>
 
                                 {logMode === 'ingredient' ? (
-                                    <div className="bg-muted/20 rounded-[2rem] border border-white/5 p-1">
-                                        <AddShoppingItem handleSubmit={handleLogItem} hideCategories={true} />
-                                    </div>
+                                    <AddShoppingItem handleSubmit={handleLogItem} hideCategories={true} />
                                 ) : (
                                     <div className="bg-muted/20 rounded-[2rem] border border-white/5 p-8">
                                         <div className="space-y-6">

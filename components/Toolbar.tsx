@@ -26,18 +26,6 @@ export function Toolbar() {
                         </Link>
                     </li>
                     <li className={styles.nav_item}>
-                        <Link href="/createRecipe" className={styles.nav_link}>
-                            <AiFillPlusCircle size={24} />
-                            <span className={styles.nav_label}>Create</span>
-                        </Link>
-                    </li>
-                    <li className={styles.nav_item}>
-                        <Link href="/ingredientResearch" className={styles.nav_link}>
-                            <MdSearch size={24} />
-                            <span className={styles.nav_label}>Research</span>
-                        </Link>
-                    </li>
-                    <li className={styles.nav_item}>
                         <Link href="/shoppingList" className={styles.nav_link}>
                             <MdShoppingCart size={24} />
                             <span className={styles.nav_label}>Shopping</span>
@@ -47,6 +35,12 @@ export function Toolbar() {
                         <Link href="/dailyTracker" className={styles.nav_link}>
                             <MdTimeline size={24} />
                             <span className={styles.nav_label}>Intake</span>
+                        </Link>
+                    </li>
+                    <li className={styles.nav_item}>
+                        <Link href="/ingredientResearch" className={styles.nav_link}>
+                            <MdSearch size={24} />
+                            <span className={styles.nav_label}>Research</span>
                         </Link>
                     </li>
                     <li className={styles.nav_item}>

@@ -700,12 +700,14 @@ export default function CreateRecipe() {
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                             {/* Ingredients Module: Grouped Add + List */}
                             <div className="glass-card group-highlight p-0 overflow-hidden border-t-4 border-t-accent">
-                                <div className="p-6 md:p-8 bg-gradient-to-b from-accent/5 to-transparent">
-                                    <h3 className="text-xl font-bold mb-6 flex items-center gap-3">
+                                <div className="p-4 md:p-6 bg-gradient-to-b from-accent/5 to-transparent">
+                                    <h3 className="text-xl font-bold mb-4 flex items-center gap-3">
                                         <span className="bg-accent text-accent-foreground w-8 h-8 rounded-lg flex items-center justify-center text-sm">🛒</span>
                                         Ingredients
                                     </h3>
-                                    <AddShoppingItem handleSubmit={onSubmitIngred} hideCategories={true} />
+                                    <div className="px-2">
+                                        <AddShoppingItem handleSubmit={onSubmitIngred} hideCategories={true} />
+                                    </div>
                                 </div>
 
                                 <div className="p-6 md:p-8 pt-0">
