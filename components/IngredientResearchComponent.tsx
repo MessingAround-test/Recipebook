@@ -1,5 +1,5 @@
 import React, { useState, useEffect, FormEvent } from 'react';
-import { quantity_unit_conversions, MAX_SIZE_DEFAULTS, CATEGORY_MAX_SIZES } from "../lib/conversion";
+import { quantity_unit_conversions, MAX_SIZE_DEFAULTS, CATEGORY_MAX_SIZES, normalizeToGrams } from "../lib/conversion";
 import { Button } from "../components/ui/button"
 import 'chart.js/auto';
 import { Bar } from 'react-chartjs-2';
@@ -66,10 +66,12 @@ export default function IngredientResearchComponent({
     });
     const [comparisonView, setComparisonView] = useState<'table' | 'cards'>('cards');
     const [showSettings, setShowSettings] = useState<boolean>(false);
+    const [showMoreNutrients, setShowMoreNutrients] = useState(false);
     const [viewMode, setViewMode] = useState<'price' | 'nutrition'>('price');
     const [nutritionData, setNutritionData] = useState<any[]>([]);
     const [editingNutrition, setEditingNutrition] = useState<string | null>(null);
-    const [editForm, setEditForm] = useState<any>(null);
+    const [editForm, setEditForm] = useState<any>({});
+    const [scalingReferenceGrams, setScalingReferenceGrams] = useState<number>(0);
     const [availableIngredients, setAvailableIngredients] = useState<string[]>([]);
 
     // Max size overrides — persisted in localStorage
@@ -197,6 +199,25 @@ export default function IngredientResearchComponent({
         }
     }
 
+    async function deleteNutritionRecord(id: string, name: string) {
+        if (!confirm(`Are you sure you want to delete "${name}"? This will also remove all search logs and cached products for this term. (It will remain on existing shopping lists)`)) return;
+
+        try {
+            const res = await fetch(`/api/Nutrition/admin?id=${id}`, {
+                method: 'DELETE',
+                headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+            });
+            const data = await res.json();
+            if (data.success) {
+                setNutritionData(prev => prev.filter(item => item._id !== id));
+            } else {
+                alert("Failed to delete: " + data.message);
+            }
+        } catch (err) {
+            alert("Error deleting nutrition record");
+        }
+    }
+
     async function saveNutrition(id: string) {
         try {
             const res = await fetch(`/api/Nutrition/admin`, {
@@ -219,8 +240,29 @@ export default function IngredientResearchComponent({
         }
     }
 
+    const scaleNutrients = (newGrams: number) => {
+        if (!scalingReferenceGrams || !newGrams || scalingReferenceGrams === newGrams) return;
+        const ratio = newGrams / scalingReferenceGrams;
+        
+        const nutrientKeys = [
+            'protein_g', 'fat_g', 'carbohydrates_g', 'fiber_g', 'energy_kcal',
+            'vitamin_a_ug', 'vitamin_b1_mg', 'vitamin_b2_mg', 'vitamin_b3_mg', 'vitamin_b6_mg', 'vitamin_b12_ug', 'vitamin_c_mg', 'vitamin_d_ug', 'vitamin_e_mg', 'vitamin_k_ug',
+            'calcium_mg', 'iron_mg', 'magnesium_mg', 'phosphorus_mg', 'potassium_mg', 'sodium_mg', 'zinc_mg'
+        ];
+
+        const updatedForm = { ...editForm };
+        nutrientKeys.forEach(key => {
+            if (typeof (updatedForm as any)[key] === 'number') {
+                (updatedForm as any)[key] = (updatedForm as any)[key] * ratio;
+            }
+        });
+        setEditForm(updatedForm);
+        setScalingReferenceGrams(newGrams);
+    };
+
     const renderNutritionMode = () => {
         if (!nutritionData || nutritionData.length === 0) {
+            if (!searchTerm) return null;
             return (
                 <div className="text-center py-12 bg-white/5 rounded-xl border border-white/10">
                     <p className="text-muted-foreground">No nutritional records found for "{searchTerm}"</p>
@@ -238,11 +280,23 @@ export default function IngredientResearchComponent({
         return (
             <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                    <h3 className="text-xl font-bold">Nutritional Records (per 100g)</h3>
+                    <h3 className="text-xl font-bold">Nutritional Records for {quantity} {quantityUnit}</h3>
                 </div>
                 <div className="grid grid-cols-1 gap-4">
                     {nutritionData.map((item) => {
                         const isEditing = editingNutrition === item._id;
+                        
+                        // Calculate scale factor based on searched quantity and unit
+                        // Use editForm values if editing to allow real-time scaling updates
+                        const currentGramsPerEach = isEditing ? editForm.grams_per_each : item.grams_per_each;
+                        const { value: totalGrams } = normalizeToGrams(quantityUnit, Number(quantity), currentGramsPerEach);
+                        const scaleFactor = totalGrams !== null ? totalGrams / 100 : 1;
+
+                        const formatVal = (val: number) => {
+                            const scaled = val * scaleFactor;
+                            return scaled < 0.1 ? scaled.toFixed(3) : scaled.toFixed(1);
+                        };
+
                         return (
                             <div key={item._id} className={`p-6 rounded-xl border transition-all duration-300 bg-card ${isEditing ? 'ring-2 ring-primary border-primary/50' : 'border-border hover:border-primary/30'}`}>
                                 <div className="flex justify-between items-start mb-6">
@@ -268,10 +322,22 @@ export default function IngredientResearchComponent({
                                                     <Button size="sm" variant="outline" onClick={() => setEditingNutrition(null)}>Cancel</Button>
                                                 </>
                                             ) : (
-                                                <Button size="sm" variant="outline" onClick={() => {
-                                                    setEditingNutrition(item._id);
-                                                    setEditForm({ ...item });
-                                                }}>Edit</Button>
+                                                <>
+                                                    <Button size="sm" variant="outline" onClick={() => {
+                                                        setEditingNutrition(item._id);
+                                                        setEditForm({ ...item });
+                                                        setScalingReferenceGrams(item.grams_per_each);
+                                                    }}>Edit</Button>
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="ghost" 
+                                                        className="text-destructive hover:bg-destructive/10" 
+                                                        onClick={() => deleteNutritionRecord(item._id, item.ingredient_name)}
+                                                        title="Delete this ingredient and all related search data"
+                                                    >
+                                                        🗑️
+                                                    </Button>
+                                                </>
                                             )
                                         )}
                                     </div>
@@ -281,33 +347,53 @@ export default function IngredientResearchComponent({
                                     <div className="space-y-1">
                                         <Label className="text-[10px] uppercase text-muted-foreground font-bold">Energy (kcal)</Label>
                                         {isEditing ? (
-                                            <input type="number" className="w-full bg-background border border-input rounded px-2 py-1 text-sm" value={editForm.energy_kcal} onChange={e => setEditForm({ ...editForm, energy_kcal: Number(e.target.value) })} />
+                                            <input 
+                                                type="number" 
+                                                className="w-full bg-background border border-input rounded px-2 py-1 text-sm" 
+                                                value={(editForm.energy_kcal * scaleFactor).toFixed(1)} 
+                                                onChange={e => setEditForm({ ...editForm, energy_kcal: Number(e.target.value) / scaleFactor })} 
+                                            />
                                         ) : (
-                                            <div className="text-lg font-semibold">{item.energy_kcal} kcal</div>
+                                            <div className="text-lg font-semibold">{formatVal(item.energy_kcal)} kcal</div>
                                         )}
                                     </div>
                                     <div className="space-y-1">
                                         <Label className="text-[10px] uppercase text-muted-foreground font-bold">Protein (g)</Label>
                                         {isEditing ? (
-                                            <input type="number" className="w-full bg-background border border-input rounded px-2 py-1 text-sm" value={editForm.protein_g} onChange={e => setEditForm({ ...editForm, protein_g: Number(e.target.value) })} />
+                                            <input 
+                                                type="number" 
+                                                className="w-full bg-background border border-input rounded px-2 py-1 text-sm" 
+                                                value={(editForm.protein_g * scaleFactor).toFixed(1)} 
+                                                onChange={e => setEditForm({ ...editForm, protein_g: Number(e.target.value) / scaleFactor })} 
+                                            />
                                         ) : (
-                                            <div className="text-lg font-semibold text-blue-400">{item.protein_g}g</div>
+                                            <div className="text-lg font-semibold text-blue-400">{formatVal(item.protein_g)}g</div>
                                         )}
                                     </div>
                                     <div className="space-y-1">
                                         <Label className="text-[10px] uppercase text-muted-foreground font-bold">Fat (g)</Label>
                                         {isEditing ? (
-                                            <input type="number" className="w-full bg-background border border-input rounded px-2 py-1 text-sm" value={editForm.fat_g} onChange={e => setEditForm({ ...editForm, fat_g: Number(e.target.value) })} />
+                                            <input 
+                                                type="number" 
+                                                className="w-full bg-background border border-input rounded px-2 py-1 text-sm" 
+                                                value={(editForm.fat_g * scaleFactor).toFixed(1)} 
+                                                onChange={e => setEditForm({ ...editForm, fat_g: Number(e.target.value) / scaleFactor })} 
+                                            />
                                         ) : (
-                                            <div className="text-lg font-semibold text-yellow-500">{item.fat_g}g</div>
+                                            <div className="text-lg font-semibold text-yellow-500">{formatVal(item.fat_g)}g</div>
                                         )}
                                     </div>
                                     <div className="space-y-1">
                                         <Label className="text-[10px] uppercase text-muted-foreground font-bold">Carbs (g)</Label>
                                         {isEditing ? (
-                                            <input type="number" className="w-full bg-background border border-input rounded px-2 py-1 text-sm" value={editForm.carbohydrates_g} onChange={e => setEditForm({ ...editForm, carbohydrates_g: Number(e.target.value) })} />
+                                            <input 
+                                                type="number" 
+                                                className="w-full bg-background border border-input rounded px-2 py-1 text-sm" 
+                                                value={(editForm.carbohydrates_g * scaleFactor).toFixed(1)} 
+                                                onChange={e => setEditForm({ ...editForm, carbohydrates_g: Number(e.target.value) / scaleFactor })} 
+                                            />
                                         ) : (
-                                            <div className="text-lg font-semibold text-green-400">{item.carbohydrates_g}g</div>
+                                            <div className="text-lg font-semibold text-green-400">{formatVal(item.carbohydrates_g)}g</div>
                                         )}
                                     </div>
                                 </div>
@@ -316,7 +402,23 @@ export default function IngredientResearchComponent({
                                     <div className="flex flex-col">
                                         <span className="text-[10px] text-muted-foreground uppercase font-bold">Grams/Each</span>
                                         {isEditing ? (
-                                            <input type="number" className="w-full bg-background border border-input rounded px-1 py-0.5 text-xs" value={editForm.grams_per_each} onChange={e => setEditForm({ ...editForm, grams_per_each: Number(e.target.value) })} />
+                                            <div className="flex gap-1 items-center">
+                                                <input 
+                                                    type="number" 
+                                                    className="w-full bg-background border border-input rounded px-1 py-0.5 text-xs" 
+                                                    value={editForm.grams_per_each} 
+                                                    onChange={e => setEditForm({ ...editForm, grams_per_each: Number(e.target.value) })} 
+                                                />
+                                                <Button 
+                                                    size="icon" 
+                                                    variant="outline" 
+                                                    className="h-6 w-6 shrink-0" 
+                                                    title="Scale nutrients by change in grams/each"
+                                                    onClick={() => scaleNutrients(editForm.grams_per_each)}
+                                                >
+                                                    ⚖️
+                                                </Button>
+                                            </div>
                                         ) : (
                                             <span className="text-sm font-medium">{item.grams_per_each}g</span>
                                         )}
@@ -324,27 +426,116 @@ export default function IngredientResearchComponent({
                                     <div className="flex flex-col">
                                         <span className="text-[10px] text-muted-foreground uppercase font-bold">Fiber</span>
                                         {isEditing ? (
-                                            <input type="number" className="w-full bg-background border border-input rounded px-1 py-0.5 text-xs" value={editForm.fiber_g} onChange={e => setEditForm({ ...editForm, fiber_g: Number(e.target.value) })} />
+                                            <input 
+                                                type="number" 
+                                                className="w-full bg-background border border-input rounded px-1 py-0.5 text-xs" 
+                                                value={(editForm.fiber_g * scaleFactor).toFixed(1)} 
+                                                onChange={e => setEditForm({ ...editForm, fiber_g: Number(e.target.value) / scaleFactor })} 
+                                            />
                                         ) : (
-                                            <span className="text-sm font-medium">{item.fiber_g}g</span>
+                                            <span className="text-sm font-medium">{formatVal(item.fiber_g)}g</span>
                                         )}
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="text-[10px] text-muted-foreground uppercase font-bold">Iron (mg)</span>
                                         {isEditing ? (
-                                            <input type="number" className="w-full bg-background border border-input rounded px-1 py-0.5 text-xs" value={editForm.iron_mg} onChange={e => setEditForm({ ...editForm, iron_mg: Number(e.target.value) })} />
+                                            <input 
+                                                type="number" 
+                                                className="w-full bg-background border border-input rounded px-1 py-0.5 text-xs" 
+                                                value={(editForm.iron_mg * scaleFactor).toFixed(1)} 
+                                                onChange={e => setEditForm({ ...editForm, iron_mg: Number(e.target.value) / scaleFactor })} 
+                                            />
                                         ) : (
-                                            <span className="text-sm font-medium">{item.iron_mg}mg</span>
+                                            <span className="text-sm font-medium">{formatVal(item.iron_mg)}mg</span>
                                         )}
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="text-[10px] text-muted-foreground uppercase font-bold">Sodium (mg)</span>
                                         {isEditing ? (
-                                            <input type="number" className="w-full bg-background border border-input rounded px-1 py-0.5 text-xs" value={editForm.sodium_mg} onChange={e => setEditForm({ ...editForm, sodium_mg: Number(e.target.value) })} />
+                                            <input 
+                                                type="number" 
+                                                className="w-full bg-background border border-input rounded px-1 py-0.5 text-xs" 
+                                                value={(editForm.sodium_mg * scaleFactor).toFixed(1)} 
+                                                onChange={e => setEditForm({ ...editForm, sodium_mg: Number(e.target.value) / scaleFactor })} 
+                                            />
                                         ) : (
-                                            <span className="text-sm font-medium">{item.sodium_mg}mg</span>
+                                            <span className="text-sm font-medium">{formatVal(item.sodium_mg)}mg</span>
                                         )}
                                     </div>
+                                </div>
+
+                                {showMoreNutrients && (
+                                    <>
+                                        <div className="mt-8 mb-2">
+                                            <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60 border-b border-border pb-1">Vitamins</h5>
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 opacity-80">
+                                            {[
+                                                { key: 'vitamin_a_ug', label: 'Vit A (ug)' },
+                                                { key: 'vitamin_b1_mg', label: 'Vit B1 (mg)' },
+                                                { key: 'vitamin_b2_mg', label: 'Vit B2 (mg)' },
+                                                { key: 'vitamin_b3_mg', label: 'Vit B3 (mg)' },
+                                                { key: 'vitamin_b6_mg', label: 'Vit B6 (mg)' },
+                                                { key: 'vitamin_b12_ug', label: 'Vit B12 (ug)' },
+                                                { key: 'vitamin_c_mg', label: 'Vit C (mg)' },
+                                                { key: 'vitamin_d_ug', label: 'Vit D (ug)' },
+                                                { key: 'vitamin_e_mg', label: 'Vit E (mg)' },
+                                                { key: 'vitamin_k_ug', label: 'Vit K (ug)' },
+                                            ].map((vit) => (
+                                                <div key={vit.key} className="flex flex-col">
+                                                    <span className="text-[10px] text-muted-foreground uppercase font-bold">{vit.label}</span>
+                                                    {isEditing ? (
+                                                        <input 
+                                                            type="number" 
+                                                            className="w-full bg-background border border-input rounded px-1 py-0.5 text-xs" 
+                                                            value={(editForm[vit.key as keyof typeof editForm] as number * scaleFactor).toFixed(2)} 
+                                                            onChange={e => setEditForm({ ...editForm, [vit.key]: Number(e.target.value) / scaleFactor })} 
+                                                        />
+                                                    ) : (
+                                                        <span className="text-sm font-medium">{formatVal(item[vit.key])}</span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="mt-8 mb-2">
+                                            <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60 border-b border-border pb-1">Minerals</h5>
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 opacity-80">
+                                            {[
+                                                { key: 'calcium_mg', label: 'Calcium (mg)' },
+                                                { key: 'magnesium_mg', label: 'Magnesium (mg)' },
+                                                { key: 'phosphorus_mg', label: 'Phosphorus (mg)' },
+                                                { key: 'potassium_mg', label: 'Potassium (mg)' },
+                                                { key: 'zinc_mg', label: 'Zinc (mg)' },
+                                            ].map((min) => (
+                                                <div key={min.key} className="flex flex-col">
+                                                    <span className="text-[10px] text-muted-foreground uppercase font-bold">{min.label}</span>
+                                                    {isEditing ? (
+                                                        <input 
+                                                            type="number" 
+                                                            className="w-full bg-background border border-input rounded px-1 py-0.5 text-xs" 
+                                                            value={(editForm[min.key as keyof typeof editForm] as number * scaleFactor).toFixed(2)} 
+                                                            onChange={e => setEditForm({ ...editForm, [min.key]: Number(e.target.value) / scaleFactor })} 
+                                                        />
+                                                    ) : (
+                                                        <span className="text-sm font-medium">{formatVal(item[min.key])}</span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="mt-6 flex justify-center">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground hover:text-primary"
+                                        onClick={() => setShowMoreNutrients(!showMoreNutrients)}
+                                    >
+                                        {showMoreNutrients ? 'Hide Details ▲' : 'Show More Vitamins & Minerals ▼'}
+                                    </Button>
                                 </div>
                             </div>
                         );
@@ -352,7 +543,7 @@ export default function IngredientResearchComponent({
                 </div>
             </div>
         );
-    }
+    };
 
     const toggleSelectAll = () => {
         // Find items that pass the current filter
@@ -751,10 +942,10 @@ export default function IngredientResearchComponent({
         <div className="w-full">
             <div className="flex justify-center mb-8">
                 <ToggleGroup type="single" value={viewMode} onValueChange={(val) => val && setViewMode(val as 'price' | 'nutrition')} className="bg-white/5 p-1 rounded-lg border border-white/10">
-                    <ToggleGroupItem value="price" className="px-6 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-md transition-all">
+                    <ToggleGroupItem value="price" className="flex-1 md:flex-none px-2 md:px-6 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-md transition-all whitespace-nowrap text-xs md:text-sm">
                         💰 Price Research
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="nutrition" className="px-6 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-md transition-all">
+                    <ToggleGroupItem value="nutrition" className="flex-1 md:flex-none px-2 md:px-6 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-md transition-all whitespace-nowrap text-xs md:text-sm">
                         🥗 Nutrition Data
                     </ToggleGroupItem>
                 </ToggleGroup>
@@ -774,8 +965,8 @@ export default function IngredientResearchComponent({
                                 onComplete={(val: string) => setSearchTerm(val)}
                             />
                         </div>
-                        <div className="flex gap-4">
-                            <div className="w-24">
+                        <div className="grid grid-cols-2 md:flex gap-4">
+                            <div className="md:w-24">
                                 <label className="text-sm font-semibold mb-1 block">Qty</label>
                                 <input
                                     type="number"
@@ -784,7 +975,7 @@ export default function IngredientResearchComponent({
                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 />
                             </div>
-                            <div className="w-32">
+                            <div className="md:w-32">
                                 <label className="text-sm font-semibold mb-1 block">Unit</label>
                                 <select
                                     name="quantity_type"
@@ -798,8 +989,8 @@ export default function IngredientResearchComponent({
                                     ))}
                                 </select>
                             </div>
-                            <div className="flex items-end">
-                                <Button type="submit" className="h-10 px-8 font-bold">
+                            <div className="col-span-2 md:flex md:items-end">
+                                <Button type="submit" className="h-10 w-full md:w-auto md:px-8 font-bold">
                                     {loading ? 'Searching...' : 'Execute Search'}
                                 </Button>
                             </div>
@@ -1020,8 +1211,61 @@ export default function IngredientResearchComponent({
                 </>
             )}
 
+            {ingredientData.length > 0 && viewMode === 'price' && (
+                <div className="md:hidden space-y-4 mb-8">
+                    {ingredientData.map((product, idx) => {
+                        const isChosen = chosenProductId === product.id;
+                        const isSelected = selectedProductId === product.id;
+                        const rank1 = ingredientData.find(p => p.rank === 1);
+                        const percentDiff = rank1 && product.total_price ? ((product.total_price - rank1.total_price) / rank1.total_price) * 100 : 0;
+
+                        return (
+                            <div 
+                                key={idx} 
+                                className={`p-4 rounded-xl border bg-card transition-all ${isChosen ? 'border-yellow-400 ring-1 ring-yellow-400' : (isSelected ? 'border-purple-500 ring-1 ring-purple-500' : 'border-border')}`}
+                                onClick={() => setSelectedProductId(prev => prev === product.id ? null : product.id)}
+                            >
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="font-bold text-sm line-clamp-1 flex-1 pr-2">{product.name}</div>
+                                    <div className="text-xs font-bold whitespace-nowrap">${Number(product.price).toFixed(2)}</div>
+                                </div>
+                                <div className="flex justify-between items-center text-[10px] text-muted-foreground mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <img src={`/${product.source}.png`} alt="" className="w-3 h-3 object-contain" />
+                                        <span>{product.source}</span>
+                                    </div>
+                                    <div className={`px-1.5 py-0.5 rounded ${percentDiff === 0 ? 'bg-green-500/20 text-green-500' : 'bg-red-500/10 text-red-400'}`}>
+                                        {percentDiff === 0 ? 'CHEAPEST' : `+${percentDiff.toFixed(1)}%`}
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <div className="text-[10px]">
+                                        Unit: <span className="font-medium text-foreground">
+                                            {product.unit_price_converted < 1
+                                                ? `${(product.unit_price_converted * 100).toFixed(2)}¢`
+                                                : `$${Number(product.unit_price_converted).toFixed(2)}`}
+                                        </span>
+                                    </div>
+                                    <Button 
+                                        size="sm" 
+                                        variant={isChosen ? "default" : "outline"}
+                                        className={`h-7 text-[10px] px-3 ${isChosen ? 'bg-yellow-400 hover:bg-yellow-500 text-black border-none' : ''}`}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setChosenProductId(isChosen ? null : product.id);
+                                        }}
+                                    >
+                                        {isChosen ? 'Selected' : 'Select'}
+                                    </Button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
             {ingredientData.length > 0 && showTable && viewMode === 'price' && (
-                <div className="relative rounded-md border border-border overflow-x-auto w-full">
+                <div className="hidden md:block relative rounded-md border border-border overflow-x-auto w-full">
                     {selectedDeleteIds.size > 0 && (
                         <div className="absolute top-2 right-4 z-20 animate-in fade-in slide-in-from-top-2">
                             <Button

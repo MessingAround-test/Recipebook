@@ -1,6 +1,8 @@
 import dbConnect from '../../../lib/dbConnect';
 import IngredientConversion from '../../../models/IngredientConversion';
 import User from '../../../models/User';
+import SearchLog from '../../../models/SearchLog';
+import Ingredients from '../../../models/Ingredients';
 import { verifyToken } from "../../../lib/auth";
 import { logAPI } from '../../../lib/logger';
 
@@ -50,8 +52,20 @@ export default async function handler(req, res) {
             const { id } = req.query;
             if (!id) return res.status(400).json({ success: false, message: 'ID is required' });
 
+            const item = await IngredientConversion.findById(id);
+            if (!item) return res.status(404).json({ success: false, message: 'Record not found' });
+
+            const ingredientName = item.ingredient_name;
+
+            // Delete the main record
             await IngredientConversion.findByIdAndDelete(id);
-            return res.status(200).json({ success: true, message: 'Record deleted' });
+
+            // Delete related search terms/logs and cached products
+            // Using search_term to match in SearchLog and Ingredients
+            await SearchLog.deleteMany({ search_term: ingredientName.toLowerCase().trim() });
+            await Ingredients.deleteMany({ search_term: ingredientName.toLowerCase().trim() });
+
+            return res.status(200).json({ success: true, message: `Record and all related search data for "${ingredientName}" deleted` });
         }
 
         return res.status(405).json({ success: false, message: 'Method Not Allowed' });
