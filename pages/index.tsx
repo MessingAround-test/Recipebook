@@ -16,8 +16,10 @@ export default function Home() {
     const [userRole, setUserRole] = useState<string | null>(null)
 
     const [allPages] = useState<NavPage[]>([
+        { name: "Health Tracker", _id: "/dailyTracker", image: "", adminOnly: false },
         { name: "Recipes", _id: "/recipes", image: "/cookbook_oragami.png", adminOnly: false },
         { name: "Shopping List", _id: "/shoppingList", image: "/shop_list_oragami.png", adminOnly: false },
+        { name: "Ingredients", _id: "/ingredientResearch", image: "", adminOnly: false },
         { name: "DB Inspector", _id: "/admin/dbInspector", image: "/avo.ico", adminOnly: true },
         { name: "Admin", _id: "/admin", image: "/avo xl.png", adminOnly: true }
     ])
@@ -78,8 +80,8 @@ export default function Home() {
                         className={styles.paperCard}
                         onClick={() => redirect(page._id)}
                     >
-                        <div className={styles.card_image_wrapper}>
-                            <img src={page.image} alt={page.name} />
+                        <div className={`${styles.card_image_wrapper} ${!page.image ? styles.no_image : ''}`}>
+                            {page.image && <img src={page.image} alt={page.name} />}
                         </div>
                         <div className={styles.card_body}>
                             <div className={styles.card_title}>{String(page.name)}</div>
