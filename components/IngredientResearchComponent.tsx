@@ -7,6 +7,7 @@ import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import axios from 'axios';
+import SearchableDropdown from './SearchableDropdown';
 
 interface IngredientResearchComponentProps {
     initialSearchTerm?: string;
@@ -17,6 +18,7 @@ interface IngredientResearchComponentProps {
     showForm?: boolean;
     showCharts?: boolean;
     showTable?: boolean;
+    isAdmin?: boolean;
 }
 
 export default function IngredientResearchComponent({
@@ -27,7 +29,8 @@ export default function IngredientResearchComponent({
     excludeTop3 = false,
     showForm = true,
     showCharts = true,
-    showTable = true
+    showTable = true,
+    isAdmin = false
 }: IngredientResearchComponentProps) {
     const getCanonicalUnit = (unit: string) => {
         if (!unit || unit === 'any') return 'each';
@@ -63,6 +66,11 @@ export default function IngredientResearchComponent({
     });
     const [comparisonView, setComparisonView] = useState<'table' | 'cards'>('cards');
     const [showSettings, setShowSettings] = useState<boolean>(false);
+    const [viewMode, setViewMode] = useState<'price' | 'nutrition'>('price');
+    const [nutritionData, setNutritionData] = useState<any[]>([]);
+    const [editingNutrition, setEditingNutrition] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState<any>(null);
+    const [availableIngredients, setAvailableIngredients] = useState<string[]>([]);
 
     // Max size overrides — persisted in localStorage
     const [maxSizeOverrides, setMaxSizeOverrides] = useState<Record<string, { quantity: number; unit: string }>>(() => {
@@ -78,36 +86,49 @@ export default function IngredientResearchComponent({
 
     const executeSearch = async (term: string, unit: string, qty: number | string, skipConv: boolean = false) => {
         setLoading(true);
-        setSelectedBinIndex(-1);
-        setSelectedProductId(null);
-        setChosenProductId(null);
-        setDeletingIds(new Set());
-        setSelectedDeleteIds(new Set());
+        if (viewMode === 'price') {
+            setSelectedBinIndex(-1);
+            setSelectedProductId(null);
+            setChosenProductId(null);
+            setDeletingIds(new Set());
+            setSelectedDeleteIds(new Set());
 
-        let url = `/api/Ingredients?name=${encodeURIComponent(term)}&qType=${unit}&quantity=${qty}&supplier=${selectedSuppliers.join(',')}`;
-        if (skipConv) url += `&skipConversion=true`;
+            let url = `/api/Ingredients?name=${encodeURIComponent(term)}&qType=${unit}&quantity=${qty}&supplier=${selectedSuppliers.join(',')}`;
+            if (skipConv) url += `&skipConversion=true`;
 
-        // Attach max size params — look up by unit type
-        const unitType = unit === 'each' ? 'each' : (unit === 'gram' || unit === 'kilogram' ? 'weight' : 'volume');
-        const maxSizeKey = Object.keys(maxSizeOverrides).find(k => k === unitType || k === unit) || null;
-        const maxSizeVal = maxSizeKey ? maxSizeOverrides[maxSizeKey] : null;
-        if (maxSizeVal) {
-            url += `&maxSize=${maxSizeVal.quantity}&maxSizeUnit=${maxSizeVal.unit}`;
-        }
+            // Attach max size params — look up by unit type
+            const unitType = unit === 'each' ? 'each' : (unit === 'gram' || unit === 'kilogram' ? 'weight' : 'volume');
+            const maxSizeKey = Object.keys(maxSizeOverrides).find(k => k === unitType || k === unit) || null;
+            const maxSizeVal = maxSizeKey ? maxSizeOverrides[maxSizeKey] : null;
+            if (maxSizeVal) {
+                url += `&maxSize=${maxSizeVal.quantity}&maxSizeUnit=${maxSizeVal.unit}`;
+            }
 
-        const res = await fetch(url, {
-            headers: { 'edgetoken': localStorage.getItem('Token') || "" }
-        });
-        const data = await res.json();
-
-        if (data.loadedSource === true) {
-            const resLoaded = await fetch(url, {
+            const res = await fetch(url, {
                 headers: { 'edgetoken': localStorage.getItem('Token') || "" }
             });
-            const dataLoaded = await resLoaded.json();
-            setIngredientData(dataLoaded.res || []);
+            const data = await res.json();
+
+            if (data.loadedSource === true) {
+                const resLoaded = await fetch(url, {
+                    headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+                });
+                const dataLoaded = await resLoaded.json();
+                setIngredientData(dataLoaded.res || []);
+            } else {
+                setIngredientData(data.res || []);
+            }
         } else {
-            setIngredientData(data.res || []);
+            // Nutrition mode
+            try {
+                const res = await fetch(`/api/Nutrition/admin?search=${encodeURIComponent(term)}`, {
+                    headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+                });
+                const data = await res.json();
+                setNutritionData(data.data || []);
+            } catch (err) {
+                console.error("Error fetching nutrition data:", err);
+            }
         }
         setLoading(false);
     };
@@ -118,6 +139,21 @@ export default function IngredientResearchComponent({
     }
 
     useEffect(() => {
+        const fetchAvailableIngredients = async () => {
+            try {
+                const res = await fetch('/api/Ingredients/list', {
+                    headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    setAvailableIngredients(data.data);
+                }
+            } catch (err) {
+                console.error("Failed to fetch ingredient list:", err);
+            }
+        };
+        fetchAvailableIngredients();
+
         if (autoSearch && initialSearchTerm) {
             const canonicalUnit = getCanonicalUnit(initialQuantityUnit);
             setQuantityUnit(canonicalUnit);
@@ -159,6 +195,163 @@ export default function IngredientResearchComponent({
                 return next;
             }));
         }
+    }
+
+    async function saveNutrition(id: string) {
+        try {
+            const res = await fetch(`/api/Nutrition/admin`, {
+                method: 'PUT',
+                headers: {
+                    'edgetoken': localStorage.getItem('Token') || "",
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id, ...editForm })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setNutritionData(prev => prev.map(item => item._id === id ? data.data : item));
+                setEditingNutrition(null);
+            } else {
+                alert("Failed to save: " + data.message);
+            }
+        } catch (err) {
+            alert("Error saving nutrition data");
+        }
+    }
+
+    const renderNutritionMode = () => {
+        if (!nutritionData || nutritionData.length === 0) {
+            return (
+                <div className="text-center py-12 bg-white/5 rounded-xl border border-white/10">
+                    <p className="text-muted-foreground">No nutritional records found for "{searchTerm}"</p>
+                    {isAdmin && (
+                        <Button className="mt-4" onClick={() => {
+                            // Logic to create new? Maybe later.
+                        }}>
+                            Add New Ingredient
+                        </Button>
+                    )}
+                </div>
+            );
+        }
+
+        return (
+            <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-xl font-bold">Nutritional Records (per 100g)</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-4">
+                    {nutritionData.map((item) => {
+                        const isEditing = editingNutrition === item._id;
+                        return (
+                            <div key={item._id} className={`p-6 rounded-xl border transition-all duration-300 bg-card ${isEditing ? 'ring-2 ring-primary border-primary/50' : 'border-border hover:border-primary/30'}`}>
+                                <div className="flex justify-between items-start mb-6">
+                                    <div className="flex-1">
+                                        {isEditing ? (
+                                            <input
+                                                className="text-xl font-bold bg-background border border-input rounded px-2 py-1 w-full"
+                                                value={editForm.ingredient_name}
+                                                onChange={e => setEditForm({ ...editForm, ingredient_name: e.target.value })}
+                                            />
+                                        ) : (
+                                            <h4 className="text-xl font-bold capitalize">{item.ingredient_name}</h4>
+                                        )}
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Version: {item.nutrients_version} | Last Updated: {new Date(item.last_updated).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {isAdmin && (
+                                            isEditing ? (
+                                                <>
+                                                    <Button size="sm" variant="default" onClick={() => saveNutrition(item._id)}>Save</Button>
+                                                    <Button size="sm" variant="outline" onClick={() => setEditingNutrition(null)}>Cancel</Button>
+                                                </>
+                                            ) : (
+                                                <Button size="sm" variant="outline" onClick={() => {
+                                                    setEditingNutrition(item._id);
+                                                    setEditForm({ ...item });
+                                                }}>Edit</Button>
+                                            )
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] uppercase text-muted-foreground font-bold">Energy (kcal)</Label>
+                                        {isEditing ? (
+                                            <input type="number" className="w-full bg-background border border-input rounded px-2 py-1 text-sm" value={editForm.energy_kcal} onChange={e => setEditForm({ ...editForm, energy_kcal: Number(e.target.value) })} />
+                                        ) : (
+                                            <div className="text-lg font-semibold">{item.energy_kcal} kcal</div>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] uppercase text-muted-foreground font-bold">Protein (g)</Label>
+                                        {isEditing ? (
+                                            <input type="number" className="w-full bg-background border border-input rounded px-2 py-1 text-sm" value={editForm.protein_g} onChange={e => setEditForm({ ...editForm, protein_g: Number(e.target.value) })} />
+                                        ) : (
+                                            <div className="text-lg font-semibold text-blue-400">{item.protein_g}g</div>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] uppercase text-muted-foreground font-bold">Fat (g)</Label>
+                                        {isEditing ? (
+                                            <input type="number" className="w-full bg-background border border-input rounded px-2 py-1 text-sm" value={editForm.fat_g} onChange={e => setEditForm({ ...editForm, fat_g: Number(e.target.value) })} />
+                                        ) : (
+                                            <div className="text-lg font-semibold text-yellow-500">{item.fat_g}g</div>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] uppercase text-muted-foreground font-bold">Carbs (g)</Label>
+                                        {isEditing ? (
+                                            <input type="number" className="w-full bg-background border border-input rounded px-2 py-1 text-sm" value={editForm.carbohydrates_g} onChange={e => setEditForm({ ...editForm, carbohydrates_g: Number(e.target.value) })} />
+                                        ) : (
+                                            <div className="text-lg font-semibold text-green-400">{item.carbohydrates_g}g</div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 pt-4 border-t border-border grid grid-cols-2 md:grid-cols-4 gap-4 opacity-80">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Grams/Each</span>
+                                        {isEditing ? (
+                                            <input type="number" className="w-full bg-background border border-input rounded px-1 py-0.5 text-xs" value={editForm.grams_per_each} onChange={e => setEditForm({ ...editForm, grams_per_each: Number(e.target.value) })} />
+                                        ) : (
+                                            <span className="text-sm font-medium">{item.grams_per_each}g</span>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Fiber</span>
+                                        {isEditing ? (
+                                            <input type="number" className="w-full bg-background border border-input rounded px-1 py-0.5 text-xs" value={editForm.fiber_g} onChange={e => setEditForm({ ...editForm, fiber_g: Number(e.target.value) })} />
+                                        ) : (
+                                            <span className="text-sm font-medium">{item.fiber_g}g</span>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Iron (mg)</span>
+                                        {isEditing ? (
+                                            <input type="number" className="w-full bg-background border border-input rounded px-1 py-0.5 text-xs" value={editForm.iron_mg} onChange={e => setEditForm({ ...editForm, iron_mg: Number(e.target.value) })} />
+                                        ) : (
+                                            <span className="text-sm font-medium">{item.iron_mg}mg</span>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Sodium (mg)</span>
+                                        {isEditing ? (
+                                            <input type="number" className="w-full bg-background border border-input rounded px-1 py-0.5 text-xs" value={editForm.sodium_mg} onChange={e => setEditForm({ ...editForm, sodium_mg: Number(e.target.value) })} />
+                                        ) : (
+                                            <span className="text-sm font-medium">{item.sodium_mg}mg</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
     }
 
     const toggleSelectAll = () => {
@@ -556,20 +749,29 @@ export default function IngredientResearchComponent({
 
     return (
         <div className="w-full">
+            <div className="flex justify-center mb-8">
+                <ToggleGroup type="single" value={viewMode} onValueChange={(val) => val && setViewMode(val as 'price' | 'nutrition')} className="bg-white/5 p-1 rounded-lg border border-white/10">
+                    <ToggleGroupItem value="price" className="px-6 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-md transition-all">
+                        💰 Price Research
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="nutrition" className="px-6 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-md transition-all">
+                        🥗 Nutrition Data
+                    </ToggleGroupItem>
+                </ToggleGroup>
+            </div>
+
             {showForm && (
                 <form onSubmit={handleGetIngredient} className="flex flex-col gap-4 mb-8">
                     <div className="flex flex-col md:flex-row gap-4">
                         <div className="flex-1">
                             <label className="text-sm font-semibold mb-1 block">Ingredient</label>
-                            <input
+                            <SearchableDropdown
                                 name="ingredName"
                                 value={searchTerm}
-                                type="text"
                                 placeholder="Enter ingredient name"
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                required
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                autoComplete='off'
+                                onChange={(e: any) => setSearchTerm(e.target.value)}
+                                options={availableIngredients}
+                                onComplete={(val: string) => setSearchTerm(val)}
                             />
                         </div>
                         <div className="flex gap-4">
@@ -592,16 +794,19 @@ export default function IngredientResearchComponent({
                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-foreground"
                                 >
                                     {Object.keys(quantity_unit_conversions).filter(unit => unit !== 'any').map((item) => (
-                                        <option className="text-black" key={item} value={item}>{item}</option>
+                                        <option className="bg-background text-foreground" key={item} value={item}>{item}</option>
                                     ))}
                                 </select>
                             </div>
                             <div className="flex items-end">
-                                <Button type="submit" className="h-10">Search</Button>
+                                <Button type="submit" className="h-10 px-8 font-bold">
+                                    {loading ? 'Searching...' : 'Execute Search'}
+                                </Button>
                             </div>
                         </div>
                     </div>
-                    <div className="mt-4 border border-border rounded-md overflow-hidden">
+                    {viewMode === 'price' && (
+                        <div className="mt-4 border border-border rounded-md overflow-hidden">
                         {/* Settings header toggle */}
                         <button
                             type="button"
@@ -727,6 +932,7 @@ export default function IngredientResearchComponent({
                             </div>
                         )}
                     </div>
+                    )}
                 </form>
             )}
 
@@ -736,7 +942,7 @@ export default function IngredientResearchComponent({
                 </div>
             )}
 
-            {ingredientData.length > 0 && !excludeTop3 && (
+            {ingredientData.length > 0 && !excludeTop3 && viewMode === 'price' && (
                 <div className="mb-12">
                     <h3 className="text-xl font-bold mb-6 text-foreground">Top 3 Products</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -807,10 +1013,14 @@ export default function IngredientResearchComponent({
                 </div>
             )}
 
-            {showCharts && renderComparisonChart()}
-            {showCharts && renderHistogram()}
+            {viewMode === 'nutrition' ? renderNutritionMode() : (
+                <>
+                    {showCharts && renderComparisonChart()}
+                    {showCharts && renderHistogram()}
+                </>
+            )}
 
-            {ingredientData.length > 0 && showTable && (
+            {ingredientData.length > 0 && showTable && viewMode === 'price' && (
                 <div className="relative rounded-md border border-border overflow-x-auto w-full">
                     {selectedDeleteIds.size > 0 && (
                         <div className="absolute top-2 right-4 z-20 animate-in fade-in slide-in-from-top-2">

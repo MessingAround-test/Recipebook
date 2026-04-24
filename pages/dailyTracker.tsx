@@ -9,14 +9,29 @@ import { FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiSearch, FiZap, FiX }
 import AddShoppingItem from '../components/AddShoppingItem';
 import { Toolbar } from '../components/Toolbar';
 import IngredientNutrientGraph from '../components/IngredientNutrientGraph';
+import WeeklyNutrientGraph from '../components/WeeklyNutrientGraph';
+import SearchableDropdown from '../components/SearchableDropdown';
 
 export default function DailyTracker() {
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const getLocalDateString = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const [date, setDate] = useState(getLocalDateString(new Date()));
     const [log, setLog] = useState<any>(null);
     const [targets, setTargets] = useState<DailyIntakeTargets | null>(null);
     const [loading, setLoading] = useState(false);
     const [isLoggingOpen, setIsLoggingOpen] = useState(false);
     const [recommendations, setRecommendations] = useState<any>(null);
+    const [logMode, setLogMode] = useState<'ingredient' | 'recipe'>('ingredient');
+    const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
+    const [recipes, setRecipes] = useState<any[]>([]);
+    const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
+    const [servingsToLog, setServingsToLog] = useState<number>(1);
+    const [recipeWeight, setRecipeWeight] = useState<number | null>(null);
 
     // Fetch targets and log
     const fetchData = useCallback(async () => {
@@ -47,14 +62,24 @@ export default function DailyTracker() {
         }
     }, [date]);
 
+    const fetchRecipes = useCallback(async () => {
+        const token = localStorage.getItem('Token');
+        if (!token) return;
+        const res = await fetch('/api/Recipe', { headers: { edgetoken: token } });
+        const data = await res.json();
+        if (data.res) setRecipes(data.res);
+    }, []);
+
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+        fetchRecipes();
+    }, [fetchData, fetchRecipes]);
 
     const changeDate = (offset: number) => {
-        const d = new Date(date);
-        d.setDate(d.getDate() + offset);
-        setDate(d.toISOString().split('T')[0]);
+        const [y, m, d] = date.split('-').map(Number);
+        const newD = new Date(y, m - 1, d);
+        newD.setDate(newD.getDate() + offset);
+        setDate(getLocalDateString(newD));
     };
 
     const handleLogItem = async (e: any) => {
@@ -81,6 +106,49 @@ export default function DailyTracker() {
         } catch (err) {
             alert("Add failed");
         }
+    };
+
+    const handleLogRecipe = async () => {
+        if (!selectedRecipe) return;
+        const token = localStorage.getItem('Token');
+        try {
+            const res = await fetch('/api/dailyLog', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': token || '' },
+                body: JSON.stringify({
+                    date,
+                    type: 'recipe',
+                    name: selectedRecipe.name,
+                    recipe_id: selectedRecipe._id,
+                    quantity: servingsToLog
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setLog(data.log);
+                setSelectedRecipe(null);
+                setRecipeWeight(null);
+            }
+        } catch (err) {
+            alert("Recipe log failed");
+        }
+    };
+
+    const calculateWeight = async (recipe: any) => {
+        let totalGrams = 0;
+        const { normalizeToGrams } = require('../lib/conversion');
+        for (const ing of recipe.ingredients) {
+            const token = localStorage.getItem('Token');
+            const convRes = await fetch(`/api/Ingredients/SearchLogLookup?search_term=${encodeURIComponent(ing.Name || ing.name)}`, {
+                headers: { edgetoken: token || '' }
+            });
+            const convData = await convRes.json();
+            if (convData.success && convData.res) {
+                const { value: grams } = normalizeToGrams(ing.AmountType || ing.quantity_type, ing.Amount || ing.quantity, convData.res.grams_per_each);
+                totalGrams += (grams ?? 0);
+            }
+        }
+        setRecipeWeight(totalGrams);
     };
 
     const deleteItem = async (itemId: string) => {
@@ -137,38 +205,141 @@ export default function DailyTracker() {
                             <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Daily Score</div>
                         </div>
                         <div className="h-10 w-px bg-white/10" />
-                        <div className="flex items-center gap-3 bg-muted/30 p-1.5 rounded-xl border border-white/5 shadow-inner">
-                            <button onClick={() => changeDate(-1)} className="p-2 hover:bg-white/10 rounded-lg transition-colors"><FiChevronLeft size={18} /></button>
-                            <div className="font-black text-[11px] tracking-widest uppercase px-3">{date === new Date().toISOString().split('T')[0] ? 'Today' : date}</div>
-                            <button onClick={() => changeDate(1)} className="p-2 hover:bg-white/10 rounded-lg transition-colors"><FiChevronRight size={18} /></button>
+                        <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-white/5 shadow-inner">
+                            <button 
+                                onClick={() => setViewMode('daily')}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'daily' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                📅 Daily
+                            </button>
+                            <button 
+                                onClick={() => setViewMode('weekly')}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'weekly' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                📊 Weekly
+                            </button>
                         </div>
+                        {viewMode === 'daily' && (
+                            <>
+                                <div className="h-10 w-px bg-white/10" />
+                                <div className="flex items-center gap-3 bg-muted/30 p-1.5 rounded-xl border border-white/5 shadow-inner">
+                                    <button onClick={() => changeDate(-1)} className="p-2 hover:bg-white/10 rounded-lg transition-colors"><FiChevronLeft size={18} /></button>
+                                    <button 
+                                        onClick={() => setDate(getLocalDateString(new Date()))}
+                                        className="font-black text-[11px] tracking-widest uppercase px-4 hover:text-emerald-400 transition-all active:scale-95"
+                                    >
+                                        {date === getLocalDateString(new Date()) ? 'Today' : date}
+                                    </button>
+                                    <button onClick={() => changeDate(1)} className="p-2 hover:bg-white/10 rounded-lg transition-colors"><FiChevronRight size={18} /></button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-8">
-                    {/* Top Row: Log and Insights */}
+                {viewMode === 'weekly' ? (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <WeeklyNutrientGraph />
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 gap-8 animate-in fade-in duration-500">
+                        {/* Top Row: Log and Insights */}
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                         {/* Log Section */}
                         <div className="lg:col-span-3 space-y-6">
-                            {!isLoggingOpen ? (
-                                <button
-                                    onClick={() => setIsLoggingOpen(true)}
-                                    className="w-full py-10 rounded-[2rem] border-2 border-dashed border-white/5 hover:border-emerald-500/20 hover:bg-emerald-500/5 transition-all group flex flex-col items-center gap-3"
-                                >
-                                    <div className="p-4 rounded-2xl bg-emerald-500/10 text-emerald-500 group-hover:scale-110 transition-transform">
-                                        <FiPlus size={24} />
+                            <div className="flex flex-col gap-4">
+                                <div className="flex items-center justify-between px-2">
+                                    <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                        Logging Mode
+                                    </h2>
+                                    <div className="flex gap-1 bg-muted/30 p-1 rounded-lg border border-white/5">
+                                        <button 
+                                            onClick={() => setLogMode('ingredient')}
+                                            className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${logMode === 'ingredient' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                        >
+                                            🥗 Ingredient
+                                        </button>
+                                        <button 
+                                            onClick={() => setLogMode('recipe')}
+                                            className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${logMode === 'recipe' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                        >
+                                            👨‍🍳 Recipe
+                                        </button>
                                     </div>
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground group-hover:text-emerald-500 transition-colors">Log New Food Item</span>
-                                </button>
-                            ) : (
-                                <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-                                    <AddShoppingItem
-                                        handleSubmit={handleLogItem}
-                                        hideCategories={true}
-                                        onCancel={() => setIsLoggingOpen(false)}
-                                    />
                                 </div>
-                            )}
+
+                                {logMode === 'ingredient' ? (
+                                    <div className="bg-muted/20 rounded-[2rem] border border-white/5 p-1">
+                                        <AddShoppingItem handleSubmit={handleLogItem} hideCategories={true} />
+                                    </div>
+                                ) : (
+                                    <div className="bg-muted/20 rounded-[2rem] border border-white/5 p-8">
+                                        <div className="space-y-6">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-2">
+                                                <FiSearch size={12} /> Search Your Recipes
+                                            </div>
+                                            
+                                            <SearchableDropdown
+                                                options={recipes.map(r => ({ value: r._id, label: r.name }))}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    const r = recipes.find(rec => rec._id === val);
+                                                    if (r) {
+                                                        setSelectedRecipe(r);
+                                                        setServingsToLog(r.servings || 1);
+                                                        calculateWeight(r);
+                                                    }
+                                                }}
+                                                placeholder="Select a recipe..."
+                                            />
+
+                                            {selectedRecipe && (
+                                                <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4 pt-4 border-t border-white/5">
+                                                    <div className="flex flex-col md:flex-row gap-6">
+                                                        <div className="flex-1 space-y-2">
+                                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Servings to Log</label>
+                                                            <div className="flex items-center gap-4">
+                                                                <input 
+                                                                    type="number" 
+                                                                    value={servingsToLog}
+                                                                    onChange={(e) => setServingsToLog(Number(e.target.value))}
+                                                                    className="w-24 bg-background border border-white/10 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-emerald-500/50"
+                                                                />
+                                                                <div className="text-[10px] font-black text-muted-foreground uppercase">
+                                                                    of {selectedRecipe.servings || 1} total serves
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {recipeWeight !== null && (
+                                                            <div className="bg-emerald-500/10 rounded-2xl p-4 border border-emerald-500/20 flex flex-col justify-center">
+                                                                <div className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-1">Estimated Weight</div>
+                                                                <div className="text-xl font-black">
+                                                                    {Math.round(recipeWeight / (selectedRecipe.servings || 1))}g
+                                                                    <span className="text-[10px] font-medium text-muted-foreground ml-1">per serve</span>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <button 
+                                                        onClick={handleLogRecipe}
+                                                        className="w-full btn-modern !bg-emerald-500 !text-black py-4 font-black uppercase tracking-widest flex items-center justify-center gap-2"
+                                                    >
+                                                        <FiPlus /> Log {servingsToLog} Serving{servingsToLog !== 1 ? 's' : ''}
+                                                    </button>
+                                                </div>
+                                            )}
+                                            
+                                            <div className="flex items-center gap-2 px-1">
+                                                <FiZap size={10} className="text-emerald-400" />
+                                                <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Logging a recipe expands it into constituent ingredients for perfect accuracy.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
                             <div className="glass-card min-h-[300px]">
                                 <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4">Consumed Today</h3>
@@ -279,6 +450,7 @@ export default function DailyTracker() {
                         />
                     </div>
                 </div>
+                )}
             </div>
         </div>
     );

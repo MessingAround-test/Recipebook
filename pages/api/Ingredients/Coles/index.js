@@ -7,6 +7,32 @@ import axios from 'axios';
 import { convertMetricReading } from '../../../../lib/conversion'
 import { filterValidEntries } from '../../../../lib/commonAPIs'
 
+let cachedBuildId = "20260310.4-d51173fab603623c68e557a054992d8939a1a9e7";
+let lastBuildIdFetch = 0;
+
+async function getColesBuildId() {
+    const now = Date.now();
+    if (now - lastBuildIdFetch < 3600000) return cachedBuildId; // Cache for 1 hour
+
+    try {
+        const res = await axios.get('https://www.coles.com.au/', {
+            headers: {
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+            },
+            timeout: 5000
+        });
+        const match = res.data.match(/"buildId":"([^"]+)"/);
+        if (match) {
+            cachedBuildId = match[1];
+            lastBuildIdFetch = now;
+            console.log("Updated Coles Build ID:", cachedBuildId);
+        }
+    } catch (err) {
+        console.warn("Failed to update Coles Build ID, using fallback:", cachedBuildId);
+    }
+    return cachedBuildId;
+}
+
 export default async function handler(req, res) {
     let search_term = req.query.name
 
@@ -37,11 +63,12 @@ export default async function handler(req, res) {
                     }
                 }
 
+                const buildId = await getColesBuildId();
                 let response;
                 try {
                     response = await axios({
                         method: 'get',
-                        url: `https://www.coles.com.au/_next/data/20260310.4-d51173fab603623c68e557a054992d8939a1a9e7/en/search/products.json?q=${search_term}`,
+                        url: `https://www.coles.com.au/_next/data/${buildId}/en/search/products.json?q=${search_term}`,
                         headers: {
                             'accept': '*/*',
                             'accept-language': 'en-GB,en;q=0.6',
@@ -54,10 +81,12 @@ export default async function handler(req, res) {
                             'sec-fetch-site': 'same-origin',
                             'user-agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36',
                             'x-nextjs-data': '1'
-                        }
+                        },
+                        timeout: 10000
                     })
                 } catch (searchError) {
-                    throw searchError;
+                    console.error("Coles Search Fetch Error:", searchError.message);
+                    return res.status(200).json({ res: [], success: true, message: "Coles API currently unavailable" });
                 }
 
                 let filteredDataArray = []

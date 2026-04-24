@@ -7,26 +7,35 @@ function SearchableDropdown({ options, placeholder, onChange, name, value, onCom
   const [selectedOption, setSelectedOption] = useState(null);
   const optionSelectedRef = useRef(false);
   const dropdownRef = useRef(null);
+  const inputRef = useRef(null);
 
   const filterOptions = () => {
-    return options.filter((option) => {
-      console.log(inputValue)
-      if (inputValue.name=== undefined){
-        return option.toLowerCase().includes(inputValue.toLowerCase())
-      }
+    if (!isOpen) return []; // Don't compute if closed
+    if (!inputValue || typeof inputValue !== 'string' || inputValue.trim() === '') {
+      return options;
     }
-      
-    );
+    
+    const search = inputValue.toLowerCase();
+    return options.filter((option) => {
+      const label = (typeof option === 'string' ? option : (option.label || '')).toLowerCase();
+      return label.includes(search);
+    });
   };
 
   const toggleDropdown = () => {
     setIsOpen(true);
+    setInputValue(''); // Show everything on click
   };
 
   const handleInputChange = (e) => {
-    setInputValue(e.target.value);
+    const val = e.target.value;
+    setInputValue(val);
     setIsOpen(true);
-    onChange(e);
+    // Only trigger onChange if it's a string-only dropdown, 
+    // otherwise wait for selection for object-based ones
+    if (typeof options[0] === 'string') {
+        onChange(e);
+    }
   };
 
   const handleInputBlur = () => {
@@ -41,29 +50,30 @@ function SearchableDropdown({ options, placeholder, onChange, name, value, onCom
 
   const selectOption = (option) => {
     setSelectedOption(option);
-    setInputValue(option);
+    const displayValue = typeof option === 'string' ? option : option.label;
+    setInputValue(displayValue);
     setIsOpen(false);
-    let e = { target: { name: name, value: option } };
+    
+    const finalValue = typeof option === 'string' ? option : option.value;
+    let e = { target: { name: name, value: finalValue } };
     onChange(e);
   
-    // Triggering blur when an option is selected
-    const inputElement = document.querySelector(`input[name=${name}]`);
-    if (inputElement) {
-      inputElement.blur();
+    // Triggering blur if name is provided
+    if (name) {
+      const inputElement = document.querySelector(`input[name=${name}]`);
+      if (inputElement) {
+        inputElement.blur();
+      }
     }
   };
 
   const filteredOptions = filterOptions();
 
   const closeDropdown = (e) => {
-    if (dropdownRef.current === null) {
-      setIsOpen(false);
+    if (inputRef.current?.contains(e.target) || dropdownRef.current?.contains(e.target)) {
       return;
     }
-
-    if (!dropdownRef.current.contains(e.target) && e.target !== document.querySelector(`input[name=${name}]`)) {
-      setIsOpen(false);
-    }
+    setIsOpen(false);
   };
 
   useEffect(() => {
@@ -77,6 +87,7 @@ function SearchableDropdown({ options, placeholder, onChange, name, value, onCom
   return (
     <div className={styles['searchable-dropdown']}>
       <input
+        ref={inputRef}
         type="text"
         value={inputValue}
         onChange={handleInputChange}
@@ -95,7 +106,7 @@ function SearchableDropdown({ options, placeholder, onChange, name, value, onCom
               onMouseDown={() => selectOption(option)}
               className={option === selectedOption ? styles.selected : ''}
             >
-              {option}
+              {typeof option === 'string' ? option : option.label}
             </li>
           ))}
         </ul>

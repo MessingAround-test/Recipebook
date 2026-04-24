@@ -71,7 +71,7 @@ const GROUP_COLOURS: Record<NutrientGroup, string> = {
 export default function IngredientNutrientGraph({ ingredients, onLogServe = null, logLabel = 'Log Serve' }: { ingredients: any[], onLogServe?: (() => Promise<void>) | null, logLabel?: string }) {
     const [activeGroup, setActiveGroup] = useState<NutrientGroup>('macro');
     const [selectedIngredient, setSelectedIngredient] = useState('');
-    const [ingredientData, setIngredientData] = useState<Record<string, any>>({});   // name → { nutrition_info, vitamins_per_100g, minerals_per_100g }
+    const [definitions, setDefinitions] = useState<Record<string, any>>({}); // name -> RAW conversion data
     const [isLogging, setIsLogging] = useState(false);
     const [targets, setTargets] = useState<DailyIntakeTargets>(DEFAULT_TARGETS);
     const [totals, setTotals] = useState<Record<string, number>>(blankTotals());
@@ -88,99 +88,74 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
             .catch(() => { /* use defaults */ });
     }, []);
 
-    // ── Fetch nutrition + vitamins/minerals for one ingredient ─────────────────
-    const fetchIngredient = useCallback(async (name: string, amount: string | number, qType: string) => {
-        if (!name) return;
+    // ── Fetch raw conversion definition for one ingredient ─────────────────
+    const fetchDefinition = useCallback(async (name: string) => {
+        if (!name || definitions[name]) return;
         const token = localStorage.getItem('Token');
         if (!token) return;
 
-        // Fetch all nutrition data (macros + micros) from the unified Nutrition API
-        const res = await fetch(`/api/Nutrition?search_term=${encodeURIComponent(name)}&quantity=${amount}&qType=${qType}`, {
+        // Fetch RAW definition (no quantity scaling yet, or we'll scale it manually later)
+        // Actually, our API /api/Nutrition?quantity=100&qType=gram returns 100g data
+        const res = await fetch(`/api/Nutrition?search_term=${encodeURIComponent(name)}&quantity=100&qType=gram`, {
             headers: { edgetoken: token },
         }).catch(() => null);
 
         const json = res ? await res.json().catch(() => null) : null;
         const data = json?.data?.[0] ?? {};
-        
-        // The API now returns the full IngredientConversion record as well
-        const vitamins: Record<string, number> = {};
-        VITAMIN_KEYS.forEach(k => { vitamins[k] = Number(data[k]) || 0; });
-        const minerals: Record<string, number> = {};
-        MINERAL_KEYS.forEach(k => { minerals[k] = Number(data[k]) || 0; });
-        const macros: Record<string, number> = {};
-        MACRO_KEYS.forEach(k => { macros[k] = Number(data[k]) || 0; });
-        macros.energy_kcal = Number(data.energy_kcal) || 0;
-
-        setIngredientData(prev => ({
-            ...prev,
-            [name]: {
-                nutrition_info: data.nutrition_info || {}, 
-                vitamins,
-                minerals,
-                macros,
-            },
-        }));
-    }, []);
+        if (data.name) {
+            setDefinitions(prev => ({ ...prev, [name]: data }));
+        }
+    }, [definitions]);
 
     // ── Re-fetch whenever the ingredient list changes ─────────────────────────
     useEffect(() => {
         ingredients.forEach(ing => {
             const name = ing.Name || ing.name;
-            const qty  = ing.Amount || ing.quantity;
-            const type = ing.AmountType || ing.quantity_type;
-            fetchIngredient(name, qty, type);
+            fetchDefinition(name);
         });
-    }, [ingredients, fetchIngredient]);
+    }, [ingredients, fetchDefinition]);
 
-    // ── Recompute totals whenever ingredientData or selectedIngredient changes ─
+    // ── Recompute totals whenever definitions or ingredients change ─
     useEffect(() => {
         const acc = blankTotals();
-        const source = selectedIngredient
-            ? { [selectedIngredient]: ingredientData[selectedIngredient] }
-            : ingredientData;
+        
+        // Filter by selected ingredient if needed
+        const filteredIngredients = selectedIngredient 
+            ? ingredients.filter(ing => (ing.Name || ing.name) === selectedIngredient)
+            : ingredients;
 
-        Object.values(source).forEach((d: any) => {
-            if (!d) return;
-            const ni = d.nutrition_info || {};
-            const ma = d.macros || {};
+        filteredIngredients.forEach(ing => {
+            const name = ing.Name || ing.name;
+            const def = definitions[name];
+            if (!def) return;
 
-            // Macros - prefer explicit columns (ma) if they have values, otherwise fallback to ni
-            const getMacro = (key: string, niKey: string) => {
-                return (ma[key] || parseFloat(ni[niKey]) || 0);
-            };
+            const qty = ing.Amount || ing.quantity;
+            const type = ing.AmountType || ing.quantity_unit || ing.quantity_type;
+            
+            // Calculate scale ratio based on quantity and grams_per_each
+            const { normalizeToGrams } = require('../lib/conversion');
+            const { value: grams } = normalizeToGrams(type, Number(qty), def.grams_per_each);
+            const ratio = (grams ?? Number(qty)) / 100;
 
-            acc.protein_g        += getMacro('protein_g', 'protein');
-            acc.fat_g            += getMacro('fat_g', 'fat');
-            acc.carbohydrates_g  += getMacro('carbohydrates_g', 'carbohydrates');
-            acc.fiber_g          += getMacro('fiber_g', 'fiber');
-
-            // Energy: use explicit energy_kcal if > 0, otherwise calculate from macros
-            if (ma.energy_kcal > 0) {
-                acc.energy_kcal += ma.energy_kcal;
-            } else if (ni.energy_kcal) {
-                acc.energy_kcal += parseFloat(ni.energy_kcal);
-            } else {
-                acc.energy_kcal += (getMacro('protein_g', 'protein') * 4) +
-                                   (getMacro('fat_g', 'fat') * 9) +
-                                   (getMacro('carbohydrates_g', 'carbohydrates') * 4);
-            }
+            // Macros
+            acc.protein_g += (def.protein_g || 0) * ratio;
+            acc.fat_g += (def.fat_g || 0) * ratio;
+            acc.carbohydrates_g += (def.carbohydrates_g || 0) * ratio;
+            acc.fiber_g += (def.fiber_g || 0) * ratio;
+            acc.energy_kcal += (def.energy_kcal || 0) * ratio;
 
             // Vitamins
             VITAMIN_KEYS.forEach(k => {
-                acc[k] = (acc[k] || 0) + (d.vitamins?.[k] || 0);
+                acc[k] = (acc[k] || 0) + (def[k] || 0) * ratio;
             });
             // Minerals
             MINERAL_KEYS.forEach(k => {
-                acc[k] = (acc[k] || 0) + (d.minerals?.[k] || 0);
+                acc[k] = (acc[k] || 0) + (def[k] || 0) * ratio;
             });
-            // Iron fallback
-            if (!d.minerals?.iron_mg && ni.iron) {
-                acc.iron_mg += parseFloat(ni.iron) || 0;
-            }
         });
 
         setTotals(acc);
-    }, [ingredientData, selectedIngredient]);
+    }, [definitions, ingredients, selectedIngredient]);
 
     // ── Chart data ────────────────────────────────────────────────────────────
     const activeKeys = GROUP_KEYS[activeGroup];
@@ -200,7 +175,7 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
         ],
     };
 
-    const hasVitaminData = Object.values(ingredientData).some(d => d && Object.keys(d.vitamins ?? {}).length > 0);
+    const hasVitaminData = Object.values(definitions).some(d => d && (d.vitamin_a_ug > 0 || d.vitamin_c_mg > 0));
 
     return (
         <div className="w-full">
@@ -213,7 +188,7 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
                     className="flex h-10 w-full md:w-1/2 items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 shadow-sm"
                 >
                     <option value="">All ingredients combined</option>
-                    {Object.keys(ingredientData).map((name, i) => (
+                    {Object.keys(definitions).map((name, i) => (
                         <option key={i} value={name}>{name}</option>
                     ))}
                 </select>

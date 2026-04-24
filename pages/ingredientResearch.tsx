@@ -30,7 +30,7 @@ export default function Home() {
                         Check out how much stuff costs at "Woolworths", "Aldi", "Panetta" or "IGA".
                     </p>
                     <div className="mt-4">
-                        <IngredientResearchComponent />
+                        <IngredientResearchComponent isAdmin={userData.role === 'admin'} />
                     </div>
                 </div>
             </div>
