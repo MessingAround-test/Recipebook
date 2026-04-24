@@ -28,19 +28,19 @@ export function Toolbar() {
                     <li className={styles.nav_item}>
                         <Link href="/shoppingList" className={styles.nav_link}>
                             <MdShoppingCart size={24} />
-                            <span className={styles.nav_label}>Shopping</span>
+                            <span className={styles.nav_label}>List</span>
                         </Link>
                     </li>
                     <li className={styles.nav_item}>
                         <Link href="/dailyTracker" className={styles.nav_link}>
                             <MdTimeline size={24} />
-                            <span className={styles.nav_label}>Intake</span>
+                            <span className={styles.nav_label}>Health</span>
                         </Link>
                     </li>
                     <li className={styles.nav_item}>
                         <Link href="/ingredientResearch" className={styles.nav_link}>
                             <MdSearch size={24} />
-                            <span className={styles.nav_label}>Research</span>
+                            <span className={styles.nav_label}>Ingredients</span>
                         </Link>
                     </li>
                     <li className={styles.nav_item}>
