@@ -312,8 +312,17 @@ export default function CreateRecipe() {
             })
 
             setExtractionStatus("Extracting recipe details...")
-            const result = await res.json()
-            console.log(`[AI-Extract-Client] Response received. Success: ${result.success}, Status: ${res.status}`);
+            const responseText = await res.text();
+            console.log(`[AI-Extract-Client] Response received. Length: ${responseText.length}, Status: ${res.status}`);
+            
+            let result;
+            try {
+                result = JSON.parse(responseText);
+            } catch (e) {
+                console.error("[AI-Extract-Client] Failed to parse JSON. Response start:", responseText.substring(0, 200));
+                alert(`Server Error: Received HTML instead of JSON. Status: ${res.status}. Check console for details.`);
+                return;
+            }
 
             if (result.success && result.data) {
                 setExtractionStatus("Finalizing recipe structure...")
@@ -413,7 +422,7 @@ export default function CreateRecipe() {
         if (id) fetchRecipeForEdit()
     }, [id])
 
-    const compressImage = async (base64String: string, maxMB: number = 2): Promise<string> => {
+    const compressImage = async (base64String: string, maxMB: number = 0.7): Promise<string> => {
         return new Promise((resolve) => {
             const img = new Image();
             img.src = base64String;
@@ -456,9 +465,9 @@ export default function CreateRecipe() {
         reader.readAsDataURL(file);
         reader.onload = async function () {
             let base64 = reader.result as string;
-            if (file.size > 2 * 1024 * 1024) {
+            if (file.size > 1 * 1024 * 1024) {
                 setExtractionStatus("Compressing image...");
-                base64 = await compressImage(base64);
+                base64 = await compressImage(base64, 0.7);
                 setExtractionStatus("");
             }
             cb(base64)
