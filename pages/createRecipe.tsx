@@ -333,11 +333,13 @@ export default function CreateRecipe() {
                 setFormPhase('builder')
                 alert("Recipe extracted successfully!")
             } else {
-                alert(result.message || "Failed to extract recipe.")
+                console.error("[AI-Extract-Client] Extraction failed:", result.message);
+                alert(result.message || "Failed to extract recipe.");
             }
-        } catch (error) {
-            console.error("Extraction error:", error)
-            alert("An error occurred during extraction.")
+        } catch (error: any) {
+            console.error("[AI-Extract-Client] Fetch/Process Error:", error);
+            const errorMsg = error.message || String(error);
+            alert(`Extraction Error: ${errorMsg}`);
         }
         setIsExtracting(false)
         setExtractionStatus("")
