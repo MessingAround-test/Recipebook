@@ -32,20 +32,26 @@ interface AddShoppingItemProps {
     handleSubmit: (e: any) => void
     hideCategories?: boolean
     onCancel?: () => void
+    initialData?: {
+        name: string;
+        quantity: number | string;
+        quantity_type: string;
+        note?: string;
+    }
 }
 
-export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false, onCancel }: AddShoppingItemProps) {
+export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false, onCancel, initialData }: AddShoppingItemProps) {
     const [formData, setFormData] = useState({
-        name: "",
-        quantity: 1 as number | string,
-        quantity_type: "each",
-        note: "",
+        name: initialData?.name || "",
+        quantity: initialData?.quantity || 1 as number | string,
+        quantity_type: initialData?.quantity_type || "each",
+        note: initialData?.note || "",
         shoppingListId: shoppingListId,
         category: ""
     });
 
     const [isAiLoading, setIsAiLoading] = useState(false);
-    const [fieldsRevealed, setFieldsRevealed] = useState(false);
+    const [fieldsRevealed, setFieldsRevealed] = useState(!!initialData);
 
     const resetForm = () => {
         setFormData({

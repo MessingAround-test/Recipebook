@@ -19,6 +19,7 @@ interface IngredientResearchComponentProps {
     showCharts?: boolean;
     showTable?: boolean;
     isAdmin?: boolean;
+    initialViewMode?: 'price' | 'nutrition';
 }
 
 export default function IngredientResearchComponent({
@@ -30,7 +31,8 @@ export default function IngredientResearchComponent({
     showForm = true,
     showCharts = true,
     showTable = true,
-    isAdmin = false
+    isAdmin = false,
+    initialViewMode = 'price'
 }: IngredientResearchComponentProps) {
     const getCanonicalUnit = (unit: string) => {
         if (!unit || unit === 'any') return 'each';
@@ -67,7 +69,7 @@ export default function IngredientResearchComponent({
     const [comparisonView, setComparisonView] = useState<'table' | 'cards'>('cards');
     const [showSettings, setShowSettings] = useState<boolean>(false);
     const [showMoreNutrients, setShowMoreNutrients] = useState(false);
-    const [viewMode, setViewMode] = useState<'price' | 'nutrition'>('price');
+    const [viewMode, setViewMode] = useState<'price' | 'nutrition'>(initialViewMode);
     const [nutritionData, setNutritionData] = useState<any[]>([]);
     const [editingNutrition, setEditingNutrition] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<any>({});
