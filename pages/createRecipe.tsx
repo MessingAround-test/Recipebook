@@ -300,6 +300,8 @@ export default function CreateRecipe() {
             // Artificial delay for first step to show status
             setTimeout(() => setExtractionStatus("Uploading to Gemini Vision..."), 800);
 
+            console.log(`[AI-Extract-Client] Starting fetch. Payload size: ${(extractImage.length / 1024 / 1024).toFixed(2)} MB`);
+            
             const res = await fetch('/api/ai/extract_from_image', {
                 method: 'POST',
                 headers: {
@@ -311,6 +313,7 @@ export default function CreateRecipe() {
 
             setExtractionStatus("Extracting recipe details...")
             const result = await res.json()
+            console.log(`[AI-Extract-Client] Response received. Success: ${result.success}, Status: ${res.status}`);
 
             if (result.success && result.data) {
                 setExtractionStatus("Finalizing recipe structure...")

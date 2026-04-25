@@ -34,8 +34,11 @@ export default async function handler(req, res) {
         const { image, notes } = req.body;
 
         if (!image) {
+            console.error("[AI-Extract] Request received but missing image data");
             return res.status(400).json({ success: false, message: "Missing image" });
         }
+
+        console.log(`[AI-Extract] Processing image upload. Payload size: ${(image.length / 1024 / 1024).toFixed(2)} MB`);
 
         // Validate and clean base64 data
         let base64Image = image;
@@ -45,6 +48,7 @@ export default async function handler(req, res) {
             if (matches && matches.length === 3) {
                 mimeType = `image/${matches[1]}`;
                 base64Image = matches[2]; // get the raw base64 data
+                console.log(`[AI-Extract] Detected MIME type: ${mimeType}`);
             }
         }
 
@@ -76,7 +80,9 @@ STRICT RULES:
 - 'Amount' must be clean. If you see "320g", 'Amount' is "320" and 'AmountType' is "gram".
 - Output MUST be a single valid JSON object. No markdown.`;
 
+        console.log("[AI-Extract] Calling Gemini Vision API...");
         const responseText = await callGeminiVision(promptText, base64Image, mimeType, true);
+        console.log("[AI-Extract] Gemini response received. Length:", responseText?.length || 0);
         let data;
         try {
             data = JSON.parse(responseText);
