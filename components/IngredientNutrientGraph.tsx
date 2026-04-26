@@ -68,6 +68,10 @@ const GROUP_COLOURS: Record<NutrientGroup, string> = {
     vitamin: 'rgba(16, 185, 129, 0.7)',
 };
 
+// Global cache to prevent redundant API calls across instances
+const globalDefinitionCache: Record<string, any> = {};
+let globalTargetsCache: DailyIntakeTargets | null = null;
+
 export default function IngredientNutrientGraph({ ingredients, onLogServe = null, logLabel = 'Log Serve' }: { ingredients: any[], onLogServe?: (() => Promise<void>) | null, logLabel?: string }) {
     const [activeGroup, setActiveGroup] = useState<NutrientGroup>('macro');
     const [selectedIngredient, setSelectedIngredient] = useState('');
@@ -78,12 +82,19 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
 
     // ── Fetch personalized targets once ───────────────────────────────────────
     useEffect(() => {
+        if (globalTargetsCache) {
+            setTargets(globalTargetsCache);
+            return;
+        }
         const token = typeof window !== 'undefined' ? localStorage.getItem('Token') : null;
         if (!token) return;
         fetch('/api/dailyIntake', { headers: { edgetoken: token } })
             .then(r => r.json())
             .then(data => {
-                if (data.success && data.targets) setTargets(data.targets);
+                if (data.success && data.targets) {
+                    globalTargetsCache = data.targets;
+                    setTargets(data.targets);
+                }
             })
             .catch(() => { /* use defaults */ });
     }, []);
@@ -91,11 +102,16 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
     // ── Fetch raw conversion definition for one ingredient ─────────────────
     const fetchDefinition = useCallback(async (name: string) => {
         if (!name || definitions[name]) return;
+        
+        if (globalDefinitionCache[name]) {
+            setDefinitions(prev => ({ ...prev, [name]: globalDefinitionCache[name] }));
+            return;
+        }
+
         const token = localStorage.getItem('Token');
         if (!token) return;
 
-        // Fetch RAW definition (no quantity scaling yet, or we'll scale it manually later)
-        // Actually, our API /api/Nutrition?quantity=100&qType=gram returns 100g data
+        // Fetch RAW definition
         const res = await fetch(`/api/Nutrition?search_term=${encodeURIComponent(name)}&quantity=100&qType=gram`, {
             headers: { edgetoken: token },
         }).catch(() => null);
@@ -103,6 +119,7 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
         const json = res ? await res.json().catch(() => null) : null;
         const data = json?.data?.[0] ?? {};
         if (data.name) {
+            globalDefinitionCache[name] = data;
             setDefinitions(prev => ({ ...prev, [name]: data }));
         }
     }, [definitions]);

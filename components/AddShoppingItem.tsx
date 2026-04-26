@@ -38,9 +38,11 @@ interface AddShoppingItemProps {
         quantity_type: string;
         note?: string;
     }
+    hideHeader?: boolean;
+    hideNote?: boolean;
 }
 
-export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false, onCancel, initialData }: AddShoppingItemProps) {
+export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false, onCancel, initialData, hideHeader = false, hideNote = false }: AddShoppingItemProps) {
     const [formData, setFormData] = useState({
         name: initialData?.name || "",
         quantity: initialData?.quantity || 1 as number | string,
@@ -171,13 +173,15 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
             )}
 
             <form onSubmit={handleSubmitLocal} className="flex flex-col gap-6 relative z-10">
-                <div className="flex flex-col gap-1.5 mb-2">
-                    <div className="text-[10px] font-black uppercase tracking-[0.3em] text-accent flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                        Quick Add Ingredient
+                {!hideHeader && (
+                    <div className="flex flex-col gap-1.5 mb-2">
+                        <div className="text-[10px] font-black uppercase tracking-[0.3em] text-accent flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                            Quick Add Ingredient
+                        </div>
+                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider ml-4">Enter name to search details</p>
                     </div>
-                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider ml-4">Enter name to search details</p>
-                </div>
+                )}
 
                 <input name="name" id="ingredName" type="text" placeholder={shoppingListId} disabled hidden />
 
@@ -195,18 +199,20 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Note (optional)</label>
-                    <input
-                        name="note"
-                        id="ingredNote"
-                        type="text"
-                        placeholder="e.g. Extra fresh, organic..."
-                        onChange={handleChange}
-                        value={formData.note}
-                        className="input-modern bg-background/40 border-white/5 focus:bg-background/60 transition-all"
-                    />
-                </div>
+                {!hideNote && (
+                    <div className="flex flex-col gap-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Note (optional)</label>
+                        <input
+                            name="note"
+                            id="ingredNote"
+                            type="text"
+                            placeholder="e.g. Extra fresh, organic..."
+                            onChange={handleChange}
+                            value={formData.note}
+                            className="input-modern bg-background/40 border-white/5 focus:bg-background/60 transition-all"
+                        />
+                    </div>
+                )}
 
                 {isAiLoading && (
                     <div className="flex justify-center items-center gap-3 py-4 bg-accent/5 rounded-2xl border border-accent/10 animate-pulse">

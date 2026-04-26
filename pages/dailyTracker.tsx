@@ -1,11 +1,11 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { Button } from '../components/ui/button';
 import { calculateDailyIntake, DailyIntakeTargets, NUTRIENT_LABELS } from '../lib/dailyIntake';
 import 'chart.js/auto';
 import { Bar } from 'react-chartjs-2';
-import { FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiSearch, FiZap, FiX, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiSearch, FiZap, FiX, FiChevronDown, FiChevronUp, FiPieChart } from 'react-icons/fi';
 import AddShoppingItem from '../components/AddShoppingItem';
 import { Toolbar } from '../components/Toolbar';
 import IngredientNutrientGraph from '../components/IngredientNutrientGraph';
@@ -399,11 +399,10 @@ export default function DailyTracker() {
                 </div>
             </div>
             {logMode === 'ingredient' ? (
-                <AddShoppingItem key={prefillData ? `prefill-${prefillData.name}` : 'standard'} handleSubmit={handleLogItem} hideCategories={true} initialData={prefillData} />
+                <AddShoppingItem key={prefillData ? `prefill-${prefillData.name}` : 'standard'} handleSubmit={handleLogItem} hideCategories={true} initialData={prefillData} hideHeader={true} hideNote={true} />
             ) : (
                 <div className="bg-muted/20 rounded-xl md:rounded-[2rem] border border-white/5 p-4 md:p-8 shadow-2xl shadow-black/20">
                     <div className="space-y-4 md:space-y-6">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-2"><FiSearch size={12} /> Search Recipes</div>
                         <SearchableDropdown name="recipe-search" value={selectedRecipe?.name || ""} onComplete={() => { }} options={recipes.map(r => ({ value: r._id, label: r.name }))} onChange={(e: any) => { const val = e.target.value; const r = recipes.find((rec: any) => rec._id === val); if (r) { setSelectedRecipe(r); setServingsToLog(r.servings || 1); calculateWeight(r); } }} placeholder="Select a recipe..." />
                         {selectedRecipe && (
                             <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4 pt-4 border-t border-white/5">
@@ -508,38 +507,45 @@ export default function DailyTracker() {
                                 {renderConsumedItems()}
                             </div>
 
-                            {/* Insights ” collapsible accordion */}
-                            {recommendations?.deficientNutrient && (
-                                <div className="glass-card !p-0 !rounded-2xl border-amber-500/30 bg-amber-500/5 overflow-hidden">
-                                    <button onClick={() => setInsightsExpanded(!insightsExpanded)} className="w-full flex items-center justify-between p-3 active:bg-white/5 transition-colors">
-                                        <h3 className="text-xs font-black uppercase tracking-widest text-amber-400 flex items-center gap-2"><FiZap size={14} /> Daily Insight</h3>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[9px] font-black uppercase text-amber-400/60">{insightsExpanded ? '' : 'Tap to view'}</span>
-                                            {insightsExpanded ? <FiChevronUp size={16} /> : <FiChevronDown size={16} />}
-                                        </div>
+                            {/* Quick Action Buttons */}
+                            <div className="grid grid-cols-2 gap-3">
+                                {recommendations?.deficientNutrient && (
+                                    <button onClick={() => setInsightsExpanded(true)} className="glass-card !p-3 !rounded-2xl relative flex flex-col items-center justify-center gap-2 active:bg-white/5 transition-colors border-amber-500/30 bg-amber-500/5">
+                                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-amber-500 text-black text-[11px] font-black rounded-full flex items-center justify-center shadow-lg ring-2 ring-background animate-bounce">1</div>
+                                        <FiZap size={24} className="text-amber-400" />
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-amber-400">Insights</div>
                                     </button>
-                                    {insightsExpanded && (
-                                        <div className="px-3 pb-3 animate-in slide-in-from-top-2 duration-200">{renderInsightsContent()}</div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Nutritional Breakdown ” collapsible */}
-                            <div className="glass-card !p-0 !rounded-2xl overflow-hidden">
-                                <button onClick={() => setBreakdownExpanded(!breakdownExpanded)} className="w-full flex items-center justify-between p-3 active:bg-white/5 transition-colors">
-                                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-emerald-500">Nutritional Breakdown</h3>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[9px] font-black uppercase text-muted-foreground">{breakdownExpanded ? '' : 'Tap to view'}</span>
-                                        {breakdownExpanded ? <FiChevronUp size={16} /> : <FiChevronDown size={16} />}
-                                    </div>
-                                </button>
-                                {breakdownExpanded && (
-                                    <div className="px-3 pb-3 animate-in slide-in-from-top-2 duration-200">
-                                        <IngredientNutrientGraph ingredients={(log?.items || []).map((item: any) => ({ name: item.name, quantity: item.quantity, quantity_type: item.quantity_unit }))} />
-                                    </div>
                                 )}
+                                <button onClick={() => setBreakdownExpanded(true)} className="glass-card !p-3 !rounded-2xl flex flex-col items-center justify-center gap-2 active:bg-white/5 transition-colors">
+                                    <FiPieChart size={24} className="text-emerald-500" />
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Breakdown</div>
+                                </button>
                             </div>
                         </div>
+
+                        {/* ═══ MOBILE: Insights Overlay ═══ */}
+                        {insightsExpanded && (
+                            <div className="md:hidden fixed inset-0 z-[90] bg-background overflow-y-auto animate-in slide-in-from-bottom duration-300">
+                                <div className="sticky top-0 z-10 flex items-center justify-between p-3 bg-background/95 backdrop-blur-md border-b border-white/5">
+                                    <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-amber-400"><FiZap /> Daily Insight</h2>
+                                    <button onClick={() => setInsightsExpanded(false)} className="p-2.5 hover:bg-white/10 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
+                                </div>
+                                <div className="p-4 pb-8">{renderInsightsContent()}</div>
+                            </div>
+                        )}
+
+                        {/* ═══ MOBILE: Breakdown Overlay ═══ */}
+                        {breakdownExpanded && (
+                            <div className="md:hidden fixed inset-0 z-[90] bg-background overflow-y-auto animate-in slide-in-from-bottom duration-300">
+                                <div className="sticky top-0 z-10 flex items-center justify-between p-3 bg-background/95 backdrop-blur-md border-b border-white/5">
+                                    <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-emerald-500"><FiPieChart /> Breakdown</h2>
+                                    <button onClick={() => setBreakdownExpanded(false)} className="p-2.5 hover:bg-white/10 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
+                                </div>
+                                <div className="p-4 pb-8">
+                                    <IngredientNutrientGraph ingredients={(log?.items || []).map((item: any) => ({ name: item.name, quantity: item.quantity, quantity_type: item.quantity_unit }))} />
+                                </div>
+                            </div>
+                        )}
 
                         {/* ═══ MOBILE: Logging Overlay ═══ */}
                         {isLoggingOpen && (
