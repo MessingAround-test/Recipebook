@@ -155,7 +155,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
     }, []);
 
     return (
-        <div className="bg-secondary/40 backdrop-blur-md rounded-[2rem] border border-white/10 w-full max-w-[550px] mx-auto mb-6 p-8 relative overflow-hidden group/add-item animate-in fade-in zoom-in-95 duration-500 shadow-2xl shadow-black/20">
+        <div className="bg-secondary/40 backdrop-blur-md rounded-2xl md:rounded-[2rem] border border-white/10 w-full max-w-none md:max-w-[550px] mx-auto mb-4 md:mb-6 p-4 md:p-8 relative overflow-hidden group/add-item animate-in fade-in zoom-in-95 duration-500 shadow-2xl shadow-black/20">
             {/* Improved visibility highlight */}
             <div className="absolute inset-0 bg-gradient-to-br from-accent/15 via-transparent to-accent/5 opacity-40 pointer-events-none" />
             <div className="absolute inset-0 bg-white/[0.02] pointer-events-none" />
