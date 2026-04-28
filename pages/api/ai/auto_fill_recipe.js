@@ -10,6 +10,7 @@ const VALID_GENRES = [
 
 const VALID_TIMES = ['short', 'medium', 'long'];
 const VALID_MEALS = ['Breakfast', 'Lunch', 'Main', 'Entree', 'Dessert', 'Snack'];
+const VALID_CARB_TYPES = ['Rice', 'Bread/Wraps', 'Pasta/Noodles', 'Potato', 'Quinoa', 'None/Other'];
 
 export default async function handler(req, res) {
     logAPI(req)
@@ -33,8 +34,9 @@ export default async function handler(req, res) {
 2. 'genre': The cuisine genre. Use exactly one of: ${VALID_GENRES.join(', ')}.
 3. 'mealType': The course or meal category. Use exactly one of: ${VALID_MEALS.join(', ')}.
 4. 'servings': How many people this recipe typically feeds (as a number).
+5. 'carbType': The primary carbohydrate source. Use exactly one of: ${VALID_CARB_TYPES.join(', ')}.
 
-Output MUST be a single JSON object with keys "time", "genre", "mealType", and "servings". Nothing else.`
+Output MUST be a single JSON object with keys "time", "genre", "mealType", "servings", and "carbType". Nothing else.`
             },
             {
                 role: "user",
@@ -58,6 +60,9 @@ Output MUST be a single JSON object with keys "time", "genre", "mealType", and "
         }
         if (data.servings && !isNaN(Number(data.servings))) {
             result.servings = Number(data.servings);
+        }
+        if (data.carbType && VALID_CARB_TYPES.includes(data.carbType)) {
+            result.carbType = data.carbType;
         }
 
         return res.status(200).json({ success: true, data: result });

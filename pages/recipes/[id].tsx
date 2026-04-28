@@ -50,6 +50,7 @@ export default function RecipeDetail() {
     const [recipeTime, setRecipeTime] = useState<string>('')
     const [recipeGenre, setRecipeGenre] = useState<string>('')
     const [recipeMealTypes, setRecipeMealTypes] = useState<string[]>([])
+    const [recipeCarbType, setRecipeCarbType] = useState<string>('')
     const [recipePriceCategory, setRecipePriceCategory] = useState<string>('')
     const [approxCost, setApproxCost] = useState<number | null>(null)
     const [aiFilledFields, setAiFilledFields] = useState<string[]>([])
@@ -158,6 +159,7 @@ export default function RecipeDetail() {
         setRecipeTime(data.res.time || '')
         setRecipeGenre(data.res.genre || '')
         setRecipeMealTypes(data.res.mealTypes || [])
+        setRecipeCarbType(data.res.carbType || '')
         setRecipePriceCategory(data.res.priceCategory || '')
         setTimesCooked(data.res.timesCooked || 0)
         setFeedback(data.res.feedback || "")
@@ -216,7 +218,8 @@ export default function RecipeDetail() {
         const missingGenre = !recipeGenre
         const missingMealTypes = !recipeMealTypes || recipeMealTypes.length === 0
         const missingServings = !recipeServings || recipeServings === 0
-        if (!missingTime && !missingGenre && !missingMealTypes && !missingServings) return
+        const missingCarbType = !recipeCarbType
+        if (!missingTime && !missingGenre && !missingMealTypes && !missingServings && !missingCarbType) return
 
         try {
             const token = localStorage.getItem('Token') || ""
@@ -250,6 +253,11 @@ export default function RecipeDetail() {
                 setRecipeServings(data.data.servings)
                 updates.servings = data.data.servings
                 filled.push('servings')
+            }
+            if (missingCarbType && data.data.carbType) {
+                setRecipeCarbType(data.data.carbType)
+                updates.carbType = data.data.carbType
+                filled.push('carbType')
             }
 
             if (Object.keys(updates).length > 0) {
@@ -522,6 +530,11 @@ export default function RecipeDetail() {
                                             🍽️ {type}
                                         </span>
                                     ))}
+                                    {recipeCarbType && (
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-orange-500/20 text-orange-200 border-white/5`}>
+                                            🌾 {recipeCarbType}
+                                        </span>
+                                    )}
                                     {displayPriceCategory && priceLabelMap[displayPriceCategory] && (
                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg ${priceLabelMap[displayPriceCategory].color} border-white/5`}>
                                             💰 {priceLabelMap[displayPriceCategory].label}

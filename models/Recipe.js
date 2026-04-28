@@ -32,6 +32,7 @@ const RecipeSchema = new mongoose.Schema(
         time: { type: String, enum: ['short', 'medium', 'long'], required: false },
         genre: { type: String, required: false },
         mealTypes: { type: [String], required: false },
+        carbType: { type: String, enum: ['Rice', 'Bread/Wraps', 'Pasta/Noodles', 'Potato', 'Quinoa', 'None/Other'], required: false },
         priceCategory: { type: String, enum: ['cheap', 'medium', 'expensive'], required: false },
         timesCooked: { type: Number, default: 0 },
         feedback: { type: String, required: false },

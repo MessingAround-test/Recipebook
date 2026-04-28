@@ -17,6 +17,7 @@ export default function Home() {
 
     const [allPages] = useState<NavPage[]>([
         { name: "Health Tracker", _id: "/dailyTracker", image: "", adminOnly: false },
+        { name: "Weekly Planner", _id: "/weeklyPlanner", image: "", adminOnly: false },
         { name: "Recipes", _id: "/recipes", image: "/cookbook_oragami.png", adminOnly: false },
         { name: "Shopping List", _id: "/shoppingList", image: "/shop_list_oragami.png", adminOnly: false },
         { name: "Ingredients", _id: "/ingredientResearch", image: "", adminOnly: false },

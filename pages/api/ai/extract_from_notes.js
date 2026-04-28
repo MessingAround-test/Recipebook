@@ -12,6 +12,7 @@ const VALID_GENRES = [
 const VALID_TIMES = ['short', 'medium', 'long'];
 const VALID_MEALS = ['Breakfast', 'Lunch', 'Main', 'Entree', 'Dessert', 'Snack'];
 const VALID_UNITS = Object.keys(quantity_unit_conversions);
+const VALID_CARB_TYPES = ['Rice', 'Bread/Wraps', 'Pasta/Noodles', 'Potato', 'Quinoa', 'None/Other'];
 
 export default async function handler(req, res) {
     logAPI(req)
@@ -48,6 +49,7 @@ Extract the following information:
 5. 'genre': The cuisine type. Use one of: ${VALID_GENRES.join(', ')}.
 6. 'mealTypes': Array of strings. Use one or more of: ${VALID_MEALS.join(', ')}.
 7. 'servings': Number of servings.
+8. 'carbType': The primary carbohydrate source. Use exactly one of: ${VALID_CARB_TYPES.join(', ')}.
 
 STRICT RULES:
 - If a unit is not in the list, use 'each' and put the unit in 'Note' or 'Name'.

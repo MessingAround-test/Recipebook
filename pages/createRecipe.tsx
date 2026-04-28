@@ -45,6 +45,7 @@ export default function CreateRecipe() {
     const [recipeTime, setRecipeTime] = useState<string>("")
     const [recipeGenre, setRecipeGenre] = useState<string>("")
     const [recipeMealTypes, setRecipeMealTypes] = useState<string[]>([])
+    const [recipeCarbType, setRecipeCarbType] = useState<string>("")
     const [recipeServings, setRecipeServings] = useState<number | string>("")
     const [showAdvanced, setShowAdvanced] = useState(false)
     const [recipeNotes, setRecipeNotes] = useState("")
@@ -149,6 +150,7 @@ export default function CreateRecipe() {
                 "time": recipeTime || undefined,
                 "genre": recipeGenre || undefined,
                 "mealTypes": recipeMealTypes,
+                "carbType": recipeCarbType || undefined,
                 "servings": recipeServings !== "" ? Number(recipeServings) : undefined
             })
         })
@@ -261,7 +263,7 @@ export default function CreateRecipe() {
 
             const result = await res.json()
             if (result.success && result.data) {
-                const { name, ingredients, instructions, time, genre, mealTypes, servings } = result.data
+                const { name, ingredients, instructions, time, genre, mealTypes, servings, carbType } = result.data
 
                 if (name) setRecipeName(name)
                 if (ingredients) setIngreds(ingredients)
@@ -269,6 +271,7 @@ export default function CreateRecipe() {
                 if (time) setRecipeTime(time)
                 if (genre) setRecipeGenre(genre)
                 if (mealTypes) setRecipeMealTypes(mealTypes)
+                if (carbType) setRecipeCarbType(carbType)
                 if (servings) setRecipeServings(servings)
 
                 setRecipeNotes("") // Clear notes after successful extraction
@@ -326,7 +329,7 @@ export default function CreateRecipe() {
 
             if (result.success && result.data) {
                 setExtractionStatus("Finalizing recipe structure...")
-                const { name, ingredients, instructions, time, genre, mealTypes, servings } = result.data
+                const { name, ingredients, instructions, time, genre, mealTypes, servings, carbType } = result.data
 
                 if (name) setRecipeName(name)
                 if (ingredients) setIngreds(ingredients)
@@ -334,6 +337,7 @@ export default function CreateRecipe() {
                 if (time) setRecipeTime(time)
                 if (genre) setRecipeGenre(genre)
                 if (mealTypes) setRecipeMealTypes(mealTypes)
+                if (carbType) setRecipeCarbType(carbType)
                 if (servings) setRecipeServings(servings)
                 setImageData(extractImage)
 
@@ -404,6 +408,7 @@ export default function CreateRecipe() {
                         setRecipeTime(data.res.time || "")
                         setRecipeGenre(data.res.genre || "")
                         setRecipeMealTypes(data.res.mealTypes || [])
+                        setRecipeCarbType(data.res.carbType || "")
                         setRecipeServings(data.res.servings || "")
                         setInstructions(data.res.instructions.map((i: any) => ({ Text: i.Text, Note: i.note })))
                         setIngreds(data.res.ingredients.map((i: any) => ({
@@ -934,6 +939,15 @@ export default function CreateRecipe() {
                                                 </button>
                                             ))}
                                         </div>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground block ml-1 underline decoration-accent/20 underline-offset-4">Carb Type</label>
+                                        <select value={recipeCarbType} onChange={(e) => setRecipeCarbType(e.target.value)} className="input-modern bg-background/50 border-border/10 focus:ring-accent/20">
+                                            <option value="">Uncategorized</option>
+                                            {['Rice', 'Bread/Wraps', 'Pasta/Noodles', 'Potato', 'Quinoa', 'None/Other'].map(c => (
+                                                <option key={c} value={c}>{c}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
                             </div>

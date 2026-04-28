@@ -50,6 +50,8 @@ export default async function handler(req, res) {
                     gramsPerEach: conversionMap[nameKey] || 0,
                     category: item.category
                 };
+            } else if (!groups[nameKey].category && item.category) {
+                groups[nameKey].category = item.category;
             }
 
             const gramsPerEach = groups[nameKey].gramsPerEach;
