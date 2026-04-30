@@ -44,7 +44,7 @@ const MINERAL_KEYS: (keyof DailyIntakeTargets)[] = [
     'potassium_mg', 'sodium_mg', 'zinc_mg',
 ];
 const MACRO_KEYS: (keyof DailyIntakeTargets)[] = [
-    'protein_g', 'fat_g', 'carbohydrates_g', 'fiber_g',
+    'energy_kcal', 'protein_g', 'fat_g', 'carbohydrates_g', 'fiber_g',
 ];
 
 // Keys by group
