@@ -449,7 +449,7 @@ export default function DailyTracker() {
                     <div className="flex items-center gap-2 md:gap-4">
                         <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-white/5 shadow-inner">
                             <button onClick={() => setViewMode('daily')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] ${viewMode === 'daily' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>📅 Daily</button>
-                            <button onClick={() => setViewMode('weekly')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] ${viewMode === 'weekly' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>📊 Weekly</button>
+                            <button onClick={() => setViewMode('weekly')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] ${viewMode === 'weekly' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>📊 Trends</button>
                         </div>
                         {viewMode === 'daily' && (
                             <div className="flex items-center gap-1 md:gap-3 bg-muted/30 p-1 md:p-1.5 rounded-xl border border-white/5 shadow-inner ml-auto">
