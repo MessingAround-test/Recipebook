@@ -168,6 +168,7 @@ export default function NutrientResearchModal({ nutrientKey, onClose, onResearch
                         <div className="flex flex-wrap gap-1.5">
                             {aiSuggestions
                                 .filter(s => s.toLowerCase().includes(searchQuery.toLowerCase()))
+                                .filter(s => !topSources.some(ts => ts.ingredient_name.toLowerCase() === s.toLowerCase()))
                                 .map((name, i) => (
                                 <button
                                     key={i}
@@ -179,17 +180,7 @@ export default function NutrientResearchModal({ nutrientKey, onClose, onResearch
                                 </button>
                             ))}
                         </div>
-                    ) : (
-                        <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-6 text-center">
-                            <p className="text-sm text-amber-200/60 mb-4">Discover rare or alternative sources of {nutrientInfo?.label} curated by AI.</p>
-                            <button
-                                onClick={handleAiSuggest}
-                                className="btn-modern !bg-amber-500 !text-black !py-3 !px-8 text-xs font-black uppercase tracking-[0.2em]"
-                            >
-                                Get AI Insights
-                            </button>
-                        </div>
-                    )}
+                    ) : null}
                 </section>
             </div>
         </div>
