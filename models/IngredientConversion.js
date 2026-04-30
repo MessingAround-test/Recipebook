@@ -30,6 +30,7 @@ const IngredientConversionSchema = new mongoose.Schema(
         sodium_mg: { type: Number, default: 0 },
         zinc_mg: { type: Number, default: 0 },
         category: { type: String },
+        should_recommend: { type: Boolean, default: true },
         last_updated: { type: Date, default: Date.now },
         nutrients_version: { type: Number, default: 2 },
     },

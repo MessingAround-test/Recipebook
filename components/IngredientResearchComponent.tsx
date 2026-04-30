@@ -229,6 +229,27 @@ export default function IngredientResearchComponent({
         }
     }
 
+    async function toggleRecommendation(id: string, currentStatus: boolean | undefined) {
+        try {
+            const res = await fetch(`/api/Nutrition/admin`, {
+                method: 'PUT',
+                headers: {
+                    'edgetoken': localStorage.getItem('Token') || "",
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id, should_recommend: currentStatus === false })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setNutritionData(prev => prev.map(item => item._id === id ? { ...item, should_recommend: currentStatus === false } : item));
+            } else {
+                alert("Failed to update recommendation status: " + data.message);
+            }
+        } catch (err) {
+            alert("Error updating recommendation status");
+        }
+    }
+
     async function saveNutrition(id: string) {
         try {
             const res = await fetch(`/api/Nutrition/admin`, {
@@ -312,18 +333,20 @@ export default function IngredientResearchComponent({
                             <div key={item._id} className={`p-6 rounded-xl border transition-all duration-300 bg-card ${isEditing ? 'ring-2 ring-primary border-primary/50' : 'border-border hover:border-primary/30'}`}>
                                 <div className="flex justify-between items-start mb-6">
                                     <div className="flex-1">
-                                        {isEditing ? (
-                                            <input
-                                                className="text-xl font-bold bg-background border border-input rounded px-2 py-1 w-full"
-                                                value={editForm.ingredient_name}
-                                                onChange={e => setEditForm({ ...editForm, ingredient_name: e.target.value })}
-                                            />
-                                        ) : (
-                                            <h4 className="text-xl font-bold capitalize">{item.ingredient_name}</h4>
-                                        )}
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            Version: {item.nutrients_version} | Last Updated: {new Date(item.last_updated).toLocaleDateString()}
-                                        </p>
+                                        <div>
+                                            {isEditing ? (
+                                                <input
+                                                    className="text-xl font-bold bg-background border border-input rounded px-2 py-1 w-full"
+                                                    value={editForm.ingredient_name}
+                                                    onChange={e => setEditForm({ ...editForm, ingredient_name: e.target.value })}
+                                                />
+                                            ) : (
+                                                <h4 className="text-xl font-bold capitalize">{item.ingredient_name}</h4>
+                                            )}
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Version: {item.nutrients_version} | Last Updated: {new Date(item.last_updated).toLocaleDateString()}
+                                            </p>
+                                        </div>
                                     </div>
                                     <div className="flex gap-2">
                                         {isAdmin && (
@@ -339,6 +362,15 @@ export default function IngredientResearchComponent({
                                                         setEditForm({ ...item });
                                                         setScalingReferenceGrams(item.grams_per_each);
                                                     }}>Edit</Button>
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="ghost" 
+                                                        className={`transition-all ${item.should_recommend !== false ? 'text-emerald-500 hover:bg-emerald-500/10' : 'text-rose-500 hover:bg-rose-500/10 opacity-40 hover:opacity-100'}`} 
+                                                        onClick={() => toggleRecommendation(item._id, item.should_recommend)}
+                                                        title={item.should_recommend !== false ? "Click to flag as 'Do not recommend'" : "Click to recommend"}
+                                                    >
+                                                        {item.should_recommend !== false ? '✅' : '❌'}
+                                                    </Button>
                                                     <Button 
                                                         size="sm" 
                                                         variant="ghost" 

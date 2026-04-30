@@ -235,6 +235,17 @@ export default function DailyTracker() {
 
     const dailyScore = calculateScore();
 
+    const token = typeof window !== 'undefined' ? localStorage.getItem('Token') : null;
+    let isAdmin = false;
+    if (token) {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            isAdmin = payload.role === 'admin';
+        } catch (e) {
+            console.error("Failed to decode token", e);
+        }
+    }
+
 
     // Pre-compute consumed item groups (shared between mobile & desktop)
     const consumedGroups = (() => {
@@ -589,13 +600,14 @@ export default function DailyTracker() {
                     <div className="relative bg-background border-t md:border border-white/10 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full md:max-w-5xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto overflow-x-hidden animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in md:zoom-in-95">
                         <button onClick={() => setResearchIngredient(null)} className="absolute top-4 right-4 md:top-6 md:right-6 p-2.5 hover:bg-white/10 rounded-full text-muted-foreground hover:text-white transition-all z-50 min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
                         <div className="p-1 md:p-2">
-                            <IngredientResearchComponent 
+                             <IngredientResearchComponent 
                                 initialSearchTerm={researchIngredient.name} 
                                 initialQuantity={researchIngredient.quantity || 100} 
                                 initialQuantityUnit={researchIngredient.unit || "gram"} 
                                 initialViewMode="price" 
                                 autoSearch={true}
                                 autoSwitchToNutrition={true}
+                                isAdmin={isAdmin}
                             />
                         </div>
                     </div>

@@ -91,7 +91,8 @@ export default async function handler(req, res) {
         // 5. Query ingredients and score them holistically
         const minIngredientContribution = targets[mostDeficient] * 0.1;
         const candidates = await IngredientConversion.find({
-            [mostDeficient]: { $gte: minIngredientContribution }
+            [mostDeficient]: { $gte: minIngredientContribution },
+            should_recommend: { $ne: false }
         })
         .sort({ [mostDeficient]: -1 })
         .limit(20);

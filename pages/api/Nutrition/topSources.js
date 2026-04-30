@@ -35,6 +35,7 @@ export default async function handler(req, res) {
         // But we also want to show newly added records that might not have a category yet.
         const query = {
             [nutrient]: { $gt: 0 },
+            should_recommend: { $ne: false },
             $or: [
                 { category: { $in: allowedCategories } },
                 { category: { $exists: false } },
