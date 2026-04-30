@@ -10,6 +10,7 @@ export interface UserProfile {
     weight_kg?: number;
     height_cm?: number;
     activity_level?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+    dietary_preference?: 'none' | 'vegetarian' | 'vegan' | 'pescetarian';
     daily_exercise_kj?: number;
 }
 

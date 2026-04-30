@@ -89,14 +89,22 @@ export default async function handler(req, res) {
         const mostDeficient = deficiencies[0].key;
 
         // 5. Query ingredients and score them holistically
+        const minIngredientContribution = targets[mostDeficient] * 0.1;
         const candidates = await IngredientConversion.find({
-            [mostDeficient]: { $gt: 0 }
+            [mostDeficient]: { $gte: minIngredientContribution }
         })
         .sort({ [mostDeficient]: -1 })
         .limit(20);
 
         const scored = candidates.map(r => {
             let score = 0;
+
+            // Prioritise fresh food
+            const freshCategories = ['Fresh Produce', 'Meat and Seafood'];
+            if (freshCategories.includes(r.category)) {
+                score += 5;
+            }
+
             const helpsWith = [];
             const warnings = [];
 
@@ -183,6 +191,10 @@ export default async function handler(req, res) {
             };
         }));
 
+        // Filter recipes by minimum contribution
+        const minRecipeContribution = targets[mostDeficient] * 0.1;
+        const filteredRecipes = detailedRecipes.filter(r => (r.nutrients[mostDeficient] || 0) >= minRecipeContribution);
+
         return res.status(200).json({
             success: true,
             deficientNutrient: mostDeficient,
@@ -196,7 +208,7 @@ export default async function handler(req, res) {
                 warnings: item.warnings,
                 fullProfile: item.r
             })),
-            recipeRecommendations: detailedRecipes
+            recipeRecommendations: filteredRecipes
         });
 
     } catch (err) {

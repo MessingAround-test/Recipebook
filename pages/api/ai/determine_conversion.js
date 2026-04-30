@@ -53,6 +53,7 @@ Guidelines:
    - "potassium_mg": Potassium per 100g in milligrams
    - "sodium_mg": Sodium per 100g in milligrams
    - "zinc_mg": Zinc per 100g in milligrams
+   - "category": String. Use exactly one of: "Fresh Produce", "Meat", "Seafood", "Nuts", "Seeds", "Dairy", "Grains", "Pantry".
 2. Provide realistic average estimates for common grocery items.
 3. Strictly NO conversational filler or markdown. Provide ONLY the JSON object.`
             },

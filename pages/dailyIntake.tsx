@@ -21,6 +21,13 @@ const GENDER_OPTIONS = [
     { value: 'other', label: 'Other / Prefer not to say' },
 ]
 
+const DIETARY_OPTIONS = [
+    { value: 'none', label: 'None', desc: 'No restrictions' },
+    { value: 'vegetarian', label: 'Vegetarian', desc: 'No meat or seafood' },
+    { value: 'vegan', label: 'Vegan', desc: 'No animal products' },
+    { value: 'pescetarian', label: 'Pescetarian', desc: 'No meat, but seafood is okay' },
+]
+
 type Group = 'macro' | 'mineral' | 'vitamin'
 
 function NutrientBar({ label, value, target, unit }: { label: string; value?: number; target: number; unit: string }) {
@@ -54,6 +61,7 @@ export default function DailyIntakePage() {
         weight_kg: undefined,
         height_cm: undefined,
         activity_level: undefined,
+        dietary_preference: 'none',
         daily_exercise_kj: 0,
     })
 
@@ -80,6 +88,7 @@ export default function DailyIntakePage() {
                     weight_kg: u.weight_kg,
                     height_cm: u.height_cm,
                     activity_level: u.activity_level,
+                    dietary_preference: u.dietary_preference || 'none',
                     daily_exercise_kj: u.daily_exercise_kj ?? 0,
                 })
             }
@@ -113,6 +122,7 @@ export default function DailyIntakePage() {
                         weight_kg: u.weight_kg,
                         height_cm: u.height_cm,
                         activity_level: u.activity_level,
+                        dietary_preference: u.dietary_preference || 'none',
                         daily_exercise_kj: u.daily_exercise_kj ?? 0,
                     })
                 }
@@ -235,6 +245,31 @@ export default function DailyIntakePage() {
                                         >
                                             <span className="font-semibold">{opt.label}</span>
                                             <span className="text-xs opacity-70 italic">{opt.desc}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Dietary Preference */}
+                            <div>
+                                <label className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                                    <span className="inline-flex items-center gap-1"><MdRestaurant size={14} /> Dietary Preference</span>
+                                </label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {DIETARY_OPTIONS.map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            id={`dietary-${opt.value}`}
+                                            onClick={() => setProfile(p => ({ ...p, dietary_preference: opt.value as any }))}
+                                            className={`flex flex-col items-start px-3 py-2 rounded-lg border text-left transition-all ${
+                                                profile.dietary_preference === opt.value
+                                                    ? 'bg-emerald-500/20 border-emerald-500 text-foreground'
+                                                    : 'bg-muted/10 border-border/40 text-foreground hover:border-emerald-500/40'
+                                            }`}
+                                        >
+                                            <span className="font-semibold text-xs">{opt.label}</span>
+                                            <span className="text-[10px] opacity-70 italic leading-tight">{opt.desc}</span>
                                         </button>
                                     ))}
                                 </div>

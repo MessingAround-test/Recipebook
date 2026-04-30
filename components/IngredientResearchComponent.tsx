@@ -20,6 +20,7 @@ interface IngredientResearchComponentProps {
     showTable?: boolean;
     isAdmin?: boolean;
     initialViewMode?: 'price' | 'nutrition';
+    autoSwitchToNutrition?: boolean;
 }
 
 export default function IngredientResearchComponent({
@@ -32,7 +33,8 @@ export default function IngredientResearchComponent({
     showCharts = true,
     showTable = true,
     isAdmin = false,
-    initialViewMode = 'price'
+    initialViewMode = 'price',
+    autoSwitchToNutrition = false
 }: IngredientResearchComponentProps) {
     const getCanonicalUnit = (unit: string) => {
         if (!unit || unit === 'any') return 'each';
@@ -88,9 +90,10 @@ export default function IngredientResearchComponent({
     const [deletingIdsState, setDeletingIds] = useState<Set<string>>(new Set());
     const [selectedDeleteIds, setSelectedDeleteIds] = useState<Set<string>>(new Set());
 
-    const executeSearch = async (term: string, unit: string, qty: number | string, skipConv: boolean = false) => {
+    const executeSearch = async (term: string, unit: string, qty: number | string, skipConv: boolean = false, modeOverride?: 'price' | 'nutrition') => {
+        const activeMode = modeOverride || viewMode;
         setLoading(true);
-        if (viewMode === 'price') {
+        if (activeMode === 'price') {
             setSelectedBinIndex(-1);
             setSelectedProductId(null);
             setChosenProductId(null);
@@ -135,6 +138,12 @@ export default function IngredientResearchComponent({
             }
         }
         setLoading(false);
+
+        if (activeMode === 'price' && autoSwitchToNutrition) {
+            setViewMode('nutrition');
+            // Re-trigger search for nutrition mode
+            executeSearch(term, unit, qty, skipConv, 'nutrition');
+        }
     };
 
     async function handleGetIngredient(e: FormEvent) {

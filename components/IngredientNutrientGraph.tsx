@@ -72,7 +72,7 @@ const GROUP_COLOURS: Record<NutrientGroup, string> = {
 const globalDefinitionCache: Record<string, any> = {};
 let globalTargetsCache: DailyIntakeTargets | null = null;
 
-export default function IngredientNutrientGraph({ ingredients, onLogServe = null, logLabel = 'Log Serve' }: { ingredients: any[], onLogServe?: (() => Promise<void>) | null, logLabel?: string }) {
+export default function IngredientNutrientGraph({ ingredients, onLogServe = null, logLabel = 'Log Serve', onClickNutrient }: { ingredients: any[], onLogServe?: (() => Promise<void>) | null, logLabel?: string, onClickNutrient?: (key: string) => void }) {
     const [activeGroup, setActiveGroup] = useState<NutrientGroup>('macro');
     const [selectedIngredient, setSelectedIngredient] = useState('');
     const [definitions, setDefinitions] = useState<Record<string, any>>({}); // name -> RAW conversion data
@@ -252,7 +252,11 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
                     const pct = Math.min((val / tgt) * 100, 120);
                     const colour = pct >= 90 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#6366f1';
                     return (
-                        <div key={key} className="bg-muted/30 rounded-lg p-3 border border-border">
+                        <div 
+                            key={key} 
+                            className={`bg-muted/30 rounded-lg p-3 border border-border transition-all ${onClickNutrient ? 'cursor-pointer hover:bg-emerald-500/10 hover:border-emerald-500/30' : ''}`}
+                            onClick={() => onClickNutrient?.(key)}
+                        >
                             <div className="text-xs font-medium text-muted-foreground capitalize mb-1">{meta?.label ?? key}</div>
                             <div className="text-lg font-bold">
                                 {val < 10 ? val.toFixed(2) : Math.round(val)}

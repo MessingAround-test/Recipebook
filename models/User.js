@@ -13,6 +13,7 @@ const UserSchema = new mongoose.Schema(
     weight_kg: { type: Number },
     height_cm: { type: Number },
     activity_level: { type: String, enum: ['sedentary', 'light', 'moderate', 'active', 'very_active'] },
+    dietary_preference: { type: String, enum: ['none', 'vegetarian', 'vegan', 'pescetarian'], default: 'none' },
     daily_exercise_kj: { type: Number, default: 0 },
 
   },

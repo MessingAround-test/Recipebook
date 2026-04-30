@@ -13,6 +13,7 @@ import WeeklyNutrientGraph from '../components/WeeklyNutrientGraph';
 import SearchableDropdown from '../components/SearchableDropdown';
 import { useRouter } from 'next/router';
 import IngredientResearchComponent from '../components/IngredientResearchComponent';
+import NutrientResearchModal from '../components/NutrientResearchModal';
 
 export default function DailyTracker() {
     const router = useRouter();
@@ -42,6 +43,7 @@ export default function DailyTracker() {
     const [expandedRecipes, setExpandedRecipes] = useState<Set<string>>(new Set());
     const [insightsExpanded, setInsightsExpanded] = useState(false);
     const [breakdownExpanded, setBreakdownExpanded] = useState(false);
+    const [selectedNutrientForResearch, setSelectedNutrientForResearch] = useState<string | null>(null);
 
     const toggleRecipe = (recipeKey: string) => {
         setExpandedRecipes(prev => {
@@ -492,7 +494,10 @@ export default function DailyTracker() {
                                     <h3 className="text-xs font-black uppercase tracking-[0.2em] text-emerald-500">Comprehensive Nutritional Breakdown</h3>
                                     <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest bg-white/5 px-3 py-1 rounded-full">Detailed Analysis</div>
                                 </div>
-                                <IngredientNutrientGraph ingredients={(log?.items || []).map((item: any) => ({ name: item.name, quantity: item.quantity, quantity_type: item.quantity_unit }))} />
+                                <IngredientNutrientGraph 
+                                    ingredients={(log?.items || []).map((item: any) => ({ name: item.name, quantity: item.quantity, quantity_type: item.quantity_unit }))} 
+                                    onClickNutrient={(key) => setSelectedNutrientForResearch(key)}
+                                />
                             </div>
                         </div>
 
@@ -542,7 +547,13 @@ export default function DailyTracker() {
                                     <button onClick={() => setBreakdownExpanded(false)} className="p-2.5 hover:bg-white/10 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
                                 </div>
                                 <div className="p-4 pb-8">
-                                    <IngredientNutrientGraph ingredients={(log?.items || []).map((item: any) => ({ name: item.name, quantity: item.quantity, quantity_type: item.quantity_unit }))} />
+                                    <IngredientNutrientGraph 
+                                        ingredients={(log?.items || []).map((item: any) => ({ name: item.name, quantity: item.quantity, quantity_type: item.quantity_unit }))} 
+                                        onClickNutrient={(key) => {
+                                            setBreakdownExpanded(false);
+                                            setSelectedNutrientForResearch(key);
+                                        }}
+                                    />
                                 </div>
                             </div>
                         )}
@@ -578,8 +589,32 @@ export default function DailyTracker() {
                     <div className="relative bg-background border-t md:border border-white/10 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full md:max-w-5xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto overflow-x-hidden animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in md:zoom-in-95">
                         <button onClick={() => setResearchIngredient(null)} className="absolute top-4 right-4 md:top-6 md:right-6 p-2.5 hover:bg-white/10 rounded-full text-muted-foreground hover:text-white transition-all z-50 min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
                         <div className="p-1 md:p-2">
-                            <IngredientResearchComponent initialSearchTerm={researchIngredient.name} initialQuantity={researchIngredient.quantity || 100} initialQuantityUnit={researchIngredient.unit || "gram"} initialViewMode="nutrition" autoSearch={true} />
+                            <IngredientResearchComponent 
+                                initialSearchTerm={researchIngredient.name} 
+                                initialQuantity={researchIngredient.quantity || 100} 
+                                initialQuantityUnit={researchIngredient.unit || "gram"} 
+                                initialViewMode="price" 
+                                autoSearch={true}
+                                autoSwitchToNutrition={true}
+                            />
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Nutrient Research Modal */}
+            {selectedNutrientForResearch && (
+                <div className="fixed inset-0 z-[110] flex items-end md:items-center justify-center md:p-8">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedNutrientForResearch(null)} />
+                    <div className="relative bg-background border-t md:border border-white/10 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full md:max-w-4xl h-[80vh] md:h-auto md:max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in md:zoom-in-95">
+                        <NutrientResearchModal 
+                            nutrientKey={selectedNutrientForResearch} 
+                            onClose={() => setSelectedNutrientForResearch(null)} 
+                            onResearch={(name) => {
+                                setSelectedNutrientForResearch(null);
+                                setResearchIngredient({ name, quantity: 100, unit: 'gram' });
+                            }}
+                        />
                     </div>
                 </div>
             )}
