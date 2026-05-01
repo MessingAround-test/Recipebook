@@ -16,7 +16,7 @@ export default function Home() {
     const [userRole, setUserRole] = useState<string | null>(null)
 
     const [allPages] = useState<NavPage[]>([
-        { name: "Recipes", _id: "/recipes", image: "/cookbook_oragami.png", adminOnly: false },
+        { name: "Recipes", _id: "/recipes", image: "/recipes_v2_oragami.png", adminOnly: false },
         { name: "Shopping List", _id: "/shoppingList", image: "/shop_list_oragami.png", adminOnly: false },
         { name: "Health Tracker", _id: "/dailyTracker", image: "/health_tracker_oragami.png", adminOnly: false },
         { name: "Weekly Planner", _id: "/weeklyPlanner", image: "/weekly_planner_oragami.png", adminOnly: false },
