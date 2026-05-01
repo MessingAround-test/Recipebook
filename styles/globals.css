@@ -9,6 +9,10 @@
   --glass-blur: blur(16px);
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 html,
 body {
   padding: 0;

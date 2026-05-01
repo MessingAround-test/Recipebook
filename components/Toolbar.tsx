@@ -4,8 +4,15 @@ import { MdOutlineMenuBook, MdSearch, MdShoppingCart, MdHome, MdTimeline } from 
 import Link from 'next/link'
 import styles from '../styles/Toolbar.module.css'
 import { HiOutlineCog } from 'react-icons/hi'
+import { useRouter } from 'next/router'
 
 export function Toolbar() {
+    const router = useRouter();
+
+    const isActive = (path: string) => {
+        if (path === '/') return router.pathname === '/';
+        return router.pathname.startsWith(path);
+    };
 
     return (
         <header className={styles.Container}>
@@ -14,38 +21,38 @@ export function Toolbar() {
 
                 <ul className={styles.nav_links}>
                     <li className={styles.nav_item}>
-                        <Link href="/" className={styles.nav_link}>
-                            <MdHome size={24} />
+                        <Link href="/" className={`${styles.nav_link} ${isActive('/') ? styles.active : ''}`}>
+                            <div className={styles.icon_wrapper}><MdHome size={24} /></div>
                             <span className={styles.nav_label}>Home</span>
                         </Link>
                     </li>
                     <li className={styles.nav_item}>
-                        <Link href="/recipes" className={styles.nav_link}>
-                            <MdOutlineMenuBook size={24} />
+                        <Link href="/recipes" className={`${styles.nav_link} ${isActive('/recipes') ? styles.active : ''}`}>
+                            <div className={styles.icon_wrapper}><MdOutlineMenuBook size={24} /></div>
                             <span className={styles.nav_label}>Recipes</span>
                         </Link>
                     </li>
                     <li className={styles.nav_item}>
-                        <Link href="/shoppingList" className={styles.nav_link}>
-                            <MdShoppingCart size={24} />
+                        <Link href="/shoppingList" className={`${styles.nav_link} ${isActive('/shoppingList') ? styles.active : ''}`}>
+                            <div className={styles.icon_wrapper}><MdShoppingCart size={24} /></div>
                             <span className={styles.nav_label}>List</span>
                         </Link>
                     </li>
                     <li className={styles.nav_item}>
-                        <Link href="/dailyTracker" className={styles.nav_link}>
-                            <MdTimeline size={24} />
+                        <Link href="/dailyTracker" className={`${styles.nav_link} ${isActive('/dailyTracker') ? styles.active : ''}`}>
+                            <div className={styles.icon_wrapper}><MdTimeline size={24} /></div>
                             <span className={styles.nav_label}>Health</span>
                         </Link>
                     </li>
                     <li className={styles.nav_item}>
-                        <Link href="/ingredientResearch" className={styles.nav_link}>
-                            <MdSearch size={24} />
+                        <Link href="/ingredientResearch" className={`${styles.nav_link} ${isActive('/ingredientResearch') ? styles.active : ''}`}>
+                            <div className={styles.icon_wrapper}><MdSearch size={24} /></div>
                             <span className={styles.nav_label}>Ingredients</span>
                         </Link>
                     </li>
                     <li className={styles.nav_item}>
-                        <Link href="/profile" className={styles.nav_link}>
-                            <HiOutlineCog size={24} />
+                        <Link href="/profile" className={`${styles.nav_link} ${isActive('/profile') ? styles.active : ''}`}>
+                            <div className={styles.icon_wrapper}><HiOutlineCog size={24} /></div>
                             <span className={styles.nav_label}>Settings</span>
                         </Link>
                     </li>
