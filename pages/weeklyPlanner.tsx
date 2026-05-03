@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import { Layout } from '../components/Layout';
 import { useAuthGuard } from '../lib/useAuthGuard';
-import { FiChevronRight as FiChevronRightSolid, FiChevronLeft as FiChevronLeftSolid, FiPlus as FiPlusSolid, FiSave as FiSaveSolid, FiShoppingCart as FiShoppingCartSolid, FiTrash2 as FiTrash2Solid, FiInfo as FiInfoSolid, FiCoffee as FiCoffeeSolid, FiCalendar as FiCalendarSolid, FiX as FiXSolid } from 'react-icons/fi';
+import { FiChevronRight as FiChevronRightSolid, FiChevronLeft as FiChevronLeftSolid, FiPlus as FiPlusSolid, FiSave as FiSaveSolid, FiShoppingCart as FiShoppingCartSolid, FiTrash2 as FiTrash2Solid, FiInfo as FiInfoSolid, FiCoffee as FiCoffeeSolid, FiCalendar as FiCalendarSolid, FiX as FiXSolid, FiActivity as FiActivitySolid, FiDollarSign as FiDollarSignSolid } from 'react-icons/fi';
 import SearchableDropdown from '../components/SearchableDropdown';
+import { NUTRIENT_LABELS } from '../lib/dailyIntake';
 
 export default function WeeklyPlanner() {
     const isAuthed = useAuthGuard();
@@ -21,6 +22,8 @@ export default function WeeklyPlanner() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const [analysis, setAnalysis] = useState(null);
+    const [analyzing, setAnalyzing] = useState(false);
 
     const [newEverydayQty, setNewEverydayQty] = useState(1);
 
@@ -115,6 +118,31 @@ export default function WeeklyPlanner() {
             alert("Error exporting");
         }
         setExporting(false);
+    };
+
+    const handleAnalyze = async () => {
+        setAnalyzing(true);
+        const token = localStorage.getItem('Token');
+        try {
+            const res = await fetch(`/api/weeklyPlan/analysis`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    edgetoken: token
+                },
+                body: JSON.stringify({ plan })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setAnalysis(data.analysis);
+            } else {
+                alert("Analysis failed: " + data.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error analyzing plan");
+        }
+        setAnalyzing(false);
     };
 
     // --- Everyday Items ---
@@ -307,6 +335,13 @@ export default function WeeklyPlanner() {
                             <FiSaveSolid /> {saving ? 'Saving...' : 'Save Plan'}
                         </button>
                         <button
+                            onClick={handleAnalyze}
+                            disabled={analyzing}
+                            className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-purple-500/20"
+                        >
+                            <FiActivitySolid /> {analyzing ? 'Analyzing...' : 'Analyze Plan'}
+                        </button>
+                        <button
                             onClick={handleExport}
                             disabled={exporting}
                             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20"
@@ -445,6 +480,55 @@ export default function WeeklyPlanner() {
                                     <p className="text-xs text-emerald-400 font-bold">Great job! Your selected meals contain a diverse range of carbohydrate sources.</p>
                                 )}
                             </div>
+
+                            {/* Analysis Insights */}
+                            {analysis && (
+                                <div className="glass-card bg-gradient-to-br from-emerald-500/10 to-transparent border-emerald-500/20 relative z-40">
+                                    <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-emerald-400">
+                                        <FiActivitySolid /> Plan Insights
+                                    </h3>
+                                    
+                                    <div className="mb-4">
+                                        <div className="text-xs text-muted-foreground uppercase tracking-widest font-bold mb-1">Average Daily Cost (Per Person)</div>
+                                        <div className="text-2xl font-black flex items-center gap-1 text-white">
+                                            <FiDollarSignSolid className="text-emerald-500" />
+                                            {analysis.averageDailyCostPerPerson?.toFixed(2) || analysis.averageDailyCost.toFixed(2)}
+                                        </div>
+                                        <div className="text-[10px] text-muted-foreground mt-1 font-medium">
+                                            Total Weekly Cost: ${analysis.totalCost.toFixed(2)}
+                                        </div>
+                                        {analysis.everydayCost > 0 && (
+                                            <div className="text-[10px] text-muted-foreground mt-1 font-medium">
+                                                Everyday Items: ${(analysis.everydayCost).toFixed(2)} ({(analysis.everydayCost / analysis.totalCost * 100).toFixed(1)}%)
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {analysis.deficiencies && analysis.deficiencies.length > 0 ? (
+                                        <>
+                                            <div className="text-xs text-muted-foreground uppercase tracking-widest font-bold mb-2">Deficient Nutrients</div>
+                                            <div className="space-y-2">
+                                                {analysis.deficiencies.slice(0, 5).map((def, idx) => {
+                                                    const label = NUTRIENT_LABELS[def.key]?.label || def.key;
+                                                    return (
+                                                        <div key={idx} className="flex items-center justify-between bg-black/20 p-2 rounded-lg border border-white/5 text-xs">
+                                                            <span className="font-bold text-amber-400">{label}</span>
+                                                            <span className="text-muted-foreground font-medium">{Math.round(def.pct * 100)}% of target</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <p className="text-xs text-emerald-400 font-bold">Great job! You are hitting all your nutritional targets.</p>
+                                    )}
+                                    {analysis.numMissingSlots > 0 && (
+                                        <p className="text-[10px] text-muted-foreground mt-3 italic">
+                                            *Includes {analysis.numMissingSlots} unassigned meals calculated at average values.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Main Grid */}
@@ -452,12 +536,32 @@ export default function WeeklyPlanner() {
                             <div className="space-y-4 relative z-0">
                                 {days.map((day) => {
                                     const dayRecipes = plan.plannedRecipes.filter(r => r.day === day);
+                                    let dayPlannedCost = 0;
+                                    let dayMissingSlots = 3;
+                                    
+                                    dayRecipes.forEach(r => {
+                                        const rAnalysis = analysis?.recipeAnalysis?.find(a => (a.id === r.id || a.id === r._id));
+                                        if (rAnalysis) {
+                                            dayPlannedCost += rAnalysis.cost;
+                                            dayMissingSlots -= 1;
+                                        }
+                                    });
+                                    const dayTotalCost = analysis ? (dayPlannedCost + (analysis.dailyEverydayCost || 0)) : 0;
+
                                     return (
                                         <div key={day} className="glass-card flex flex-col gap-4 transition-colors">
-                                            <div className="flex items-center gap-2 border-b border-white/5 pb-2">
+                                            <div className="flex items-center gap-2 border-b border-white/5 pb-2 justify-between">
                                                 <h2 className="text-lg font-black tracking-widest uppercase">{day}</h2>
+                                                {analysis && (
+                                                    <div className="text-xs font-bold text-muted-foreground flex flex-col items-end">
+                                                        <span className="text-emerald-400">${dayTotalCost.toFixed(2)}</span>
+                                                        <span className="text-[10px] font-normal opacity-70">
+                                                            Meals: ${(dayPlannedCost).toFixed(2)} • Everyday: ${(analysis.dailyEverydayCost || 0).toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                                 {['Breakfast', 'Lunch', 'Dinner'].map(meal => {
                                                     const mealRecipes = dayRecipes.filter(r => r.mealType === meal);
                                                     return (
@@ -470,17 +574,32 @@ export default function WeeklyPlanner() {
                                                             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">{meal}</h3>
                                                             {mealRecipes.length > 0 ? (
                                                                 <div className="space-y-2">
-                                                                    {mealRecipes.map((r, idx) => (
+                                                                    {mealRecipes.map((r, idx) => {
+                                                                        const analysisData = analysis?.recipeAnalysis?.find(a => (a.id === r.id || a.id === r._id));
+                                                                        return (
                                                                         <div
                                                                             key={r.id || r._id || idx}
                                                                             draggable
                                                                             onDragStart={(e) => handleDragStart(e, r)}
-                                                                            className={`cursor-grab active:cursor-grabbing transition-all rounded-xl p-3 border flex items-start justify-between group ${r.isLeftover ? 'bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                                                                            className={`cursor-grab active:cursor-grabbing transition-all rounded-xl p-3 border flex items-start justify-between group ${r.isLeftover ? 'bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'} ${analysisData?.isExpensive ? 'ring-1 ring-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : ''} ${analysisData?.isLowNutrition ? 'ring-1 ring-rose-500/50 shadow-[0_0_10px_rgba(244,63,94,0.2)]' : ''}`}
                                                                         >
                                                                             <div>
                                                                                 {r.isLeftover && <div className="text-[10px] font-bold text-amber-500 mb-1 uppercase tracking-wider">(Leftovers)</div>}
                                                                                 <div className="font-bold text-sm leading-tight">{r.recipe_name}</div>
-                                                                                <div className="text-xs text-muted-foreground mt-1">Serves: {r.servings}</div>
+                                                                                <div className="flex items-center gap-2 mt-1">
+                                                                                    <div className="text-xs text-muted-foreground">Serves: {r.servings}</div>
+                                                                                    {analysisData?.cost != null && (
+                                                                                        <div className="text-[10px] font-medium text-emerald-400">
+                                                                                            ${analysisData.cost.toFixed(2)}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                                {(analysisData?.isExpensive || analysisData?.isLowNutrition) && (
+                                                                                    <div className="flex items-center gap-2 mt-1">
+                                                                                        {analysisData?.isExpensive && <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-amber-500/20 text-amber-400 border border-amber-500/30">Expensive</span>}
+                                                                                        {analysisData?.isLowNutrition && <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-rose-500/20 text-rose-400 border border-rose-500/30">Low Nutrition</span>}
+                                                                                    </div>
+                                                                                )}
                                                                             </div>
                                                                             <button
                                                                                 onClick={() => removePlannedRecipe(r.id || r._id)}
@@ -489,7 +608,7 @@ export default function WeeklyPlanner() {
                                                                                 <FiTrash2Solid size={14} />
                                                                             </button>
                                                                         </div>
-                                                                    ))}
+                                                                    )})}
                                                                 </div>
                                                             ) : (
                                                                 <div className="flex-1 flex items-center justify-center border border-dashed border-white/5 rounded-lg text-muted-foreground/30 text-[10px] font-bold uppercase tracking-widest mt-1">
@@ -499,6 +618,27 @@ export default function WeeklyPlanner() {
                                                         </div>
                                                     );
                                                 })}
+                                                <div className="w-full flex flex-col bg-emerald-500/5 rounded-xl p-3 border border-emerald-500/10 min-h-[120px]">
+                                                    <h3 className="text-[10px] font-black uppercase tracking-wider text-emerald-500/70 mb-3">Everyday Items</h3>
+                                                    {plan.everydayItems.length > 0 ? (
+                                                        <div className="space-y-2">
+                                                            {plan.everydayItems.map((item, idx) => (
+                                                                <div key={idx} className="bg-black/20 rounded border border-white/5 p-2 text-[10px]">
+                                                                    <div className="font-bold text-muted-foreground leading-tight">{item.quantity}x {item.name}</div>
+                                                                </div>
+                                                            ))}
+                                                            {analysis && analysis.dailyEverydayCost > 0 && (
+                                                                <div className="pt-2 mt-2 border-t border-emerald-500/10 text-xs font-bold text-emerald-400 text-right">
+                                                                    ${(analysis.dailyEverydayCost).toFixed(2)}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex-1 flex items-center justify-center text-emerald-500/20 text-[10px] font-bold uppercase tracking-widest mt-1">
+                                                            None
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     );

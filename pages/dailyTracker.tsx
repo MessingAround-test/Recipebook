@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { Button } from '../components/ui/button';
@@ -30,8 +30,9 @@ export default function DailyTracker() {
     const [loading, setLoading] = useState(false);
     const [isLoggingOpen, setIsLoggingOpen] = useState(false);
     const [recommendations, setRecommendations] = useState<any>(null);
-    const [logMode, setLogMode] = useState<'ingredient' | 'recipe'>('ingredient');
     const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
+    const [knownIngredients, setKnownIngredients] = useState<string[]>([]);
+    const [unifiedSearch, setUnifiedSearch] = useState("");
     const [recipes, setRecipes] = useState<any[]>([]);
     const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
     const [servingsToLog, setServingsToLog] = useState<number>(1);
@@ -91,10 +92,19 @@ export default function DailyTracker() {
         if (data.res) setRecipes(data.res);
     }, []);
 
+    const fetchKnownIngredients = useCallback(async () => {
+        const token = localStorage.getItem('Token');
+        if (!token) return;
+        const res = await fetch('/api/Ingredients/defaults', { headers: { edgetoken: token } });
+        const data = await res.json();
+        if (data.success) setKnownIngredients(data.data);
+    }, []);
+
     useEffect(() => {
         fetchData();
         fetchRecipes();
-    }, [fetchData, fetchRecipes]);
+        fetchKnownIngredients();
+    }, [fetchData, fetchRecipes, fetchKnownIngredients]);
 
     const changeDate = (offset: number) => {
         const [y, m, d] = date.split('-').map(Number);
@@ -123,6 +133,7 @@ export default function DailyTracker() {
                 setLog(data.log);
                 e.resetForm();
                 setPrefillData(null);
+                setUnifiedSearch("");
                 setIsLoggingOpen(false);
                 fetchData();
             }
@@ -151,6 +162,7 @@ export default function DailyTracker() {
                 setLog(data.log);
                 setSelectedRecipe(null);
                 setRecipeWeight(null);
+                setUnifiedSearch("");
                 setIsLoggingOpen(false);
                 fetchData();
             }
@@ -195,21 +207,24 @@ export default function DailyTracker() {
     };
 
     const handlePrefillIngredient = (name: string) => {
-        setLogMode('ingredient');
         setPrefillData({
             name: name,
             quantity: 100,
             quantity_type: 'gram'
         });
+        setSelectedRecipe(null);
+        setUnifiedSearch(name);
         setIsLoggingOpen(true);
         document.getElementById('logging-section')?.scrollIntoView({ behavior: 'smooth' });
     };
 
     const handlePrefillRecipe = (recipe: any) => {
-        setLogMode('recipe');
-        setSelectedRecipe(recipes.find(r => r._id === recipe.id) || recipe);
+        const fullRecipe = recipes.find(r => r._id === recipe.id) || recipe;
+        setSelectedRecipe(fullRecipe);
+        setPrefillData(null);
+        setUnifiedSearch(fullRecipe.name);
         setServingsToLog(1);
-        calculateWeight(recipes.find(r => r._id === recipe.id) || recipe);
+        calculateWeight(fullRecipe);
         setIsLoggingOpen(true);
         document.getElementById('logging-section')?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -399,48 +414,131 @@ export default function DailyTracker() {
         );
     };
 
-    // Shared: render the logging form (ingredient or recipe mode)
+    const combinedOptions = useMemo(() => {
+        const options: any[] = [];
+        const recipeNames = new Set(recipes.map(r => r.name.toLowerCase()));
+        const ingredientNames = new Set(knownIngredients.map(i => i.toLowerCase()));
+
+        recipes.forEach(r => {
+            const hasCollision = ingredientNames.has(r.name.toLowerCase());
+            options.push({
+                label: hasCollision ? `🍲 ${r.name} (Recipe)` : r.name,
+                value: r._id,
+                type: 'recipe',
+                data: r
+            });
+        });
+
+        knownIngredients.forEach(i => {
+            const hasCollision = recipeNames.has(i.toLowerCase());
+            options.push({
+                label: hasCollision ? `🥗 ${i} (Ingredient)` : i,
+                value: i,
+                type: 'ingredient',
+                data: i
+            });
+        });
+
+        return options;
+    }, [recipes, knownIngredients]);
+
+    const handleUnifiedSearch = (e: any) => {
+        const val = e.target.value;
+        const option = e.target.option;
+        if (!val) {
+            setPrefillData(null);
+            setSelectedRecipe(null);
+            setUnifiedSearch("");
+            return;
+        }
+        if (option) {
+            if (option.type === 'recipe') {
+                setPrefillData(null);
+                setSelectedRecipe(option.data);
+                setServingsToLog(option.data.servings || 1);
+                calculateWeight(option.data);
+                setUnifiedSearch(option.label);
+            } else if (option.type === 'ingredient') {
+                setSelectedRecipe(null);
+                setPrefillData({ name: option.data });
+                setUnifiedSearch(option.label);
+            }
+        }
+    };
+
+    const handleUnifiedComplete = (text: string) => {
+        if (!text) {
+             setPrefillData(null);
+             setSelectedRecipe(null);
+             setUnifiedSearch("");
+             return;
+        }
+        setSelectedRecipe(null);
+        setPrefillData({ name: text });
+        setUnifiedSearch(text);
+    };
+
+    // Shared: render the logging form
     const renderLoggingForm = () => (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Log Food
                 </h2>
-                <div className="flex gap-1 bg-muted/30 p-1 rounded-lg border border-white/5">
-                    <button onClick={() => setLogMode('ingredient')} className={`px-3 py-2 rounded-md text-[9px] font-black uppercase tracking-widest transition-all min-h-[36px] ${logMode === 'ingredient' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>🥗 Ingredient</button>
-                    <button onClick={() => setLogMode('recipe')} className={`px-3 py-2 rounded-md text-[9px] font-black uppercase tracking-widest transition-all min-h-[36px] ${logMode === 'recipe' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>Recipe</button>
+                {unifiedSearch && (
+                    <button onClick={() => { setUnifiedSearch(""); setPrefillData(null); setSelectedRecipe(null); }} className="text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-white transition-colors bg-white/5 px-2 py-1 rounded-md">
+                        Clear Search
+                    </button>
+                )}
+            </div>
+            
+            <div className="bg-muted/20 rounded-xl md:rounded-[2rem] border border-white/5 p-4 md:p-8 shadow-2xl shadow-black/20">
+                <div className="space-y-4 md:space-y-6">
+                    <SearchableDropdown
+                        name="unified-search"
+                        value={unifiedSearch}
+                        options={combinedOptions}
+                        onChange={handleUnifiedSearch}
+                        onComplete={handleUnifiedComplete}
+                        placeholder="Search recipes or ingredients..."
+                    />
+
+                    {prefillData ? (
+                        <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-t border-white/5 pt-4">
+                            <AddShoppingItem
+                                key={`prefill-${prefillData.name}`}
+                                handleSubmit={handleLogItem}
+                                hideCategories={true}
+                                initialData={prefillData}
+                                hideHeader={true}
+                                hideNote={true}
+                                hideNameInput={true}
+                                triggerSearchOnInit={true}
+                            />
+                        </div>
+                    ) : selectedRecipe ? (
+                        <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4 pt-4 border-t border-white/5">
+                            <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+                                <div className="flex-1 space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Servings to Log</label>
+                                    <div className="flex items-center gap-4">
+                                        <input type="number" value={servingsToLog} onChange={(e) => setServingsToLog(Number(e.target.value))} className="w-24 bg-background border border-white/10 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-emerald-500/50" />
+                                        <div className="text-[10px] font-black text-muted-foreground uppercase">of {selectedRecipe.servings || 1} total</div>
+                                    </div>
+                                </div>
+                                {recipeWeight !== null && (
+                                    <div className="bg-emerald-500/10 rounded-2xl p-4 border border-emerald-500/20 flex flex-col justify-center">
+                                        <div className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-1">Est. Weight</div>
+                                        <div className="text-xl font-black">{Math.round(recipeWeight / (selectedRecipe.servings || 1))}g <span className="text-[10px] font-medium text-muted-foreground ml-1">per serve</span></div>
+                                    </div>
+                                )}
+                            </div>
+                            <button onClick={handleLogRecipe} className="w-full btn-modern !bg-emerald-500 !text-black py-4 font-black uppercase tracking-widest flex items-center justify-center gap-2 min-h-[48px]"><FiPlus /> Log {servingsToLog} Serving{servingsToLog !== 1 ? 's' : ''}</button>
+                            <div className="flex items-center gap-2 px-1"><FiZap size={10} className="text-emerald-400" /><p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Recipe logging expands into constituent ingredients for accuracy.</p></div>
+                        </div>
+                    ) : null}
                 </div>
             </div>
-            {logMode === 'ingredient' ? (
-                <AddShoppingItem key={prefillData ? `prefill-${prefillData.name}` : 'standard'} handleSubmit={handleLogItem} hideCategories={true} initialData={prefillData} hideHeader={true} hideNote={true} />
-            ) : (
-                <div className="bg-muted/20 rounded-xl md:rounded-[2rem] border border-white/5 p-4 md:p-8 shadow-2xl shadow-black/20">
-                    <div className="space-y-4 md:space-y-6">
-                        <SearchableDropdown name="recipe-search" value={selectedRecipe?.name || ""} onComplete={() => { }} options={recipes.map(r => ({ value: r._id, label: r.name }))} onChange={(e: any) => { const val = e.target.value; const r = recipes.find((rec: any) => rec._id === val); if (r) { setSelectedRecipe(r); setServingsToLog(r.servings || 1); calculateWeight(r); } }} placeholder="Select a recipe..." />
-                        {selectedRecipe && (
-                            <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4 pt-4 border-t border-white/5">
-                                <div className="flex flex-col md:flex-row gap-4 md:gap-6">
-                                    <div className="flex-1 space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Servings to Log</label>
-                                        <div className="flex items-center gap-4">
-                                            <input type="number" value={servingsToLog} onChange={(e) => setServingsToLog(Number(e.target.value))} className="w-24 bg-background border border-white/10 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-emerald-500/50" />
-                                            <div className="text-[10px] font-black text-muted-foreground uppercase">of {selectedRecipe.servings || 1} total</div>
-                                        </div>
-                                    </div>
-                                    {recipeWeight !== null && (
-                                        <div className="bg-emerald-500/10 rounded-2xl p-4 border border-emerald-500/20 flex flex-col justify-center">
-                                            <div className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-1">Est. Weight</div>
-                                            <div className="text-xl font-black">{Math.round(recipeWeight / (selectedRecipe.servings || 1))}g <span className="text-[10px] font-medium text-muted-foreground ml-1">per serve</span></div>
-                                        </div>
-                                    )}
-                                </div>
-                                <button onClick={handleLogRecipe} className="w-full btn-modern !bg-emerald-500 !text-black py-4 font-black uppercase tracking-widest flex items-center justify-center gap-2 min-h-[48px]"><FiPlus /> Log {servingsToLog} Serving{servingsToLog !== 1 ? 's' : ''}</button>
-                            </div>
-                        )}
-                        <div className="flex items-center gap-2 px-1"><FiZap size={10} className="text-emerald-400" /><p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Recipe logging expands into constituent ingredients for accuracy.</p></div>
-                    </div>
-                </div>
-            )}
         </div>
     );
     return (
@@ -477,7 +575,9 @@ export default function DailyTracker() {
                 </div>
 
                 {viewMode === 'weekly' ? (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500"><WeeklyNutrientGraph /></div>
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <WeeklyNutrientGraph onClickNutrient={(key) => setSelectedNutrientForResearch(key)} />
+                    </div>
                 ) : (
                     <>
                         {/* ═══ DESKTOP LAYOUT (md+) ═══ */}

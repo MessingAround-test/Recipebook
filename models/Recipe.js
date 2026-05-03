@@ -28,7 +28,8 @@ const RecipeSchema = new mongoose.Schema(
         instructions: [instructionsSchema],
         image: { type: String },
         cost: { type: Number },
-        approxCost: { type: Number, required: false }, // Store the initial calculated cost
+        approxCost: { type: Number, required: false }, // Store the initial calculated proportional cost
+        unitCost: { type: Number, required: false }, // Store the cost of buying full packets/units
         time: { type: String, enum: ['short', 'medium', 'long'], required: false },
         genre: { type: String, required: false },
         mealTypes: { type: [String], required: false },

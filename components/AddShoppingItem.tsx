@@ -40,9 +40,11 @@ interface AddShoppingItemProps {
     }
     hideHeader?: boolean;
     hideNote?: boolean;
+    hideNameInput?: boolean;
+    triggerSearchOnInit?: boolean;
 }
 
-export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false, onCancel, initialData, hideHeader = false, hideNote = false }: AddShoppingItemProps) {
+export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false, onCancel, initialData, hideHeader = false, hideNote = false, hideNameInput = false, triggerSearchOnInit = false }: AddShoppingItemProps) {
     const [formData, setFormData] = useState({
         name: initialData?.name || "",
         quantity: initialData?.quantity || 1 as number | string,
@@ -53,7 +55,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
     });
 
     const [isAiLoading, setIsAiLoading] = useState(false);
-    const [fieldsRevealed, setFieldsRevealed] = useState(!!initialData);
+    const [fieldsRevealed, setFieldsRevealed] = useState(!triggerSearchOnInit && !!initialData);
 
     const resetForm = () => {
         setFormData({
@@ -154,7 +156,10 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
 
     useEffect(() => {
         getKnownIngredients()
-    }, []);
+        if (triggerSearchOnInit && initialData?.name) {
+            determineDefaults(initialData.name);
+        }
+    }, [triggerSearchOnInit, initialData?.name]);
 
     return (
         <div className="bg-secondary/40 backdrop-blur-md rounded-2xl md:rounded-[2rem] border border-white/10 w-full max-w-none md:max-w-[550px] mx-auto mb-4 md:mb-6 p-4 md:p-8 relative overflow-hidden group/add-item animate-in fade-in zoom-in-95 duration-500 shadow-2xl shadow-black/20">
@@ -185,19 +190,21 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
 
                 <input name="name" id="ingredName" type="text" placeholder={shoppingListId} disabled hidden />
 
-                <div className="flex flex-col gap-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Item Name</label>
-                    <div className="relative group/input">
-                        <SearchableDropdown
-                            options={knownIngredients}
-                            placeholder={"What are we adding?"}
-                            onChange={handleChange}
-                            name={"name"}
-                            value={formData.name}
-                            onComplete={handleNameSubmit}
-                        />
+                {!hideNameInput && (
+                    <div className="flex flex-col gap-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Item Name</label>
+                        <div className="relative group/input">
+                            <SearchableDropdown
+                                options={knownIngredients}
+                                placeholder={"What are we adding?"}
+                                onChange={handleChange}
+                                name={"name"}
+                                value={formData.name}
+                                onComplete={handleNameSubmit}
+                            />
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {!hideNote && (
                     <div className="flex flex-col gap-2">

@@ -48,6 +48,13 @@ function SearchableDropdown({ options, placeholder, onChange, name, value, onCom
     optionSelectedRef.current = false;
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.target.blur();
+    }
+  };
+
   const selectOption = (option) => {
     setSelectedOption(option);
     const displayValue = typeof option === 'string' ? option : option.label;
@@ -55,7 +62,7 @@ function SearchableDropdown({ options, placeholder, onChange, name, value, onCom
     setIsOpen(false);
     
     const finalValue = typeof option === 'string' ? option : option.value;
-    let e = { target: { name: name, value: finalValue } };
+    let e = { target: { name: name, value: finalValue, option: option } };
     onChange(e);
   
     // Triggering blur if name is provided
@@ -92,6 +99,7 @@ function SearchableDropdown({ options, placeholder, onChange, name, value, onCom
         value={inputValue}
         onChange={handleInputChange}
         onBlur={handleInputBlur}
+        onKeyDown={handleKeyDown}
         name={name}
         onClick={toggleDropdown}
         placeholder={placeholder}

@@ -180,9 +180,10 @@ export default function RecipeDetail() {
         return isNaN(total) ? 0 : parseFloat(total.toFixed(2))
     }
 
-    const getAproxTotalRecipeCostUnit = () => {
+    const getAproxTotalRecipeCostUnit = (ingreds?: any[]) => {
+        const list = ingreds || matchedListIngreds
         let total = 0
-        for (const ingredient of matchedListIngreds) {
+        for (const ingredient of list) {
             const current = ingredient.options?.[0]
             if (current !== undefined && current.total_price !== undefined) {
                 const efficiency = Number(current.match_efficiency) || 100
@@ -196,6 +197,7 @@ export default function RecipeDetail() {
     const saveCostToRecipe = async (ingreds: any[]) => {
         if (costSavedRef.current || !id) return
         const total = getAproxTotalRecipeCost(ingreds)
+        const unitCostTotal = getAproxTotalRecipeCostUnit(ingreds)
         if (total === 0) return
         costSavedRef.current = true
 
@@ -207,7 +209,7 @@ export default function RecipeDetail() {
         await fetch(`/api/Recipe/${String(id)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'edgetoken': token },
-            body: JSON.stringify({ approxCost: total, priceCategory: category })
+            body: JSON.stringify({ approxCost: total, priceCategory: category, unitCost: Number(unitCostTotal) })
         })
     }
 

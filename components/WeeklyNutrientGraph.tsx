@@ -25,7 +25,7 @@ const MACRO_KEYS: (keyof DailyIntakeTargets)[] = [
 ];
 const ALL_KEYS = [...MACRO_KEYS, ...MINERAL_KEYS, ...VITAMIN_KEYS];
 
-type Period = 'week' | 'month' | 'year';
+type Period = 'today' | 'week' | 'month' | 'year';
 type Grade = 'A' | 'B' | 'C' | 'D' | 'F';
 
 const GRADE_CONFIG: Record<Grade, { min: number; color: string; bg: string; border: string; label: string }> = {
@@ -45,6 +45,7 @@ function getGrade(pct: number): Grade {
 }
 
 const PERIOD_CONFIG: Record<Period, { label: string; days: number; icon: string; navStep: (d: Date, dir: 1|-1) => Date }> = {
+    today: { label: 'Today', days: 1, icon: '1d', navStep: (d, dir) => { const n = new Date(d); n.setDate(n.getDate() + dir); return n; } },
     week:  { label: 'Week',  days: 7,   icon: '7d',  navStep: (d, dir) => { const n = new Date(d); n.setDate(n.getDate() + dir * 7); return n; } },
     month: { label: 'Month', days: 30,  icon: '30d', navStep: (d, dir) => { const n = new Date(d); n.setMonth(n.getMonth() + dir); return n; } },
     year:  { label: 'Year',  days: 365, icon: '1y',  navStep: (d, dir) => { const n = new Date(d); n.setFullYear(n.getFullYear() + dir); return n; } },
@@ -99,7 +100,11 @@ interface NutrientStat {
     dailyPcts: number[]; // for sparkline
 }
 
-export default function WeeklyNutrientGraph() {
+interface WeeklyNutrientGraphProps {
+    onClickNutrient?: (key: string) => void;
+}
+
+export default function WeeklyNutrientGraph({ onClickNutrient }: WeeklyNutrientGraphProps = {}) {
     const [targets, setTargets] = useState<DailyIntakeTargets>(DEFAULT_TARGETS);
     const [dailyTotals, setDailyTotals] = useState<Record<string, Record<string, number>>>({});
     const [loading, setLoading] = useState(false);
@@ -126,6 +131,10 @@ export default function WeeklyNutrientGraph() {
     }, [startDate, endDate]);
 
     const periodLabel = useMemo(() => {
+        if (period === 'today') {
+            const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+            return startDate.toLocaleDateString('en-AU', opts);
+        }
         if (period === 'week') {
             const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
             return `${startDate.toLocaleDateString('en-AU', opts)} – ${endDate.toLocaleDateString('en-AU', opts)}`;
@@ -231,7 +240,10 @@ export default function WeeklyNutrientGraph() {
         const barColor = pct >= 90 ? 'bg-emerald-500' : pct >= 75 ? 'bg-blue-500' : pct >= 60 ? 'bg-amber-500' : pct >= 40 ? 'bg-orange-500' : 'bg-rose-500';
 
         return (
-            <div className={`group relative overflow-hidden ${gc.bg} border ${gc.border} rounded-2xl p-4 flex flex-col gap-3 hover:shadow-xl hover:shadow-black/20 transition-all duration-300`}>
+            <div 
+                onClick={() => onClickNutrient && onClickNutrient(stat.key)}
+                className={`group relative overflow-hidden ${gc.bg} border ${gc.border} rounded-2xl p-4 flex flex-col gap-3 hover:shadow-xl hover:shadow-black/20 transition-all duration-300 ${onClickNutrient ? 'cursor-pointer hover:ring-2 hover:ring-emerald-500/50' : ''}`}
+            >
                 {/* Background Grade Accent */}
                 <div className={`absolute -top-2 -right-2 text-6xl font-black opacity-5 pointer-events-none ${gc.color}`}>{stat.grade}</div>
 
@@ -326,7 +338,7 @@ export default function WeeklyNutrientGraph() {
             <div className="flex flex-wrap gap-2 mb-4 items-center">
                 {/* Period pills */}
                 <div className="flex gap-0.5 bg-muted/30 rounded-xl p-0.5 border border-white/5">
-                    {(['week', 'month', 'year'] as Period[]).map(p => (
+                    {(['today', 'week', 'month', 'year'] as Period[]).map(p => (
                         <button key={p} onClick={() => switchPeriod(p)}
                             className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
                                 period === p ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-muted-foreground hover:text-foreground'
