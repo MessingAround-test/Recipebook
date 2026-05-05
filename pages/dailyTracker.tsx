@@ -136,6 +136,7 @@ export default function DailyTracker() {
                 setUnifiedSearch("");
                 setIsLoggingOpen(false);
                 fetchData();
+                fetchKnownIngredients();
             }
         } catch (err) {
             alert("Add failed");
@@ -165,6 +166,7 @@ export default function DailyTracker() {
                 setUnifiedSearch("");
                 setIsLoggingOpen(false);
                 fetchData();
+                fetchKnownIngredients();
             }
         } catch (err) {
             alert("Recipe log failed");
@@ -708,6 +710,7 @@ export default function DailyTracker() {
                                 autoSearch={true}
                                 autoSwitchToNutrition={true}
                                 isAdmin={isAdmin}
+                                onSearchComplete={fetchKnownIngredients}
                             />
                         </div>
                     </div>

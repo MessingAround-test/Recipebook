@@ -39,13 +39,14 @@ function SearchableDropdown({ options, placeholder, onChange, name, value, onCom
   };
 
   const handleInputBlur = () => {
-    // Call onComplete only if an option is not selected using onMouseDown
-    if (!optionSelectedRef.current && onComplete && inputValue.trim() !== '') {
-      onComplete(inputValue.trim());
-    }
-
-    // Reset the ref
-    optionSelectedRef.current = false;
+    // We use a small timeout to allow onMouseDown to potentially set the ref
+    // although onMouseDown should fire first, sometimes browsers are finicky.
+    setTimeout(() => {
+        if (!optionSelectedRef.current && onComplete && inputValue.trim() !== '') {
+            onComplete(inputValue.trim());
+        }
+        optionSelectedRef.current = false;
+    }, 150);
   };
 
   const handleKeyDown = (e) => {
@@ -111,7 +112,10 @@ function SearchableDropdown({ options, placeholder, onChange, name, value, onCom
           {filteredOptions.map((option, index) => (
             <li
               key={index}
-              onMouseDown={() => selectOption(option)}
+              onMouseDown={() => {
+                optionSelectedRef.current = true;
+                selectOption(option);
+              }}
               className={option === selectedOption ? styles.selected : ''}
             >
               {typeof option === 'string' ? option : option.label}

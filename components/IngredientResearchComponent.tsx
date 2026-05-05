@@ -21,6 +21,7 @@ interface IngredientResearchComponentProps {
     isAdmin?: boolean;
     initialViewMode?: 'price' | 'nutrition';
     autoSwitchToNutrition?: boolean;
+    onSearchComplete?: () => void;
 }
 
 export default function IngredientResearchComponent({
@@ -144,6 +145,10 @@ export default function IngredientResearchComponent({
             // Re-trigger search for nutrition mode
             executeSearch(term, unit, qty, skipConv, 'nutrition');
         }
+
+        // Refresh available ingredients list to include newly extracted/searched items
+        await fetchAvailableIngredients();
+        if (onSearchComplete) onSearchComplete();
     };
 
     async function handleGetIngredient(e: FormEvent) {
@@ -151,20 +156,21 @@ export default function IngredientResearchComponent({
         await executeSearch(searchTerm, quantityUnit, quantity, skipConversion);
     }
 
-    useEffect(() => {
-        const fetchAvailableIngredients = async () => {
-            try {
-                const res = await fetch('/api/Ingredients/list', {
-                    headers: { 'edgetoken': localStorage.getItem('Token') || "" }
-                });
-                const data = await res.json();
-                if (data.success) {
-                    setAvailableIngredients(data.data);
-                }
-            } catch (err) {
-                console.error("Failed to fetch ingredient list:", err);
+    const fetchAvailableIngredients = async () => {
+        try {
+            const res = await fetch('/api/Ingredients/list', {
+                headers: { 'edgetoken': localStorage.getItem('Token') || "" }
+            });
+            const data = await res.json();
+            if (data.success) {
+                setAvailableIngredients(data.data);
             }
-        };
+        } catch (err) {
+            console.error("Failed to fetch ingredient list:", err);
+        }
+    };
+
+    useEffect(() => {
         fetchAvailableIngredients();
 
         if (autoSearch && initialSearchTerm) {
