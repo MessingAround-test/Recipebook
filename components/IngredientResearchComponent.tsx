@@ -35,7 +35,8 @@ export default function IngredientResearchComponent({
     showTable = true,
     isAdmin = false,
     initialViewMode = 'price',
-    autoSwitchToNutrition = false
+    autoSwitchToNutrition = false,
+    onSearchComplete
 }: IngredientResearchComponentProps) {
     const getCanonicalUnit = (unit: string) => {
         if (!unit || unit === 'any') return 'each';
