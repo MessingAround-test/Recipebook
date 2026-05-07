@@ -12,7 +12,7 @@ const PERIOD_CONFIG = {
 export default function InsightsView({ onLogFood, endDateProp }: { onLogFood: (name: string) => void, endDateProp?: Date }) {
     const [period, setPeriod] = useState<'today' | 'week' | 'month'>('week');
     const [endDate, setEndDate] = useState<Date>(new Date());
-    const [dailyTotals, setDailyTotals] = useState<any>({});
+    const [dataState, setDataState] = useState<{ totals: any, activeDays: number }>({ totals: {}, activeDays: 1 });
     const [targets, setTargets] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [expandedNutrient, setExpandedNutrient] = useState<string | null>(null);
@@ -49,16 +49,21 @@ export default function InsightsView({ onLogFood, endDateProp }: { onLogFood: (n
                 const data = await res.json();
                 if (data.success) {
                     const acc: any = {};
+                    let activeCount = 0;
                     data.logs.forEach((log: any) => {
-                        (log.items || []).forEach((item: any) => {
-                            if (item.nutrients) {
-                                Object.keys(item.nutrients).forEach(k => {
-                                    acc[k] = (acc[k] || 0) + item.nutrients[k];
-                                });
-                            }
-                        });
+                        const hasItems = (log.items || []).length > 0;
+                        if (hasItems) {
+                            activeCount++;
+                            (log.items || []).forEach((item: any) => {
+                                if (item.nutrients) {
+                                    Object.keys(item.nutrients).forEach(k => {
+                                        acc[k] = (acc[k] || 0) + item.nutrients[k];
+                                    });
+                                }
+                            });
+                        }
                     });
-                    setDailyTotals(acc);
+                    setDataState({ totals: acc, activeDays: Math.max(activeCount, 1) });
                 }
             } catch (e) { console.error(e); }
             finally { setLoading(false); }
@@ -66,12 +71,12 @@ export default function InsightsView({ onLogFood, endDateProp }: { onLogFood: (n
         fetchData();
     }, [startDate, endDate]);
 
-    const activeDaysCount = PERIOD_CONFIG[period].days;
+    const activeDaysCount = dataState.activeDays;
     const insights = useMemo(() => {
         if (!targets) return [];
         return Object.keys(NUTRIENT_LABELS).map(k => {
             const key = k as keyof DailyIntakeTargets;
-            const total = dailyTotals[key] || 0;
+            const total = dataState.totals[key] || 0;
             const target = targets[key] * activeDaysCount;
             const pct = (total / target) * 100;
             return {
@@ -84,7 +89,7 @@ export default function InsightsView({ onLogFood, endDateProp }: { onLogFood: (n
                 ...NUTRIENT_INSIGHTS[key]
             };
         }).filter(i => i.pct < 75).sort((a, b) => a.pct - b.pct);
-    }, [dailyTotals, targets, activeDaysCount]);
+    }, [dataState, targets, activeDaysCount]);
 
     return (
         <div className="space-y-6">
