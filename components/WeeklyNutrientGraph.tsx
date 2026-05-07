@@ -106,6 +106,7 @@ interface WeeklyNutrientGraphProps {
 
 export default function WeeklyNutrientGraph({ onClickNutrient }: WeeklyNutrientGraphProps = {}) {
     const [targets, setTargets] = useState<DailyIntakeTargets>(DEFAULT_TARGETS);
+    const [userProfile, setUserProfile] = useState<any>(null);
     const [dailyTotals, setDailyTotals] = useState<Record<string, Record<string, number>>>({});
     const [loading, setLoading] = useState(false);
     const [period, setPeriod] = useState<Period>('month');
@@ -151,7 +152,10 @@ export default function WeeklyNutrientGraph({ onClickNutrient }: WeeklyNutrientG
         if (!token) return;
         fetch('/api/dailyIntake', { headers: { edgetoken: token } })
             .then(r => r.json())
-            .then(data => { if (data.success && data.targets) setTargets(data.targets); })
+            .then(data => { 
+                if (data.success && data.targets) setTargets(data.targets); 
+                if (data.success && data.profile) setUserProfile(data.profile);
+            })
             .catch(() => {});
     }, []);
 
@@ -168,6 +172,7 @@ export default function WeeklyNutrientGraph({ onClickNutrient }: WeeklyNutrientG
                     rangeDates.forEach(d => (acc[d] = blankTotals()));
                     data.logs.forEach((log: any) => {
                         if (acc[log.date]) {
+                            acc[log.date].exercise_kcal = log.exercise_kcal || 0;
                             (log.items || []).forEach((item: any) => {
                                 if (item.nutrients) Object.keys(item.nutrients).forEach(k => {
                                     if (acc[log.date][k] !== undefined) acc[log.date][k] += item.nutrients[k];

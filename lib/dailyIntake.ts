@@ -12,6 +12,8 @@ export interface UserProfile {
     activity_level?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
     dietary_preference?: 'none' | 'vegetarian' | 'vegan' | 'pescetarian';
     daily_exercise_kj?: number;
+    target_weight_kg?: number;
+    weekly_goal_kg?: number;
 }
 
 export interface DailyIntakeTargets {
@@ -141,6 +143,15 @@ export function calculateDailyIntake(profile: UserProfile): DailyIntakeTargets {
         fiber_g,
         ...getMicronutrientTargets(gender),
     } as DailyIntakeTargets;
+}
+
+/**
+ * Projects weight based on caloric deficit.
+ * 7700 kcal deficit ≈ 1kg loss.
+ */
+export function calculateWeightProjection(initialWeight: number, cumulativeDeficitKcal: number): number {
+    const changeKg = cumulativeDeficitKcal / 7700;
+    return initialWeight - changeKg;
 }
 
 /**

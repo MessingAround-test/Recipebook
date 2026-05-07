@@ -63,6 +63,8 @@ export default function DailyIntakePage() {
         activity_level: undefined,
         dietary_preference: 'none',
         daily_exercise_kj: 0,
+        target_weight_kg: undefined,
+        weekly_goal_kg: undefined,
     })
 
     const [saving, setSaving] = useState(false)
@@ -90,6 +92,8 @@ export default function DailyIntakePage() {
                     activity_level: u.activity_level,
                     dietary_preference: u.dietary_preference || 'none',
                     daily_exercise_kj: u.daily_exercise_kj ?? 0,
+                    target_weight_kg: u.target_weight_kg,
+                    weekly_goal_kg: u.weekly_goal_kg,
                 })
             }
         } catch (e) {
@@ -124,6 +128,8 @@ export default function DailyIntakePage() {
                         activity_level: u.activity_level,
                         dietary_preference: u.dietary_preference || 'none',
                         daily_exercise_kj: u.daily_exercise_kj ?? 0,
+                        target_weight_kg: u.target_weight_kg,
+                        weekly_goal_kg: u.weekly_goal_kg,
                     })
                 }
                 setSaved(true)
@@ -214,6 +220,32 @@ export default function DailyIntakePage() {
                                                 type="number"
                                                 min={field.min}
                                                 max={field.max}
+                                                value={(profile as any)[field.key] ?? ''}
+                                                onChange={e => setProfile(p => ({ ...p, [field.key]: e.target.value ? Number(e.target.value) : undefined }))}
+                                                className="w-full rounded-lg border border-border/60 bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 pr-10 shadow-sm"
+                                                placeholder="—"
+                                            />
+                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground uppercase">{field.unit}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Weight Goals */}
+                            <div className="grid grid-cols-2 gap-3">
+                                {[
+                                    { key: 'target_weight_kg', label: 'Target Weight', unit: 'kg', min: 20, max: 300 },
+                                    { key: 'weekly_goal_kg', label: 'Weekly Goal', unit: 'kg/wk', min: -2, max: 2 },
+                                ].map(field => (
+                                    <div key={field.key}>
+                                        <label className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                                            {field.label}
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                id={`field-${field.key}`}
+                                                type="number"
+                                                step="0.1"
                                                 value={(profile as any)[field.key] ?? ''}
                                                 onChange={e => setProfile(p => ({ ...p, [field.key]: e.target.value ? Number(e.target.value) : undefined }))}
                                                 className="w-full rounded-lg border border-border/60 bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 pr-10 shadow-sm"

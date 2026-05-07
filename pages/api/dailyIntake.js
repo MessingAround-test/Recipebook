@@ -14,7 +14,7 @@ export default async function handler(req, res) {
 
         if (req.method === 'GET') {
             const user = await User.findById(decoded.id).select(
-                'age gender weight_kg height_cm activity_level daily_exercise_kj'
+                'age gender weight_kg height_cm activity_level daily_exercise_kj target_weight_kg weekly_goal_kg'
             );
             if (!user) {
                 return res.status(404).json({ success: false, message: 'User not found' });
@@ -27,6 +27,8 @@ export default async function handler(req, res) {
                 height_cm: user.height_cm,
                 activity_level: user.activity_level,
                 daily_exercise_kj: user.daily_exercise_kj,
+                target_weight_kg: user.target_weight_kg,
+                weekly_goal_kg: user.weekly_goal_kg,
             };
 
             const targets = calculateDailyIntake(profile);

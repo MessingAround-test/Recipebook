@@ -15,6 +15,8 @@ const UserSchema = new mongoose.Schema(
     activity_level: { type: String, enum: ['sedentary', 'light', 'moderate', 'active', 'very_active'] },
     dietary_preference: { type: String, enum: ['none', 'vegetarian', 'vegan', 'pescetarian'], default: 'none' },
     daily_exercise_kj: { type: Number, default: 0 },
+    target_weight_kg: { type: Number },
+    weekly_goal_kg: { type: Number },
 
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }

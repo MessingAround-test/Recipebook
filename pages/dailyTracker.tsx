@@ -14,6 +14,9 @@ import SearchableDropdown from '../components/SearchableDropdown';
 import { useRouter } from 'next/router';
 import IngredientResearchComponent from '../components/IngredientResearchComponent';
 import NutrientResearchModal from '../components/NutrientResearchModal';
+import InsightsView from '../components/InsightsView';
+import DailyMetricsView from '../components/DailyMetricsView';
+import WeightTrendsView from '../components/WeightTrendsView';
 
 export default function DailyTracker() {
     const router = useRouter();
@@ -27,10 +30,11 @@ export default function DailyTracker() {
     const [date, setDate] = useState(getLocalDateString(new Date()));
     const [log, setLog] = useState<any>(null);
     const [targets, setTargets] = useState<DailyIntakeTargets | null>(null);
+    const [userProfile, setUserProfile] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [isLoggingOpen, setIsLoggingOpen] = useState(false);
     const [recommendations, setRecommendations] = useState<any>(null);
-    const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
+    const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'insights' | 'stats' | 'trends'>('daily');
     const [knownIngredients, setKnownIngredients] = useState<string[]>([]);
     const [unifiedSearch, setUnifiedSearch] = useState("");
     const [recipes, setRecipes] = useState<any[]>([]);
@@ -45,6 +49,9 @@ export default function DailyTracker() {
     const [insightsExpanded, setInsightsExpanded] = useState(false);
     const [breakdownExpanded, setBreakdownExpanded] = useState(false);
     const [selectedNutrientForResearch, setSelectedNutrientForResearch] = useState<string | null>(null);
+    const [dailyWeight, setDailyWeight] = useState<string>("");
+    const [dailyExercise, setDailyExercise] = useState<string>("");
+    const [savingMetrics, setSavingMetrics] = useState(false);
 
     const toggleRecipe = (recipeKey: string) => {
         setExpandedRecipes(prev => {
@@ -62,15 +69,22 @@ export default function DailyTracker() {
         if (!token) return;
 
         try {
-            // 1. Get targets
+            // 1. Get targets and profile
             const targetRes = await fetch('/api/dailyIntake', { headers: { edgetoken: token } });
             const targetData = await targetRes.json();
-            if (targetData.success) setTargets(targetData.targets);
+            if (targetData.success) {
+                setTargets(targetData.targets);
+                setUserProfile(targetData.profile);
+            }
 
             // 2. Get log for date
             const logRes = await fetch(`/api/dailyLog?date=${date}`, { headers: { edgetoken: token } });
             const logData = await logRes.json();
-            if (logData.success) setLog(logData.log);
+            if (logData.success) {
+                setLog(logData.log);
+                setDailyWeight(logData.log.weight_kg?.toString() || "");
+                setDailyExercise(logData.log.exercise_kcal?.toString() || "");
+            }
 
             // 3. Get recommendations (daily analysis)
             const recRes = await fetch(`/api/dailyLog/recommendations?date=${date}`, { headers: { edgetoken: token } });
@@ -205,6 +219,31 @@ export default function DailyTracker() {
             }
         } catch (err) {
             alert("Delete failed");
+        }
+    };
+
+    const handleUpdateMetrics = async () => {
+        setSavingMetrics(true);
+        const token = localStorage.getItem('Token');
+        try {
+            const res = await fetch('/api/dailyLog', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': token || '' },
+                body: JSON.stringify({
+                    date,
+                    weight_kg: dailyWeight ? Number(dailyWeight) : null,
+                    exercise_kcal: dailyExercise ? Number(dailyExercise) : 0
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setLog(data.log);
+                fetchData();
+            }
+        } catch (err) {
+            alert("Update metrics failed");
+        } finally {
+            setSavingMetrics(false);
         }
     };
 
@@ -480,6 +519,8 @@ export default function DailyTracker() {
         setUnifiedSearch(text);
     };
 
+    // Removed renderMetricsForm as it's now in its own tab
+
     // Shared: render the logging form
     const renderLoggingForm = () => (
         <div className="space-y-4">
@@ -561,10 +602,13 @@ export default function DailyTracker() {
                     </div>
                     <div className="flex items-center gap-2 md:gap-4">
                         <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-white/5 shadow-inner">
-                            <button onClick={() => setViewMode('daily')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] ${viewMode === 'daily' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>📅 Daily</button>
-                            <button onClick={() => setViewMode('weekly')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] ${viewMode === 'weekly' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>📊 Trends</button>
+                            <button onClick={() => setViewMode('daily')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] ${viewMode === 'daily' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>food</button>
+                            <button onClick={() => setViewMode('stats')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] ${viewMode === 'stats' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>exercise</button>
+                            <button onClick={() => setViewMode('weekly')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] ${viewMode === 'weekly' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>stats</button>
+                            <button onClick={() => setViewMode('trends')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] ${viewMode === 'trends' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>trends</button>
+                            <button onClick={() => setViewMode('insights')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] ${viewMode === 'insights' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>insights</button>
                         </div>
-                        {viewMode === 'daily' && (
+                        {(viewMode === 'daily' || viewMode === 'stats' || viewMode === 'insights') && (
                             <div className="flex items-center gap-1 md:gap-3 bg-muted/30 p-1 md:p-1.5 rounded-xl border border-white/5 shadow-inner ml-auto">
                                 <button onClick={() => changeDate(-1)} className="p-2.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-90"><FiChevronLeft size={18} /></button>
                                 <button onClick={() => setDate(getLocalDateString(new Date()))} className="font-black text-[11px] tracking-widest uppercase px-2 md:px-4 hover:text-emerald-400 transition-all active:scale-95 min-h-[40px] flex items-center">
@@ -579,6 +623,35 @@ export default function DailyTracker() {
                 {viewMode === 'weekly' ? (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <WeeklyNutrientGraph onClickNutrient={(key) => setSelectedNutrientForResearch(key)} />
+                    </div>
+                ) : viewMode === 'insights' ? (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <InsightsView onLogFood={handlePrefillIngredient} endDateProp={new Date(date.replace(/-/g, '/'))} />
+                    </div>
+                ) : viewMode === 'trends' ? (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <WeightTrendsView />
+                    </div>
+                ) : viewMode === 'stats' ? (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <DailyMetricsView 
+                            initialWeight={dailyWeight} 
+                            initialExerciseKcal={dailyExercise} 
+                            userWeight={userProfile?.weight_kg || 70}
+                            onSave={async (w, e) => {
+                                setDailyWeight(w?.toString() || "");
+                                setDailyExercise(e.toString());
+                                // We need to wrap the handleUpdateMetrics logic or use it
+                                // I'll inline the call here for simplicity
+                                const token = localStorage.getItem('Token');
+                                await fetch('/api/dailyLog', {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json', 'edgetoken': token || '' },
+                                    body: JSON.stringify({ date, weight_kg: w, exercise_kcal: e })
+                                });
+                                fetchData();
+                            }}
+                        />
                     </div>
                 ) : (
                     <>

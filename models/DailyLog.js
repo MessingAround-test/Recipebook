@@ -38,7 +38,9 @@ const DailyLogItemSchema = new mongoose.Schema({
 const DailyLogSchema = new mongoose.Schema({
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     date: { type: String, required: true, index: true }, // YYYY-MM-DD
-    items: [DailyLogItemSchema]
+    items: [DailyLogItemSchema],
+    weight_kg: { type: Number },
+    exercise_kcal: { type: Number, default: 0 }
 }, { 
     timestamps: true 
 });

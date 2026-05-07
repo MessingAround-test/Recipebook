@@ -170,8 +170,27 @@ export default async function handler(req, res) {
                 return res.status(500).json({ success: false, message: err.message });
             }
 
+        case 'PUT':
+            const { date: putDate, weight_kg, exercise_kcal } = req.body;
+            if (!putDate) return res.status(400).json({ success: false, message: "Date is required" });
+
+            try {
+                const update = {};
+                if (weight_kg !== undefined) update.weight_kg = weight_kg;
+                if (exercise_kcal !== undefined) update.exercise_kcal = exercise_kcal;
+
+                const log = await DailyLog.findOneAndUpdate(
+                    { user_id: userId, date: putDate },
+                    { $set: update },
+                    { upsert: true, new: true }
+                );
+                return res.status(200).json({ success: true, log });
+            } catch (err) {
+                return res.status(500).json({ success: false, message: err.message });
+            }
+
         default:
-            res.setHeader('Allow', ['GET', 'POST', 'DELETE']);
+            res.setHeader('Allow', ['GET', 'POST', 'DELETE', 'PUT']);
             return res.status(405).end(`Method ${method} Not Allowed`);
     }
 }
