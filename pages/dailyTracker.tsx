@@ -600,16 +600,16 @@ export default function DailyTracker() {
                             <div className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-muted-foreground">Daily Score</div>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 md:gap-4">
-                        <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-white/5 shadow-inner">
-                            <button onClick={() => setViewMode('daily')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] ${viewMode === 'daily' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>food</button>
-                            <button onClick={() => setViewMode('stats')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] ${viewMode === 'stats' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>exercise</button>
-                            <button onClick={() => setViewMode('weekly')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] ${viewMode === 'weekly' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>stats</button>
-                            <button onClick={() => setViewMode('trends')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] ${viewMode === 'trends' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>trends</button>
-                            <button onClick={() => setViewMode('insights')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] ${viewMode === 'insights' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>insights</button>
+                    <div className="flex flex-wrap items-center justify-between gap-3 md:gap-4">
+                        <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-white/5 shadow-inner overflow-x-auto no-scrollbar w-full sm:w-auto">
+                            <button onClick={() => setViewMode('daily')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'daily' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>food</button>
+                            <button onClick={() => setViewMode('stats')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'stats' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>exercise</button>
+                            <button onClick={() => setViewMode('weekly')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'weekly' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>stats</button>
+                            <button onClick={() => setViewMode('trends')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'trends' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>trends</button>
+                            <button onClick={() => setViewMode('insights')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'insights' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>insights</button>
                         </div>
                         {(viewMode === 'daily' || viewMode === 'stats' || viewMode === 'insights') && (
-                            <div className="flex items-center gap-1 md:gap-3 bg-muted/30 p-1 md:p-1.5 rounded-xl border border-white/5 shadow-inner ml-auto">
+                            <div className="flex items-center justify-between sm:justify-start gap-1 md:gap-3 bg-muted/30 p-1 md:p-1.5 rounded-xl border border-white/5 shadow-inner w-full sm:w-auto sm:ml-auto">
                                 <button onClick={() => changeDate(-1)} className="p-2.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-90"><FiChevronLeft size={18} /></button>
                                 <div className="relative group/date">
                                     <input 
