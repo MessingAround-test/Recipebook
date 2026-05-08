@@ -611,9 +611,17 @@ export default function DailyTracker() {
                         {(viewMode === 'daily' || viewMode === 'stats' || viewMode === 'insights') && (
                             <div className="flex items-center gap-1 md:gap-3 bg-muted/30 p-1 md:p-1.5 rounded-xl border border-white/5 shadow-inner ml-auto">
                                 <button onClick={() => changeDate(-1)} className="p-2.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-90"><FiChevronLeft size={18} /></button>
-                                <button onClick={() => setDate(getLocalDateString(new Date()))} className="font-black text-[11px] tracking-widest uppercase px-2 md:px-4 hover:text-emerald-400 transition-all active:scale-95 min-h-[40px] flex items-center">
-                                    {date === getLocalDateString(new Date()) ? 'Today' : (() => { const [y, m, d] = date.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }); })()}
-                                </button>
+                                <div className="relative group/date">
+                                    <input 
+                                        type="date" 
+                                        value={date} 
+                                        onChange={(e) => setDate(e.target.value)}
+                                        className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                                    />
+                                    <button className="font-black text-[11px] tracking-widest uppercase px-2 md:px-4 hover:text-emerald-400 transition-all active:scale-95 min-h-[40px] flex items-center">
+                                        {date === getLocalDateString(new Date()) ? 'Today' : (() => { const [y, m, d] = date.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }); })()}
+                                    </button>
+                                </div>
                                 <button onClick={() => changeDate(1)} className="p-2.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-90"><FiChevronRight size={18} /></button>
                             </div>
                         )}

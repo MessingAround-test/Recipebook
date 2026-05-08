@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Layers } from 'lucide-react';
 
 const ToggleList = ({ inputList, onUpdateList, value, text = "Select Option", mapping = {} }: any) => {
     const [activeItems, setActiveItems] = useState<string[]>(value || []);
@@ -35,36 +36,40 @@ const ToggleList = ({ inputList, onUpdateList, value, text = "Select Option", ma
     }, [dropdownRef]);
 
     return (
-        <div className="relative font-mono" ref={dropdownRef}>
+        <div className="relative w-full" ref={dropdownRef}>
             <button
-                className="flex h-10 items-center justify-between rounded-md border border-[var(--glass-border)] bg-[var(--bg-secondary)] px-4 py-2 text-xs font-bold uppercase ring-offset-background hover:bg-[var(--accent)] hover:text-black transition-colors w-full shadow-lg"
+                className={`flex h-10 items-center justify-between rounded-xl border px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all w-full shadow-lg backdrop-blur-md active:scale-95 ${isOpen ? 'bg-white/10 border-white/20 text-white' : 'bg-white/[0.05] border-white/10 text-gray-400 hover:text-white hover:border-white/20'}`}
                 onClick={() => setIsOpen(!isOpen)}
                 type="button"
             >
                 <span className="flex items-center gap-2">
-                    <span className="opacity-60">📁</span> {text}
+                    <Layers size={14} className="opacity-70" /> {text}
                 </span>
-                <span className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+                <span className={`transition-transform duration-300 text-[8px] ${isOpen ? 'rotate-180' : ''}`}>▼</span>
             </button>
             {isOpen && (
-                <div className="absolute top-12 right-0 z-[200] min-w-[12rem] overflow-hidden rounded-xl border border-white/10 bg-[#0f172a] p-1.5 text-white shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
-                    {inputList.map((item: string) => (
-                        <div
-                            key={item}
-                            className="relative flex w-full cursor-pointer select-none items-center rounded-sm hover:bg-[var(--accent)] hover:text-black transition-colors"
-                            onClick={() => toggleItem(item)}
-                        >
-                            <div className="flex items-center gap-2 py-1.5 px-2 w-full uppercase pointer-events-none">
-                                <input
-                                    type="checkbox"
-                                    checked={activeItems.includes(item)}
-                                    readOnly
-                                    className="accent-emerald-500"
-                                />
-                                {mapping[item] || item}
-                            </div>
-                        </div>
-                    ))}
+                <div className="absolute top-12 left-0 right-0 z-[200] min-w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0c0c0e] p-2 text-white shadow-[0_20px_50px_rgba(0,0,0,0.9)] backdrop-blur-3xl animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex flex-col gap-1">
+                        {inputList.map((item: string) => {
+                            const isChecked = activeItems.includes(item);
+                            return (
+                                <div
+                                    key={item}
+                                    className={`relative flex w-full cursor-pointer select-none items-center rounded-xl p-2.5 transition-all ${isChecked ? 'bg-emerald-500/10 text-emerald-400' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
+                                    onClick={() => toggleItem(item)}
+                                >
+                                    <div className="flex items-center gap-3 w-full uppercase text-[10px] font-black tracking-widest">
+                                        <div className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all ${isChecked ? 'bg-emerald-500 border-emerald-500 text-black' : 'border-white/20'}`}>
+                                            {isChecked && (
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                            )}
+                                        </div>
+                                        {mapping[item] || item}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
         </div>

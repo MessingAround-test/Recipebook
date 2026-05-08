@@ -56,6 +56,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
 
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [fieldsRevealed, setFieldsRevealed] = useState(!triggerSearchOnInit && !!initialData);
+    const [isNoteOpen, setIsNoteOpen] = useState(!!initialData?.note);
 
     const resetForm = () => {
         setFormData({
@@ -76,10 +77,11 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleNameSubmit = async () => {
+    const handleNameSubmit = async (nameOverride?: string) => {
         if (fieldsRevealed || isAiLoading) return;
-        if (formData.name !== undefined && formData.name !== "") {
-            await determineDefaults(formData.name)
+        const nameToUse = typeof nameOverride === 'string' ? nameOverride : formData.name;
+        if (nameToUse !== undefined && nameToUse !== "") {
+            await determineDefaults(nameToUse)
         }
     };
 
@@ -162,7 +164,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
     }, [triggerSearchOnInit, initialData?.name]);
 
     return (
-        <div className="bg-secondary/40 backdrop-blur-md rounded-2xl md:rounded-[2rem] border border-white/10 w-full max-w-none md:max-w-[550px] mx-auto mb-4 md:mb-6 p-4 md:p-8 relative overflow-hidden group/add-item animate-in fade-in zoom-in-95 duration-500 shadow-2xl shadow-black/20">
+        <div className="bg-secondary/40 backdrop-blur-md rounded-xl md:rounded-[2rem] border border-white/10 w-full max-w-none md:max-w-[550px] mx-auto mb-3 md:mb-6 p-3 md:p-5 relative min-h-[110px] group/add-item animate-in fade-in zoom-in-95 duration-500 shadow-2xl shadow-black/20">
             {/* Improved visibility highlight */}
             <div className="absolute inset-0 bg-gradient-to-br from-accent/15 via-transparent to-accent/5 opacity-40 pointer-events-none" />
             <div className="absolute inset-0 bg-white/[0.02] pointer-events-none" />
@@ -171,29 +173,28 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                 <button
                     type="button"
                     onClick={onCancel}
-                    className="absolute top-6 right-6 text-muted-foreground hover:text-white transition-colors z-10"
+                    className="absolute top-3 right-3 md:top-6 md:right-6 text-muted-foreground hover:text-white transition-colors z-[70] p-2 hover:bg-white/5 rounded-full"
                 >
-                    <X size={20} />
+                    <X size={18} />
                 </button>
             )}
 
-            <form onSubmit={handleSubmitLocal} className="flex flex-col gap-6 relative z-10">
+            <form onSubmit={handleSubmitLocal} className="flex flex-col gap-3 relative z-10">
                 {!hideHeader && (
-                    <div className="flex flex-col gap-1.5 mb-2">
+                    <div className="hidden md:flex flex-col gap-1 mb-1">
                         <div className="text-[10px] font-black uppercase tracking-[0.3em] text-accent flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
                             Quick Add Ingredient
                         </div>
-                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider ml-4">Enter name to search details</p>
                     </div>
                 )}
 
                 <input name="name" id="ingredName" type="text" placeholder={shoppingListId} disabled hidden />
 
                 {!hideNameInput && (
-                    <div className="flex flex-col gap-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Item Name</label>
-                        <div className="relative group/input">
+                    <div className="flex flex-col gap-1 z-20">
+                        <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Item Name</label>
+                        <div className="relative group/input z-30">
                             <SearchableDropdown
                                 options={knownIngredients}
                                 placeholder={"What are we adding?"}
@@ -207,17 +208,32 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                 )}
 
                 {!hideNote && (
-                    <div className="flex flex-col gap-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Note (optional)</label>
-                        <input
-                            name="note"
-                            id="ingredNote"
-                            type="text"
-                            placeholder="e.g. Extra fresh, organic..."
-                            onChange={handleChange}
-                            value={formData.note}
-                            className="input-modern bg-background/40 border-white/5 focus:bg-background/60 transition-all"
-                        />
+                    <div className="flex flex-col gap-1.5">
+                        {isNoteOpen ? (
+                            <>
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Note (optional)</label>
+                                    <button type="button" onClick={() => setIsNoteOpen(false)} className="text-[8px] text-muted-foreground hover:text-white uppercase font-black transition-colors">Hide</button>
+                                </div>
+                                <input
+                                    name="note"
+                                    id="ingredNote"
+                                    type="text"
+                                    placeholder="e.g. Extra fresh, organic..."
+                                    onChange={handleChange}
+                                    value={formData.note}
+                                    className="input-modern !py-2 !px-3 bg-background/40 border-white/5 focus:bg-background/60 transition-all text-xs"
+                                />
+                            </>
+                        ) : (
+                            <button 
+                                type="button" 
+                                onClick={() => setIsNoteOpen(true)} 
+                                className="text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-white flex items-center gap-2 transition-colors w-fit ml-1"
+                            >
+                                <span className="text-accent text-xs">+</span> Add Note
+                            </button>
+                        )}
                     </div>
                 )}
 
@@ -229,10 +245,10 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                 )}
 
                 {fieldsRevealed && (
-                    <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-top-4 duration-500 pt-4 border-t border-white/5">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="flex flex-col gap-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Quantity</label>
+                    <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-4 duration-500 pt-3 border-t border-white/5">
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="flex flex-col gap-1">
+                                <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Quantity</label>
                                 <input
                                     name="quantity"
                                     id="ingredAmount"
@@ -241,18 +257,18 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                                     required
                                     onChange={handleChange}
                                     value={formData.quantity}
-                                    className="input-modern bg-background/40 border-white/5 focus:ring-2 focus:ring-accent/20"
+                                    className="input-modern !py-2 !px-3 bg-background/40 border-white/5 focus:ring-2 focus:ring-accent/20 text-xs"
                                 />
                             </div>
-                            <div className="flex flex-col gap-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Unit</label>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Unit</label>
                                 <select
                                     name="quantity_type"
                                     id="quantity_type"
                                     onChange={handleChange}
                                     value={formData.quantity_type}
                                     required
-                                    className="input-modern bg-background/40 border-white/5 focus:ring-2 focus:ring-accent/20"
+                                    className="input-modern !py-2 !px-3 bg-background/40 border-white/5 focus:ring-2 focus:ring-accent/20 text-xs"
                                 >
                                     {Object.keys(quantity_unit_conversions)
                                         .filter(item => !["can", "bottle", "package", "stick", "bunch", "head", "stalk", "stem", "bag", "box", "tray", "tub"].includes(item))
@@ -262,8 +278,8 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                         </div>
 
                         {!hideCategories && (
-                            <div className="flex flex-col gap-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Category</label>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Category</label>
                                 <SearchableDropdown
                                     options={categories.map((cat) => cat.name)}
                                     placeholder={"Assign a category..."}
@@ -277,9 +293,9 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                     </div>
                 )}
 
-                <div className="mt-2">
+                <div className="mt-1">
                     <Button
-                        className={`w-full font-black uppercase tracking-[0.2em] text-xs py-7 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-3 shadow-xl ${fieldsRevealed
+                        className={`w-full font-black uppercase tracking-[0.2em] text-[10px] py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-3 shadow-xl ${fieldsRevealed
                             ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-500/20'
                             : 'bg-accent/20 hover:bg-accent/30 text-accent border border-accent/20 shadow-none'
                             }`}

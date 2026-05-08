@@ -13,7 +13,7 @@ import ToggleList from '../../../components/ToggleList'
 import { getGroceryStoreProducts } from '../../../lib/commonAPIs'
 import { groupByKeys } from '../../../lib/grouping'
 import { getColorForCategory, getLightColorForCategory } from '../../../lib/colors'
-import { Info } from 'lucide-react'
+import { Info, Settings, RotateCcw, Plus } from 'lucide-react'
 
 const FRIENDLY_NAMES = {
     'Fresh Produce': '🥦 Fresh Produce',
@@ -73,7 +73,52 @@ export default function Home() {
     const [filters, setFilters] = useState(["complete", "category_simple"])
     const [pricingStrategy, setPricingStrategy] = useState("value")
     const [isGrouped, setIsGrouped] = useState(true)
+    const [isOptionsOpen, setIsOptionsOpen] = useState(false)
+    const [isLoaded, setIsLoaded] = useState(false)
     const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type", "category_simple", "recipe_name"]
+
+    useEffect(() => {
+        const savedStrategy = localStorage.getItem('shoppingList_pricingStrategy');
+        const savedFilters = localStorage.getItem('shoppingList_filters');
+        const savedIsGrouped = localStorage.getItem('shoppingList_isGrouped');
+        const savedSuppliers = localStorage.getItem('shoppingList_enabledSuppliers');
+
+        if (savedStrategy) setPricingStrategy(savedStrategy);
+        if (savedFilters) setFilters(JSON.parse(savedFilters));
+        if (savedIsGrouped !== null) setIsGrouped(JSON.parse(savedIsGrouped));
+        if (savedSuppliers) {
+            const suppliers = JSON.parse(savedSuppliers);
+            setEnabledSuppliers(suppliers);
+            setPendingSuppliers({
+                "/WW.png": suppliers.includes("WW"),
+                "/Panetta.png": suppliers.includes("Panetta"),
+                "/IGA.png": suppliers.includes("IGA"),
+                "/Aldi.png": suppliers.includes("Aldi"),
+                "/Coles.png": suppliers.includes("Coles")
+            });
+        }
+        setIsLoaded(true);
+    }, []);
+
+    useEffect(() => {
+        if (!isLoaded) return;
+        localStorage.setItem('shoppingList_pricingStrategy', pricingStrategy);
+    }, [pricingStrategy, isLoaded]);
+
+    useEffect(() => {
+        if (!isLoaded) return;
+        localStorage.setItem('shoppingList_filters', JSON.stringify(filters));
+    }, [filters, isLoaded]);
+
+    useEffect(() => {
+        if (!isLoaded) return;
+        localStorage.setItem('shoppingList_isGrouped', JSON.stringify(isGrouped));
+    }, [isGrouped, isLoaded]);
+
+    useEffect(() => {
+        if (!isLoaded) return;
+        localStorage.setItem('shoppingList_enabledSuppliers', JSON.stringify(enabledSuppliers));
+    }, [enabledSuppliers, isLoaded]);
 
     useEffect(() => {
         if (localStorage.getItem('Token') === null || localStorage.getItem('Token') === undefined) {
@@ -439,6 +484,12 @@ export default function Home() {
             "/Coles.png": true
         });
         setFilters(["complete", "category_simple"]);
+        setPricingStrategy('match');
+        setIsGrouped(true);
+        localStorage.removeItem('shoppingList_pricingStrategy');
+        localStorage.removeItem('shoppingList_filters');
+        localStorage.removeItem('shoppingList_isGrouped');
+        localStorage.removeItem('shoppingList_enabledSuppliers');
     };
 
     const handleSupplierClick = (suppliersInput) => {
@@ -560,71 +611,84 @@ export default function Home() {
                 <main className={styles.main}>
 
                     {/* Consolidated Header & Actions */}
-                    <div className="glass-card w-full mb-6 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 relative z-[10]">
-                        <div className="flex flex-col gap-1">
-                            <h1 className="text-xl sm:text-2xl font-bold m-0 tracking-tight flex items-center gap-2">
+                    <div className="glass-card w-full mb-4 p-3 flex flex-col gap-3 relative z-[100]">
+                        <div className="flex items-center justify-between gap-4">
+                            <h1 className="text-lg sm:text-xl font-bold m-0 tracking-tight flex items-center gap-2">
                                 <span>🛒</span>
-                                <span className="truncate max-w-[200px] sm:max-w-none">{list?.name || 'Loading...'}</span>
+                                <span className="truncate max-w-[150px] sm:max-w-none">{list?.name || 'Loading...'}</span>
                             </h1>
-                            <div className="flex items-center gap-3 flex-wrap">
-                                {!isListEmpty && (
-                                    <>
-                                        <h4 className="text-[10px] sm:text-sm font-bold m-0 text-[var(--accent)] uppercase tracking-wide">
-                                            AVG EST. COST: <span className="text-white">${displayTotal}</span>
-                                        </h4>
-                                        <span className="text-[10px] font-medium text-gray-400 uppercase opacity-70">({matchedListIngreds.length} items)</span>
-                                    </>
+
+                            <div className="flex flex-row items-center gap-2">
+                                <button
+                                    onClick={resetToDefault}
+                                    className="p-2 rounded-lg border border-[var(--border)] text-gray-400 hover:text-white hover:bg-white/5 transition-all active:scale-95"
+                                    title="Reset View"
+                                >
+                                    <RotateCcw size={16} />
+                                </button>
+                                
+                                <button
+                                    onClick={() => setIsOptionsOpen(!isOptionsOpen)}
+                                    className={`p-2 rounded-lg border transition-all active:scale-95 ${isOptionsOpen ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-[var(--border)] text-gray-400 hover:text-white'}`}
+                                    title="Options"
+                                >
+                                    <Settings size={16} className={isOptionsOpen ? 'animate-spin-slow' : ''} />
+                                </button>
+
+                                {!createNewIngredOpen && (
+                                    <button
+                                        className="bg-emerald-500 hover:bg-emerald-400 text-black p-2 rounded-lg transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center"
+                                        onClick={() => setCreateNewIngredOpen(true)}
+                                        title="Add Item"
+                                    >
+                                        <Plus size={18} strokeWidth={3} />
+                                    </button>
                                 )}
                             </div>
                         </div>
 
-                        <div className="flex flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto flex-wrap">
-                            {/* Pricing Strategy Toggle */}
-                            {!isListEmpty && (
-                                <div className="flex rounded-lg overflow-hidden border border-[var(--border)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
+                        {/* Row 2: Always visible Group By */}
+                        {!isListEmpty && (
+                            <div className="w-full">
+                                <ToggleList
+                                    inputList={availableFilters.filter(f => f !== 'complete')}
+                                    onUpdateList={(currentState) => setFilters(currentState.includes('complete') ? currentState : [...currentState, 'complete'])}
+                                    value={filters}
+                                    text={"Group By"}
+                                    mapping={FRIENDLY_NAMES}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Collapsible Options Panel */}
+                    {isOptionsOpen && !isListEmpty && (
+                        <div className="glass-card w-full mb-6 p-4 animate-in slide-in-from-top-4 duration-300 flex flex-col sm:flex-row items-start sm:items-center gap-6 border-t-0 rounded-t-none -mt-7 pt-10 relative z-20">
+                            <div className="flex flex-col gap-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Pricing Strategy</label>
+                                <div className="flex rounded-lg overflow-hidden border border-white/10 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
                                     <button
                                         onClick={() => setPricingStrategy('match')}
-                                        className={`px-2 py-1.5 transition-colors ${pricingStrategy === 'match' ? 'bg-[var(--accent)] text-black' : 'bg-transparent text-gray-400 hover:text-white'}`}
+                                        className={`px-3 py-2 transition-colors ${pricingStrategy === 'match' ? 'bg-blue-500/20 text-blue-400 border-r border-white/10' : 'bg-transparent text-gray-400 hover:text-white border-r border-white/10'}`}
                                     >Best Match</button>
                                     <button
                                         onClick={() => setPricingStrategy('value')}
-                                        className={`px-2 py-1.5 transition-colors ${pricingStrategy === 'value' ? 'bg-[var(--accent)] text-black' : 'bg-transparent text-gray-400 hover:text-white'}`}
+                                        className={`px-3 py-2 transition-colors ${pricingStrategy === 'value' ? 'bg-blue-500/20 text-blue-400' : 'bg-transparent text-gray-400 hover:text-white'}`}
                                     >Best Value</button>
                                 </div>
-                            )}
-                            {!createNewIngredOpen && (
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Layout</label>
                                 <button
-                                    className="btn-modern !py-2.5 !px-4 text-[10px] sm:text-xs flex-1 sm:flex-none whitespace-nowrap"
-                                    onClick={() => setCreateNewIngredOpen(true)}
-                                >
-                                    ➕ ADD ITEM
-                                </button>
-                            )}
-                            {/* Grouping Toggle */}
-                            {!isListEmpty && (
-                                <button
-                                    className={`btn-modern !py-1.5 !px-3 text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all ${isGrouped ? 'bg-[var(--accent)] text-black' : 'bg-transparent text-gray-400 border border-[var(--border)] hover:text-white'}`}
-                                    onClick={() => {
-                                        const newVal = !isGrouped;
-                                        setIsGrouped(newVal);
-                                    }}
+                                    className={`py-2 px-3 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all border ${isGrouped ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-transparent text-gray-400 border-white/10 hover:text-white'}`}
+                                    onClick={() => setIsGrouped(!isGrouped)}
                                 >
                                     {isGrouped ? '📦 Grouped' : '📄 Individual'}
                                 </button>
-                            )}
-                            {!isListEmpty && (
-                                <div className="flex-1 sm:min-w-[170px] sm:flex-none">
-                                    <ToggleList
-                                        inputList={availableFilters.filter(f => f !== 'complete')}
-                                        onUpdateList={(currentState) => setFilters(currentState.includes('complete') ? currentState : [...currentState, 'complete'])}
-                                        value={filters}
-                                        text={"Group By"}
-                                        mapping={FRIENDLY_NAMES}
-                                    />
-                                </div>
-                            )}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {createNewIngredOpen && (
                         <div className="w-full mb-6">

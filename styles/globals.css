@@ -399,7 +399,7 @@ a {
   inset: 0;
   background-color: var(--cooking-bg);
   color: var(--cooking-text);
-  z-index: 100;
+  z-index: 2000;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -437,6 +437,7 @@ a {
 
 .cooking-mode-controls {
   padding: 1.5rem;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
   border-top: 1px solid var(--cooking-border);
   display: flex;
   gap: 1rem;
