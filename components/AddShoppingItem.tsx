@@ -73,8 +73,13 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
     const [knownIngredients, setKnownIngredients] = useState<any[]>([])
 
     const handleChange = (e: any) => {
-        const { name, value } = e.target;
+        const { name, value, option } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+        
+        // Trigger immediate lookup if an option was selected from the dropdown
+        if (option && name === 'name') {
+            handleNameSubmit(value);
+        }
     };
 
     const handleNameSubmit = async (nameOverride?: string) => {

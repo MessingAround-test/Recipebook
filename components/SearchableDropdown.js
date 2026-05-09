@@ -66,11 +66,6 @@ function SearchableDropdown({ options, placeholder, onChange, name, value, onCom
     let e = { target: { name: name, value: finalValue, option: option } };
     onChange(e);
   
-    if (onComplete) {
-      onComplete(finalValue);
-    }
-
-    // Triggering blur if name is provided
     if (name) {
       const inputElement = document.querySelector(`input[name=${name}]`);
       if (inputElement) {
