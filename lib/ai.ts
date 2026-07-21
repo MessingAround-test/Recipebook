@@ -4,8 +4,8 @@ import ApiKeyStatus from "../models/ApiKeyStatus";
 import ApiKeyUsage from "../models/ApiKeyUsage";
 
 export const GROQ_MODELS = {
-    PRIMARY: 'llama-3.3-70b-versatile',
-    FALLBACK: 'llama-3.1-8b-instant',
+    PRIMARY: 'llama-3.1-8b-instant',
+    FALLBACK: 'allam-2-7b',
     AUDIO: 'whisper-large-v3'
 };
 
