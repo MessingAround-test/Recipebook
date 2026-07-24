@@ -14,6 +14,8 @@ import { getGroceryStoreProducts } from '../../../lib/commonAPIs'
 import { groupByKeys } from '../../../lib/grouping'
 import { getColorForCategory, getLightColorForCategory } from '../../../lib/colors'
 import { Info, Settings, RotateCcw, Plus } from 'lucide-react'
+import WoolworthsOrderEditor from '../../../components/WoolworthsOrderEditor'
+import { compareByWoolworthsOrder, compareGroupsByWoolworthsOrder, getStoredOrder } from '../../../lib/woolworthsOrder'
 
 const FRIENDLY_NAMES = {
     'Fresh Produce': '🥦 Fresh Produce',
@@ -75,6 +77,8 @@ export default function Home() {
     const [isGrouped, setIsGrouped] = useState(true)
     const [isOptionsOpen, setIsOptionsOpen] = useState(false)
     const [isLoaded, setIsLoaded] = useState(false)
+    const [sortMode, setSortMode] = useState('alphabetical')
+    const [isOrderEditorOpen, setIsOrderEditorOpen] = useState(false)
     const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type", "category_simple", "recipe_name"]
 
     useEffect(() => {
@@ -97,6 +101,8 @@ export default function Home() {
                 "/Coles.png": suppliers.includes("Coles")
             });
         }
+        const savedSortMode = localStorage.getItem('shoppingList_sortMode');
+        if (savedSortMode === 'woolworths_smart' || savedSortMode === 'alphabetical') setSortMode(savedSortMode);
         setIsLoaded(true);
     }, []);
 
@@ -114,6 +120,11 @@ export default function Home() {
         if (!isLoaded) return;
         localStorage.setItem('shoppingList_isGrouped', JSON.stringify(isGrouped));
     }, [isGrouped, isLoaded]);
+
+    useEffect(() => {
+        if (!isLoaded) return;
+        localStorage.setItem('shoppingList_sortMode', sortMode);
+    }, [sortMode, isLoaded]);
 
     useEffect(() => {
         if (!isLoaded) return;
@@ -378,6 +389,9 @@ export default function Home() {
     };
 
     function sortFunction(a, b) {
+        if (sortMode === 'woolworths_smart') {
+            return compareGroupsByWoolworthsOrder(a, b, getStoredOrder());
+        }
         const aIsComplete = a.includes("complete=true");
         const bIsComplete = b.includes("complete=true");
         if (aIsComplete && !bIsComplete) return 1;
@@ -386,6 +400,9 @@ export default function Home() {
     }
 
     function ingredientSortFunction(a, b) {
+        if (sortMode === 'woolworths_smart') {
+            return compareByWoolworthsOrder(a, b, getStoredOrder());
+        }
         return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
     }
 
@@ -486,10 +503,12 @@ export default function Home() {
         setFilters(["complete", "category_simple"]);
         setPricingStrategy('match');
         setIsGrouped(true);
+        setSortMode('alphabetical');
         localStorage.removeItem('shoppingList_pricingStrategy');
         localStorage.removeItem('shoppingList_filters');
         localStorage.removeItem('shoppingList_isGrouped');
         localStorage.removeItem('shoppingList_enabledSuppliers');
+        localStorage.removeItem('shoppingList_sortMode');
     };
 
     const handleSupplierClick = (suppliersInput) => {
@@ -686,6 +705,26 @@ export default function Home() {
                                 >
                                     {isGrouped ? '📦 Grouped' : '📄 Individual'}
                                 </button>
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Sort Order</label>
+                                <div className="flex rounded-lg overflow-hidden border border-white/10 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
+                                    <button
+                                        onClick={() => setSortMode('alphabetical')}
+                                        className={`px-3 py-2 transition-colors ${sortMode === 'alphabetical' ? 'bg-blue-500/20 text-blue-400 border-r border-white/10' : 'bg-transparent text-gray-400 hover:text-white border-r border-white/10'}`}
+                                    >🔤 Alphabetical</button>
+                                    <button
+                                        onClick={() => setSortMode('woolworths_smart')}
+                                        className={`px-3 py-2 transition-colors ${sortMode === 'woolworths_smart' ? 'bg-blue-500/20 text-blue-400' : 'bg-transparent text-gray-400 hover:text-white'}`}
+                                    >🏪 Woolworths</button>
+                                </div>
+                                {sortMode === 'woolworths_smart' && (
+                                    <button
+                                        onClick={() => setIsOrderEditorOpen(true)}
+                                        className="text-[9px] font-bold uppercase tracking-widest text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 py-1.5 px-3 rounded-lg transition-all mt-1"
+                                    >✏️ Edit Walkthrough Order</button>
+                                )}
                             </div>
                         </div>
                     )}
@@ -930,6 +969,11 @@ export default function Home() {
                         </button>
                         <p className="text-xs text-center mt-4 text-gray-500 uppercase tracking-widest font-mono">List ID: {id}</p>
                     </div>
+
+                    <WoolworthsOrderEditor
+                        isOpen={isOrderEditorOpen}
+                        onClose={() => setIsOrderEditorOpen(false)}
+                    />
 
                 </main>
             </div>
