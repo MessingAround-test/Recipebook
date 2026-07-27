@@ -85,7 +85,10 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
         }
 
         if (option && name === 'name') {
-            handleNameSubmit(value);
+            setFieldsRevealed(false);
+            userChangedFields.current = false;
+            setFormData(prev => ({ ...prev, category: "", quantity: 1, quantity_type: "each" }));
+            determineDefaults(value);
         }
     };
 
