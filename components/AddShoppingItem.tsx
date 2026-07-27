@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FormEvent } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { quantity_unit_conversions } from "../lib/conversion"
 import SearchableImageDropdown from './SearchableImageDropdown'
 import SearchableDropdown from './SearchableDropdown'
@@ -57,6 +57,8 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [fieldsRevealed, setFieldsRevealed] = useState(!triggerSearchOnInit && !!initialData);
     const [isNoteOpen, setIsNoteOpen] = useState(!!initialData?.note);
+    const userChangedFields = useRef(false);
+    const initialFormRef = useRef<string | null>(null);
 
     const resetForm = () => {
         setFormData({
@@ -68,6 +70,8 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
             category: ""
         });
         setFieldsRevealed(false);
+        userChangedFields.current = false;
+        initialFormRef.current = null;
     };
 
     const [knownIngredients, setKnownIngredients] = useState<any[]>([])
@@ -76,7 +80,10 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
         const { name, value, option } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
         
-        // Trigger immediate lookup if an option was selected from the dropdown
+        if (fieldsRevealed && (name === 'quantity' || name === 'quantity_type' || name === 'category')) {
+            userChangedFields.current = true;
+        }
+
         if (option && name === 'name') {
             handleNameSubmit(value);
         }
@@ -107,8 +114,8 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
 
     async function determineDefaults(name: string) {
         setIsAiLoading(true);
+        const token = localStorage.getItem('Token')
         try {
-            const token = localStorage.getItem('Token')
             let response = await (await fetch(`/api/ShoppingListItem/options?search_term=${name}`, {
                 headers: { 'edgetoken': token || "" }
             })).json()
@@ -120,26 +127,33 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                 let quantity_type = values.quantity_type[0] ? values.quantity_type[0].value : formData.quantity_type
                 setFormData(prev => ({ ...prev, category, quantity, quantity_type }));
                 setFieldsRevealed(true);
+                setIsAiLoading(false);
             } else {
-                let aiResponse = await (await fetch(`/api/ai/determine_default_categories?search_term=${name}`, {
-                    headers: { 'edgetoken': token || "" }
-                })).json()
-
-                if (aiResponse.success) {
-                    const { category, quantity, unit } = aiResponse.data;
-                    setFormData(prev => ({
-                        ...prev,
-                        category: isValidCategory(categories, category) ? category : prev.category,
-                        quantity: quantity || prev.quantity,
-                        quantity_type: unit || prev.quantity_type
-                    }));
-                }
                 setFieldsRevealed(true);
+                userChangedFields.current = false;
+                initialFormRef.current = JSON.stringify({ quantity: formData.quantity, quantity_type: formData.quantity_type, category: formData.category });
+
+                fetch(`/api/ai/determine_default_categories?search_term=${name}`, {
+                    headers: { 'edgetoken': token || "" }
+                }).then(res => res.json()).then(aiResponse => {
+                    if (aiResponse.success && !userChangedFields.current) {
+                        const { category, quantity, unit } = aiResponse.data;
+                        setFormData(prev => ({
+                            ...prev,
+                            category: isValidCategory(categories, category) ? category : prev.category,
+                            quantity: quantity || prev.quantity,
+                            quantity_type: unit || prev.quantity_type
+                        }));
+                    }
+                }).catch(error => {
+                    console.log(error)
+                }).finally(() => {
+                    setIsAiLoading(false);
+                });
             }
         } catch (error) {
             console.log(error)
             setFieldsRevealed(true);
-        } finally {
             setIsAiLoading(false);
         }
     }
