@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { NUTRIENT_LABELS, DailyIntakeTargets } from '../lib/dailyIntake';
 import { FiChevronLeft, FiChevronRight, FiAlertTriangle, FiCalendar } from 'react-icons/fi';
+import SymptomStatsView from './SymptomStatsView';
 
 const DEFAULT_TARGETS: DailyIntakeTargets = {
     energy_kcal: 2000, protein_g: 80, fat_g: 67, carbohydrates_g: 250, fiber_g: 30,
@@ -110,7 +111,7 @@ export default function WeeklyNutrientGraph({ onClickNutrient }: WeeklyNutrientG
     const [dailyTotals, setDailyTotals] = useState<Record<string, Record<string, number>>>({});
     const [loading, setLoading] = useState(false);
     const [period, setPeriod] = useState<Period>('month');
-    const [filter, setFilter] = useState<'all' | 'macro' | 'mineral' | 'vitamin' | 'custom'>('all');
+    const [filter, setFilter] = useState<'all' | 'macro' | 'mineral' | 'vitamin' | 'custom' | 'symptoms'>('all');
     const [customFilters, setCustomFilters] = useState<(keyof DailyIntakeTargets)[]>([]);
     const [endDate, setEndDate] = useState<Date>(() => new Date());
 
@@ -373,12 +374,12 @@ export default function WeeklyNutrientGraph({ onClickNutrient }: WeeklyNutrientG
             {/* Filter row */}
             <div className="mb-4">
                 <div className="flex gap-0.5 bg-muted/20 rounded-lg p-0.5 overflow-x-auto no-scrollbar">
-                    {(['all', 'macro', 'mineral', 'vitamin', 'custom'] as const).map(g => (
+                    {(['all', 'macro', 'mineral', 'vitamin', 'symptoms', 'custom'] as const).map(g => (
                         <button key={g} onClick={() => setFilter(g)}
                             className={`flex-none px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                                 filter === g ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
                             }`}>
-                            {g === 'all' ? '🌎 All' : g === 'macro' ? '🥗 Macros' : g === 'mineral' ? '⚗️ Minerals' : g === 'vitamin' ? '💊 Vitamins' : '🎛️ Custom'}
+                            {g === 'all' ? '🌎 All' : g === 'macro' ? '🥗 Macros' : g === 'mineral' ? '⚗️ Minerals' : g === 'vitamin' ? '💊 Vitamins' : g === 'symptoms' ? '🤒 Symptoms' : '🎛️ Custom'}
                         </button>
                     ))}
                 </div>
@@ -401,7 +402,7 @@ export default function WeeklyNutrientGraph({ onClickNutrient }: WeeklyNutrientG
             </div>
 
             {/* Active days badge */}
-            {nutrientStats.length > 0 && (
+            {filter !== 'symptoms' && nutrientStats.length > 0 && (
                 <div className="flex items-center gap-3 mb-4 px-1">
                     <span className="text-[9px] font-bold text-muted-foreground/60">
                         {nutrientStats[0].activeDaysCount} of {rangeDates.length} days logged
@@ -412,7 +413,7 @@ export default function WeeklyNutrientGraph({ onClickNutrient }: WeeklyNutrientG
 
             {/* Content */}
             <div className="relative min-h-[200px]">
-                {loading && (
+                {loading && filter !== 'symptoms' && (
                     <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm z-10 rounded-xl">
                         <div className="animate-pulse text-emerald-500 font-black tracking-widest text-[10px] uppercase">
                             Loading {PERIOD_CONFIG[period].label}…
@@ -420,7 +421,9 @@ export default function WeeklyNutrientGraph({ onClickNutrient }: WeeklyNutrientG
                     </div>
                 )}
 
-                {filter === 'all' ? (
+                {filter === 'symptoms' ? (
+                    <SymptomStatsView startDate={startDateStr} endDate={endDateStr} />
+                ) : filter === 'all' ? (
                     /* Grouped by grade */
                     <div>
                         {(['A', 'B', 'C', 'D', 'F'] as Grade[]).map(g => (
@@ -439,7 +442,7 @@ export default function WeeklyNutrientGraph({ onClickNutrient }: WeeklyNutrientG
             </div>
 
             {/* Bottom summary */}
-            {nutrientStats.length > 0 && (
+            {filter !== 'symptoms' && nutrientStats.length > 0 && (
                 <div className="mt-6 bg-muted/10 border border-white/5 rounded-2xl p-4">
                     <div className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3">
                         {PERIOD_CONFIG[period].label} Report Card

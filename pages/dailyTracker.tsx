@@ -17,6 +17,7 @@ import NutrientResearchModal from '../components/NutrientResearchModal';
 import InsightsView from '../components/InsightsView';
 import DailyMetricsView from '../components/DailyMetricsView';
 import WeightTrendsView from '../components/WeightTrendsView';
+import SymptomLogView from '../components/SymptomLogView';
 
 export default function DailyTracker() {
     const router = useRouter();
@@ -34,7 +35,7 @@ export default function DailyTracker() {
     const [loading, setLoading] = useState(false);
     const [isLoggingOpen, setIsLoggingOpen] = useState(false);
     const [recommendations, setRecommendations] = useState<any>(null);
-    const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'insights' | 'stats' | 'trends'>('daily');
+    const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'insights' | 'stats' | 'trends' | 'symptoms'>('daily');
     const [knownIngredients, setKnownIngredients] = useState<string[]>([]);
     const [unifiedSearch, setUnifiedSearch] = useState("");
     const [recipes, setRecipes] = useState<any[]>([]);
@@ -607,8 +608,9 @@ export default function DailyTracker() {
                             <button onClick={() => setViewMode('weekly')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'weekly' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>stats</button>
                             <button onClick={() => setViewMode('trends')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'trends' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>trends</button>
                             <button onClick={() => setViewMode('insights')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'insights' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>insights</button>
+                            <button onClick={() => setViewMode('symptoms')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'symptoms' ? 'bg-rose-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>symptoms</button>
                         </div>
-                        {(viewMode === 'daily' || viewMode === 'stats' || viewMode === 'insights') && (
+                        {(viewMode === 'daily' || viewMode === 'stats' || viewMode === 'insights' || viewMode === 'symptoms') && (
                             <div className="flex items-center justify-between sm:justify-start gap-1 md:gap-3 bg-muted/30 p-1 md:p-1.5 rounded-xl border border-white/5 shadow-inner w-full sm:w-auto sm:ml-auto">
                                 <button onClick={() => changeDate(-1)} className="p-2.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-90"><FiChevronLeft size={18} /></button>
                                 <div className="relative group/date">
@@ -635,6 +637,10 @@ export default function DailyTracker() {
                 ) : viewMode === 'insights' ? (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <InsightsView onLogFood={handlePrefillIngredient} endDateProp={new Date(date.replace(/-/g, '/'))} />
+                    </div>
+                ) : viewMode === 'symptoms' ? (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <SymptomLogView date={date} />
                     </div>
                 ) : viewMode === 'trends' ? (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
