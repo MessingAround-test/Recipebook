@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import 'chart.js/auto';
 import { Bar } from 'react-chartjs-2';
 import { NUTRIENT_LABELS, DailyIntakeTargets } from '../lib/dailyIntake';
@@ -101,17 +101,11 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
 
     // ── Fetch raw conversion definition for one ingredient ─────────────────
     const fetchDefinition = useCallback(async (name: string) => {
-        if (!name || definitions[name]) return;
-        
-        if (globalDefinitionCache[name]) {
-            setDefinitions(prev => ({ ...prev, [name]: globalDefinitionCache[name] }));
-            return;
-        }
+        if (!name || globalDefinitionCache[name]) return;
 
         const token = localStorage.getItem('Token');
         if (!token) return;
 
-        // Fetch RAW definition
         const res = await fetch(`/api/Nutrition?search_term=${encodeURIComponent(name)}&quantity=100&qType=gram`, {
             headers: { edgetoken: token },
         }).catch(() => null);
@@ -122,15 +116,15 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
             globalDefinitionCache[name] = data;
             setDefinitions(prev => ({ ...prev, [name]: data }));
         }
-    }, [definitions]);
+    }, []);
 
-    // ── Re-fetch whenever the ingredient list changes ─────────────────────────
+    // ── Fetch definitions whenever the ingredient list changes ────────────
     useEffect(() => {
         ingredients.forEach(ing => {
             const name = ing.Name || ing.name;
             fetchDefinition(name);
         });
-    }, [ingredients, fetchDefinition]);
+    }, [ingredients]);
 
     // ── Recompute totals whenever definitions or ingredients change ─
     useEffect(() => {
@@ -149,8 +143,6 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
             const qty = ing.Amount || ing.quantity;
             const type = ing.AmountType || ing.quantity_unit || ing.quantity_type;
             
-            // Calculate scale ratio based on quantity and grams_per_each
-            const { normalizeToGrams } = require('../lib/conversion');
             const { value: grams } = normalizeToGrams(type, Number(qty), def.grams_per_each);
             const ratio = (grams ?? Number(qty)) / 100;
 

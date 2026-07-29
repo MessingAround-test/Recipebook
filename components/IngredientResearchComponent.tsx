@@ -143,8 +143,7 @@ export default function IngredientResearchComponent({
 
         if (activeMode === 'price' && autoSwitchToNutrition) {
             setViewMode('nutrition');
-            // Re-trigger search for nutrition mode
-            executeSearch(term, unit, qty, skipConv, 'nutrition');
+            return;
         }
 
         // Refresh available ingredients list to include newly extracted/searched items
@@ -179,7 +178,7 @@ export default function IngredientResearchComponent({
             setQuantityUnit(canonicalUnit);
             executeSearch(initialSearchTerm, canonicalUnit, initialQuantity, skipConversion);
         }
-    }, [autoSearch, initialSearchTerm, initialQuantity, initialQuantityUnit, skipConversion]);
+    }, [autoSearch, initialSearchTerm, initialQuantity, initialQuantityUnit, skipConversion, viewMode]);
 
     async function deleteIngredient(ids: string | string[]) {
         const idArray = Array.isArray(ids) ? ids : [ids];
