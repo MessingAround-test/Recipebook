@@ -5,6 +5,7 @@ interface SymptomStat {
     name: string;
     count: number;
     totalDays: number;
+    loggedDays: number;
     frequency: number;
 }
 
@@ -118,7 +119,7 @@ export default function SymptomStatsView({ startDate, endDate }: { startDate: st
                                     />
                                 </div>
                                 <div className="text-[9px] text-muted-foreground font-bold mt-1.5">
-                                    {s.count} of {s.totalDays} days
+                                    {s.count} of {s.loggedDays} days logged
                                 </div>
                             </div>
                         ))}

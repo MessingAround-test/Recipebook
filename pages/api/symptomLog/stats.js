@@ -58,6 +58,7 @@ export default async function handler(req, res) {
             }
         });
         const moodLoggedDays = logs.filter(l => l.mood != null).length;
+        const denominator = moodLoggedDays || 1;
 
         // Build response
         const symptoms = Array.from(symptomCounts.entries())
@@ -65,7 +66,8 @@ export default async function handler(req, res) {
                 name,
                 count,
                 totalDays,
-                frequency: Math.round((count / totalDays) * 100)
+                loggedDays: moodLoggedDays,
+                frequency: moodLoggedDays > 0 ? Math.round((count / denominator) * 100) : 0
             }))
             .sort((a, b) => b.count - a.count);
 
