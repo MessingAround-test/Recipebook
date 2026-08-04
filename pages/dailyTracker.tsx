@@ -17,6 +17,7 @@ import NutrientResearchModal from '../components/NutrientResearchModal';
 import InsightsView from '../components/InsightsView';
 import DailyMetricsView from '../components/DailyMetricsView';
 import WeightTrendsView from '../components/WeightTrendsView';
+import DailyScoreTrendsView from '../components/DailyScoreTrendsView';
 import SymptomLogView from '../components/SymptomLogView';
 
 export default function DailyTracker() {
@@ -643,7 +644,8 @@ export default function DailyTracker() {
                         <SymptomLogView date={date} />
                     </div>
                 ) : viewMode === 'trends' ? (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+                        <DailyScoreTrendsView />
                         <WeightTrendsView />
                     </div>
                 ) : viewMode === 'stats' ? (

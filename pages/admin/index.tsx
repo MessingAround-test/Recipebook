@@ -13,6 +13,7 @@ export default function AdminDashboard() {
         { name: "Search Logs", _id: "/searchLogs", image: "/avo xl.png" },
         { name: "Migrate Search Logs", _id: "MIGRATE", image: "/avo.ico" },
         { name: "DB Inspector", _id: "/admin/dbInspector", image: "/avo.ico" },
+        { name: "Symptom Categories", _id: "/admin/symptomCategories", image: "/avo.ico" },
         { name: "One Off Extracts", _id: "/oneOffExtracts", image: "/forklift_oragami.png" }
     ])
 
