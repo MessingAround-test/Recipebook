@@ -4,7 +4,8 @@ import { PageHeader } from '../../components/PageHeader'
 import { Button } from '../../components/ui/button'
 import { useAdminGuard } from '../../lib/useAdminGuard'
 import Router from 'next/router'
-import { FiSearch, FiEdit2, FiTrash2, FiPlus, FiChevronRight, FiChevronDown } from 'react-icons/fi'
+import downloadDatabaseBackup from '../../lib/downloadBackup'
+import { FiSearch, FiEdit2, FiTrash2, FiPlus, FiChevronRight, FiChevronDown, FiDownload } from 'react-icons/fi'
 
 export default function DbInspector() {
     const isAuthorized = useAdminGuard()
@@ -120,10 +121,23 @@ export default function DbInspector() {
 
     if (!isAuthorized) return null
 
+    const handleBackup = async () => {
+        try {
+            await downloadDatabaseBackup()
+        } catch (e: any) {
+            alert("Backup failed: " + (e.message || "unexpected error"))
+        }
+    }
+
     return (
         <Layout title="DB Inspector">
             <div className="max-w-7xl mx-auto px-4 py-8">
-                <PageHeader title="Database Inspector" />
+                <div className="flex justify-between items-start">
+                    <PageHeader title="Database Inspector" />
+                    <Button variant="outline" onClick={handleBackup} className="whitespace-nowrap mt-8">
+                        <FiDownload className="mr-2" /> Download Backup (.zip)
+                    </Button>
+                </div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Sidebar: Collections */}

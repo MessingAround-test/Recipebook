@@ -4,6 +4,7 @@ import Router from 'next/router'
 import { Layout } from '../../components/Layout'
 import styles from '../../styles/Home.module.css'
 import { PageHeader } from '../../components/PageHeader'
+import downloadDatabaseBackup from '../../lib/downloadBackup'
 
 export default function AdminDashboard() {
     const isAuthorized = useAdminGuard()
@@ -13,6 +14,7 @@ export default function AdminDashboard() {
         { name: "Search Logs", _id: "/searchLogs", image: "/avo xl.png" },
         { name: "Migrate Search Logs", _id: "MIGRATE", image: "/avo.ico" },
         { name: "DB Inspector", _id: "/admin/dbInspector", image: "/avo.ico" },
+        { name: "Download Database Backup", _id: "BACKUP", image: "/avo.ico" },
         { name: "Symptom Categories", _id: "/admin/symptomCategories", image: "/avo.ico" },
         { name: "One Off Extracts", _id: "/oneOffExtracts", image: "/forklift_oragami.png" }
     ])
@@ -34,6 +36,14 @@ export default function AdminDashboard() {
                 } else {
                     alert(data.message)
                 }
+            }
+            return;
+        }
+        if (page === "BACKUP") {
+            try {
+                await downloadDatabaseBackup()
+            } catch (e: any) {
+                alert("Backup failed: " + (e.message || "unexpected error"))
             }
             return;
         }
