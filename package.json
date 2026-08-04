@@ -10,6 +10,20 @@
     "test": "jest",
     "version-inc": "node scripts/increment-version.js"
   },
+  "jest": {
+    "transform": {
+      "^.+\\.(ts|tsx)$": [
+        "babel-jest",
+        { "presets": ["@babel/preset-env", "@babel/preset-typescript"] }
+      ],
+      "^.+\\.(js|jsx)$": [
+        "babel-jest",
+        { "presets": ["@babel/preset-env"] }
+      ]
+    },
+    "testEnvironment": "node",
+    "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json"]
+  },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
     "@ducanh2912/next-pwa": "^10.2.9",

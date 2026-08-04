@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { NUTRIENT_LABELS, DailyIntakeTargets } from '../lib/dailyIntake';
 import { NUTRIENT_INSIGHTS } from '../lib/nutrientInsights';
-import { FiChevronLeft, FiChevronRight, FiAlertTriangle, FiCalendar, FiChevronDown, FiChevronUp, FiPlus, FiZap } from 'react-icons/fi';
+import CorrelationInsightsView from './CorrelationInsightsView';
+import { FiChevronLeft, FiChevronRight, FiAlertTriangle, FiCalendar, FiChevronDown, FiChevronUp, FiPlus, FiZap, FiActivity } from 'react-icons/fi';
 
 const PERIOD_CONFIG = {
     today: { label: 'Today', days: 1 },
@@ -10,6 +11,7 @@ const PERIOD_CONFIG = {
 };
 
 export default function InsightsView({ onLogFood, endDateProp }: { onLogFood: (name: string) => void, endDateProp?: Date }) {
+    const [view, setView] = useState<'deficiencies' | 'correlations'>('deficiencies');
     const [period, setPeriod] = useState<'today' | 'week' | 'month'>('week');
     const [endDate, setEndDate] = useState<Date>(new Date());
     const [dataState, setDataState] = useState<{ totals: any, activeDays: number }>({ totals: {}, activeDays: 1 });
@@ -93,6 +95,20 @@ export default function InsightsView({ onLogFood, endDateProp }: { onLogFood: (n
 
     return (
         <div className="space-y-6">
+            {/* View toggle */}
+            <div className="flex flex-wrap gap-1 bg-muted/30 p-1 rounded-xl border border-white/5 shadow-inner w-fit">
+                <button onClick={() => setView('deficiencies')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${view === 'deficiencies' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                    <FiZap /> Nutrient Deficiencies
+                </button>
+                <button onClick={() => setView('correlations')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${view === 'correlations' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                    <FiActivity /> Food & Symptom Correlations
+                </button>
+            </div>
+
+            {view === 'correlations' ? (
+                <CorrelationInsightsView endDateProp={endDateProp} />
+            ) : (
+            <>
             <div className="flex flex-wrap gap-2 items-center justify-between">
                 <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-white/5 shadow-inner">
                     {(['today', 'week', 'month'] as const).map(p => (
@@ -183,6 +199,8 @@ export default function InsightsView({ onLogFood, endDateProp }: { onLogFood: (n
                         ))}
                     </div>
                 </div>
+            )}
+            </>
             )}
         </div>
     );
