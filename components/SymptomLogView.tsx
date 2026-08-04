@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FiSave, FiX, FiPlus } from 'react-icons/fi';
+import { FiSave, FiX, FiPlus, FiCheck, FiGrid } from 'react-icons/fi';
 
 const MOOD_LABELS = [
     { range: '1-2', label: 'Terrible', color: 'rose' },
@@ -21,10 +21,25 @@ export default function SymptomLogView({ date }: { date: string }) {
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchVal, setSearchVal] = useState('');
     const [suggestions, setSuggestions] = useState<{ label: string; value: string }[]>([]);
+    const [topSymptoms, setTopSymptoms] = useState<string[]>([]);
+    const [browseOpen, setBrowseOpen] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const optionSelected = useRef(false);
     const fetchIdRef = useRef(0);
+
+    // Load top/preset symptoms for quick pick
+    const fetchTopSymptoms = useCallback(async () => {
+        const token = localStorage.getItem('Token');
+        if (!token) return;
+        try {
+            const res = await fetch('/api/symptomLog/symptoms', { headers: { edgetoken: token } });
+            const data = await res.json();
+            if (data.success) setTopSymptoms(data.symptoms.map((s: any) => s.value));
+        } catch (err) { /* ignore */ }
+    }, []);
+
+    useEffect(() => { fetchTopSymptoms(); }, [fetchTopSymptoms]);
 
     const fetchLog = useCallback(async () => {
         const token = localStorage.getItem('Token');
@@ -116,7 +131,10 @@ export default function SymptomLogView({ date }: { date: string }) {
                 })
             });
             const data = await res.json();
-            if (data.success) setLog(data.log);
+            if (data.success) {
+                setLog(data.log);
+                fetchTopSymptoms();
+            }
         } catch (err) {
             console.error("Save failed", err);
         } finally {
@@ -218,6 +236,22 @@ export default function SymptomLogView({ date }: { date: string }) {
                     )}
                 </div>
 
+                {/* Top symptoms quick-pick */}
+                {topSymptoms.length > 0 && (
+                    <div className="mb-4 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Previously Used</span>
+                            <span className="text-[9px] font-bold text-muted-foreground/50">({topSymptoms.length})</span>
+                        </div>
+                        <button
+                            onClick={() => setBrowseOpen(true)}
+                            className="flex-none inline-flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-emerald-400 hover:border-emerald-500/30 hover:bg-emerald-500/10 transition-all active:scale-95 min-h-[36px]"
+                        >
+                            <FiGrid size={14} /> Browse
+                        </button>
+                    </div>
+                )}
+
                 {/* Symptom badges */}
                 {symptoms.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
@@ -269,6 +303,65 @@ export default function SymptomLogView({ date }: { date: string }) {
                     )}
                 </button>
             </div>
+
+            {/* Browse modal */}
+            {browseOpen && (
+                <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center md:p-8">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setBrowseOpen(false)} />
+                    <div className="relative bg-background border-t md:border border-white/10 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full md:max-w-xl max-h-[90vh] md:max-h-[80vh] overflow-hidden animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in md:zoom-in-95">
+                        {/* Header */}
+                        <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-white/5 bg-background/95 backdrop-blur-md">
+                            <div>
+                                <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2"><FiGrid className="text-emerald-500" /> Browse Symptoms</h2>
+                                <p className="text-[9px] font-bold text-muted-foreground mt-0.5">Tap to toggle — added ones are checked</p>
+                            </div>
+                            <button onClick={() => setBrowseOpen(false)} className="p-2.5 hover:bg-white/10 rounded-full text-muted-foreground hover:text-white transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
+                        </div>
+
+                        {/* List — already-used ones sorted to the end */}
+                        <div className="overflow-y-auto max-h-[calc(90vh-80px)] md:max-h-[calc(80vh-80px)] p-4 pb-10">
+                            {(() => {
+                                const added = symptoms.map(s => s.toLowerCase());
+                                const sorted = [...topSymptoms].sort((a, b) => {
+                                    const aAdded = added.includes(a.toLowerCase()) ? 1 : 0;
+                                    const bAdded = added.includes(b.toLowerCase()) ? 1 : 0;
+                                    return aAdded - bAdded;
+                                });
+                                return sorted.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {sorted.map(name => {
+                                            const isAdded = added.includes(name.toLowerCase());
+                                            return (
+                                                <button
+                                                    key={name}
+                                                    onClick={() => isAdded ? removeSymptom(name) : addSymptom(name)}
+                                                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold border transition-all active:scale-95 ${
+                                                        isAdded
+                                                            ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                                                            : 'bg-white/5 border-white/10 text-muted-foreground hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-400'
+                                                    }`}
+                                                >
+                                                    {isAdded ? <FiCheck size={14} /> : <FiPlus size={14} />}
+                                                    <span className="capitalize">{name}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p className="text-center py-12 text-muted-foreground text-sm">No symptoms yet. Add some and they'll appear here.</p>
+                                );
+                            })()}
+                        </div>
+
+                        {/* Done button for mobile */}
+                        <div className="sticky bottom-0 p-4 bg-background/95 backdrop-blur-md border-t border-white/5 md:hidden">
+                            <button onClick={() => setBrowseOpen(false)} className="w-full h-12 bg-emerald-500 text-black font-black uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all">
+                                <FiCheck size={18} /> Done ({symptoms.length})
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
