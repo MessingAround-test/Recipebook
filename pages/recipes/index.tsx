@@ -14,7 +14,9 @@ import {
     Calendar,
     ArrowUpDown,
     ChefHat,
-    Loader2
+    Loader2,
+    Trash2,
+    EyeOff
 } from 'lucide-react'
 import { FilterSheet } from '../../components/recipes/FilterSheet'
 
@@ -30,12 +32,14 @@ export default function Recipes() {
     const [userData, setUserData] = useState<UserData | null>(null)
     const [recipes, setRecipes] = useState<Recipe[]>([])
     const [searchTerm, setSearchTerm] = useState('')
-    const [allowDelete, setAllowDelete] = useState(false)
+    const [bulkAction, setBulkAction] = useState<'delete' | 'hide' | null>(null)
+    const [bulkMenuOpen, setBulkMenuOpen] = useState(false)
     const [filterTime, setFilterTime] = useState<string[]>([])
     const [filterPrice, setFilterPrice] = useState<string[]>([])
     const [filterGenre, setFilterGenre] = useState<string>('')
     const [filterCooked, setFilterCooked] = useState<string>('')
     const [filterMealTypes, setFilterMealTypes] = useState<string[]>([])
+    const [showHidden, setShowHidden] = useState(false)
     const [showFilters, setShowFilters] = useState(false)
     const [loading, setLoading] = useState(true)
 
@@ -82,7 +86,7 @@ export default function Recipes() {
         redirect(`/recipes/${randomRecipe._id}`);
     }
 
-    const hasActiveFilters = filterTime.length > 0 || filterPrice.length > 0 || filterGenre !== '' || filterCooked !== '' || filterMealTypes.length > 0
+    const hasActiveFilters = filterTime.length > 0 || filterPrice.length > 0 || filterGenre !== '' || filterCooked !== '' || filterMealTypes.length > 0 || showHidden
 
     const clearFilters = () => {
         setFilterTime([])
@@ -90,10 +94,12 @@ export default function Recipes() {
         setFilterGenre('')
         setFilterCooked('')
         setFilterMealTypes([])
+        setShowHidden(false)
     }
 
     const filteredRecipes = recipes
         .filter(recipe => {
+            if (recipe.hidden && !showHidden && !searchTerm && bulkAction !== 'hide') return false
             if (searchTerm) {
                 const term = searchTerm.toLowerCase()
                 const matches = ['name', 'genre', 'time', 'priceCategory'].some(key =>
@@ -131,6 +137,28 @@ export default function Recipes() {
         }
     }
 
+    const toggleHiddenRecipe = async (recipe: Recipe) => {
+        const token = localStorage.getItem('Token')
+        const newVal = !recipe.hidden
+        setRecipes((prev) => prev.map(obj => obj._id === recipe._id ? { ...obj, hidden: newVal } : obj))
+        try {
+            const res = await fetch("/api/Recipe/" + String(recipe._id), {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'edgetoken': token || ''
+                },
+                body: JSON.stringify({ hidden: newVal })
+            })
+            const data = await res.json()
+            if (data.success === false) {
+                setRecipes((prev) => prev.map(obj => obj._id === recipe._id ? { ...obj, hidden: !newVal } : obj))
+            }
+        } catch (e) {
+            setRecipes((prev) => prev.map(obj => obj._id === recipe._id ? { ...obj, hidden: !newVal } : obj))
+        }
+    }
+
     if (!isAuthed) return null
 
     return (
@@ -145,15 +173,35 @@ export default function Recipes() {
                                 Your Recipes
                             </h1>
                             <div className="flex items-center gap-2">
-                                {userData?.role === "admin" && (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setAllowDelete(!allowDelete)}
-                                        className={allowDelete ? "text-rose-500 bg-rose-500/10" : "text-muted-foreground"}
-                                    >
-                                        Mass Delete
-                                    </Button>
+                                {userData && (
+                                    <div className="relative">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => bulkAction ? setBulkAction(null) : setBulkMenuOpen(!bulkMenuOpen)}
+                                            className={bulkAction ? "text-accent bg-accent/10" : "text-muted-foreground"}
+                                        >
+                                            {bulkAction ? "Done" : "Bulk Actions"}
+                                        </Button>
+                                        {bulkMenuOpen && !bulkAction && (
+                                            <div className="absolute right-0 top-full mt-2 z-50 w-52 bg-card border border-border/10 rounded-2xl shadow-2xl p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                <button
+                                                    onClick={() => { setBulkAction('hide'); setBulkMenuOpen(false) }}
+                                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold hover:bg-secondary/50 text-left"
+                                                >
+                                                    <EyeOff size={14} className="text-amber-500" /> Hide / Unhide
+                                                </button>
+                                                {userData?.role === "admin" && (
+                                                    <button
+                                                        onClick={() => { setBulkAction('delete'); setBulkMenuOpen(false) }}
+                                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold hover:bg-secondary/50 text-left text-rose-500"
+                                                    >
+                                                        <Trash2 size={14} /> Delete
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -178,7 +226,7 @@ export default function Recipes() {
                                 <SlidersHorizontal size={18} />
                                 {hasActiveFilters && (
                                     <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-background shadow-lg">
-                                        {filterTime.length + filterPrice.length + (filterGenre ? 1 : 0) + (filterCooked ? 1 : 0) + filterMealTypes.length}
+                                        {filterTime.length + filterPrice.length + (filterGenre ? 1 : 0) + (filterCooked ? 1 : 0) + filterMealTypes.length + (showHidden ? 1 : 0)}
                                     </span>
                                 )}
                             </Button>
@@ -224,6 +272,11 @@ export default function Recipes() {
                                 🍽️ {m} <Plus size={12} className="rotate-45" />
                             </button>
                         ))}
+                        {showHidden && (
+                            <button onClick={() => setShowHidden(false)} className="shrink-0 px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-500 text-xs font-bold flex items-center gap-1 shadow-sm">
+                                👁️ Hidden <Plus size={12} className="rotate-45" />
+                            </button>
+                        )}
                         <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-rose-500 whitespace-nowrap px-2">
                             Clear all
                         </button>
@@ -264,8 +317,10 @@ export default function Recipes() {
                             <div key={recipe._id} className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${index * 50}ms` }}>
                                 <ImageCard
                                     recipe={recipe}
-                                    allowDelete={allowDelete}
+                                    bulkAction={bulkAction}
+                                    allowDelete={bulkAction === 'delete'}
                                     onDelete={deleteRecipe}
+                                    onToggleHidden={toggleHiddenRecipe}
                                     onRedirect={redirect}
                                 />
                             </div>
@@ -295,6 +350,8 @@ export default function Recipes() {
                 setFilterCooked={setFilterCooked}
                 filterMealTypes={filterMealTypes}
                 setFilterMealTypes={setFilterMealTypes}
+                showHidden={showHidden}
+                setShowHidden={setShowHidden}
                 clearFilters={clearFilters}
                 hasActiveFilters={hasActiveFilters}
             />

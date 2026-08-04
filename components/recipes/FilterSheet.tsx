@@ -1,5 +1,5 @@
 import React from 'react'
-import { X, Flame, DollarSign, Utensils, CheckCircle2, Circle } from 'lucide-react'
+import { X, Flame, DollarSign, Utensils, CheckCircle2, Circle, Eye, EyeOff } from 'lucide-react'
 import { Button } from '../ui/button'
 
 interface FilterSheetProps {
@@ -15,6 +15,8 @@ interface FilterSheetProps {
     setFilterCooked: (v: string) => void
     filterMealTypes: string[]
     setFilterMealTypes: (v: string[]) => void
+    showHidden: boolean
+    setShowHidden: (v: boolean) => void
     clearFilters: () => void
     hasActiveFilters: boolean
 }
@@ -51,6 +53,8 @@ export function FilterSheet({
     setFilterCooked,
     filterMealTypes,
     setFilterMealTypes,
+    showHidden,
+    setShowHidden,
     clearFilters,
     hasActiveFilters
 }: FilterSheetProps) {
@@ -212,6 +216,30 @@ export function FilterSheet({
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Show Hidden */}
+                    <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                            <Eye size={12} className="text-accent" /> Hidden Items
+                        </h3>
+                        <button
+                            onClick={() => setShowHidden(!showHidden)}
+                            className={`flex items-center gap-3 p-4 rounded-2xl border transition-all duration-300 w-full ${
+                                showHidden
+                                    ? 'bg-amber-500/10 border-amber-500 ring-1 ring-amber-500/50 text-amber-500'
+                                    : 'bg-secondary/30 border-border/10 text-muted-foreground hover:border-amber-500/30'
+                            }`}
+                        >
+                            <div className={`p-1.5 rounded-full ${showHidden ? 'bg-amber-500 text-amber-foreground' : 'bg-secondary'}`}>
+                                {showHidden ? <Eye size={12} /> : <EyeOff size={12} />}
+                            </div>
+                            <div className="text-left">
+                                <p className="text-xs font-bold">Show Hidden Items</p>
+                                <p className="text-[10px] text-muted-foreground font-medium">Include health-tracked foods</p>
+                            </div>
+                            {showHidden && <CheckCircle2 size={16} className="text-amber-500 ml-auto animate-in zoom-in duration-300" />}
+                        </button>
                     </div>
                 </div>
 

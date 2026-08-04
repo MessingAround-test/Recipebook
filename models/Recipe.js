@@ -36,6 +36,7 @@ const RecipeSchema = new mongoose.Schema(
         carbType: { type: String, enum: ['Rice', 'Bread/Wraps', 'Pasta/Noodles', 'Potato', 'Quinoa', 'None/Other'], required: false },
         priceCategory: { type: String, enum: ['cheap', 'medium', 'expensive'], required: false },
         timesCooked: { type: Number, default: 0 },
+        hidden: { type: Boolean, default: false },
         feedback: { type: String, required: false },
         servings: { type: Number, required: false }
     },

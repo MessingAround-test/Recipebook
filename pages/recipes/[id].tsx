@@ -2,7 +2,7 @@ import { Layout } from '../../components/Layout'
 import { PageHeader } from '../../components/PageHeader'
 import { useEffect, useState, useRef } from 'react'
 import { Button } from '../../components/ui/button'
-import { Flame, DollarSign, Clock, Utensils, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus } from 'lucide-react'
+import { Flame, DollarSign, Clock, Utensils, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff } from 'lucide-react'
 import Router, { useRouter } from 'next/router'
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
 import IngredientCard from '../../components/IngredientCard'
@@ -55,6 +55,7 @@ export default function RecipeDetail() {
     const [approxCost, setApproxCost] = useState<number | null>(null)
     const [aiFilledFields, setAiFilledFields] = useState<string[]>([])
     const [timesCooked, setTimesCooked] = useState(0)
+    const [isHidden, setIsHidden] = useState(false)
     const [feedback, setFeedback] = useState("")
     const [isSavingFeedback, setIsSavingFeedback] = useState(false)
     const [isCalculatingCost, setIsCalculatingCost] = useState(false)
@@ -162,6 +163,7 @@ export default function RecipeDetail() {
         setRecipeCarbType(data.res.carbType || '')
         setRecipePriceCategory(data.res.priceCategory || '')
         setTimesCooked(data.res.timesCooked || 0)
+        setIsHidden(!!data.res.hidden)
         setFeedback(data.res.feedback || "")
         setRecipeServings(data.res.servings || 0)
         if (data.res.approxCost != null) setApproxCost(data.res.approxCost)
@@ -460,6 +462,22 @@ export default function RecipeDetail() {
         setIsSavingFeedback(false)
     }
 
+    const toggleHidden = async () => {
+        const newVal = !isHidden
+        setIsHidden(newVal)
+        const token = localStorage.getItem('Token') || ""
+        try {
+            await fetch(`/api/Recipe/${String(id)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': token },
+                body: JSON.stringify({ hidden: newVal })
+            })
+        } catch (e) {
+            console.error("Failed to update hidden")
+            setIsHidden(!newVal)
+        }
+    }
+
     useEffect(() => {
         if (listIngreds && listIngreds.length > 0) {
             reloadAllIngredients()
@@ -547,6 +565,11 @@ export default function RecipeDetail() {
                                             👥 Feeds {recipeServings}
                                         </span>
                                     )}
+                                    {isHidden && (
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-amber-500/25 text-amber-200 border-white/5`}>
+                                            <EyeOff size={12} /> Hidden
+                                        </span>
+                                    )}
                                 </div>
 
                                 {/* Inline Cost Display */}
@@ -604,6 +627,11 @@ export default function RecipeDetail() {
                                         👥 Feeds {recipeServings}
                                     </span>
                                 )}
+                                {isHidden && (
+                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border bg-amber-500/15 text-amber-400 border-amber-500/30">
+                                        <EyeOff size={12} /> Hidden
+                                    </span>
+                                )}
                             </div>
 
                             <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 border-t border-border/10 pt-4">
@@ -654,6 +682,19 @@ export default function RecipeDetail() {
                                 >
                                     <Plus className="w-5 h-5 hidden sm:block" />
                                     <span>List</span>
+                                </Button>
+                                <Button
+                                    onClick={toggleHidden}
+                                    variant="outline"
+                                    className={`flex-1 py-7 sm:py-8 font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-2 ${
+                                        isHidden
+                                            ? 'bg-amber-500/10 border-amber-500/40 hover:bg-amber-500/20 text-amber-500'
+                                            : 'hover:bg-accent/10'
+                                    }`}
+                                    title={isHidden ? 'Hidden from /recipes grid' : 'Show on /recipes grid'}
+                                >
+                                    {isHidden ? <EyeOff className="w-5 h-5 hidden sm:block" /> : <Eye className="w-5 h-5 hidden sm:block" />}
+                                    <span className="hidden sm:inline">{isHidden ? 'Hidden' : 'Hide'}</span>
                                 </Button>
                                 <Button
                                     onClick={() => router.push(`/createRecipe?id=${id}`)}

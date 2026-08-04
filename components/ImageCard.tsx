@@ -1,7 +1,7 @@
 import React from 'react'
 import { useRouter } from 'next/router'
 import { Button } from './ui/button'
-import { Flame, DollarSign, Clock, Utensils, Trash2 } from 'lucide-react'
+import { Flame, DollarSign, Clock, Utensils, Trash2, Eye, EyeOff } from 'lucide-react'
 
 export interface Recipe {
     _id: string
@@ -14,6 +14,7 @@ export interface Recipe {
     mealTypes?: string[]
     approxCost?: number
     timesCooked?: number
+    hidden?: boolean
 }
 
 interface ImageCardProps {
@@ -22,6 +23,8 @@ interface ImageCardProps {
     onDelete?: (id: string) => void
     onRedirect?: (path: string) => void
     cardHeight?: string
+    bulkAction?: 'delete' | 'hide' | null
+    onToggleHidden?: (recipe: Recipe) => void
 }
 
 const timeConfig: Record<'short' | 'medium' | 'long', { label: string; icon: React.ReactNode; color: string }> = {
@@ -36,7 +39,7 @@ const priceConfig: Record<'cheap' | 'medium' | 'expensive', { label: string; col
     expensive: { label: '$$$', color: 'text-rose-400 bg-rose-400/10' }
 }
 
-export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, cardHeight = '11rem' }: ImageCardProps) {
+export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, cardHeight = '11rem', bulkAction, onToggleHidden }: ImageCardProps) {
     const router = useRouter()
     const currentPath = router.pathname
 
@@ -94,18 +97,37 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
 
             {/* Top Actions/Badges */}
             <div className="absolute top-2 left-2 right-2 flex justify-between items-start z-20">
-                {recipe.genre && (
-                    <div className="px-2 py-1 rounded-lg bg-black/40 backdrop-blur-md text-[9px] font-bold text-white uppercase tracking-wider border border-white/10">
-                        {recipe.genre}
-                    </div>
-                )}
+                <div className="flex flex-col gap-1 items-start">
+                    {recipe.genre && (
+                        <div className="px-2 py-1 rounded-lg bg-black/40 backdrop-blur-md text-[9px] font-bold text-white uppercase tracking-wider border border-white/10">
+                            {recipe.genre}
+                        </div>
+                    )}
+                    {recipe.hidden && (
+                        <div className="px-2 py-1 rounded-lg bg-amber-500/80 backdrop-blur-md text-[9px] font-bold text-white uppercase tracking-wider border border-white/10 flex items-center gap-1">
+                            <EyeOff size={9} /> Hidden
+                        </div>
+                    )}
+                </div>
                 
-                {allowDelete && onDelete && (
+                {onDelete && (bulkAction === 'delete' || (!bulkAction && allowDelete)) && (
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete(recipe._id); }}
                         className="w-8 h-8 flex items-center justify-center bg-rose-500 text-white rounded-full shadow-lg transform scale-0 group-hover:scale-100 transition-transform duration-200 hover:bg-rose-600 ml-auto"
                     >
                         <Trash2 size={14} />
+                    </button>
+                )}
+
+                {bulkAction === 'hide' && onToggleHidden && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onToggleHidden(recipe); }}
+                        className={`w-8 h-8 flex items-center justify-center text-white rounded-full shadow-lg transform scale-0 group-hover:scale-100 transition-transform duration-200 hover:opacity-90 ml-auto ${
+                            recipe.hidden ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-amber-500 hover:bg-amber-600'
+                        }`}
+                        title={recipe.hidden ? 'Unhide' : 'Hide'}
+                    >
+                        {recipe.hidden ? <Eye size={14} /> : <EyeOff size={14} />}
                     </button>
                 )}
             </div>
