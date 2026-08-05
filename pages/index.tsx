@@ -3,7 +3,10 @@ import Router from 'next/router'
 import { Layout } from '../components/Layout'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import { NUTRIENT_LABELS } from '../lib/dailyIntake'
-import { FiZap, FiActivity, FiShoppingCart, FiCalendar, FiArrowRight, FiPlus, FiCheckCircle, FiChevronRight, FiTrendingUp, FiSearch, FiX, FiCoffee } from 'react-icons/fi'
+import { FiZap, FiActivity, FiShoppingCart, FiCalendar, FiArrowRight, FiPlus, FiCheckCircle, FiChevronRight, FiTrendingUp, FiSearch, FiX, FiCoffee, FiRefreshCw } from 'react-icons/fi'
+import IngredientEditor from '../components/IngredientEditor'
+import { fileToBase64 } from '../lib/recipeImage'
+import { extractRecipeFromImage, saveRecipe, Ingredient } from '../lib/recipeExtraction'
 
 const getLocalDateString = (d: Date) => {
     const year = d.getFullYear()
@@ -55,6 +58,19 @@ export default function Dashboard() {
     const [ingredientUnit, setIngredientUnit] = useState('gram')
     const [logging, setLogging] = useState(false)
 
+    // Quick-log photo state
+    const [logView, setLogView] = useState<'list' | 'photo' | 'validate'>('list')
+    const [photoImage, setPhotoImage] = useState<string | null>(null)
+    const [photoNotes, setPhotoNotes] = useState('')
+    const [photoStatus, setPhotoStatus] = useState('')
+    const [photoExtracting, setPhotoExtracting] = useState(false)
+    const [draftRecipe, setDraftRecipe] = useState<any>(null)
+    const [draftName, setDraftName] = useState('')
+    const [draftServings, setDraftServings] = useState<number>(1)
+    const [draftIngredients, setDraftIngredients] = useState<Ingredient[]>([])
+    const [isCreating, setIsCreating] = useState(false)
+    const [refreshing, setRefreshing] = useState(false)
+
     const loadData = useCallback(async () => {
         const token = localStorage.getItem('Token')
         if (!token) return
@@ -103,6 +119,24 @@ export default function Dashboard() {
             }
         }).finally(() => setLoading(false))
     }, [])
+
+    const refreshIntake = useCallback(async () => {
+        const token = localStorage.getItem('Token')
+        if (!token) return
+        setRefreshing(true)
+        try {
+            await fetch('/api/dailyLog/recompute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': token },
+                body: JSON.stringify({ date: getLocalDateString(new Date()) })
+            })
+        } catch (err) {
+            console.error('Refresh intake error:', err)
+        } finally {
+            await loadData()
+            setRefreshing(false)
+        }
+    }, [loadData])
 
     useEffect(() => {
         if (isAuthed) loadData()
@@ -194,6 +228,14 @@ export default function Dashboard() {
         setServingsToLog(1)
         setIngredientQty(100)
         setIngredientUnit('gram')
+        setLogView('list')
+        setPhotoImage(null)
+        setPhotoNotes('')
+        setPhotoStatus('')
+        setDraftRecipe(null)
+        setDraftName('')
+        setDraftServings(1)
+        setDraftIngredients([])
         setIsLoggingOpen(true)
     }
 
@@ -201,6 +243,68 @@ export default function Dashboard() {
         setIsLoggingOpen(false)
         setLogSelection(null)
         setLogSearch('')
+    }
+
+    const handlePhotoExtract = async () => {
+        if (!photoImage || photoExtracting) return
+        setPhotoExtracting(true)
+        setPhotoStatus("Analyzing visual data...")
+        try {
+            const extracted = await extractRecipeFromImage(photoImage, photoNotes)
+            setDraftRecipe(extracted)
+            setDraftName(extracted.name || '')
+            setDraftServings(extracted.servings && Number(extracted.servings) > 0 ? Number(extracted.servings) : 1)
+            setDraftIngredients(extracted.ingredients || [])
+            setLogView('validate')
+        } catch (error: any) {
+            console.error("Photo extraction error:", error)
+            alert(error?.message || "Failed to extract recipe from photo")
+        } finally {
+            setPhotoExtracting(false)
+            setPhotoStatus("")
+        }
+    }
+
+    const handleCreateAndLog = async () => {
+        if (!draftName.trim() || draftIngredients.length === 0 || isCreating) return
+        setIsCreating(true)
+        try {
+            const token = localStorage.getItem('Token')
+            const recipe = await saveRecipe({
+                name: draftName.trim(),
+                ingreds: draftIngredients,
+                instructions: draftRecipe?.instructions || [],
+                image: photoImage || undefined,
+                time: draftRecipe?.time,
+                genre: draftRecipe?.genre,
+                mealTypes: draftRecipe?.mealTypes,
+                carbType: draftRecipe?.carbType,
+                servings: Number(draftServings) || 1,
+                hidden: true
+            })
+
+            const res = await fetch('/api/dailyLog', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': token || '' },
+                body: JSON.stringify({
+                    date: getLocalDateString(new Date()),
+                    type: 'recipe',
+                    name: recipe.name || draftName.trim(),
+                    recipe_id: recipe._id,
+                    quantity: 1
+                })
+            })
+            const data = await res.json()
+            if (!data.success) throw new Error(data.message || "Failed to log food")
+
+            closeLog()
+            refreshIntake()
+        } catch (error: any) {
+            console.error("Create & log error:", error)
+            alert(error?.message || "Failed to create and log")
+        } finally {
+            setIsCreating(false)
+        }
     }
 
     const handleLogIngredient = async () => {
@@ -222,7 +326,7 @@ export default function Dashboard() {
             const data = await res.json()
             if (data.success) {
                 closeLog()
-                loadData()
+                refreshIntake()
             } else {
                 alert(data.message || "Failed to log")
             }
@@ -252,7 +356,7 @@ export default function Dashboard() {
             const data = await res.json()
             if (data.success) {
                 closeLog()
-                loadData()
+                refreshIntake()
             } else {
                 alert(data.message || "Failed to log")
             }
@@ -430,6 +534,15 @@ export default function Dashboard() {
                                     <div className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground mt-0.5">Score</div>
                                 </div>
                                 <button
+                                    onClick={refreshIntake}
+                                    disabled={refreshing}
+                                    aria-label="Recalculate Today's Intake"
+                                    title="Recalculate Today's Intake"
+                                    className="shrink-0 p-2 rounded-xl bg-white/[0.06] text-emerald-400 hover:bg-white/10 transition-all active:scale-95 disabled:opacity-60"
+                                >
+                                    <FiRefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+                                </button>
+                                <button
                                     onClick={openLog}
                                     aria-label="Log Food"
                                     className="shrink-0 p-2 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/25 active:scale-95"
@@ -601,44 +714,122 @@ export default function Dashboard() {
                         </div>
 
                         <div className="p-4">
-                            {!logSelection ? (
+                            {logView === 'photo' ? (
                                 <div className="space-y-4">
-                                    <div className="relative">
-                                        <FiSearch size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-400">Photo</div>
+                                        <button onClick={() => setLogView('list')} className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-white shrink-0">Back</button>
+                                    </div>
+
+                                    {photoImage ? (
+                                        <label className="block w-full border-2 border-dashed border-white/10 rounded-2xl overflow-hidden cursor-pointer hover:border-emerald-500/40 transition-all group relative">
+                                            <input
+                                                accept="image/*"
+                                                type="file"
+                                                className="hidden"
+                                                onChange={(e) => { if (e.target.files && e.target.files[0]) fileToBase64(e.target.files[0], setPhotoStatus).then(setPhotoImage) }}
+                                            />
+                                            <img src={photoImage} alt="Meal preview" className="w-full aspect-video object-cover" />
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-sm">
+                                                Click to change photo
+                                            </div>
+                                        </label>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <label className="block border-2 border-dashed border-white/10 rounded-2xl p-5 text-center cursor-pointer hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all group">
+                                                <input
+                                                    accept="image/*"
+                                                    capture="environment"
+                                                    type="file"
+                                                    className="hidden"
+                                                    onChange={(e) => { if (e.target.files && e.target.files[0]) fileToBase64(e.target.files[0], setPhotoStatus).then(setPhotoImage) }}
+                                                />
+                                                <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">📸</div>
+                                                <span className="text-xs font-bold block">Camera</span>
+                                            </label>
+                                            <label className="block border-2 border-dashed border-white/10 rounded-2xl p-5 text-center cursor-pointer hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all group">
+                                                <input
+                                                    accept="image/*"
+                                                    type="file"
+                                                    className="hidden"
+                                                    onChange={(e) => { if (e.target.files && e.target.files[0]) fileToBase64(e.target.files[0], setPhotoStatus).then(setPhotoImage) }}
+                                                />
+                                                <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">🖼️</div>
+                                                <span className="text-xs font-bold block">Gallery</span>
+                                            </label>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5 block">Adaptation notes (optional)</label>
                                         <input
-                                            autoFocus
                                             type="text"
-                                            value={logSearch}
-                                            onChange={e => setLogSearch(e.target.value)}
-                                            placeholder="Search recipes or ingredients..."
-                                            className="w-full bg-white/[0.04] rounded-xl pl-10 pr-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                            value={photoNotes}
+                                            onChange={e => setPhotoNotes(e.target.value)}
+                                            placeholder="e.g. Make it vegetarian..."
+                                            className="w-full bg-white/[0.04] rounded-xl px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500/50"
                                         />
                                     </div>
 
-                                    {filteredLog.length > 0 ? (
-                                        <div className="space-y-1">
-                                            {filteredLog.map(opt => (
-                                                <button
-                                                    key={`${opt.type}-${opt.value}`}
-                                                    onClick={() => setLogSelection(opt)}
-                                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] hover:bg-emerald-500/10 transition-all text-left"
-                                                >
-                                                    <div className="w-8 h-8 rounded-lg bg-black/30 flex items-center justify-center text-base shrink-0">
-                                                        {opt.type === 'recipe' ? (opt.data?.image ? <img src={opt.data.image} alt="" className="w-8 h-8 rounded-lg object-cover" /> : '🍲') : (opt.emoji || '🥗')}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="text-sm font-bold truncate">{opt.label}</div>
-                                                        <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{opt.type === 'recipe' ? `Recipe • Serves ${opt.data?.servings || 1}` : 'Ingredient'}</div>
-                                                    </div>
-                                                    <FiChevronRight size={16} className="text-muted-foreground shrink-0" />
-                                                </button>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-center text-xs font-semibold text-muted-foreground py-8">No matches for "{logSearch}".</p>
-                                    )}
+                                    <button
+                                        onClick={handlePhotoExtract}
+                                        disabled={!photoImage || photoExtracting}
+                                        className="w-full py-3.5 rounded-xl bg-emerald-500 text-black text-sm font-black hover:bg-emerald-400 transition-all disabled:opacity-60 flex flex-col items-center justify-center gap-1 shadow-lg shadow-emerald-500/25"
+                                    >
+                                        {photoExtracting ? (
+                                            <>
+                                                <span className="flex items-center gap-2"><FiPlus size={16} /> Analyzing photo...</span>
+                                                {photoStatus && <span className="text-[10px] font-bold text-black/60 animate-pulse uppercase tracking-wider">{photoStatus}</span>}
+                                            </>
+                                        ) : (
+                                            'Extract from Photo'
+                                        )}
+                                    </button>
                                 </div>
-                            ) : logSelection.type === 'recipe' ? (
+                            ) : logView === 'validate' ? (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-400">Confirm Ingredients</div>
+                                        <button onClick={() => setLogView('photo')} className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-white shrink-0">Back</button>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5 block">Recipe Name</label>
+                                        <input
+                                            type="text"
+                                            value={draftName}
+                                            onChange={e => setDraftName(e.target.value)}
+                                            placeholder="Dish name"
+                                            className="w-full bg-white/[0.04] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5 block">Servings</label>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            value={draftServings}
+                                            onChange={e => setDraftServings(Math.max(Number(e.target.value) || 1, 1))}
+                                            className="w-full bg-white/[0.04] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                        />
+                                    </div>
+
+                                    <div className="bg-white/[0.03] rounded-xl p-3">
+                                        <IngredientEditor ingredients={draftIngredients} onChange={setDraftIngredients} />
+                                    </div>
+
+                                    <button
+                                        onClick={handleCreateAndLog}
+                                        disabled={!draftName.trim() || draftIngredients.length === 0 || isCreating}
+                                        className="w-full py-3.5 rounded-xl bg-emerald-500 text-black text-sm font-black hover:bg-emerald-400 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25"
+                                    >
+                                        <FiPlus size={16} /> {isCreating ? 'Creating & logging...' : 'Create & Log Food'}
+                                    </button>
+                                    <p className="text-[10px] text-muted-foreground text-center">Saves as a hidden recipe and logs 1 serving to today's intake.</p>
+                                </div>
+                            ) : logSelection ? (
+                                logSelection.type === 'recipe' ? (
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
                                         <div className="min-w-0">
@@ -702,6 +893,56 @@ export default function Dashboard() {
                                         <FiPlus size={16} /> {logging ? 'Logging...' : `Log ${ingredientQty} ${ingredientUnit}`}
                                     </button>
                                     <p className="text-[10px] text-muted-foreground text-center">Logs nutrients for this food against today's intake.</p>
+                                </div>
+                            )
+                            ) : (
+                                <div className="space-y-4">
+                                    <button
+                                        onClick={() => setLogView('photo')}
+                                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-white/[0.04] hover:bg-emerald-500/10 transition-all text-left border border-dashed border-white/10"
+                                    >
+                                        <div className="w-8 h-8 rounded-lg bg-black/30 flex items-center justify-center text-base shrink-0">📷</div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-bold">Take a photo or add from gallery</div>
+                                            <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">AI identifies the dish & ingredients</div>
+                                        </div>
+                                        <FiChevronRight size={16} className="text-muted-foreground shrink-0" />
+                                    </button>
+
+                                    <div className="relative">
+                                        <FiSearch size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                        <input
+                                            autoFocus
+                                            type="text"
+                                            value={logSearch}
+                                            onChange={e => setLogSearch(e.target.value)}
+                                            placeholder="Search recipes or ingredients..."
+                                            className="w-full bg-white/[0.04] rounded-xl pl-10 pr-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                        />
+                                    </div>
+
+                                    {filteredLog.length > 0 ? (
+                                        <div className="space-y-1">
+                                            {filteredLog.map(opt => (
+                                                <button
+                                                    key={`${opt.type}-${opt.value}`}
+                                                    onClick={() => setLogSelection(opt)}
+                                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] hover:bg-emerald-500/10 transition-all text-left"
+                                                >
+                                                    <div className="w-8 h-8 rounded-lg bg-black/30 flex items-center justify-center text-base shrink-0">
+                                                        {opt.type === 'recipe' ? (opt.data?.image ? <img src={opt.data.image} alt="" className="w-8 h-8 rounded-lg object-cover" /> : '🍲') : (opt.emoji || '🥗')}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-sm font-bold truncate">{opt.label}</div>
+                                                        <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{opt.type === 'recipe' ? `Recipe • Serves ${opt.data?.servings || 1}` : 'Ingredient'}</div>
+                                                    </div>
+                                                    <FiChevronRight size={16} className="text-muted-foreground shrink-0" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-center text-xs font-semibold text-muted-foreground py-8">No matches for "{logSearch}".</p>
+                                    )}
                                 </div>
                             )}
                         </div>

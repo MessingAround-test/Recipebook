@@ -1,4 +1,4 @@
-import { useEffect, useState, FormEvent, ChangeEvent } from 'react'
+import { useEffect, useState, FormEvent } from 'react'
 import Head from 'next/head'
 import Router, { useRouter } from 'next/router'
 import { Layout } from '../components/Layout'
@@ -7,31 +7,15 @@ import { FormField } from '../components/FormField'
 import { Button } from '../components/ui/button'
 import { quantity_unit_conversions } from "../lib/conversion"
 import { RiDeleteBin7Line, RiArrowDownSLine, RiArrowUpSLine } from 'react-icons/ri'
-import AddShoppingItem from '../components/AddShoppingItem'
+import IngredientEditor from '../components/IngredientEditor'
+import { fileToBase64 } from '../lib/recipeImage'
+import { extractRecipeFromImage, extractRecipeFromNotes, saveRecipe, Ingredient } from '../lib/recipeExtraction'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
-
-interface Ingredient {
-    Name: string
-    Amount: string | number
-    AmountType: string
-    Note?: string
-}
 
 interface Instruction {
     Text: string
     Note?: string
-}
-
-// Ensure the implicit types are correct for the legacy AddShoppingItem events
-interface CustomEvent {
-    value: {
-        name: string
-        quantity: string | number
-        quantity_type: string
-        note: string
-    }
-    target: any
 }
 
 export default function CreateRecipe() {
@@ -59,17 +43,6 @@ export default function CreateRecipe() {
     const router = useRouter();
     const { id } = router.query || {};
     const isEditMode = id !== undefined;
-
-    const blobToBase64 = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = error => reject(error);
-    });
-
-    const convertBlobToBase64 = async (blob: Blob) => {
-        return await blobToBase64(blob);
-    }
 
     async function generateImage(recipeName: string) {
         try {
@@ -133,39 +106,52 @@ export default function CreateRecipe() {
             localImage = imageData
         }
 
-        const token = localStorage.getItem('Token')
-        const url = isEditMode ? `/api/Recipe/${id}` : "/api/Recipe"
-        const method = isEditMode ? 'PUT' : 'POST'
-        const res = await fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json',
-                'edgetoken': token || ''
-            },
-            body: JSON.stringify({
-                "ingreds": ingreds,
-                "instructions": instructions,
-                "image": localImage,
-                "name": recipeName,
-                "time": recipeTime || undefined,
-                "genre": recipeGenre || undefined,
-                "mealTypes": recipeMealTypes,
-                "carbType": recipeCarbType || undefined,
-                "servings": recipeServings !== "" ? Number(recipeServings) : undefined
-            })
-        })
-
-        const data = await res.json()
-        console.log(data)
-        if (data.success === false || data.success === undefined) {
-            if (data.message !== undefined) {
-                alert(data.message)
+        try {
+            if (isEditMode) {
+                const token = localStorage.getItem('Token')
+                const res = await fetch(`/api/Recipe/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'edgetoken': token || ''
+                    },
+                    body: JSON.stringify({
+                        "ingreds": ingreds,
+                        "instructions": instructions,
+                        "image": localImage,
+                        "name": recipeName,
+                        "time": recipeTime || undefined,
+                        "genre": recipeGenre || undefined,
+                        "mealTypes": recipeMealTypes,
+                        "carbType": recipeCarbType || undefined,
+                        "servings": recipeServings !== "" ? Number(recipeServings) : undefined
+                    })
+                })
+                const data = await res.json()
+                if (data.success === false || data.success === undefined) {
+                    alert(data.message || "failed, unexpected error")
+                } else {
+                    Router.push("/recipes")
+                }
             } else {
-                alert("failed, unexpected error")
+                await saveRecipe({
+                    name: recipeName,
+                    ingreds,
+                    instructions,
+                    image: localImage,
+                    time: recipeTime || undefined,
+                    genre: recipeGenre || undefined,
+                    mealTypes: recipeMealTypes,
+                    carbType: recipeCarbType || undefined,
+                    servings: recipeServings !== "" ? Number(recipeServings) : undefined
+                })
+                Router.push("/recipes")
             }
+        } catch (error: any) {
+            console.error("Error saving recipe:", error)
+            alert(error?.message || "failed, unexpected error")
+        } finally {
             setLoading(false)
-        } else {
-            Router.push("/recipes")
         }
     }
 
@@ -251,35 +237,21 @@ export default function CreateRecipe() {
 
         setIsExtracting(true)
         try {
-            const token = localStorage.getItem('Token')
-            const res = await fetch('/api/ai/extract_from_notes', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'edgetoken': token || ''
-                },
-                body: JSON.stringify({ notes: recipeNotes })
-            })
+            const result = await extractRecipeFromNotes(recipeNotes)
+            const { name, ingredients, instructions, time, genre, mealTypes, servings, carbType } = result
 
-            const result = await res.json()
-            if (result.success && result.data) {
-                const { name, ingredients, instructions, time, genre, mealTypes, servings, carbType } = result.data
+            if (name) setRecipeName(name)
+            if (ingredients) setIngreds(ingredients)
+            if (instructions) setInstructions(instructions)
+            if (time) setRecipeTime(time)
+            if (genre) setRecipeGenre(genre)
+            if (mealTypes) setRecipeMealTypes(mealTypes)
+            if (carbType) setRecipeCarbType(carbType)
+            if (servings) setRecipeServings(servings)
 
-                if (name) setRecipeName(name)
-                if (ingredients) setIngreds(ingredients)
-                if (instructions) setInstructions(instructions)
-                if (time) setRecipeTime(time)
-                if (genre) setRecipeGenre(genre)
-                if (mealTypes) setRecipeMealTypes(mealTypes)
-                if (carbType) setRecipeCarbType(carbType)
-                if (servings) setRecipeServings(servings)
-
-                setRecipeNotes("") // Clear notes after successful extraction
-                setFormPhase('builder')
-                alert("Recipe extracted successfully!")
-            } else {
-                alert(result.message || "Failed to extract recipe.")
-            }
+            setRecipeNotes("") // Clear notes after successful extraction
+            setFormPhase('builder')
+            alert("Recipe extracted successfully!")
         } catch (error) {
             console.error("Extraction error:", error)
             alert("An error occurred during extraction.")
@@ -298,78 +270,35 @@ export default function CreateRecipe() {
         setIsExtracting(true)
         setExtractionStatus("Analyzing visual data...")
         try {
-            const token = localStorage.getItem('Token')
-
             // Artificial delay for first step to show status
             setTimeout(() => setExtractionStatus("Uploading to Gemini Vision..."), 800);
 
-            console.log(`[AI-Extract-Client] Starting fetch. Payload size: ${(extractImage.length / 1024 / 1024).toFixed(2)} MB`);
-            
-            const res = await fetch('/api/ai/extract_from_image', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'edgetoken': token || ''
-                },
-                body: JSON.stringify({ image: extractImage, notes: imageNotes })
-            })
-
             setExtractionStatus("Extracting recipe details...")
-            const responseText = await res.text();
-            console.log(`[AI-Extract-Client] Response received. Length: ${responseText.length}, Status: ${res.status}`);
-            
-            let result;
-            try {
-                result = JSON.parse(responseText);
-            } catch (e) {
-                console.error("[AI-Extract-Client] Failed to parse JSON. Response start:", responseText.substring(0, 200));
-                alert(`Server Error: Received HTML instead of JSON. Status: ${res.status}. Check console for details.`);
-                return;
-            }
+            const result = await extractRecipeFromImage(extractImage, imageNotes)
 
-            if (result.success && result.data) {
-                setExtractionStatus("Finalizing recipe structure...")
-                const { name, ingredients, instructions, time, genre, mealTypes, servings, carbType } = result.data
+            setExtractionStatus("Finalizing recipe structure...")
+            const { name, ingredients, instructions, time, genre, mealTypes, servings, carbType } = result
 
-                if (name) setRecipeName(name)
-                if (ingredients) setIngreds(ingredients)
-                if (instructions) setInstructions(instructions)
-                if (time) setRecipeTime(time)
-                if (genre) setRecipeGenre(genre)
-                if (mealTypes) setRecipeMealTypes(mealTypes)
-                if (carbType) setRecipeCarbType(carbType)
-                if (servings) setRecipeServings(servings)
-                setImageData(extractImage)
+            if (name) setRecipeName(name)
+            if (ingredients) setIngreds(ingredients)
+            if (instructions) setInstructions(instructions)
+            if (time) setRecipeTime(time)
+            if (genre) setRecipeGenre(genre)
+            if (mealTypes) setRecipeMealTypes(mealTypes)
+            if (carbType) setRecipeCarbType(carbType)
+            if (servings) setRecipeServings(servings)
+            setImageData(extractImage)
 
-                setExtractImage(undefined)
-                setImageNotes("")
-                setFormPhase('builder')
-                alert("Recipe extracted successfully!")
-            } else {
-                console.error("[AI-Extract-Client] Extraction failed:", result.message);
-                alert(result.message || "Failed to extract recipe.");
-            }
+            setExtractImage(undefined)
+            setImageNotes("")
+            setFormPhase('builder')
+            alert("Recipe extracted successfully!")
         } catch (error: any) {
-            console.error("[AI-Extract-Client] Fetch/Process Error:", error);
-            const errorMsg = error.message || String(error);
-            alert(`Extraction Error: ${errorMsg}`);
+            console.error("[AI-Extract-Client] Process Error:", error);
+            alert(`Extraction Error: ${error?.message || String(error)}`);
         }
         setIsExtracting(false)
         setExtractionStatus("")
-    }
-
-    const onSubmitIngred = async (e: any) => {
-        e.preventDefault();
-        let IngredObj: Ingredient = {
-            "Name": e.value.name,
-            "Amount": e.value.quantity,
-            "AmountType": e.value.quantity_type,
-            "Note": e.value.note
-        }
-
-        setIngreds([...ingreds, IngredObj])
-        if (e.target.reset) e.target.reset()
-        if (e.resetForm) e.resetForm()
     }
 
     const onSubmitInstruc = async (e: FormEvent<HTMLFormElement>) => {
@@ -426,61 +355,6 @@ export default function CreateRecipe() {
         }
         if (id) fetchRecipeForEdit()
     }, [id])
-
-    const compressImage = async (base64String: string, maxMB: number = 0.7): Promise<string> => {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.src = base64String;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
-
-                const maxDim = 1600;
-                if (width > maxDim || height > maxDim) {
-                    if (width > height) {
-                        height = (height / width) * maxDim;
-                        width = maxDim;
-                    } else {
-                        width = (width / height) * maxDim;
-                        height = maxDim;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx?.drawImage(img, 0, 0, width, height);
-
-                let quality = 0.8;
-                let dataUrl = canvas.toDataURL('image/jpeg', quality);
-
-                while (dataUrl.length > maxMB * 1024 * 1024 * 1.33 && quality > 0.1) {
-                    quality -= 0.1;
-                    dataUrl = canvas.toDataURL('image/jpeg', quality);
-                }
-
-                resolve(dataUrl);
-            };
-        });
-    };
-
-    const getBase64 = function (file: File, cb: (data: string) => void) {
-        let reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = async function () {
-            let base64 = reader.result as string;
-            if (file.size > 1 * 1024 * 1024) {
-                setExtractionStatus("Compressing image...");
-                base64 = await compressImage(base64, 0.7);
-                setExtractionStatus("");
-            }
-            cb(base64)
-        };
-        reader.onerror = function (error) {
-            console.log('Error: ', error);
-        };
-    }
 
     // Always show full form in edit mode
     useEffect(() => {
@@ -606,7 +480,7 @@ export default function CreateRecipe() {
                                             accept="image/*"
                                             type="file"
                                             className="hidden"
-                                            onChange={(e) => { e.target.files && e.target.files[0] ? getBase64(e.target.files[0], (data) => setExtractImage(data)) : undefined }}
+                                            onChange={(e) => { if (e.target.files && e.target.files[0]) fileToBase64(e.target.files[0], setExtractionStatus).then(setExtractImage) }}
                                         />
                                         <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-md">
                                             <img src={extractImage} alt="Recipe Preview" className="w-full h-full object-cover" />
@@ -623,7 +497,7 @@ export default function CreateRecipe() {
                                                 capture="environment"
                                                 type="file"
                                                 className="hidden"
-                                                onChange={(e) => { e.target.files && e.target.files[0] ? getBase64(e.target.files[0], (data) => setExtractImage(data)) : undefined }}
+                                                onChange={(e) => { if (e.target.files && e.target.files[0]) fileToBase64(e.target.files[0], setExtractionStatus).then(setExtractImage) }}
                                             />
                                             <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">📸</div>
                                             <span className="text-xs font-bold block">Camera</span>
@@ -633,7 +507,7 @@ export default function CreateRecipe() {
                                                 accept="image/*"
                                                 type="file"
                                                 className="hidden"
-                                                onChange={(e) => { e.target.files && e.target.files[0] ? getBase64(e.target.files[0], (data) => setExtractImage(data)) : undefined }}
+                                                onChange={(e) => { if (e.target.files && e.target.files[0]) fileToBase64(e.target.files[0], setExtractionStatus).then(setExtractImage) }}
                                             />
                                             <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">🖼️</div>
                                             <span className="text-xs font-bold block">Gallery</span>
@@ -717,49 +591,19 @@ export default function CreateRecipe() {
 
                         {/* Main Interaction Area: Ingredients & Instructions */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                            {/* Ingredients Module: Grouped Add + List */}
+                            {/* Ingredients Module */}
                             <div className="glass-card group-highlight p-0 overflow-hidden border-t-4 border-t-accent">
                                 <div className="p-4 md:p-6 bg-gradient-to-b from-accent/5 to-transparent">
                                     <h3 className="text-xl font-bold mb-4 flex items-center gap-3">
                                         <span className="bg-accent text-accent-foreground w-8 h-8 rounded-lg flex items-center justify-center text-sm">🛒</span>
                                         Ingredients
                                     </h3>
-                                    <div className="px-2">
-                                        <AddShoppingItem handleSubmit={onSubmitIngred} hideCategories={true} />
-                                    </div>
                                 </div>
 
                                 <div className="p-6 md:p-8 pt-0">
                                     <div className="bg-secondary/20 rounded-2xl p-4 md:p-6 border border-border/5">
                                         <h4 className="text-xs font-black uppercase text-muted-foreground tracking-widest mb-4">Current List</h4>
-                                        {ingreds.length === 0 ? (
-                                            <div className="py-12 flex flex-col items-center justify-center text-center opacity-30 select-none">
-                                                <div className="text-5xl mb-4">🥫</div>
-                                                <p className="text-sm italic">Nothing in the pantry yet...</p>
-                                            </div>
-                                        ) : (
-                                            <ul className="flex flex-col gap-3">
-                                                {ingreds.map((ingred, i) => (
-                                                    <li key={i} className="flex items-center justify-between p-4 rounded-xl bg-background/40 border border-border/10 group hover:border-accent/40 hover:shadow-lg hover:shadow-accent/5 transition-all duration-300">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-sm font-bold flex items-center gap-2">
-                                                                <span className="text-accent underline decoration-accent/30 underline-offset-4">{ingred.Amount} {ingred.AmountType}</span>
-                                                                {ingred.Name}
-                                                            </span>
-                                                            {ingred.Note && <span className="text-[10px] text-muted-foreground italic mt-0.5">{ingred.Note}</span>}
-                                                        </div>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="text-muted-foreground hover:text-white hover:bg-destructive rounded-lg h-9 w-9 p-0 opacity-0 group-hover:opacity-100 transition-all"
-                                                            onClick={() => setIngreds(ingreds.filter((item) => item.Name !== ingred.Name))}
-                                                        >
-                                                            <RiDeleteBin7Line size={16} />
-                                                        </Button>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
+                                        <IngredientEditor ingredients={ingreds} onChange={setIngreds} autoDefaults />
                                     </div>
                                 </div>
                             </div>
@@ -849,7 +693,7 @@ export default function CreateRecipe() {
                                                 capture="environment"
                                                 type="file"
                                                 className="hidden"
-                                                onChange={(e) => { e.target.files && e.target.files[0] ? getBase64(e.target.files[0], (data) => setImageData(data)) : undefined }}
+                                                onChange={(e) => { if (e.target.files && e.target.files[0]) fileToBase64(e.target.files[0], setExtractionStatus).then(setImageData) }}
                                             />
                                             <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">📸</div>
                                             <span className="text-sm font-bold block">Camera</span>
@@ -859,7 +703,7 @@ export default function CreateRecipe() {
                                                 accept="image/*"
                                                 type="file"
                                                 className="hidden"
-                                                onChange={(e) => { e.target.files && e.target.files[0] ? getBase64(e.target.files[0], (data) => setImageData(data)) : undefined }}
+                                                onChange={(e) => { if (e.target.files && e.target.files[0]) fileToBase64(e.target.files[0], setExtractionStatus).then(setImageData) }}
                                             />
                                             <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">🖼️</div>
                                             <span className="text-sm font-bold block">Gallery</span>

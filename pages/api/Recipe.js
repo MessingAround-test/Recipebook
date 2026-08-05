@@ -37,7 +37,8 @@ export default async function handler(req, res) {
           genre: req.body.genre,
           mealTypes: req.body.mealTypes,
           carbType: req.body.carbType,
-          servings: req.body.servings
+          servings: req.body.servings,
+          hidden: req.body.hidden
         });
         return res.status(200).json({ success: true, data: response, message: "Success" })
       } catch (error) {
