@@ -589,7 +589,7 @@ export default function Dashboard() {
             {isLoggingOpen && (
                 <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center md:p-8">
                     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={closeLog} />
-                    <div className="relative w-full md:max-w-lg bg-background border-t md:border border-white/10 rounded-t-2xl md:rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto pb-6">
+                    <div className="relative w-full md:max-w-lg bg-background border-t md:border border-white/10 rounded-t-2xl md:rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+2.5rem)]">
                         <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-background/95 backdrop-blur-md border-b border-white/5">
                             <div className="flex items-center gap-2.5">
                                 <IconChip className="bg-emerald-500/15 text-emerald-400"><FiPlus size={16} /></IconChip>
