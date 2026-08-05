@@ -533,6 +533,7 @@ export default function Dashboard() {
                                     <div className={`text-xl md:text-2xl font-black leading-none ${dailyScore ? scoreColor : 'text-muted-foreground'}`}>{dailyScore || '--'}%</div>
                                     <div className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground mt-0.5">Score</div>
                                 </div>
+                                {/* Refresh button (currently hidden). Uncomment to re-enable.
                                 <button
                                     onClick={refreshIntake}
                                     disabled={refreshing}
@@ -542,6 +543,7 @@ export default function Dashboard() {
                                 >
                                     <FiRefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
                                 </button>
+                                */}
                                 <button
                                     onClick={openLog}
                                     aria-label="Log Food"
