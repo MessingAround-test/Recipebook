@@ -3,10 +3,10 @@ import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { Button } from '../components/ui/button';
 import { calculateDailyIntake, DailyIntakeTargets, NUTRIENT_LABELS } from '../lib/dailyIntake';
-import { calculateHealthScore, DEFAULT_HEALTH_SCORE_CONFIG, HealthScoreConfig } from '../lib/healthScore';
+import { calculateHealthScore, DEFAULT_HEALTH_SCORE_CONFIG, getNutrientWeight, HealthScoreConfig } from '../lib/healthScore';
 import 'chart.js/auto';
 import { Bar } from 'react-chartjs-2';
-import { FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiSearch, FiZap, FiX, FiChevronDown, FiChevronUp, FiPieChart } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiSearch, FiZap, FiX, FiChevronDown, FiChevronUp, FiPieChart, FiTarget, FiAward } from 'react-icons/fi';
 import AddShoppingItem from '../components/AddShoppingItem';
 import { Toolbar } from '../components/Toolbar';
 import IngredientNutrientGraph from '../components/IngredientNutrientGraph';
@@ -124,6 +124,14 @@ export default function DailyTracker() {
         fetchRecipes();
         fetchKnownIngredients();
     }, [fetchData, fetchRecipes, fetchKnownIngredients]);
+
+    useEffect(() => {
+        const v = router.query.view as string | undefined;
+        const valid = ['daily', 'weekly', 'insights', 'stats', 'trends', 'symptoms'];
+        if (v && valid.includes(v)) {
+            setViewMode(v as any);
+        }
+    }, [router.query.view]);
 
     const changeDate = (offset: number) => {
         const [y, m, d] = date.split('-').map(Number);
@@ -290,6 +298,38 @@ export default function DailyTracker() {
 
     const dailyScore = calculateScore();
 
+    // MVP of the day: individual ingredients whose single nutrient carries the
+    // largest % of its daily target (no weight averaging).
+    const mvps = useMemo(() => {
+        if (!log?.items?.length || !targets) return [];
+        const rows: { name: string; nutrient: string; amount: number; pct: number; isLimit: boolean; overLimit: boolean }[] = [];
+        (log.items || []).forEach((item: any) => {
+            if (!item.nutrients) return;
+            let best: { key: string; pct: number } | null = null;
+            Object.keys(item.nutrients).forEach((k) => {
+                const val = item.nutrients[k] || 0;
+                const target = (targets as any)?.[k] || 0;
+                if (val <= 0 || !target || target <= 0) return;
+                if (getNutrientWeight(k, healthScoreConfig) <= 0) return;
+                const pct = (val / target) * 100;
+                if (!best || pct > best.pct) best = { key: k, pct };
+            });
+            if (!best) return;
+            const k = best.key;
+            const dailyTotal = totals[k] || 0;
+            const target = (targets as any)?.[k] || 0;
+            rows.push({
+                name: item.name,
+                nutrient: k,
+                amount: item.nutrients[k] || 0,
+                pct: best.pct,
+                isLimit: healthScoreConfig.limitNutrients.includes(k),
+                overLimit: dailyTotal > target,
+            });
+        });
+        return rows.sort((a, b) => b.pct - a.pct).slice(0, 5);
+    }, [log, targets, totals, healthScoreConfig]);
+
     const token = typeof window !== 'undefined' ? localStorage.getItem('Token') : null;
     let isAdmin = false;
     if (token) {
@@ -336,8 +376,8 @@ export default function DailyTracker() {
                         const recipeKey = `${g.recipe_id}-${g.logged_at}`;
                         const isExpanded = expandedRecipes.has(recipeKey);
                         return (
-                            <div key={recipeKey} className="bg-white/[0.02] rounded-2xl md:rounded-3xl border border-white/5 overflow-hidden group/recipe">
-                                <div className="flex items-center justify-between p-3 md:p-4 bg-white/[0.03] border-b border-white/5">
+                            <div key={recipeKey} className="bg-white/[0.03] rounded-2xl md:rounded-3xl border-l-2 border-l-emerald-500/40 overflow-hidden group/recipe">
+                                <div className="flex items-center justify-between p-3 md:p-4 bg-white/[0.04]">
                                     <div className="flex items-center gap-3 min-w-0 flex-1">
                                         <div className="min-w-0 flex-1">
                                             <div className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-0.5">Recipe</div>
@@ -368,7 +408,7 @@ export default function DailyTracker() {
                         );
                     } else {
                         return (
-                            <div key={g._id} className="flex items-center justify-between p-3 md:p-4 bg-white/[0.03] rounded-2xl border border-white/5 hover:border-white/10 transition-all group">
+                            <div key={g._id} className="flex items-center justify-between p-3 md:p-4 bg-white/[0.03] rounded-2xl hover:bg-white/[0.06] transition-all group">
                                 <div className="min-w-0 flex-1">
                                     <div className="font-bold text-sm capitalize cursor-pointer hover:text-emerald-400 transition-colors truncate" onClick={() => setResearchIngredient({ name: g.name, quantity: g.quantity, unit: g.quantity_unit })}>{g.name}</div>
                                     <div className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-0.5">{g.quantity}{g.quantity_unit} • {Math.round(g.nutrients.energy_kcal)} kcal</div>
@@ -399,7 +439,7 @@ export default function DailyTracker() {
                 </p>
                 <div className="space-y-2">
                     {recommendations.recommendations.map((rec: any) => (
-                        <div key={rec.name} className="p-3 md:p-4 bg-white/5 rounded-xl md:rounded-2xl border border-white/5 flex items-center gap-3 group hover:bg-emerald-500/10 hover:border-emerald-500/20 transition-all">
+                        <div key={rec.name} className="p-3 md:p-4 bg-white/[0.04] rounded-xl md:rounded-2xl flex items-center gap-3 group hover:bg-emerald-500/10 transition-all">
                             <div className="flex-1 min-w-0">
                                 <span className="text-[12px] font-black cursor-pointer hover:text-emerald-400 transition-colors capitalize" onClick={() => setResearchIngredient({ name: rec.name, quantity: 100, unit: 'gram' })}>{rec.name} / 100g</span>
                                 <div className="flex flex-wrap gap-x-2 mt-0.5">
@@ -435,7 +475,7 @@ export default function DailyTracker() {
                                 const recipeValue = recipe.nutrients?.[nutrientKey] || 0;
                                 const boostPct = Math.round((recipeValue / dailyTarget) * 100);
                                 return (
-                                    <div key={recipe.id} className="p-3 md:p-4 bg-emerald-500/5 rounded-xl md:rounded-2xl border border-emerald-500/10 flex gap-3 items-center group hover:bg-emerald-500/10 hover:border-emerald-500/20 transition-all">
+                                    <div key={recipe.id} className="p-3 md:p-4 bg-emerald-500/[0.07] rounded-xl md:rounded-2xl flex gap-3 items-center group hover:bg-emerald-500/10 transition-all">
                                         {recipe.image && <img src={recipe.image} alt={recipe.name} className="w-10 h-10 rounded-xl object-cover shadow-lg border border-white/10 cursor-pointer shrink-0" onClick={() => router.push(`/Recipe/${recipe.id}`)} />}
                                         <div className="flex-1 min-w-0">
                                             <div className="text-[12px] font-black truncate cursor-pointer hover:text-emerald-400 transition-colors" onClick={() => router.push(`/Recipe/${recipe.id}`)}>{recipe.name}</div>
@@ -534,7 +574,7 @@ export default function DailyTracker() {
                 )}
             </div>
             
-            <div className="bg-muted/20 rounded-xl md:rounded-[2rem] border border-white/5 p-4 md:p-8 shadow-2xl shadow-black/20">
+            <div className="bg-white/[0.03] rounded-2xl md:rounded-3xl p-4 md:p-6">
                 <div className="space-y-4 md:space-y-6">
                     <SearchableDropdown
                         name="unified-search"
@@ -586,7 +626,7 @@ export default function DailyTracker() {
     return (
         <div className="min-h-screen bg-background text-foreground pb-24 md:pb-0">
             <Toolbar />
-            <div className="max-w-5xl mx-auto px-3 md:px-4 py-4 md:py-8">
+            <div className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-8">
                 {/* ═══ COMPACT HEADER ═══ */}
                 <div className="mb-4 md:mb-8">
                     <div className="flex items-center justify-between mb-3 md:mb-6">
@@ -669,28 +709,109 @@ export default function DailyTracker() {
                 ) : (
                     <>
                         {/* ═══ DESKTOP LAYOUT (md+) ═══ */}
-                        <div className="hidden md:grid grid-cols-1 gap-8 animate-in fade-in duration-500">
-                            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                                <div id="logging-section" className="lg:col-span-3 space-y-6">
-                                    {renderLoggingForm()}
-                                    <div className="glass-card min-h-[300px]">
-                                        <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4">Consumed Today</h3>
-                                        {renderConsumedItems()}
+                        <div className="hidden md:block animate-in fade-in duration-500">
+                            {/* Log Food - own row */}
+                            <div id="logging-section" className="bg-emerald-500/[0.04] rounded-3xl p-6 mb-6">
+                                {renderLoggingForm()}
+                            </div>
+
+                            {/* Consumed + Snapshot/Breakdown - two columns */}
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                                <div className="lg:col-span-7 bg-white/[0.03] rounded-3xl p-6 min-h-[300px]">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Consumed Today
+                                        </h3>
+                                        <div className="text-[10px] font-black text-emerald-400">{totalKcal} kcal</div>
+                                    </div>
+                                    {renderConsumedItems()}
+                                </div>
+
+                                <div className="lg:col-span-5 space-y-6">
+                                    {/* Daily Snapshot + Insight notification */}
+                                    <div className="bg-white/[0.03] rounded-3xl p-6">
+                                        <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2 mb-5">
+                                            <FiTarget /> Daily Snapshot
+                                        </h3>
+                                        <div className="flex items-center justify-between mb-5">
+                                            <div>
+                                                <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Energy</div>
+                                                <div className="text-2xl font-black tabular-nums">{totalKcal} <span className="text-[10px] text-muted-foreground font-bold">kcal</span></div>
+                                            </div>
+                                            <div className={`text-3xl font-black ${dailyScore > 80 ? 'text-emerald-400' : dailyScore > 50 ? 'text-amber-400' : 'text-rose-400'}`}>{dailyScore}%</div>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {[
+                                                { key: 'protein_g', label: 'Protein', color: '#10b981' },
+                                                { key: 'fat_g', label: 'Fat', color: '#f59e0b' },
+                                                { key: 'carbohydrates_g', label: 'Carbs', color: '#6366f1' },
+                                                { key: 'fiber_g', label: 'Fiber', color: '#06b6d4' },
+                                            ].map(m => {
+                                                const val = totals[m.key] || 0;
+                                                const tgt = targets?.[m.key] || 1;
+                                                const pct = Math.min((val / tgt) * 100, 100);
+                                                return (
+                                                    <div key={m.key}>
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">{m.label}</span>
+                                                            <span className="text-[9px] font-bold text-muted-foreground/70 tabular-nums">{Math.round(val)}/{Math.round(tgt)}g</span>
+                                                        </div>
+                                                        <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                                                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: m.color }} />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {recommendations?.deficientNutrient && (
+                                            <button onClick={() => setInsightsExpanded(true)} className="mt-5 w-full flex items-center gap-3 rounded-2xl bg-amber-500/[0.08] p-3 text-left hover:bg-amber-500/[0.15] transition-all active:scale-[0.98] group/insight">
+                                                <span className="relative shrink-0">
+                                                    <span className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-400"><FiZap size={18} /></span>
+                                                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-black text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-background">{(recommendations?.recommendations?.length || 0) + (recommendations?.recipeRecommendations?.length || 0)}</span>
+                                                </span>
+                                                <span className="flex-1 min-w-0">
+                                                    <span className="block text-[9px] font-black uppercase tracking-widest text-amber-400">Daily Insight</span>
+                                                    <span className="block text-[11px] font-bold text-muted-foreground truncate">Low on {NUTRIENT_LABELS[recommendations.deficientNutrient]?.label}</span>
+                                                </span>
+                                                <FiChevronRight size={16} className="text-amber-400 shrink-0 group-hover/insight:translate-x-0.5 transition-transform" />
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* MVP of the Day */}
+                                    <div className="bg-white/[0.03] rounded-3xl p-6">
+                                        <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2 mb-5">
+                                            <FiAward /> MVP's of the Day
+                                        </h3>
+                                        {mvps.length === 0 ? (
+                                            <p className="text-[11px] text-muted-foreground leading-relaxed">Log some food to see which ingredients carry your day.</p>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {mvps.map((m, idx) => (
+                                                    <div key={`${m.name}-${m.nutrient}`} onClick={() => setResearchIngredient({ name: m.name, quantity: 100, unit: 'gram' })} className="flex items-center gap-3 p-2.5 rounded-xl bg-white/[0.03] hover:bg-emerald-500/10 transition-all cursor-pointer group">
+                                                        <span className="shrink-0 w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-[11px] font-black">{idx + 1}</span>
+                                                        <span className="flex-1 min-w-0">
+                                                            <span className="block text-[12px] font-black capitalize truncate">{m.name}</span>
+                                                            <span className="block text-[10px] font-bold text-muted-foreground">+{Math.round(m.pct)}% {NUTRIENT_LABELS[m.nutrient as keyof DailyIntakeTargets]?.label}</span>
+                                                        </span>
+                                                        {m.isLimit && (
+                                                            <span className={`shrink-0 text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${m.overLimit ? 'bg-rose-500/15 text-rose-400' : 'bg-amber-500/15 text-amber-400'}`}>
+                                                                {m.overLimit ? 'Over Limit' : 'Limit'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="lg:col-span-2 space-y-6">
-                                    {recommendations?.deficientNutrient && (
-                                        <div className="glass-card border-amber-500/30 bg-amber-500/5 relative overflow-hidden h-full">
-                                            <div className="absolute top-0 right-0 p-4 opacity-10"><FiZap size={60} /></div>
-                                            <h3 className="text-xs font-black uppercase tracking-widest text-amber-400 mb-4 flex items-center gap-2"><FiZap /> Daily Insight</h3>
-                                            {renderInsightsContent()}
-                                        </div>
-                                    )}
-                                </div>
                             </div>
-                            <div className="glass-card">
+
+                            {/* Nutritional Breakdown - full width */}
+                            <div className="bg-indigo-500/[0.05] rounded-3xl p-6 mt-6">
                                 <div className="flex items-center justify-between mb-8">
-                                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-emerald-500">Comprehensive Nutritional Breakdown</h3>
+                                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-400 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-indigo-400" /> Nutritional Breakdown</h3>
                                     <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest bg-white/5 px-3 py-1 rounded-full">Detailed Analysis</div>
                                 </div>
                                 <IngredientNutrientGraph 
@@ -699,6 +820,20 @@ export default function DailyTracker() {
                                 />
                             </div>
                         </div>
+
+                        {/* ═══ DESKTOP: Insight Popup ═══ */}
+                        {insightsExpanded && (
+                            <div className="hidden md:flex fixed inset-0 z-[90] items-center justify-center p-8">
+                                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setInsightsExpanded(false)} />
+                                <div className="relative bg-background rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6 md:p-8 animate-in fade-in zoom-in-95 duration-300">
+                                    <div className="flex items-center justify-between mb-5">
+                                        <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-amber-400"><FiZap /> Daily Insight</h2>
+                                        <button onClick={() => setInsightsExpanded(false)} className="p-2.5 hover:bg-white/10 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
+                                    </div>
+                                    {renderInsightsContent()}
+                                </div>
+                            </div>
+                        )}
 
                         {/* ═══ MOBILE LAYOUT ═══ */}
                         <div className="md:hidden space-y-3 animate-in fade-in duration-500">

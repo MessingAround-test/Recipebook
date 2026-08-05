@@ -55,8 +55,8 @@ export default async function handler(req, res) {
                     const recipe = await Recipe.findById(item.recipe_id);
                     if (recipe && recipe.ingredients) {
                         const baseServings = Number(recipe.servings) || 1;
-                        // Quantity is how many of this recipe they want, multiplied by 7 for the week
-                        const scale = (Number(item.quantity) * 7) / baseServings;
+                        // Pool item quantity is the WEEKLY total
+                        const scale = Number(item.quantity) / baseServings;
                         
                         for (const ing of recipe.ingredients) {
                             const amount = Number(ing.Amount || 0) * scale;
@@ -73,7 +73,7 @@ export default async function handler(req, res) {
                                 deleted: false,
                                 recipe_id: recipe._id.toString(),
                                 recipe_name: recipe.name,
-                                note: 'Everyday item'
+                                note: 'Pantry item'
                             });
                         }
                         expanded = true;
@@ -84,14 +84,14 @@ export default async function handler(req, res) {
                     const category = await determineCategory(item.name, { IngredientConversion, ShoppingListItem }, callGroqChat);
                     itemsToAdd.push({
                         name: item.name,
-                        quantity: Number(item.quantity) * 7,
+                        quantity: Number(item.quantity),
                         quantity_type: item.quantity_unit || 'each',
                         category: category,
                         shoppingListId: targetListId,
                         complete: false,
                         createdBy: userId,
                         deleted: false,
-                        note: 'Everyday item'
+                        note: 'Pantry item'
                     });
                 }
             }

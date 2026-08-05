@@ -8,6 +8,8 @@ import { FiZap, FiActivity, FiShoppingCart, FiCalendar, FiArrowRight, FiPlus, Fi
 import IngredientEditor from '../components/IngredientEditor'
 import { fileToBase64 } from '../lib/recipeImage'
 import { extractRecipeFromImage, saveRecipe, Ingredient } from '../lib/recipeExtraction'
+import { useDailyTasks } from '../lib/dailyTasks'
+import DailyTasksCard from '../components/DailyTasksCard'
 
 const getLocalDateString = (d: Date) => {
     const year = d.getFullYear()
@@ -48,6 +50,7 @@ export default function Dashboard() {
     const [trendDays, setTrendDays] = useState<any[]>([])
     const [recipes, setRecipes] = useState<any[]>([])
     const [knownIngredients, setKnownIngredients] = useState<string[]>([])
+    const [symptomLog, setSymptomLog] = useState<any>(null)
 
     // Quick-log state
     const [isLoggingOpen, setIsLoggingOpen] = useState(false)
@@ -90,7 +93,8 @@ export default function Dashboard() {
             fetch(`/api/trends?startDate=${getLocalDateString(trendStart)}&endDate=${today}`, { headers: { edgetoken: token } }).then(r => r.json()),
             fetch('/api/Recipe', { headers: { edgetoken: token } }).then(r => r.json()),
             fetch('/api/Ingredients/defaults', { headers: { edgetoken: token } }).then(r => r.json()),
-        ]).then(([targetRes, logRes, recRes, planRes, listRes, trendRes, recipeRes, ingRes]) => {
+            fetch(`/api/symptomLog?date=${today}`, { headers: { edgetoken: token } }).then(r => r.json()),
+        ]).then(([targetRes, logRes, recRes, planRes, listRes, trendRes, recipeRes, ingRes, symptomRes]) => {
             if (targetRes.status === 'fulfilled' && targetRes.value.success) {
                 setTargets(targetRes.value.targets)
                 if (targetRes.value.healthScoreConfig) {
@@ -120,6 +124,9 @@ export default function Dashboard() {
             if (ingRes.status === 'fulfilled' && ingRes.value.success) {
                 setKnownIngredients(ingRes.value.data || [])
             }
+            if (symptomRes.status === 'fulfilled' && symptomRes.value.success) {
+                setSymptomLog(symptomRes.value.log)
+            }
         }).finally(() => setLoading(false))
     }, [])
 
@@ -146,6 +153,12 @@ export default function Dashboard() {
     }, [isAuthed, loadData])
 
     const latestList = shoppingLists[0] || null
+
+    const { tasks: dailyTasks, allDone: allTasksDone, toggle: toggleDailyTask } = useDailyTasks(
+        getLocalDateString(new Date()),
+        todayLog,
+        symptomLog
+    )
 
     useEffect(() => {
         if (!latestList) return
@@ -242,6 +255,12 @@ export default function Dashboard() {
         setLogSelection(null)
         setLogSearch('')
     }
+
+    const handleTaskGo = useCallback((action: string) => {
+        if (action === 'symptoms') Router.push('/dailyTracker?view=symptoms')
+        else if (action === 'exercise') Router.push('/dailyTracker?view=stats')
+        else if (action === 'quicklog') openLog()
+    }, [])
 
     const handlePhotoExtract = async () => {
         if (!photoImage || photoExtracting) return
@@ -397,11 +416,11 @@ export default function Dashboard() {
                         </h1>
                     </div>
 
-                    {/* ═══ WEEK PLAN + SHOPPING LIST (central) ═══ */}
+                    {/* ═══ WEEK PLAN + DAILY TASKS (central) ═══ */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
                         {/* Weekly plan */}
                         {hasWeekPlan && (
-                        <div className="bg-gradient-to-br from-amber-500/[0.12] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col">
+                        <div className={`bg-gradient-to-br from-amber-500/[0.12] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col ${allTasksDone ? 'md:col-span-2' : ''}`}>
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2.5">
                                     <IconChip className="bg-amber-500/15 text-amber-400"><FiCalendar size={16} /></IconChip>
@@ -460,61 +479,12 @@ export default function Dashboard() {
                         </div>
                         )}
 
-                        {/* Shopping list */}
-                        <div className={`bg-gradient-to-br from-sky-500/[0.12] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col ${hasWeekPlan ? '' : 'md:col-span-2'}`}>
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2.5">
-                                    <IconChip className="bg-sky-500/15 text-sky-400"><FiShoppingCart size={16} /></IconChip>
-                                    <h3 className="text-sm font-black tracking-tight">Shopping List</h3>
-                                </div>
-                                <button
-                                    onClick={() => Router.push('/shoppingList')}
-                                    className="text-[9px] font-bold uppercase tracking-widest text-sky-400 hover:text-sky-300 transition-colors inline-flex items-center gap-1"
-                                >
-                                    All <FiArrowRight size={11} />
-                                </button>
+                        {/* Daily tasks */}
+                        {!allTasksDone && (
+                            <div className={`${hasWeekPlan ? '' : 'md:col-span-2'}`}>
+                                <DailyTasksCard tasks={dailyTasks} allDone={allTasksDone} toggle={toggleDailyTask} onGo={handleTaskGo} />
                             </div>
-
-                            {loading && !latestList ? (
-                                <div className="space-y-2 flex-1">
-                                    <Skeleton className="h-14" />
-                                    <Skeleton className="h-8" />
-                                </div>
-                            ) : !latestList ? (
-                                <button
-                                    onClick={() => Router.push('/shoppingList/create')}
-                                    className="flex-1 w-full flex items-center justify-between p-4 bg-black/25 rounded-xl hover:bg-sky-500/15 transition-all text-left"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <FiShoppingCart size={18} className="text-sky-300" />
-                                        <span className="text-sm font-semibold text-muted-foreground">No active list</span>
-                                    </div>
-                                    <FiChevronRight size={16} className="text-muted-foreground shrink-0" />
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={() => Router.push(`/shoppingList/${latestList._id}`)}
-                                    className="flex-1 w-full flex items-center justify-between gap-3 p-4 bg-black/25 rounded-xl hover:bg-sky-500/15 transition-all text-left group"
-                                >
-                                    <div className="min-w-0">
-                                        <div className="text-[8px] font-bold uppercase tracking-widest text-sky-400 mb-1">Most Recent</div>
-                                        <div className="text-lg md:text-xl font-black truncate group-hover:text-sky-300 transition-colors">{latestList.name}</div>
-                                        <div className="flex items-center gap-2 mt-1.5 text-[10px] font-semibold text-muted-foreground">
-                                            <span>{new Date(latestList.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
-                                            <span className="w-1 h-1 rounded-full bg-white/20" />
-                                            <span>{listItemsCount != null ? `${listItemsCount} items` : '—'}</span>
-                                            {latestList.cost != null && (
-                                                <>
-                                                    <span className="w-1 h-1 rounded-full bg-white/20" />
-                                                    <span className="text-sky-300 font-bold">${Number(latestList.cost).toFixed(2)}</span>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <FiChevronRight size={20} className="text-muted-foreground group-hover:text-sky-300 shrink-0" />
-                                </button>
-                            )}
-                        </div>
+                        )}
                     </div>
 
                     {/* ═══ TODAY + NUTRITION ═══ */}
@@ -677,6 +647,67 @@ export default function Dashboard() {
                                     )
                                 })}
                             </div>
+                        )}
+                    </div>
+
+                    {/* ═══ DAILY TASKS (all done, moved down) ═══ */}
+                    {allTasksDone && (
+                        <DailyTasksCard tasks={dailyTasks} allDone={allTasksDone} toggle={toggleDailyTask} compact onGo={handleTaskGo} />
+                    )}
+
+                    {/* ═══ SHOPPING LIST ═══ */}
+                    <div className="bg-gradient-to-br from-sky-500/[0.12] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2.5">
+                                <IconChip className="bg-sky-500/15 text-sky-400"><FiShoppingCart size={16} /></IconChip>
+                                <h3 className="text-sm font-black tracking-tight">Shopping List</h3>
+                            </div>
+                            <button
+                                onClick={() => Router.push('/shoppingList')}
+                                className="text-[9px] font-bold uppercase tracking-widest text-sky-400 hover:text-sky-300 transition-colors inline-flex items-center gap-1"
+                            >
+                                All <FiArrowRight size={11} />
+                            </button>
+                        </div>
+
+                        {loading && !latestList ? (
+                            <div className="space-y-2 flex-1">
+                                <Skeleton className="h-14" />
+                                <Skeleton className="h-8" />
+                            </div>
+                        ) : !latestList ? (
+                            <button
+                                onClick={() => Router.push('/shoppingList/create')}
+                                className="flex-1 w-full flex items-center justify-between p-4 bg-black/25 rounded-xl hover:bg-sky-500/15 transition-all text-left"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <FiShoppingCart size={18} className="text-sky-300" />
+                                    <span className="text-sm font-semibold text-muted-foreground">No active list</span>
+                                </div>
+                                <FiChevronRight size={16} className="text-muted-foreground shrink-0" />
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => Router.push(`/shoppingList/${latestList._id}`)}
+                                className="flex-1 w-full flex items-center justify-between gap-3 p-4 bg-black/25 rounded-xl hover:bg-sky-500/15 transition-all text-left group"
+                            >
+                                <div className="min-w-0">
+                                    <div className="text-[8px] font-bold uppercase tracking-widest text-sky-400 mb-1">Most Recent</div>
+                                    <div className="text-lg md:text-xl font-black truncate group-hover:text-sky-300 transition-colors">{latestList.name}</div>
+                                    <div className="flex items-center gap-2 mt-1.5 text-[10px] font-semibold text-muted-foreground">
+                                        <span>{new Date(latestList.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
+                                        <span className="w-1 h-1 rounded-full bg-white/20" />
+                                        <span>{listItemsCount != null ? `${listItemsCount} items` : '—'}</span>
+                                        {latestList.cost != null && (
+                                            <>
+                                                <span className="w-1 h-1 rounded-full bg-white/20" />
+                                                <span className="text-sky-300 font-bold">${Number(latestList.cost).toFixed(2)}</span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                                <FiChevronRight size={20} className="text-muted-foreground group-hover:text-sky-300 shrink-0" />
+                            </button>
                         )}
                     </div>
 

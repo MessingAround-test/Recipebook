@@ -236,7 +236,7 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
             </div>
 
             {/* Nutrient cards */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 mb-6">
                 {activeKeys.map(key => {
                     const meta = NUTRIENT_LABELS[key];
                     const val = totals[key] ?? 0;
@@ -246,7 +246,7 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
                     return (
                         <div 
                             key={key} 
-                            className={`bg-muted/30 rounded-lg p-3 border border-border transition-all ${onClickNutrient ? 'cursor-pointer hover:bg-emerald-500/10 hover:border-emerald-500/30' : ''}`}
+                            className={`bg-muted/30 rounded-lg p-3 transition-all ${onClickNutrient ? 'cursor-pointer hover:bg-emerald-500/10' : ''}`}
                             onClick={() => onClickNutrient?.(key)}
                         >
                             <div className="text-xs font-medium text-muted-foreground capitalize mb-1">{meta?.label ?? key}</div>
@@ -270,7 +270,7 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
             )}
 
             {/* Bar chart */}
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+            <div className="bg-white/[0.03] rounded-xl p-4">
                 <Bar
                     data={chartData}
                     options={{

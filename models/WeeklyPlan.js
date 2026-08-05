@@ -35,7 +35,7 @@ const PlannedRecipeSchema = new mongoose.Schema({
     recipe_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Recipe', required: false },
     recipe_name: { type: String, required: true },
     servings: { type: Number, required: true },
-    day: { type: String, required: true }, // e.g. 'Monday' or specific date
+    day: { type: String, required: true }, // YYYY-MM-DD date, or 'Undecided'
     mealType: { type: String, enum: ['Breakfast', 'Lunch', 'Dinner', 'Snack'], required: true },
     isLeftover: { type: Boolean, default: false },
     isVague: { type: Boolean, default: false } // For "vague lunches"
@@ -43,8 +43,10 @@ const PlannedRecipeSchema = new mongoose.Schema({
 
 const WeeklyPlanSchema = new mongoose.Schema({
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    startDate: { type: String, required: true, index: true }, // YYYY-MM-DD representing the start of the week (e.g. Monday)
+    startDate: { type: String, required: true, index: true }, // YYYY-MM-DD representing the start of the plan range
+    numDays: { type: Number, default: 7 }, // Length of the plan range in days
     defaultServings: { type: Number, default: 2 },
+    version: { type: Number, default: 2 },
     plannedRecipes: [PlannedRecipeSchema],
     everydayItems: [EverydayItemSchema]
 }, { 

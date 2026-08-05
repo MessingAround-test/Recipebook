@@ -20,6 +20,8 @@ export default async function handler(req, res) {
         const { plan } = req.body;
         if (!plan) return res.status(400).json({ success: false, message: 'Plan is required' });
 
+        const numDays = Math.max(1, plan.numDays || 7);
+
         const userId = decoded.id;
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ success: false, message: 'User not found' });
@@ -127,18 +129,18 @@ export default async function handler(req, res) {
             }
         }
 
-        // 2. Process Everyday Items
+        // 2. Process Pantry Pool Items (everydayItems)
+        // Pool quantities are WEEKLY totals, spread evenly across the plan's days.
+        // They are added once to the weekly totals; dailyAverages (totals / numDays) handles the spreading.
         let everydayCost = 0;
         for (const item of (plan.everydayItems || [])) {
-            // Everyday items quantities are PER DAY, so multiply by 7 for the week
             const data = await getRecipeNutritionAndCost(item.recipe_id, item.quantity, true);
             if (data) {
                 nutrientKeys.forEach(k => {
-                    totals[k] += (data.nutrients[k] || 0) * 7;
+                    totals[k] += data.nutrients[k] || 0;
                 });
-                const weeklyCost = data.cost * 7;
-                totalCost += weeklyCost;
-                everydayCost += weeklyCost;
+                totalCost += data.cost;
+                everydayCost += data.cost;
             }
         }
 
@@ -153,7 +155,7 @@ export default async function handler(req, res) {
         // 3. Fill in Missing Meals
         // We only backfill meals for days that are COMPLETELY empty.
         // If a day has any meals planned, we assume the user is intentionally skipping the rest.
-        const numEmptyDays = 7 - activeDays.size;
+        const numEmptyDays = numDays - activeDays.size;
         const numMissingSlots = numEmptyDays * 3;
 
         if (numMissingSlots > 0) {
@@ -173,7 +175,7 @@ export default async function handler(req, res) {
         // 4. Calculate Daily Averages and Deficiencies
         const dailyAverages = {};
         nutrientKeys.forEach(k => {
-            dailyAverages[k] = totals[k] / 7;
+            dailyAverages[k] = totals[k] / numDays;
         });
 
         const deficiencies = [];
@@ -191,17 +193,18 @@ export default async function handler(req, res) {
         return res.status(200).json({
             success: true,
             analysis: {
+                numDays,
                 weeklyTotals: totals,
                 dailyAverages,
                 dailyTargets: targets,
                 deficiencies,
                 totalCost,
-                averageDailyCost: totalCost / 7,
+                averageDailyCost: totalCost / numDays,
                 totalCostPerPerson: totalCost / (plan.defaultServings || 1),
-                averageDailyCostPerPerson: (totalCost / 7) / (plan.defaultServings || 1),
+                averageDailyCostPerPerson: (totalCost / numDays) / (plan.defaultServings || 1),
                 numMissingSlots,
                 everydayCost,
-                dailyEverydayCost: everydayCost / 7,
+                dailyEverydayCost: everydayCost / numDays,
                 recipeAnalysis
             }
         });
