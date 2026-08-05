@@ -3,6 +3,7 @@ import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { Button } from '../components/ui/button';
 import { calculateDailyIntake, DailyIntakeTargets, NUTRIENT_LABELS } from '../lib/dailyIntake';
+import { calculateHealthScore, DEFAULT_HEALTH_SCORE_CONFIG, HealthScoreConfig } from '../lib/healthScore';
 import 'chart.js/auto';
 import { Bar } from 'react-chartjs-2';
 import { FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiSearch, FiZap, FiX, FiChevronDown, FiChevronUp, FiPieChart } from 'react-icons/fi';
@@ -32,6 +33,7 @@ export default function DailyTracker() {
     const [date, setDate] = useState(getLocalDateString(new Date()));
     const [log, setLog] = useState<any>(null);
     const [targets, setTargets] = useState<DailyIntakeTargets | null>(null);
+    const [healthScoreConfig, setHealthScoreConfig] = useState<HealthScoreConfig>(DEFAULT_HEALTH_SCORE_CONFIG);
     const [userProfile, setUserProfile] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [isLoggingOpen, setIsLoggingOpen] = useState(false);
@@ -77,6 +79,7 @@ export default function DailyTracker() {
             if (targetData.success) {
                 setTargets(targetData.targets);
                 setUserProfile(targetData.profile);
+                if (targetData.healthScoreConfig) setHealthScoreConfig(targetData.healthScoreConfig);
             }
 
             // 2. Get log for date
@@ -282,13 +285,7 @@ export default function DailyTracker() {
 
     const calculateScore = () => {
         if (!targets || !log?.items?.length) return 0;
-        const keys = ['energy_kcal', 'protein_g', 'carbohydrates_g', 'fat_g', 'fiber_g'];
-        const pcts = keys.map(k => {
-            const val = totals[k] || 0;
-            const target = (targets as any)[k];
-            return Math.min((val / target) * 100, 100);
-        });
-        return Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
+        return calculateHealthScore(totals, targets as unknown as Record<string, number>, healthScoreConfig);
     };
 
     const dailyScore = calculateScore();

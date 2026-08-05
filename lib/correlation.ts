@@ -1,4 +1,5 @@
 import { NUTRIENT_LABELS } from './dailyIntake';
+import { calculateHealthScore, DEFAULT_HEALTH_SCORE_CONFIG, HealthScoreConfig } from './healthScore';
 
 /**
  * Pure correlation engine for linking logged exposures (foods, recipes,
@@ -14,8 +15,6 @@ import { NUTRIENT_LABELS } from './dailyIntake';
  * sample size so only the strongest patterns are surfaced.
  */
 
-export const SCORE_KEYS = ['energy_kcal', 'protein_g', 'carbohydrates_g', 'fat_g', 'fiber_g'];
-
 export interface CorrelationOptions {
     minSupport?: number;          // min co-occurrence days before a pair counts
     minExposureObserved?: number; // min observed days the exposure appears
@@ -29,6 +28,7 @@ export interface CorrelationOptions {
     lags?: number[];              // day offsets, 0 = same day, 1 = next day
     topK?: number;                // max correlations per direction per symptom
     minDiff?: number;             // ignore pairs with a smaller absolute % swing
+    scoreConfig?: HealthScoreConfig; // configurable daily score weights
 }
 
 const DEFAULTS: Required<CorrelationOptions> = {
@@ -44,6 +44,7 @@ const DEFAULTS: Required<CorrelationOptions> = {
     lags: [0, 1],
     topK: 10,
     minDiff: 0.5,
+    scoreConfig: DEFAULT_HEALTH_SCORE_CONFIG,
 };
 
 export interface ExposureMeta {
@@ -112,17 +113,8 @@ export interface SymptomLogInput {
 
 type Targets = Record<string, number>;
 
-function calculateDailyScore(totals: Record<string, number>, targets: Targets): number {
-    let sum = 0;
-    let count = 0;
-    for (const k of SCORE_KEYS) {
-        const val = totals[k] || 0;
-        const target = targets[k];
-        if (!target) continue;
-        sum += Math.min((val / target) * 100, 100);
-        count++;
-    }
-    return count ? Math.round(sum / count) : 0;
+function calculateDailyScore(totals: Record<string, number>, targets: Targets, scoreConfig?: HealthScoreConfig): number {
+    return calculateHealthScore(totals, targets, scoreConfig);
 }
 
 function sumTotals(log: DailyLogInput): Record<string, number> {
@@ -191,7 +183,7 @@ function buildExposures(
         }
     }
 
-    const score = calculateDailyScore(totals, targets);
+    const score = calculateDailyScore(totals, targets, opt.scoreConfig);
     if (score >= opt.scoreHigh) {
         const key = 'score:high';
         exposures.add(key);

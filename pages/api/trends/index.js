@@ -6,18 +6,7 @@ import SymptomClassification from '../../../models/SymptomClassification';
 import { verifyToken } from '../../../lib/auth';
 import { logAPI } from '../../../lib/logger';
 import { calculateDailyIntake } from '../../../lib/dailyIntake';
-
-const SCORE_KEYS = ['energy_kcal', 'protein_g', 'carbohydrates_g', 'fat_g', 'fiber_g'];
-
-function calculateDailyScore(totals, targets) {
-    const pcts = SCORE_KEYS.map(k => {
-        const val = totals[k] || 0;
-        const target = targets[k];
-        if (!target) return 0;
-        return Math.min((val / target) * 100, 100);
-    });
-    return Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
-}
+import { calculateHealthScore, mergeHealthScoreConfig } from '../../../lib/healthScore';
 
 function getLocalDateString(d) {
     const year = d.getFullYear();
@@ -47,7 +36,7 @@ export default async function handler(req, res) {
         const userId = decoded.id;
 
         const user = await User.findById(userId).select(
-            'age gender weight_kg height_cm activity_level daily_exercise_kj'
+            'age gender weight_kg height_cm activity_level daily_exercise_kj health_score_config'
         );
         const profile = {
             age: user?.age,
@@ -58,6 +47,7 @@ export default async function handler(req, res) {
             daily_exercise_kj: user?.daily_exercise_kj,
         };
         const targets = calculateDailyIntake(profile);
+        const healthScoreConfig = mergeHealthScoreConfig(user?.health_score_config);
 
         const dailyLogs = await DailyLog.find({
             user_id: userId,
@@ -96,7 +86,7 @@ export default async function handler(req, res) {
                     });
                 });
             }
-            const score = calculateDailyScore(totals, targets);
+            const score = calculateHealthScore(totals, targets, healthScoreConfig);
 
             const counts = { positive: 0, negative: 0, neutral: 0, none: 0 };
             const symptomLog = symptomsByDate[dStr];

@@ -17,6 +17,7 @@ const UserSchema = new mongoose.Schema(
     daily_exercise_kj: { type: Number, default: 0 },
     target_weight_kg: { type: Number },
     weekly_goal_kg: { type: Number },
+    health_score_config: { type: mongoose.Schema.Types.Mixed },
 
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }

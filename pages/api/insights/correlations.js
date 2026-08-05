@@ -7,12 +7,13 @@ import { verifyToken } from '../../../lib/auth';
 import { logAPI } from '../../../lib/logger';
 import { calculateDailyIntake } from '../../../lib/dailyIntake';
 import { computeCorrelations } from '../../../lib/correlation';
+import { mergeHealthScoreConfig } from '../../../lib/healthScore';
 
 const CACHE_TTL_MS = 60 * 1000;
 const cache = new Map();
 
-function getCacheKey(userId, isAll, startDate, endDate) {
-    return `${userId}|${isAll}|${startDate}|${endDate}`;
+function getCacheKey(userId, isAll, startDate, endDate, scoreConfigSignature) {
+    return `${userId}|${isAll}|${startDate}|${endDate}|${scoreConfigSignature}`;
 }
 
 export default async function handler(req, res) {
@@ -37,7 +38,7 @@ export default async function handler(req, res) {
         const userId = decoded.id;
 
         const user = await User.findById(userId).select(
-            'age gender weight_kg height_cm activity_level daily_exercise_kj'
+            'age gender weight_kg height_cm activity_level daily_exercise_kj health_score_config'
         );
         const profile = {
             age: user?.age,
@@ -48,12 +49,13 @@ export default async function handler(req, res) {
             daily_exercise_kj: user?.daily_exercise_kj,
         };
         const targets = calculateDailyIntake(profile);
+        const scoreConfig = mergeHealthScoreConfig(user?.health_score_config);
 
         const dateFilter = isAll
             ? { user_id: userId }
             : { user_id: userId, date: { $gte: startDate, $lte: endDate } };
 
-        const cacheKey = getCacheKey(userId, isAll, startDate, endDate);
+        const cacheKey = getCacheKey(userId, isAll, startDate, endDate, JSON.stringify(scoreConfig));
         const hit = cache.get(cacheKey);
         if (hit && Date.now() - hit.ts < CACHE_TTL_MS) {
             return res.status(200).json({ success: true, ...hit.payload });
@@ -65,7 +67,7 @@ export default async function handler(req, res) {
             SymptomClassification.find().select('name category').lean(),
         ]);
 
-        const result = computeCorrelations(dailyLogs, symptomLogs, targets, classifications);
+        const result = computeCorrelations(dailyLogs, symptomLogs, targets, classifications, { scoreConfig });
 
         const payload = { meta: result.meta, symptoms: result.symptoms };
         cache.set(cacheKey, { ts: Date.now(), payload });

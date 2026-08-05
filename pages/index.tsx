@@ -3,6 +3,7 @@ import Router from 'next/router'
 import { Layout } from '../components/Layout'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import { NUTRIENT_LABELS } from '../lib/dailyIntake'
+import { calculateHealthScore, DEFAULT_HEALTH_SCORE_CONFIG, HealthScoreConfig } from '../lib/healthScore'
 import { FiZap, FiActivity, FiShoppingCart, FiCalendar, FiArrowRight, FiPlus, FiCheckCircle, FiChevronRight, FiTrendingUp, FiSearch, FiX, FiCoffee, FiRefreshCw } from 'react-icons/fi'
 import IngredientEditor from '../components/IngredientEditor'
 import { fileToBase64 } from '../lib/recipeImage'
@@ -23,8 +24,6 @@ const getMonday = (d: Date) => {
     return getLocalDateString(m)
 }
 
-const SCORE_KEYS = ['energy_kcal', 'protein_g', 'carbohydrates_g', 'fat_g', 'fiber_g']
-
 const UNITS = ['gram', 'each', 'kg', 'ml', 'cup', 'tbsp', 'tsp']
 
 const Skeleton = ({ className = '' }: { className?: string }) => (
@@ -40,6 +39,7 @@ export default function Dashboard() {
 
     const [loading, setLoading] = useState(true)
     const [targets, setTargets] = useState<any>(null)
+    const [healthScoreConfig, setHealthScoreConfig] = useState<HealthScoreConfig>(DEFAULT_HEALTH_SCORE_CONFIG)
     const [todayLog, setTodayLog] = useState<any>(null)
     const [recommendations, setRecommendations] = useState<any>(null)
     const [weekPlan, setWeekPlan] = useState<any>(null)
@@ -93,6 +93,9 @@ export default function Dashboard() {
         ]).then(([targetRes, logRes, recRes, planRes, listRes, trendRes, recipeRes, ingRes]) => {
             if (targetRes.status === 'fulfilled' && targetRes.value.success) {
                 setTargets(targetRes.value.targets)
+                if (targetRes.value.healthScoreConfig) {
+                    setHealthScoreConfig(targetRes.value.healthScoreConfig)
+                }
             }
             if (logRes.status === 'fulfilled' && logRes.value.success) {
                 setTodayLog(logRes.value.log)
@@ -165,13 +168,8 @@ export default function Dashboard() {
 
     const dailyScore = useMemo(() => {
         if (!targets || !todayLog?.items?.length) return 0
-        const pcts = SCORE_KEYS.map(k => {
-            const target = targets[k]
-            if (!target) return 0
-            return Math.min(((totals[k] || 0) / target) * 100, 100)
-        })
-        return Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length)
-    }, [targets, todayLog, totals])
+        return calculateHealthScore(totals, targets, healthScoreConfig)
+    }, [targets, todayLog, totals, healthScoreConfig])
 
     const calories = Math.round(totals.energy_kcal || 0)
     const calorieTarget = targets?.energy_kcal || 0
