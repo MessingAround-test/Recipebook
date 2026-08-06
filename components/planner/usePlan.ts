@@ -306,6 +306,27 @@ export function usePlan() {
 
     // --- Recipe additions (with auto-split) ---
     const confirmModalRecipes = useCallback(() => {
+        if (browseTarget?.pantry) {
+            // Pantry mode: add selected recipes as everyday items (no auto-split)
+            const newItems = [];
+            modalSelectedRecipeIds.forEach((id: string) => {
+                const recipe = allRecipes.find(r => r._id === id);
+                if (recipe) {
+                    newItems.push({
+                        name: recipe.name,
+                        quantity: newEverydayQty * numDays,
+                        recipe_id: recipe._id
+                    });
+                }
+            });
+            setPlan(prev => ({
+                ...prev,
+                everydayItems: [...prev.everydayItems, ...newItems]
+            }));
+            setShowRecipeModal(false);
+            return;
+        }
+
         const newRecipes = [];
         modalSelectedRecipeIds.forEach((id: string) => {
             const recipe = allRecipes.find(r => r._id === id);
@@ -344,7 +365,7 @@ export function usePlan() {
             plannedRecipes: [...prev.plannedRecipes, ...newRecipes]
         }));
         setShowRecipeModal(false);
-    }, [modalSelectedRecipeIds, allRecipes, plan.defaultServings, browseTarget]);
+    }, [modalSelectedRecipeIds, allRecipes, plan.defaultServings, browseTarget, newEverydayQty, numDays]);
 
     const removePlannedRecipe = useCallback((idToRemove: string) => {
         setPlan(prev => ({

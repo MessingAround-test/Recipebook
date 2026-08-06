@@ -73,6 +73,7 @@ export interface PlanAnalysis {
 export interface BrowseTarget {
     day: string | null;
     mealType: MealType | null;
+    pantry?: boolean; // confirm should add selected recipes to the Pantry Pool
 }
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
