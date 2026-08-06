@@ -16,7 +16,7 @@ function PlannerContent() {
     return (
         <PlannerContext.Provider value={api}>
             <Layout title="Weekly Planner" description="Plan your meals for the week">
-                <div className="max-w-[1600px] mx-auto pb-20 relative">
+                <div className="pb-20 relative">
                     <PlanHeader />
 
                     {loading ? (

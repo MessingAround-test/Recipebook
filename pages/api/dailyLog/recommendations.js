@@ -6,6 +6,7 @@ import User from '../../../models/User';
 import { verifyToken } from "../../../lib/auth.ts";
 import { calculateDailyIntake } from '../../../lib/dailyIntake.ts';
 import { normalizeToGrams } from '../../../lib/conversion.js';
+import { mergeHealthScoreConfig, getNutrientWeight, getNutrientPct } from '../../../lib/healthScore.ts';
 
 export default async function handler(req, res) {
     const decoded = await verifyToken(req, res);
@@ -86,7 +87,23 @@ export default async function handler(req, res) {
 
         // Sort deficiencies by lowest %
         deficiencies.sort((a, b) => a.pct - b.pct);
-        const mostDeficient = deficiencies[0].key;
+
+        // Pick the nutrient with the biggest weighted impact on the health
+        // score. A nutrient weighted 2x is worth twice as much to fix, so we
+        // rank by how many score points (100 - pct) * weight bringing each
+        // nutrient up to target would earn, rather than raw lowest %.
+        const scoreConfig = mergeHealthScoreConfig(user.health_score_config);
+        const weighted = deficiencies
+            .map(d => ({
+                key: d.key,
+                pct: d.pct,
+                scorePct: getNutrientPct(d.key, totals[d.key], targets[d.key], scoreConfig),
+            }))
+            .filter(d => d.scorePct !== null)
+            .map(d => ({ ...d, gain: (100 - d.scorePct) * getNutrientWeight(d.key, scoreConfig) }));
+
+        const positiveGains = weighted.filter(d => d.gain > 0).sort((a, b) => b.gain - a.gain || a.pct - b.pct);
+        const mostDeficient = positiveGains.length > 0 ? positiveGains[0].key : deficiencies[0].key;
 
         // 5. Query ingredients and score them holistically
         const minIngredientContribution = targets[mostDeficient] * 0.1;
