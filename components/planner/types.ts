@@ -68,6 +68,26 @@ export interface NutrientCoverageItem {
     isLimit: boolean;
 }
 
+export interface SuggestionFood {
+    name: string;
+    pct: number;
+}
+
+export interface SuggestionRecipe {
+    _id: string;
+    name: string;
+    image?: string;
+    pct: number;
+}
+
+export interface NutrientSuggestion {
+    key: string;
+    label: string;
+    pct: number;
+    foods: SuggestionFood[];
+    recipes: SuggestionRecipe[];
+}
+
 export interface PlanAnalysis {
     numDays: number;
     weeklyTotals: Record<string, number>;
@@ -77,6 +97,7 @@ export interface PlanAnalysis {
     nutrientCoverage?: NutrientCoverageItem[];
     projectedScore?: number | null;
     healthScoreConfig?: any;
+    suggestions?: NutrientSuggestion[];
     totalCost: number;
     averageDailyCost: number;
     totalCostPerPerson: number;

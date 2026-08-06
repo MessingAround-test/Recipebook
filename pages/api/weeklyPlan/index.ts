@@ -26,7 +26,7 @@ export default async function handler(req, res) {
             if (!startDate) return res.status(400).json({ success: false, message: "startDate is required" });
 
             try {
-                let plan = await WeeklyPlan.findOne({ user_id: userId, startDate }).populate('plannedRecipes.recipe_id', 'name image tags');
+                let plan = await WeeklyPlan.findOne({ user_id: userId, startDate });
                 let created = false;
 
                 if (!plan) {
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
                         .sort((a, b) => String(b.startDate).localeCompare(String(a.startDate)))[0];
 
                     if (covering) {
-                        plan = await WeeklyPlan.findById(covering._id).populate('plannedRecipes.recipe_id', 'name image tags');
+                        plan = await WeeklyPlan.findById(covering._id);
                     } else {
                         // Create an empty plan for that range if it doesn't exist
                         plan = await WeeklyPlan.create({ user_id: userId, startDate, numDays: 7, version: CURRENT_PLAN_VERSION, plannedRecipes: [], everydayItems: [] });
@@ -57,10 +57,9 @@ export default async function handler(req, res) {
                         { user_id: userId, startDate: plan.startDate },
                         { plannedRecipes: [], everydayItems: [], numDays: 7, pantryPlacements: {}, version: CURRENT_PLAN_VERSION },
                         { new: true }
-                    ).populate('plannedRecipes.recipe_id', 'name image tags');
+                    );
                     created = true;
                 }
-
                 return res.status(200).json({ success: true, created, plan });
             } catch (err) {
                 return res.status(500).json({ success: false, message: err.message });
@@ -82,7 +81,7 @@ export default async function handler(req, res) {
                         version: CURRENT_PLAN_VERSION
                     },
                     { upsert: true, new: true }
-                ).populate('plannedRecipes.recipe_id', 'name image tags');
+                );
 
                 return res.status(200).json({ success: true, plan });
             } catch (err) {

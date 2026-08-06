@@ -1,14 +1,12 @@
-import { useState } from 'react';
-import { FiActivity, FiAlertTriangle, FiRefreshCw, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { useMemo, useState } from 'react';
+import { FiActivity, FiRefreshCw, FiZap } from 'react-icons/fi';
 import { usePlanner } from '../planner/PlannerContext';
 
-const GROUP_LABELS: Record<string, string> = {
-    macro: 'Macros',
-    mineral: 'Minerals',
-    vitamin: 'Vitamins'
-};
-
-const GROUP_ORDER = ['macro', 'mineral', 'vitamin'] as const;
+const TABS = [
+    { key: 'macro', label: 'Macros' },
+    { key: 'mineral', label: 'Minerals' },
+    { key: 'vitamin', label: 'Vitamins' },
+] as const;
 
 function barColor(pct: number): string {
     if (pct >= 100) return '#10b981';
@@ -23,71 +21,23 @@ function scoreColor(score: number | null | undefined): string {
     return 'text-rose-400';
 }
 
-function CoverageRow({ item, compact = false }: { item: any; compact?: boolean }) {
-    const pct = Math.min(item.pct, 100);
-    const label = (
-        <div className="flex items-center justify-between gap-2 min-w-0">
-            <span className="font-bold text-xs truncate">{item.label}</span>
-            <span className={`font-black text-xs shrink-0 ${item.pct < 95 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                {Math.round(item.pct)}%
-            </span>
-        </div>
-    );
-
-    if (compact) {
-        return (
-            <div className="bg-black/20 rounded-lg border border-white/5 p-2">
-                {label}
-                <div className="h-1.5 rounded-full bg-white/10 mt-1.5 overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: barColor(item.pct) }} />
-                </div>
-                <div className="flex items-center justify-between mt-1 text-[9px] text-muted-foreground">
-                    <span>{formatValue(item.value)} {item.unit} / day</span>
-                    <span>target {formatValue(item.target)} {item.unit}</span>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="flex items-center gap-2 py-1.5">
-            <div className="flex-1 min-w-0">
-                {label}
-                <div className="h-1.5 rounded-full bg-white/10 mt-1 overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: barColor(item.pct) }} />
-                </div>
-            </div>
-            <div className="shrink-0 text-right">
-                <div className="text-[10px] font-bold text-muted-foreground">
-                    {formatValue(item.value)} <span className="opacity-60">/ {formatValue(item.target)} {item.unit}</span>
-                </div>
-                {item.weight > 0 && (
-                    <div className="text-[8px] font-black uppercase tracking-widest text-purple-400/70 mt-0.5">×{item.weight}</div>
-                )}
-            </div>
-        </div>
-    );
-}
-
-function formatValue(v: number): string {
-    if (v == null || !Number.isFinite(v)) return '0';
-    return v >= 100 ? Math.round(v).toString() : (Math.round(v * 10) / 10).toString();
-}
-
 export default function DietaryPanel() {
-    const { analysis, analyzing, numDays } = usePlanner();
-    const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+    const { analysis, analyzing, openModal } = usePlanner();
+    const [tab, setTab] = useState<'macro' | 'mineral' | 'vitamin'>('macro');
 
     const coverage = analysis?.nutrientCoverage || [];
     const score = analysis?.projectedScore ?? null;
-    const lows = coverage.filter(c => c.pct < 95).slice(0, 5);
-    const groups = GROUP_ORDER
-        .map(group => ({
-            group,
-            label: GROUP_LABELS[group],
-            items: coverage.filter(c => c.group === group)
-        }))
-        .filter(g => g.items.length > 0);
+    const groupItems = useMemo(() => coverage.filter(c => c.group === tab), [coverage, tab]);
+    const lows = groupItems.filter(c => c.pct < 95);
+
+    // DB-backed suggestions for the low nutrients in the active tab.
+    const suggestions = useMemo(() => {
+        if (!analysis?.suggestions?.length) return [];
+        const lowKeys = new Set(groupItems.filter(c => c.pct < 95).map(c => c.key));
+        return (analysis.suggestions || []).filter(s => lowKeys.has(s.key));
+    }, [analysis, groupItems]);
+
+    const tabLabel = TABS.find(t => t.key === tab)?.label || '';
 
     return (
         <div className="glass-card bg-gradient-to-br from-emerald-500/5 to-transparent border-emerald-500/20 relative z-10 p-4">
@@ -103,68 +53,106 @@ export default function DietaryPanel() {
                 )}
             </div>
 
+            {/* Tabs */}
+            <div className="flex gap-1 mb-3 p-1 rounded-xl bg-black/20 border border-white/5">
+                {TABS.map(t => (
+                    <button
+                        key={t.key}
+                        onClick={() => setTab(t.key)}
+                        className={`flex-1 text-[10px] font-black uppercase tracking-wider px-2 py-1.5 rounded-lg transition-all ${tab === t.key
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            : 'text-muted-foreground hover:text-white hover:bg-white/5 border border-transparent'}`}
+                    >
+                        {t.label}
+                    </button>
+                ))}
+            </div>
+
             {!analysis ? (
                 <p className="text-xs text-muted-foreground italic">No meals planned yet — your projected intake will appear here automatically.</p>
+            ) : groupItems.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">No tracked {tabLabel.toLowerCase()} — set weights on your profile's Health Score settings.</p>
             ) : (
                 <>
-                    {analysis.numMissingSlots > 0 && (
-                        <p className="text-[10px] text-muted-foreground italic mb-3">
-                            *Includes {analysis.numMissingSlots} unassigned meals calculated at average values.
+                    {lows.length === 0 ? (
+                        <p className="text-xs text-emerald-400 font-bold mb-2">All {tabLabel.toLowerCase()} are on track.</p>
+                    ) : (
+                        <p className="text-xs text-amber-400/90 font-bold mb-2">
+                            {lows.length} {lows.length === 1 ? 'nutrient' : 'nutrients'} projected low in {tabLabel.toLowerCase()}.
                         </p>
                     )}
 
-                    {lows.length > 0 ? (
-                        <div className="mb-4 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3">
-                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-rose-400 mb-2">
-                                <FiAlertTriangle size={12} /> Where you'll be low
+                    {/* Compact rows */}
+                    <div className="space-y-0.5">
+                        {groupItems.map(item => (
+                            <div key={item.key} className="flex items-center gap-2 py-0.5">
+                                <span className={`w-24 shrink-0 font-bold text-xs truncate ${item.pct < 95 ? 'text-amber-300' : 'text-muted-foreground'}`}>
+                                    {item.label}
+                                </span>
+                                <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                    <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(item.pct, 100)}%`, backgroundColor: barColor(item.pct) }} />
+                                </div>
+                                <span className={`w-10 shrink-0 text-right font-black text-xs ${item.pct < 95 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                    {Math.round(item.pct)}%
+                                </span>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {lows.map(c => (
-                                    <CoverageRow key={c.key} item={c} compact />
+                        ))}
+                    </div>
+
+                    {/* Suggestions */}
+                    {suggestions.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-white/10">
+                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-400 mb-2">
+                                <FiZap size={12} /> Suggestions
+                            </div>
+                            <div className="space-y-2">
+                                {suggestions.map(s => (
+                                    <div key={s.key} className="rounded-lg border border-white/5 bg-white/[0.03] p-2.5">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-bold text-amber-300">{s.label}</span>
+                                            <span className="text-[10px] text-muted-foreground">{Math.round(s.pct)}% of target</span>
+                                        </div>
+                                        {s.foods.length > 0 && (
+                                            <>
+                                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mt-2 mb-1">Add more of these</p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {s.foods.map(f => (
+                                                        <span
+                                                            key={f.name}
+                                                            className="text-[10px] font-bold bg-white/5 border border-white/10 rounded-md px-1.5 py-0.5 text-muted-foreground"
+                                                        >
+                                                            {f.name} <span className="text-emerald-400">+{Math.round(f.pct)}%</span>
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+                                        {s.recipes.length > 0 && (
+                                            <>
+                                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mt-2 mb-1">From your recipes</p>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {s.recipes.map(r => (
+                                                        <button
+                                                            key={r._id}
+                                                            onClick={() => openModal(false, null, r.name)}
+                                                            title={`Browse "${r.name}"`}
+                                                            className="flex items-center gap-1.5 text-[10px] font-bold bg-amber-500/10 hover:bg-amber-500/25 text-amber-300 border border-amber-500/20 rounded-md px-2 py-1 transition-colors"
+                                                        >
+                                                            {r.name}
+                                                            <span className="bg-emerald-500/20 text-emerald-300 rounded px-1 py-0.5">{Math.round(r.pct)}%</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+                                        {(s.foods.length > 0 || s.recipes.length > 0) && (
+                                            <p className="text-[9px] text-muted-foreground/70 mt-1.5">Recipe % = share of the period's total target; food % = daily target per 100g.</p>
+                                        )}
+                                    </div>
                                 ))}
                             </div>
                         </div>
-                    ) : (
-                        <p className="text-xs text-emerald-400 font-bold mb-4">
-                            Great job! Every tracked nutrient is projected to hit its target.
-                        </p>
                     )}
-
-                    <div className="space-y-3">
-                        {groups.map(({ group, label, items }) => {
-                            const isCollapsed = !!collapsed[group];
-                            return (
-                                <div key={group} className="rounded-xl border border-white/5 bg-black/20 p-3">
-                                    <button
-                                        onClick={() => setCollapsed(prev => ({ ...prev, [group]: !prev[group] }))}
-                                        className="w-full flex items-center justify-between text-left"
-                                    >
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                            {label}
-                                            <span className="ml-1.5 text-muted-foreground/40">({items.length})</span>
-                                        </span>
-                                        {isCollapsed ? <FiChevronDown size={14} className="text-muted-foreground" /> : <FiChevronUp size={14} className="text-muted-foreground" />}
-                                    </button>
-                                    {!isCollapsed && (
-                                        <div className="mt-1 divide-y divide-white/5">
-                                            {items.map(c => (
-                                                <CoverageRow key={c.key} item={c} />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                        {coverage.length === 0 && (
-                            <p className="text-xs text-muted-foreground italic">
-                                No tracked nutrients (all weights are 0 in your settings). Add weights on your profile's Health Score settings to see coverage.
-                            </p>
-                        )}
-                    </div>
-
-                    <p className="text-[9px] text-muted-foreground mt-3 opacity-70 leading-relaxed">
-                        Coverage is per person per day vs your personalised targets over the {numDays}-day plan. Weights from your Health Score settings rank importance; nutrients with a weight of 0 are not tracked.
-                    </p>
                 </>
             )}
         </div>

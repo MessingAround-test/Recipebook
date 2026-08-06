@@ -34,7 +34,7 @@ export interface PlannerApi {
     newEverydayQty: number;
     setNewEverydayQty: (v: number) => void;
     showRecipeModal: boolean;
-    openModal: (onlySnacks?: boolean, target?: { day: string | null; mealType: string | null; pantry?: boolean } | null) => void;
+    openModal: (onlySnacks?: boolean, target?: { day: string | null; mealType: string | null; pantry?: boolean } | null, initialSearch?: string) => void;
     closeModal: () => void;
     modalOnlySnacks: boolean;
     setModalOnlySnacks: (v: boolean) => void;

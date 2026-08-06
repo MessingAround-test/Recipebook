@@ -28,10 +28,10 @@ function PlannerContent() {
                         <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6">
                             {/* Day area */}
                             <div className="min-w-0">
-                                <div className="mb-6">
+                                <DayGrid />
+                                <div className="mt-6">
                                     <DietaryPanel />
                                 </div>
-                                <DayGrid />
                             </div>
 
                             {/* Side panel (desktop) */}

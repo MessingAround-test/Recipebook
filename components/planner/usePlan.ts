@@ -334,11 +334,11 @@ export function usePlan() {
     }, []);
 
     // --- Modal helpers ---
-    const openModal = useCallback((onlySnacks = false, target: BrowseTarget | null = null) => {
+    const openModal = useCallback((onlySnacks = false, target: BrowseTarget | null = null, initialSearch = '') => {
         setModalOnlySnacks(onlySnacks);
         setModalGroupBy('carb');
         setModalMealFilters(target?.mealType ? new Set([target.mealType]) : new Set());
-        setModalSearch('');
+        setModalSearch(initialSearch || '');
         setBrowseTarget(target);
         setShowRecipeModal(true);
     }, []);
