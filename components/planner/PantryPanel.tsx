@@ -83,8 +83,8 @@ export default function PantryPanel() {
                         />
                     </div>
                 </div>
-                <button onClick={() => openModal(true)} className="text-xs font-bold text-emerald-400/80 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg px-3 py-1.5 transition-colors text-left">
-                    + Browse snacks
+                <button onClick={() => openModal(false, { day: null, mealType: null, pantry: true })} className="text-xs font-bold text-emerald-400/80 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg px-3 py-1.5 transition-colors text-left">
+                    + Browse recipes
                 </button>
             </div>
         </div>

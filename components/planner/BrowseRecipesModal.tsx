@@ -54,9 +54,11 @@ export default function BrowseRecipesModal() {
         return a.localeCompare(b);
     };
 
-    const targetLabel = browseTarget?.day && browseTarget?.mealType
-        ? ` into ${browseTarget.day} (${browseTarget.mealType})`
-        : ' to Pool';
+    const targetLabel = browseTarget?.pantry
+        ? ' to Pantry'
+        : browseTarget?.day && browseTarget?.mealType
+            ? ` into ${browseTarget.day} (${browseTarget.mealType})`
+            : ' to Pool';
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
