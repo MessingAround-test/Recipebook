@@ -13,6 +13,7 @@ const PRESET_SYMPTOMS = [
     'Socialised', 'Ate well', 'Exercised', 'Rest day', 'Fresh air',
     'Caffeine', 'Alcohol', 'Sugary food', 'Junk food', 'Skipped meals',
     'Allergies', 'Sore throat', 'Cough', 'Runny nose', 'Congestion',
+    'Took vitamins', 'Drank water', 'Ate fruit', 'Ate vegetables',
 ];
 
 export default async function handler(req, res) {

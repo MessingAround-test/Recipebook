@@ -15,6 +15,7 @@ export type DailyTaskDef = {
     action?: TaskAction
     cta?: string
     title?: string
+    symptomName?: string
 }
 
 export type DailyTaskState = DailyTaskDef & {
@@ -44,18 +45,24 @@ export const VITAMIN_NAMES = [
 ]
 
 export const DEFAULT_DAILY_TASKS: DailyTaskDef[] = [
-    { id: 'vitamins', label: 'Vitamins', emoji: '💊', detect: 'foodNames', matchNames: VITAMIN_NAMES, allowManual: true, action: 'quicklog', cta: 'Log' },
-    { id: 'water', label: 'Water', emoji: '💧', target: 4, allowManual: true },
-    { id: 'fruit', label: 'Fruit', emoji: '🍎', detect: 'foodNames', matchNames: FRUIT_NAMES, allowManual: true, action: 'quicklog', cta: 'Log' },
-    { id: 'veggies', label: 'Vegetables', emoji: '🥬', detect: 'foodNames', matchNames: VEGGIE_NAMES, allowManual: true, action: 'quicklog', cta: 'Log' },
-    { id: 'exercise', label: 'Exercise', emoji: '🏃', detect: 'exercise', allowManual: true, action: 'exercise', cta: 'Track', title: 'Exercise or rest day — tap the medal to mark it as a rest day' },
+    { id: 'vitamins', label: 'Vitamins', emoji: '💊', detect: 'foodNames', matchNames: VITAMIN_NAMES, allowManual: true, action: 'quicklog', cta: 'Log', symptomName: 'Took vitamins' },
+    { id: 'water', label: 'Water', emoji: '💧', target: 4, allowManual: true, symptomName: 'Drank water' },
+    { id: 'fruit', label: 'Fruit', emoji: '🍎', detect: 'foodNames', matchNames: FRUIT_NAMES, allowManual: true, action: 'quicklog', cta: 'Log', symptomName: 'Ate fruit' },
+    { id: 'veggies', label: 'Vegetables', emoji: '🥬', detect: 'foodNames', matchNames: VEGGIE_NAMES, allowManual: true, action: 'quicklog', cta: 'Log', symptomName: 'Ate vegetables' },
+    { id: 'exercise', label: 'Exercise', emoji: '🏃', detect: 'exercise', allowManual: true, action: 'exercise', cta: 'Track', title: 'Exercise or rest day — tap the medal to mark it as a rest day', symptomName: 'Exercised' },
     { id: 'symptoms', label: 'Log symptoms', emoji: '🤒', detect: 'symptoms', allowManual: false, action: 'symptoms', cta: 'Track' },
 ]
 
+export const TASK_SYMPTOM_NAMES: string[] = DEFAULT_DAILY_TASKS
+    .filter(t => t.symptomName)
+    .map(t => t.symptomName!)
+
 function detectTaskDone(def: DailyTaskDef, todayLog: any, symptomLog: any): boolean {
     switch (def.detect) {
-        case 'symptoms':
-            return !!symptomLog && (symptomLog.mood != null || (symptomLog.symptoms?.length || 0) > 0)
+        case 'symptoms': {
+            const manualSymptoms = (symptomLog?.symptoms || []).filter((s: any) => !s.auto)
+            return !!symptomLog && (symptomLog.mood != null || manualSymptoms.length > 0)
+        }
         case 'exercise':
             return !!todayLog && Number(todayLog.exercise_kcal || 0) > 0
         case 'foodNames': {

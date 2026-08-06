@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { CURRENT_PLAN_VERSION } from '../lib/planVersion';
 
 const EverydayItemSchema = new mongoose.Schema({
     name: { type: String, required: true },
@@ -46,7 +47,7 @@ const WeeklyPlanSchema = new mongoose.Schema({
     startDate: { type: String, required: true, index: true }, // YYYY-MM-DD representing the start of the plan range
     numDays: { type: Number, default: 7 }, // Length of the plan range in days
     defaultServings: { type: Number, default: 2 },
-    version: { type: Number, default: 2 },
+    version: { type: Number, default: CURRENT_PLAN_VERSION },
     plannedRecipes: [PlannedRecipeSchema],
     everydayItems: [EverydayItemSchema]
 }, { 

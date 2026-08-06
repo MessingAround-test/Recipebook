@@ -3,8 +3,6 @@
  * Dates are represented as local 'YYYY-MM-DD' strings.
  */
 
-export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
 export function parseDateStr(s: string): Date {
     const [y, m, d] = s.split('-').map(Number);
     return new Date(y, m - 1, d);
@@ -52,15 +50,42 @@ export function todayStr(): string {
     return formatDateStr(new Date());
 }
 
-/**
- * Maps a legacy day-name value (e.g. 'Monday') to the YYYY-MM-DD date
- * at the matching offset within a plan range that starts on `startDate`.
- * Legacy plans always started on a Monday.
- */
-export function legacyDayNameToDate(day: string, startDate: string): string {
-    const idx = DAY_NAMES.indexOf(day);
-    if (idx === -1) return day;
-    const start = parseDateStr(startDate);
-    const mondayOffset = (idx === 0 ? 6 : idx - 1); // Sunday is the last day of a Monday-start week
-    return formatDateStr(new Date(start.getFullYear(), start.getMonth(), start.getDate() + mondayOffset));
+function isValidDate(y: number, m: number, d: number): boolean {
+    const dt = new Date(y, m - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
 }
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/**
+ * Parses user-typed date text into a 'YYYY-MM-DD' string.
+ * Accepts ISO (2026-08-06), year-first separators (2026/08/06, 2026.08.06),
+ * day-first (06/08/2026, 06-08-2026, 06.08.2026), and natural language dates.
+ * Returns null when the value can't be parsed into a valid date.
+ */
+export function parseFlexibleDate(value: string): string | null {
+    const s = value.trim();
+    if (!s) return null;
+
+    let m = s.match(/^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$/);
+    if (m) {
+        const [, y, mo, d] = m.map(Number);
+        if (isValidDate(y, mo, d)) return `${y}-${pad2(mo)}-${pad2(d)}`;
+        return null;
+    }
+
+    m = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+    if (m) {
+        const [, d, mo, y] = m.map(Number);
+        if (isValidDate(y, mo, d)) return `${y}-${pad2(mo)}-${pad2(d)}`;
+        return null;
+    }
+
+    const parsed = new Date(s);
+    if (!isNaN(parsed.getTime())) {
+        return formatDateStr(parsed);
+    }
+
+    return null;
+}
+

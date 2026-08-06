@@ -8,7 +8,7 @@ import { FiZap, FiActivity, FiShoppingCart, FiCalendar, FiArrowRight, FiPlus, Fi
 import IngredientEditor from '../components/IngredientEditor'
 import { fileToBase64 } from '../lib/recipeImage'
 import { extractRecipeFromImage, saveRecipe, Ingredient } from '../lib/recipeExtraction'
-import { useDailyTasks } from '../lib/dailyTasks'
+import { useDailyTasks, TASK_SYMPTOM_NAMES } from '../lib/dailyTasks'
 import DailyTasksCard from '../components/DailyTasksCard'
 
 const getLocalDateString = (d: Date) => {
@@ -16,14 +16,6 @@ const getLocalDateString = (d: Date) => {
     const month = String(d.getMonth() + 1).padStart(2, '0')
     const day = String(d.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
-}
-
-const getMonday = (d: Date) => {
-    const day = d.getDay()
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-    const m = new Date(d)
-    m.setDate(diff)
-    return getLocalDateString(m)
 }
 
 const UNITS = ['gram', 'each', 'kg', 'ml', 'cup', 'tbsp', 'tsp']
@@ -80,7 +72,6 @@ export default function Dashboard() {
 
         setLoading(true)
         const today = getLocalDateString(new Date())
-        const weekStart = getMonday(new Date())
         const trendStart = new Date()
         trendStart.setDate(trendStart.getDate() - 6)
 
@@ -88,7 +79,7 @@ export default function Dashboard() {
             fetch('/api/dailyIntake', { headers: { edgetoken: token } }).then(r => r.json()),
             fetch(`/api/dailyLog?date=${today}`, { headers: { edgetoken: token } }).then(r => r.json()),
             fetch('/api/dailyLog/recommendations', { headers: { edgetoken: token } }).then(r => r.json()),
-            fetch(`/api/weeklyPlan?startDate=${weekStart}`, { headers: { edgetoken: token } }).then(r => r.json()),
+            fetch(`/api/weeklyPlan?startDate=${today}`, { headers: { edgetoken: token } }).then(r => r.json()),
             fetch('/api/ShoppingList', { headers: { edgetoken: token } }).then(r => r.json()),
             fetch(`/api/trends?startDate=${getLocalDateString(trendStart)}&endDate=${today}`, { headers: { edgetoken: token } }).then(r => r.json()),
             fetch('/api/Recipe', { headers: { edgetoken: token } }).then(r => r.json()),
@@ -160,6 +151,52 @@ export default function Dashboard() {
         symptomLog
     )
 
+    // Sync completed daily tasks into the symptom log for historical tracking.
+    const doneTaskSymptoms = useMemo(() => {
+        return dailyTasks
+            .filter(t => t.done && t.symptomName)
+            .map(t => t.symptomName!)
+            .sort()
+            .join('|')
+    }, [dailyTasks])
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        if (!symptomLog || !symptomLog.symptoms) return
+        const token = localStorage.getItem('Token')
+        if (!token) return
+
+        const date = getLocalDateString(new Date())
+        const current = symptomLog.symptoms || []
+        const taskNames = new Set(TASK_SYMPTOM_NAMES.map(n => n.toLowerCase()))
+        const desired = dailyTasks.filter(t => t.done && t.symptomName).map(t => t.symptomName!)
+
+        // Skip when already in sync to avoid needless writes / loops
+        const currentAuto = current.filter((s: any) => s.auto).map((s: any) => String(s.name || '').toLowerCase())
+        const desiredLower = desired.map(n => n.toLowerCase())
+        const synced =
+            currentAuto.length === desiredLower.length &&
+            desiredLower.every(n => currentAuto.includes(n))
+        if (synced) return
+
+        const kept = current
+            .filter((s: any) => !s.auto && !taskNames.has(String(s.name || '').toLowerCase()))
+            .map((s: any) => ({ name: s.name }))
+        const merged = [
+            ...kept,
+            ...desired.map(name => ({ name, auto: true }))
+        ]
+
+        fetch('/api/symptomLog', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'edgetoken': token },
+            body: JSON.stringify({ date, mood: symptomLog.mood || null, symptoms: merged, notes: symptomLog.notes || '' })
+        })
+            .then(r => r.json())
+            .then(data => { if (data.success) setSymptomLog(data.log) })
+            .catch(() => {})
+    }, [doneTaskSymptoms, symptomLog])
+
     useEffect(() => {
         if (!latestList) return
         const token = localStorage.getItem('Token')
@@ -196,7 +233,7 @@ export default function Dashboard() {
     }, [trendDays])
 
     const todayDayName = new Date().toLocaleDateString('en-AU', { weekday: 'long' })
-    const todayMeals = weekPlan?.plannedRecipes?.filter((r: any) => r.day === todayDayName) || []
+    const todayMeals = weekPlan?.plannedRecipes?.filter((r: any) => r.day === getLocalDateString(new Date())) || []
     const plannedCount = weekPlan?.plannedRecipes?.length || 0
     const everydayCount = weekPlan?.everydayItems?.length || 0
     const hasWeekPlan = plannedCount > 0 || everydayCount > 0
@@ -403,6 +440,189 @@ export default function Dashboard() {
         )
     }
 
+    // ── Dashboard cards ──
+    const hasTodayData = ((todayLog?.items || []).length > 0) || dailyTasks.some(t => t.done)
+
+    const weekPlanCard = hasWeekPlan && (
+        <div className="bg-gradient-to-br from-orange-500/[0.28] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                    <IconChip className="bg-orange-500/20 text-orange-400"><FiCalendar size={16} /></IconChip>
+                    <h3 className="text-sm font-black tracking-tight">This Week</h3>
+                </div>
+                <button
+                    onClick={() => Router.push('/weeklyPlanner')}
+                    className="text-[9px] font-bold uppercase tracking-widest text-orange-400 hover:text-orange-300 transition-colors inline-flex items-center gap-1"
+                >
+                    Plan <FiArrowRight size={11} />
+                </button>
+            </div>
+
+            {loading && !weekPlan ? (
+                <div className="space-y-2 flex-1">
+                    <Skeleton className="h-10" />
+                    <Skeleton className="h-12" />
+                </div>
+            ) : (
+                <>
+                    <div className="flex gap-2 mb-4">
+                        <div className="flex-1 bg-black/25 rounded-xl p-3 text-center">
+                            <div className="text-2xl md:text-3xl font-black text-orange-300 leading-none">{plannedCount}</div>
+                            <div className="text-[8px] font-bold uppercase tracking-wider text-orange-200/70 mt-1.5">Meals</div>
+                        </div>
+                        <div className="flex-1 bg-black/25 rounded-xl p-3 text-center">
+                            <div className="text-2xl md:text-3xl font-black leading-none">{everydayCount}</div>
+                            <div className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground mt-1.5">Everyday</div>
+                        </div>
+                        <div className="flex-1 bg-black/25 rounded-xl p-3 text-center">
+                            <div className="text-2xl md:text-3xl font-black leading-none">{todayMeals.length}</div>
+                            <div className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground mt-1.5">Today</div>
+                        </div>
+                    </div>
+
+                    {todayMeals.length > 0 ? (
+                        <div className="flex-1 space-y-1">
+                            <div className="text-[9px] font-bold uppercase tracking-widest text-orange-200/60 mb-1">{todayDayName}</div>
+                            {todayMeals.slice(0, 3).map((r: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between gap-2 py-1.5">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
+                                        <span className="text-xs font-semibold truncate">{r.recipe_name}</span>
+                                    </div>
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">{r.mealType}{r.isLeftover ? ' • L' : ''}</span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex-1 flex items-center text-xs font-semibold text-muted-foreground">
+                            Nothing scheduled for {todayDayName} yet.
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    )
+
+    const dailyTasksCard = !allTasksDone && (
+        <DailyTasksCard tasks={dailyTasks} allDone={allTasksDone} toggle={toggleDailyTask} onGo={handleTaskGo} />
+    )
+
+    const intakeCard = (
+        <div className="bg-gradient-to-br from-emerald-500/[0.26] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+                <IconChip className="bg-emerald-500/15 text-emerald-400"><FiActivity size={16} /></IconChip>
+                <h3 className="text-sm font-black tracking-tight">Today's Intake</h3>
+            </div>
+            <div className="flex items-center gap-2">
+                <div className="flex flex-col items-center">
+                    <div className={`text-xl md:text-2xl font-black leading-none ${dailyScore ? scoreColor : 'text-muted-foreground'}`}>{dailyScore || '--'}%</div>
+                    <div className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground mt-0.5">Score</div>
+                </div>
+                <button
+                    onClick={openLog}
+                    aria-label="Log Food"
+                    className="shrink-0 p-2 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/25 active:scale-95"
+                >
+                    <FiPlus size={16} />
+                </button>
+            </div>
+            </div>
+
+            {loading && !targets ? (
+                <div className="space-y-2 flex-1">
+                    <Skeleton className="h-8 w-full" />
+                    <div className="grid grid-cols-4 gap-2">
+                        <Skeleton className="h-12" />
+                        <Skeleton className="h-12" />
+                        <Skeleton className="h-12" />
+                        <Skeleton className="h-12" />
+                    </div>
+                </div>
+            ) : (
+                <>
+                    <div className="text-2xl md:text-3xl font-black leading-none mb-1">
+                        {calories.toLocaleString()}
+                        <span className="text-sm font-bold text-muted-foreground"> / {calorieTarget.toLocaleString()} kcal</span>
+                    </div>
+                    <div className="h-2 w-full bg-black/25 rounded-full overflow-hidden mt-3 mb-5">
+                        <div className={`h-full rounded-full transition-all duration-700 ${caloriePct >= 100 ? 'bg-amber-400' : 'bg-emerald-400'}`} style={{ width: `${caloriePct}%` }} />
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 flex-1 items-stretch">
+                        {macroCell('protein_g')}
+                        {macroCell('carbohydrates_g')}
+                        {macroCell('fat_g')}
+                        {macroCell('fiber_g')}
+                    </div>
+                </>
+            )}
+        </div>
+    )
+
+    const nutritionCard = (
+        <div className="bg-gradient-to-br from-violet-500/[0.26] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                    <IconChip className="bg-violet-500/15 text-violet-300"><FiZap size={16} /></IconChip>
+                    <h3 className="text-sm font-black tracking-tight">Nutrition Insights</h3>
+                </div>
+                {deficient && recommendations.currentWeeklyPct != null && (
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-violet-200/60 bg-black/25 px-2.5 py-1 rounded-full">{recommendations.currentWeeklyPct}% of target</span>
+                )}
+            </div>
+
+            {loading && !recommendations ? (
+                <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-12" />
+                    <Skeleton className="h-12" />
+                </div>
+            ) : !deficient ? (
+                <div className="flex items-center gap-2.5 py-4 flex-1">
+                    <FiCheckCircle size={20} className="text-emerald-400 shrink-0" />
+                    <p className="text-sm font-semibold text-emerald-300">{recommendations?.message || "You're meeting all your targets!"}</p>
+                </div>
+            ) : (
+                <>
+                    <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                        Lowest nutrient: <span className="text-white font-bold capitalize">{nutrientInfo?.label || deficient}</span>. Try adding:
+                    </p>
+                    <div className="space-y-1.5 flex-1">
+                        {(recommendations.recommendations || []).slice(0, 3).map((rec: any) => {
+                            const boost = Math.round(((rec.value || 0) / (targets?.[deficient] || 1)) * 100)
+                            return (
+                                <button
+                                    key={rec.name}
+                                    onClick={() => Router.push('/ingredientResearch')}
+                                    className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 bg-black/25 rounded-xl hover:bg-violet-500/15 transition-all text-left group"
+                                >
+                                    <div className="min-w-0">
+                                        <div className="text-sm font-bold capitalize truncate">{rec.name} <span className="text-muted-foreground/60 font-medium">/100g</span></div>
+                                        <div className="text-[10px] font-bold text-violet-300">+{Math.max(boost, 1)}% {nutrientInfo?.label}</div>
+                                    </div>
+                                    <FiChevronRight size={16} className="text-muted-foreground group-hover:text-violet-300 shrink-0" />
+                                </button>
+                            )
+                        })}
+                        {(recommendations.recipeRecommendations || []).length > 0 && (
+                            <button
+                                onClick={() => Router.push(`/recipes/${recommendations.recipeRecommendations[0].id}`)}
+                                className="w-full flex items-center gap-3 px-3.5 py-2.5 bg-black/25 rounded-xl hover:bg-violet-500/15 transition-all text-left group"
+                            >
+                                {recommendations.recipeRecommendations[0].image && <img src={recommendations.recipeRecommendations[0].image} alt={recommendations.recipeRecommendations[0].name} className="w-9 h-9 rounded-lg object-cover shrink-0" />}
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-bold truncate group-hover:text-violet-300 transition-colors">{recommendations.recipeRecommendations[0].name}</div>
+                                    <div className="text-[10px] font-bold text-violet-300">Try this recipe</div>
+                                </div>
+                                <FiArrowRight size={16} className="text-muted-foreground group-hover:text-violet-300 shrink-0" />
+                            </button>
+                        )}
+                    </div>
+                </>
+            )}
+        </div>
+    )
+
     return (
         <Layout title="Dashboard" description="Your health, plans and lists at a glance">
             <div className="-mx-6 md:mx-0">
@@ -416,207 +636,33 @@ export default function Dashboard() {
                         </h1>
                     </div>
 
-                    {/* ═══ WEEK PLAN + DAILY TASKS (central) ═══ */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
-                        {/* Weekly plan */}
-                        {hasWeekPlan && (
-                        <div className={`bg-gradient-to-br from-amber-500/[0.12] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col ${allTasksDone ? 'md:col-span-2' : ''}`}>
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2.5">
-                                    <IconChip className="bg-amber-500/15 text-amber-400"><FiCalendar size={16} /></IconChip>
-                                    <h3 className="text-sm font-black tracking-tight">This Week</h3>
-                                </div>
-                                <button
-                                    onClick={() => Router.push('/weeklyPlanner')}
-                                    className="text-[9px] font-bold uppercase tracking-widest text-amber-400 hover:text-amber-300 transition-colors inline-flex items-center gap-1"
-                                >
-                                    Plan <FiArrowRight size={11} />
-                                </button>
+                    {/* ═══ DAILY TASKS + INTAKE (top when today has data) ═══ */}
+                    {hasTodayData ? (
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
+                                {dailyTasksCard && <div className="flex min-w-0">{dailyTasksCard}</div>}
+                                <div className={`flex min-w-0 ${dailyTasksCard ? '' : 'md:col-span-2'}`}>{intakeCard}</div>
                             </div>
-
-                            {loading && !weekPlan ? (
-                                <div className="space-y-2 flex-1">
-                                    <Skeleton className="h-10" />
-                                    <Skeleton className="h-12" />
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="flex gap-2 mb-4">
-                                        <div className="flex-1 bg-black/25 rounded-xl p-3 text-center">
-                                            <div className="text-2xl md:text-3xl font-black text-amber-300 leading-none">{plannedCount}</div>
-                                            <div className="text-[8px] font-bold uppercase tracking-wider text-amber-200/60 mt-1.5">Meals</div>
-                                        </div>
-                                        <div className="flex-1 bg-black/25 rounded-xl p-3 text-center">
-                                            <div className="text-2xl md:text-3xl font-black leading-none">{everydayCount}</div>
-                                            <div className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground mt-1.5">Everyday</div>
-                                        </div>
-                                        <div className="flex-1 bg-black/25 rounded-xl p-3 text-center">
-                                            <div className="text-2xl md:text-3xl font-black leading-none">{todayMeals.length}</div>
-                                            <div className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground mt-1.5">Today</div>
-                                        </div>
-                                    </div>
-
-                                    {todayMeals.length > 0 ? (
-                                        <div className="flex-1 space-y-1">
-                                            <div className="text-[9px] font-bold uppercase tracking-widest text-amber-200/50 mb-1">{todayDayName}</div>
-                                            {todayMeals.slice(0, 3).map((r: any, idx: number) => (
-                                                <div key={idx} className="flex items-center justify-between gap-2 py-1.5">
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                                                        <span className="text-xs font-semibold truncate">{r.recipe_name}</span>
-                                                    </div>
-                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">{r.mealType}{r.isLeftover ? ' • L' : ''}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="flex-1 flex items-center text-xs font-semibold text-muted-foreground">
-                                            Nothing scheduled for {todayDayName} yet.
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                        )}
-
-                        {/* Daily tasks */}
-                        {!allTasksDone && (
-                            <div className={`${hasWeekPlan ? '' : 'md:col-span-2'}`}>
-                                <DailyTasksCard tasks={dailyTasks} allDone={allTasksDone} toggle={toggleDailyTask} onGo={handleTaskGo} />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
+                                {weekPlanCard && <div className="flex min-w-0">{weekPlanCard}</div>}
+                                <div className={`flex min-w-0 ${weekPlanCard ? '' : 'md:col-span-2'}`}>{nutritionCard}</div>
                             </div>
-                        )}
-                    </div>
-
-                    {/* ═══ TODAY + NUTRITION ═══ */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
-                        {/* Today's intake */}
-                        <div className="bg-gradient-to-br from-emerald-500/[0.12] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col">
-                            <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2.5">
-                                <IconChip className="bg-emerald-500/15 text-emerald-400"><FiActivity size={16} /></IconChip>
-                                <h3 className="text-sm font-black tracking-tight">Today's Intake</h3>
+                        </>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
+                                {weekPlanCard && <div className={`flex min-w-0 ${dailyTasksCard ? '' : 'md:col-span-2'}`}>{weekPlanCard}</div>}
+                                {dailyTasksCard && <div className={`flex min-w-0 ${weekPlanCard ? '' : 'md:col-span-2'}`}>{dailyTasksCard}</div>}
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="flex flex-col items-center">
-                                    <div className={`text-xl md:text-2xl font-black leading-none ${dailyScore ? scoreColor : 'text-muted-foreground'}`}>{dailyScore || '--'}%</div>
-                                    <div className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground mt-0.5">Score</div>
-                                </div>
-                                {/* Refresh button (currently hidden). Uncomment to re-enable.
-                                <button
-                                    onClick={refreshIntake}
-                                    disabled={refreshing}
-                                    aria-label="Recalculate Today's Intake"
-                                    title="Recalculate Today's Intake"
-                                    className="shrink-0 p-2 rounded-xl bg-white/[0.06] text-emerald-400 hover:bg-white/10 transition-all active:scale-95 disabled:opacity-60"
-                                >
-                                    <FiRefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
-                                </button>
-                                */}
-                                <button
-                                    onClick={openLog}
-                                    aria-label="Log Food"
-                                    className="shrink-0 p-2 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/25 active:scale-95"
-                                >
-                                    <FiPlus size={16} />
-                                </button>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
+                                <div className="flex min-w-0">{intakeCard}</div>
+                                <div className="flex min-w-0">{nutritionCard}</div>
                             </div>
-                            </div>
-
-                            {loading && !targets ? (
-                                <div className="space-y-2 flex-1">
-                                    <Skeleton className="h-8 w-full" />
-                                    <div className="grid grid-cols-4 gap-2">
-                                        <Skeleton className="h-12" />
-                                        <Skeleton className="h-12" />
-                                        <Skeleton className="h-12" />
-                                        <Skeleton className="h-12" />
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="text-2xl md:text-3xl font-black leading-none mb-1">
-                                        {calories.toLocaleString()}
-                                        <span className="text-sm font-bold text-muted-foreground"> / {calorieTarget.toLocaleString()} kcal</span>
-                                    </div>
-                                    <div className="h-2 w-full bg-black/25 rounded-full overflow-hidden mt-3 mb-5">
-                                        <div className={`h-full rounded-full transition-all duration-700 ${caloriePct >= 100 ? 'bg-amber-400' : 'bg-emerald-400'}`} style={{ width: `${caloriePct}%` }} />
-                                    </div>
-                                    <div className="grid grid-cols-4 gap-2 flex-1 items-stretch">
-                                        {macroCell('protein_g')}
-                                        {macroCell('carbohydrates_g')}
-                                        {macroCell('fat_g')}
-                                        {macroCell('fiber_g')}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Nutrition insights */}
-                        <div className="bg-gradient-to-br from-violet-500/[0.12] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2.5">
-                                    <IconChip className="bg-violet-500/15 text-violet-300"><FiZap size={16} /></IconChip>
-                                    <h3 className="text-sm font-black tracking-tight">Nutrition Insights</h3>
-                                </div>
-                                {deficient && recommendations.currentWeeklyPct != null && (
-                                    <span className="text-[9px] font-bold uppercase tracking-wider text-violet-200/60 bg-black/25 px-2.5 py-1 rounded-full">{recommendations.currentWeeklyPct}% of target</span>
-                                )}
-                            </div>
-
-                            {loading && !recommendations ? (
-                                <div className="space-y-2 flex-1">
-                                    <Skeleton className="h-4 w-2/3" />
-                                    <Skeleton className="h-12" />
-                                    <Skeleton className="h-12" />
-                                </div>
-                            ) : !deficient ? (
-                                <div className="flex items-center gap-2.5 py-4 flex-1">
-                                    <FiCheckCircle size={20} className="text-emerald-400 shrink-0" />
-                                    <p className="text-sm font-semibold text-emerald-300">{recommendations?.message || "You're meeting all your targets!"}</p>
-                                </div>
-                            ) : (
-                                <>
-                                    <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                                        Lowest nutrient: <span className="text-white font-bold capitalize">{nutrientInfo?.label || deficient}</span>. Try adding:
-                                    </p>
-                                    <div className="space-y-1.5 flex-1">
-                                        {(recommendations.recommendations || []).slice(0, 3).map((rec: any) => {
-                                            const boost = Math.round(((rec.value || 0) / (targets?.[deficient] || 1)) * 100)
-                                            return (
-                                                <button
-                                                    key={rec.name}
-                                                    onClick={() => Router.push('/ingredientResearch')}
-                                                    className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 bg-black/25 rounded-xl hover:bg-violet-500/15 transition-all text-left group"
-                                                >
-                                                    <div className="min-w-0">
-                                                        <div className="text-sm font-bold capitalize truncate">{rec.name} <span className="text-muted-foreground/60 font-medium">/100g</span></div>
-                                                        <div className="text-[10px] font-bold text-violet-300">+{Math.max(boost, 1)}% {nutrientInfo?.label}</div>
-                                                    </div>
-                                                    <FiChevronRight size={16} className="text-muted-foreground group-hover:text-violet-300 shrink-0" />
-                                                </button>
-                                            )
-                                        })}
-                                        {(recommendations.recipeRecommendations || []).length > 0 && (
-                                            <button
-                                                onClick={() => Router.push(`/recipes/${recommendations.recipeRecommendations[0].id}`)}
-                                                className="w-full flex items-center gap-3 px-3.5 py-2.5 bg-black/25 rounded-xl hover:bg-violet-500/15 transition-all text-left group"
-                                            >
-                                                {recommendations.recipeRecommendations[0].image && <img src={recommendations.recipeRecommendations[0].image} alt={recommendations.recipeRecommendations[0].name} className="w-9 h-9 rounded-lg object-cover shrink-0" />}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="text-sm font-bold truncate group-hover:text-violet-300 transition-colors">{recommendations.recipeRecommendations[0].name}</div>
-                                                    <div className="text-[10px] font-bold text-violet-300">Try this recipe</div>
-                                                </div>
-                                                <FiArrowRight size={16} className="text-muted-foreground group-hover:text-violet-300 shrink-0" />
-                                            </button>
-                                        )}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
+                        </>
+                    )}
 
                     {/* ═══ MINI SCORE TREND ═══ */}
-                    <div className="bg-gradient-to-br from-teal-500/[0.10] via-transparent to-transparent rounded-2xl p-4 md:p-6">
+                    <div className="bg-gradient-to-br from-teal-500/[0.24] via-transparent to-transparent rounded-2xl p-4 md:p-6">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2.5">
                                 <IconChip className="bg-teal-500/15 text-teal-300"><FiTrendingUp size={16} /></IconChip>
@@ -656,7 +702,7 @@ export default function Dashboard() {
                     )}
 
                     {/* ═══ SHOPPING LIST ═══ */}
-                    <div className="bg-gradient-to-br from-sky-500/[0.12] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col">
+                    <div className="bg-gradient-to-br from-sky-500/[0.26] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2.5">
                                 <IconChip className="bg-sky-500/15 text-sky-400"><FiShoppingCart size={16} /></IconChip>
@@ -713,13 +759,13 @@ export default function Dashboard() {
 
                     {/* ═══ WEEK PLAN (empty, at bottom) ═══ */}
                     {!loading && !hasWeekPlan && (
-                        <div className="bg-white/[0.02] rounded-2xl p-3 md:p-4 opacity-60">
+                        <div className="bg-white/[0.05] rounded-2xl p-3 md:p-4 opacity-75">
                             <button
                                 onClick={() => Router.push('/weeklyPlanner')}
                                 className="w-full flex items-center justify-between gap-2 text-left"
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
-                                    <FiCalendar size={16} className="text-amber-300 shrink-0" />
+                                    <FiCalendar size={16} className="text-orange-300 shrink-0" />
                                     <span className="text-xs font-semibold text-muted-foreground truncate">No meals planned for this week</span>
                                 </div>
                                 <FiChevronRight size={16} className="text-muted-foreground shrink-0" />

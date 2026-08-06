@@ -17,7 +17,7 @@ export default function DailyTasksCard({ tasks, allDone, toggle, compact = false
 
     if (compact && !expanded) {
         return (
-            <div className="bg-amber-400/[0.08] border border-amber-400/15 rounded-2xl">
+            <div className="bg-amber-400/[0.16] border border-amber-400/25 rounded-2xl">
                 <button onClick={() => setExpanded(true)} className="w-full flex items-center justify-between gap-3 p-3 text-left">
                     <div className="flex items-center gap-2.5 min-w-0">
                         <div className="w-7 h-7 rounded-full bg-amber-400/15 text-amber-300 flex items-center justify-center shrink-0">
@@ -37,7 +37,7 @@ export default function DailyTasksCard({ tasks, allDone, toggle, compact = false
     }
 
     return (
-        <div className="bg-gradient-to-br from-amber-400/[0.14] via-transparent to-transparent rounded-2xl p-3 md:p-4 flex flex-col">
+        <div className="bg-gradient-to-br from-amber-400/[0.28] via-transparent to-transparent rounded-2xl p-3 md:p-4 flex flex-col flex-1 min-w-0">
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-amber-400/15 text-amber-300">

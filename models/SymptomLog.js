@@ -4,7 +4,7 @@ const SymptomLogSchema = new mongoose.Schema({
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     date: { type: String, required: true, index: true },
     mood: { type: Number, min: 1, max: 10, default: null },
-    symptoms: [{ name: { type: String, required: true } }],
+    symptoms: [{ name: { type: String, required: true }, auto: { type: Boolean, default: false } }],
     notes: { type: String, default: '' }
 }, {
     timestamps: true

@@ -2,10 +2,11 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Head from 'next/head';
 import { Layout } from '../components/Layout';
 import { useAuthGuard } from '../lib/useAuthGuard';
-import { FiChevronRight as FiChevronRightSolid, FiChevronLeft as FiChevronLeftSolid, FiSave as FiSaveSolid, FiShoppingCart as FiShoppingCartSolid, FiTrash2 as FiTrash2Solid, FiInfo as FiInfoSolid, FiCoffee as FiCoffeeSolid, FiX as FiXSolid, FiActivity as FiActivitySolid, FiDollarSign as FiDollarSignSolid, FiMenu as FiMenuSolid, FiFilter as FiFilterSolid } from 'react-icons/fi';
+import { FiChevronRight as FiChevronRightSolid, FiChevronLeft as FiChevronLeftSolid, FiSave as FiSaveSolid, FiShoppingCart as FiShoppingCartSolid, FiTrash2 as FiTrash2Solid, FiInfo as FiInfoSolid, FiCoffee as FiCoffeeSolid, FiX as FiXSolid, FiActivity as FiActivitySolid, FiDollarSign as FiDollarSignSolid, FiMenu as FiMenuSolid, FiFilter as FiFilterSolid, FiCheck as FiCheckSolid } from 'react-icons/fi';
 import SearchableDropdown from '../components/SearchableDropdown';
 import { NUTRIENT_LABELS } from '../lib/dailyIntake';
-import { getDateRange, formatRangeLabel, addDays, todayStr, getMondayOf, formatShortDate, daysBetween } from '../lib/dateUtils';
+import { CURRENT_PLAN_VERSION } from '../lib/planVersion';
+import { getDateRange, formatRangeLabel, addDays, todayStr, getMondayOf, formatShortDate, daysBetween, parseFlexibleDate } from '../lib/dateUtils';
 
 const MAX_DAYS = 14;
 const MEALS = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
@@ -65,13 +66,14 @@ export default function WeeklyPlanner() {
             });
             const recipesData = await recipesRes.json();
 
-            if (planData.success && planData.plan) {
+            if (planData.success && planData.plan && planData.plan.version === CURRENT_PLAN_VERSION) {
                 setPlan(planData.plan);
                 // Adopt a saved range length, but not for a freshly created (empty) plan
                 if (!planData.created && planData.plan.numDays) {
                     setNumDays(planData.plan.numDays);
                 }
             } else {
+                // Stale or missing plan: show nothing from the old data shape
                 setPlan({ defaultServings: 2, plannedRecipes: [], everydayItems: [], numDays: 7 });
             }
 
@@ -94,17 +96,40 @@ export default function WeeklyPlanner() {
         setNumDays(days);
     };
 
-    const handleStartDateChange = (value) => {
-        if (!value) return;
-        const days = Math.min(MAX_DAYS, Math.max(1, daysBetween(value, endDate)));
-        setStartDate(value);
+    // Editable date-range fields (typed text + tick to apply)
+    const [draftStart, setDraftStart] = useState(startDate);
+    const [draftEnd, setDraftEnd] = useState(endDate);
+    const [rangeError, setRangeError] = useState(false);
+
+    useEffect(() => {
+        setDraftStart(startDate);
+        setDraftEnd(endDate);
+        setRangeError(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [startDate, endDate]);
+
+    const applyDraftRange = () => {
+        const s = parseFlexibleDate(draftStart);
+        const e = parseFlexibleDate(draftEnd);
+        if (!s || !e) {
+            setRangeError(true);
+            return;
+        }
+        const start = s <= e ? s : e;
+        const end = s <= e ? e : s;
+        const days = Math.min(MAX_DAYS, Math.max(1, daysBetween(start, end)));
+        setStartDate(start);
         setNumDays(days);
+        setDraftStart(start);
+        setDraftEnd(end);
+        setRangeError(false);
     };
 
-    const handleEndDateChange = (value) => {
-        if (!value) return;
-        const days = Math.min(MAX_DAYS, Math.max(1, daysBetween(startDate, value)));
-        setNumDays(days);
+    const onRangeKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyDraftRange();
+        }
     };
 
     const handleSave = async () => {
@@ -183,7 +208,7 @@ export default function WeeklyPlanner() {
         if (!recipe) return;
         setPlan(prev => ({
             ...prev,
-            everydayItems: [...prev.everydayItems, { name: recipe.name, quantity: newEverydayQty, recipe_id: recipe._id }]
+            everydayItems: [...prev.everydayItems, { name: recipe.name, quantity: newEverydayQty * numDays, recipe_id: recipe._id }]
         }));
         setNewEverydayQty(1);
     };
@@ -411,7 +436,7 @@ export default function WeeklyPlanner() {
                 <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-emerald-400">
                     <FiCoffeeSolid /> Pantry Pool
                 </h3>
-                <p className="text-xs text-muted-foreground mb-4">Weekly totals — spread evenly across your {numDays} {numDays === 1 ? 'day' : 'days'}.</p>
+                <p className="text-xs text-muted-foreground mb-4">Enter per-day amounts — spread evenly across your {numDays} {numDays === 1 ? 'day' : 'days'}.</p>
 
                 <div className="space-y-2 mb-4">
                     {plan.everydayItems.length === 0 ? (
@@ -426,13 +451,14 @@ export default function WeeklyPlanner() {
                                         type="number"
                                         min="0.1"
                                         step="0.1"
-                                        value={item.quantity}
-                                        onChange={(e) => updateEverydayQty(idx, parseFloat(e.target.value) || 0)}
+                                        value={Math.round((item.quantity / numDays) * 100) / 100}
+                                        onChange={(e) => updateEverydayQty(idx, (parseFloat(e.target.value) || 0) * numDays)}
                                         className="w-16 bg-background border border-white/10 rounded-lg px-2 text-sm"
+                                        title="Quantity per day"
                                     />
                                     <div className="min-w-0">
                                         <div className="font-medium text-sm truncate">{item.name}</div>
-                                        <div className="text-[10px] text-muted-foreground">{(item.quantity / numDays).toFixed(1)}/day</div>
+                                        <div className="text-[10px] text-muted-foreground">{Math.round(item.quantity * 10) / 10} total over {numDays} {numDays === 1 ? 'day' : 'days'}</div>
                                     </div>
                                 </div>
                                 <button onClick={() => removeEverydayItem(idx)} className="text-rose-500 hover:text-rose-400 p-1">
@@ -444,14 +470,16 @@ export default function WeeklyPlanner() {
                 </div>
 
                 <div className="flex flex-col gap-2">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Qty per day</div>
                     <div className="flex gap-2 relative">
                         <input
                             type="number"
-                            min="1"
+                            min="0.1"
+                            step="0.1"
                             value={newEverydayQty}
-                            onChange={e => setNewEverydayQty(parseInt(e.target.value) || 1)}
+                            onChange={e => setNewEverydayQty(parseFloat(e.target.value) || 1)}
                             className="w-16 bg-background border border-white/10 rounded-lg px-2 text-sm z-10 relative"
-                            title="Weekly quantity"
+                            title="Quantity per day"
                         />
                         <div className="flex-1 relative z-50">
                             <SearchableDropdown
@@ -573,18 +601,31 @@ export default function WeeklyPlanner() {
                                 ))}
                                 <div className="flex items-center gap-1">
                                     <input
-                                        type="date"
-                                        value={startDate}
-                                        onChange={(e) => handleStartDateChange(e.target.value)}
-                                        className="bg-background border border-white/10 rounded-md px-2 py-1 text-xs font-bold text-muted-foreground"
+                                        type="text"
+                                        value={draftStart}
+                                        onChange={(e) => { setDraftStart(e.target.value); setRangeError(false); }}
+                                        onKeyDown={onRangeKeyDown}
+                                        placeholder="YYYY-MM-DD"
+                                        title="Start date — type it or pick from a preset"
+                                        className={`bg-background border border-white/10 rounded-md px-2 py-1 text-xs font-bold text-muted-foreground w-[7.5rem] ${rangeError ? 'border-rose-500' : ''}`}
                                     />
                                     <span className="text-xs text-muted-foreground">→</span>
                                     <input
-                                        type="date"
-                                        value={endDate}
-                                        onChange={(e) => handleEndDateChange(e.target.value)}
-                                        className="bg-background border border-white/10 rounded-md px-2 py-1 text-xs font-bold text-muted-foreground"
+                                        type="text"
+                                        value={draftEnd}
+                                        onChange={(e) => { setDraftEnd(e.target.value); setRangeError(false); }}
+                                        onKeyDown={onRangeKeyDown}
+                                        placeholder="YYYY-MM-DD"
+                                        title="End date — type it or pick from a preset"
+                                        className={`bg-background border border-white/10 rounded-md px-2 py-1 text-xs font-bold text-muted-foreground w-[7.5rem] ${rangeError ? 'border-rose-500' : ''}`}
                                     />
+                                    <button
+                                        onClick={applyDraftRange}
+                                        title="Apply date range"
+                                        className="p-1.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400 transition-colors shrink-0"
+                                    >
+                                        <FiCheckSolid size={16} />
+                                    </button>
                                 </div>
                             </div>
                         </div>
