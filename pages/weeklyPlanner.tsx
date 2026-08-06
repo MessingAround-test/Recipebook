@@ -414,7 +414,7 @@ export default function WeeklyPlanner() {
                                             <div>
                                                 <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{r.mealType}</div>
                                                 <div className="font-bold text-sm">{r.recipe_name}</div>
-                                                <div className="text-xs text-muted-foreground mt-1">Serves: {r.servings}</div>
+                                                <div className="text-xs text-muted-foreground mt-1">People: {r.servings}</div>
                                             </div>
                                             <button
                                                 onClick={() => removePlannedRecipe(r.id || r._id)}
@@ -444,14 +444,17 @@ export default function WeeklyPlanner() {
                             Pool Empty
                         </div>
                     ) : (
-                        plan.everydayItems.map((item, idx) => (
+                        plan.everydayItems.map((item, idx) => {
+                            const perDay = Math.round((item.quantity / numDays) * 100) / 100;
+                            const perPersonPerDay = Math.round((perDay / Math.max(1, plan.defaultServings)) * 100) / 100;
+                            return (
                             <div key={idx} className="flex items-center justify-between bg-black/20 p-2 rounded-lg border border-white/5">
                                 <div className="flex items-center gap-2 min-w-0">
                                     <input
                                         type="number"
                                         min="0.1"
                                         step="0.1"
-                                        value={Math.round((item.quantity / numDays) * 100) / 100}
+                                        value={perDay}
                                         onChange={(e) => updateEverydayQty(idx, (parseFloat(e.target.value) || 0) * numDays)}
                                         className="w-16 bg-background border border-white/10 rounded-lg px-2 text-sm"
                                         title="Quantity per day"
@@ -459,13 +462,17 @@ export default function WeeklyPlanner() {
                                     <div className="min-w-0">
                                         <div className="font-medium text-sm truncate">{item.name}</div>
                                         <div className="text-[10px] text-muted-foreground">{Math.round(item.quantity * 10) / 10} total over {numDays} {numDays === 1 ? 'day' : 'days'}</div>
+                                        <div className="text-[10px] font-black text-emerald-400">
+                                            {perPersonPerDay} / person / day
+                                        </div>
                                     </div>
                                 </div>
                                 <button onClick={() => removeEverydayItem(idx)} className="text-rose-500 hover:text-rose-400 p-1">
                                     <FiTrash2Solid size={14} />
                                 </button>
                             </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
 
@@ -636,7 +643,7 @@ export default function WeeklyPlanner() {
 
                     <div className="flex items-center gap-3 w-full xl:w-auto flex-wrap">
                         <div className="flex flex-col items-start">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Default Servings</label>
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">People in the house</label>
                             <input
                                 type="number"
                                 min="1"
@@ -764,7 +771,7 @@ export default function WeeklyPlanner() {
                                                                                     {r.isLeftover && <div className="text-[10px] font-bold text-amber-500 mb-1 uppercase tracking-wider">(Leftovers)</div>}
                                                                                     <div className="font-bold text-sm leading-tight">{r.recipe_name}</div>
                                                                                     <div className="flex items-center gap-2 mt-1">
-                                                                                        <div className="text-xs text-muted-foreground">Serves: {r.servings}</div>
+                                                                                        <div className="text-xs text-muted-foreground">People: {r.servings}</div>
                                                                                         {analysisData?.cost != null && (
                                                                                             <div className="text-[10px] font-medium text-emerald-400">
                                                                                                 ${analysisData.cost.toFixed(2)}
@@ -887,7 +894,7 @@ export default function WeeklyPlanner() {
                                                 />
                                                 <div className="flex-1">
                                                     <div className="font-bold text-sm group-hover:text-emerald-400 transition-colors">{r.name}</div>
-                                                    <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mt-0.5">Serves: {r.servings || 1} • {r.genre || 'General'}{isSnackRecipe(r) ? ' • Snack' : ''}</div>
+                                                    <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mt-0.5">People: {r.servings || 1} • {r.genre || 'General'}{isSnackRecipe(r) ? ' • Snack' : ''}</div>
                                                 </div>
                                             </label>
                                         ))}

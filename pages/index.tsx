@@ -228,8 +228,9 @@ export default function Dashboard() {
     const scoreColor = dailyScore > 80 ? 'text-emerald-400' : dailyScore > 50 ? 'text-amber-400' : 'text-rose-400'
 
     const trendAvg = useMemo(() => {
-        const withScore = trendDays.filter(d => d.score > 0)
-        return withScore.length ? Math.round(withScore.reduce((a, b) => a + b.score, 0) / withScore.length) : 0
+        const withScore = trendDays.filter(d => Number(d.score) > 0)
+        const raw = withScore.length ? withScore.reduce((a, b) => a + Number(b.score), 0) / withScore.length : 0
+        return { raw, rounded: Math.round(raw), count: withScore.length }
     }, [trendDays])
 
     const todayDayName = new Date().toLocaleDateString('en-AU', { weekday: 'long' })
@@ -671,7 +672,7 @@ export default function Dashboard() {
                             {loading && trendDays.length === 0 ? (
                                 <Skeleton className="h-4 w-20" />
                             ) : (
-                                <span className="text-[10px] font-semibold text-muted-foreground">Last 7 days · avg <span className="text-teal-300 font-black">{trendAvg}%</span></span>
+                                <span className="text-[10px] font-semibold text-muted-foreground">Last 7 days · avg <span className="text-teal-300 font-black">{trendAvg.rounded}%</span></span>
                             )}
                         </div>
 
@@ -680,18 +681,49 @@ export default function Dashboard() {
                         ) : trendDays.length === 0 ? (
                             <p className="text-xs font-semibold text-muted-foreground py-6 text-center">No tracking data yet.</p>
                         ) : (
-                            <div className="flex items-end gap-1.5 h-20 md:h-24">
-                                {trendDays.map((d, idx) => {
-                                    const score = Math.max(d.score || 0, 0)
-                                    const height = score > 0 ? Math.max(score, 5) : 3
-                                    const dayLabel = new Date(`${d.date}T00:00:00`).toLocaleDateString('en-AU', { weekday: 'narrow' })
-                                    return (
-                                        <div key={d.date} className="flex-1 flex flex-col items-center justify-end gap-1 h-full">
-                                            <div className="w-full max-w-[20px] rounded-t-lg bg-gradient-to-t from-teal-500/80 to-emerald-400/70 transition-all" style={{ height: `${height}%` }} />
-                                            <span className={`text-[8px] font-bold uppercase ${idx === trendDays.length - 1 ? 'text-teal-300' : 'text-muted-foreground/60'}`}>{dayLabel}</span>
+                            <div className="relative h-28 md:h-32">
+                                <div className="flex items-end gap-1.5 h-full">
+                                    {trendDays.map((d, idx) => {
+                                        const hasScore = Number(d.score) > 0
+                                        const score = Math.min(Math.max(Number(d.score) || 0, 0), 100)
+                                        const aboveAvg = hasScore && trendAvg.count > 0 && score >= trendAvg.raw
+                                        const isToday = idx === trendDays.length - 1
+                                        const dayLabel = new Date(`${d.date}T00:00:00`).toLocaleDateString('en-AU', { weekday: 'narrow' })
+                                        return (
+                                            <div key={d.date} className="flex-1 flex flex-col items-center h-full">
+                                                <div className="h-3.5 flex items-center shrink-0">
+                                                    <span className={`text-[8px] font-black leading-none ${!hasScore ? 'text-muted-foreground/40' : aboveAvg ? 'text-teal-300' : 'text-rose-300'}`}>
+                                                        {hasScore ? `${score}%` : '–'}
+                                                    </span>
+                                                </div>
+                                                <div className="w-full max-w-[20px] flex-1 relative">
+                                                    <div
+                                                        className={`absolute bottom-0 left-0 right-0 rounded-t-lg transition-all ${!hasScore
+                                                            ? 'bg-white/10'
+                                                            : aboveAvg
+                                                                ? 'bg-gradient-to-t from-teal-500/80 to-emerald-400/70'
+                                                                : 'bg-gradient-to-t from-rose-500/70 to-rose-400/50'}`}
+                                                        style={{ height: hasScore ? `${score}%` : '4px' }}
+                                                    />
+                                                </div>
+                                                <div className="h-3 flex items-center shrink-0">
+                                                    <span className={`text-[8px] font-bold uppercase ${isToday ? 'text-teal-300' : 'text-muted-foreground/60'}`}>{dayLabel}</span>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+
+                                {trendAvg.count > 0 && (
+                                    <div
+                                        className="pointer-events-none absolute inset-x-0 z-10"
+                                        style={{ top: `calc(14px + (100% - 26px) * ${(100 - trendAvg.raw) / 100})` }}
+                                    >
+                                        <div className="border-t border-dashed border-teal-300/50 relative">
+                                            <span className="absolute right-0 -top-2.5 text-[7px] font-black uppercase tracking-widest text-teal-300/70 bg-background/60 px-1">avg {trendAvg.rounded}%</span>
                                         </div>
-                                    )
-                                })}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
