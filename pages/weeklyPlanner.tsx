@@ -31,9 +31,21 @@ export default function WeeklyPlanner() {
     const [showRecipeModal, setShowRecipeModal] = useState(false);
     const [modalSelectedRecipeIds, setModalSelectedRecipeIds] = useState(new Set());
     const [modalOnlySnacks, setModalOnlySnacks] = useState(false);
+    const [modalGroupBy, setModalGroupBy] = useState('carb'); // 'carb' | 'meal' | 'genre'
+    const [modalMealFilters, setModalMealFilters] = useState(new Set());
 
     // Mobile pool drawer
     const [mobilePoolOpen, setMobilePoolOpen] = useState(false);
+
+    // Combine zone holds the first dropped item, waiting for a second
+    const [combinePendingId, setCombinePendingId] = useState(null);
+
+    // Clear the pending partner if that item is removed or moved away
+    useEffect(() => {
+        if (combinePendingId && !plan.plannedRecipes.some(r => (r.id || r._id) === combinePendingId)) {
+            setCombinePendingId(null);
+        }
+    }, [plan.plannedRecipes, combinePendingId]);
 
     // Day column refs for jump navigation
     const dayRefs = useRef({} as Record<string, HTMLDivElement | null>);
@@ -231,9 +243,52 @@ export default function WeeklyPlanner() {
     const isSnackRecipe = (r) =>
         (r.mealTypes || []).some(m => /snack/i.test(m)) || /snack/i.test(r.genre || '');
 
+    // Carb groups: None/Other sits above Uncategorized at the bottom
+    const carbSortPriority = (k) => k === 'None/Other' ? 1 : (k === 'Uncategorized' ? 2 : 0);
+    const sortCarbKeys = (a, b) => {
+        const pa = carbSortPriority(a), pb = carbSortPriority(b);
+        if (pa !== pb) return pa - pb;
+        return a.localeCompare(b);
+    };
+
+    const normalizeMealType = (mt) => /^main$/i.test(mt) ? 'Dinner' : mt;
+
+    const groupModalRecipes = (recipes) => {
+        return recipes.reduce((acc, r) => {
+            let key;
+            if (modalGroupBy === 'meal') {
+                const mt = (r.mealTypes && r.mealTypes.length > 0) ? normalizeMealType(r.mealTypes[0]) : 'General';
+                key = mt;
+            } else if (modalGroupBy === 'genre') {
+                key = r.genre || 'General';
+            } else {
+                key = r.carbType || 'Uncategorized';
+            }
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(r);
+            return acc;
+        }, {});
+    };
+
+    const sortGroupKeys = (a, b) => {
+        if (modalGroupBy === 'carb') return sortCarbKeys(a, b);
+        return a.localeCompare(b);
+    };
+
+    const toggleMealFilter = (m) => {
+        setModalMealFilters(prev => {
+            const next = new Set(prev);
+            if (next.has(m)) next.delete(m);
+            else next.add(m);
+            return next;
+        });
+    };
+
     const openModal = (onlySnacks = false) => {
         setModalSelectedRecipeIds(new Set());
         setModalOnlySnacks(onlySnacks);
+        setModalGroupBy('carb');
+        setModalMealFilters(new Set());
         setShowRecipeModal(true);
     };
 
@@ -248,11 +303,11 @@ export default function WeeklyPlanner() {
 
     const confirmModalRecipes = () => {
         const newRecipes = [];
-        modalSelectedRecipeIds.forEach(id => {
+        modalSelectedRecipeIds.forEach((id: string) => {
             const recipe = allRecipes.find(r => r._id === id);
             if (recipe) {
                 const serves = recipe.servings || 1;
-                // Main recipe block
+                // Main block: the default "people in the house" portion
                 newRecipes.push({
                     recipe_id: recipe._id,
                     recipe_name: recipe.name,
@@ -264,7 +319,7 @@ export default function WeeklyPlanner() {
                     id: Math.random().toString(36).substr(2, 9) // temporary ID for drag and drop tracking
                 });
 
-                // Leftovers block
+                // Split block: the rest, added as leftovers/lunch
                 if (serves > plan.defaultServings) {
                     newRecipes.push({
                         recipe_id: recipe._id,
@@ -292,6 +347,29 @@ export default function WeeklyPlanner() {
             ...prev,
             plannedRecipes: prev.plannedRecipes.filter(r => r.id !== idToRemove && r._id !== idToRemove)
         }));
+    };
+
+    // Merge two specific plan items (same recipe + day) into one block, adding servings
+    const mergeTwoItems = (keyA, keyB) => {
+        if (keyA === keyB) return;
+        setPlan(prev => {
+            const a = prev.plannedRecipes.find(r => (r.id || r._id) === keyA);
+            const b = prev.plannedRecipes.find(r => (r.id || r._id) === keyB);
+            if (!a || !b) return prev;
+            if (!a.recipe_id || a.recipe_id !== b.recipe_id || a.day !== b.day) return prev;
+            const keeper = { ...a, servings: (Number(a.servings) || 0) + (Number(b.servings) || 0), isLeftover: false };
+            const removeKeys = [keyA, keyB];
+            return {
+                ...prev,
+                plannedRecipes: [
+                    ...prev.plannedRecipes.filter(r => {
+                        const k = r.id || r._id;
+                        return !removeKeys.includes(k);
+                    }),
+                    keeper
+                ]
+            };
+        });
     };
 
     // --- Drag and Drop ---
@@ -325,6 +403,62 @@ export default function WeeklyPlanner() {
 
     const scrollToDay = (date) => {
         dayRefs.current[date]?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+    };
+
+    // Drag an item onto the Split zone to split it in half
+    const handleSplitDrop = (e) => {
+        e.preventDefault();
+        const draggedId = e.dataTransfer.getData('text/plain');
+        if (!draggedId) return;
+        setPlan(prev => {
+            const item = prev.plannedRecipes.find(r => (r.id || r._id) === draggedId);
+            if (!item) return prev;
+            const total = Number(item.servings) || 0;
+            if (total < 2) return prev;
+            const splitAmount = Math.ceil(total / 2);
+            const recipe = allRecipes.find(r => r._id === item.recipe_id);
+            const baseName = recipe ? recipe.name : String(item.recipe_name || '').replace(/\s*\(Leftovers\)\s*$/i, '');
+            const splitBlock = {
+                ...item,
+                recipe_name: `${baseName} (Leftovers)`,
+                servings: splitAmount,
+                mealType: 'Lunch',
+                isLeftover: true,
+                _id: undefined,
+                id: Math.random().toString(36).substr(2, 9)
+            };
+            const updated = prev.plannedRecipes.map(r => {
+                if ((r.id || r._id) === draggedId) {
+                    return { ...r, servings: total - splitAmount };
+                }
+                return r;
+            });
+            return { ...prev, plannedRecipes: [...updated, splitBlock] };
+        });
+    };
+
+    // Drag TWO items onto the Combine zone to add their quantities
+    const handleCombineDrop = (e) => {
+        e.preventDefault();
+        const draggedId = e.dataTransfer.getData('text/plain');
+        if (!draggedId) return;
+        const item = plan.plannedRecipes.find(r => (r.id || r._id) === draggedId);
+        if (!item || !item.recipe_id) return;
+
+        // First drop: store it as the pending partner
+        if (!combinePendingId || combinePendingId === draggedId) {
+            setCombinePendingId(draggedId);
+            return;
+        }
+
+        // Second drop: merge the two if they match (same recipe + day)
+        const pendingItem = plan.plannedRecipes.find(r => (r.id || r._id) === combinePendingId);
+        if (!pendingItem || pendingItem.recipe_id !== item.recipe_id || pendingItem.day !== item.day) {
+            setCombinePendingId(null);
+            return;
+        }
+        mergeTwoItems(combinePendingId, draggedId);
+        setCombinePendingId(null);
     };
 
     // --- Carb Guidance ---
@@ -369,6 +503,12 @@ export default function WeeklyPlanner() {
 
     const undecidedRecipes = plan.plannedRecipes.filter(r => r.day === 'Undecided');
 
+    const pendingItem = combinePendingId
+        ? plan.plannedRecipes.find(r => (r.id || r._id) === combinePendingId) || null
+        : null;
+
+    const isPendingCard = (r) => !!combinePendingId && (r.id || r._id) === combinePendingId;
+
     const sidebarContent = (
         <div className="space-y-6">
             {/* Recipe Pool */}
@@ -386,6 +526,46 @@ export default function WeeklyPlanner() {
                     </button>
                 </div>
                 <p className="text-xs text-muted-foreground mb-4">Drag these recipes to your days!</p>
+
+                {/* Split / Combine drop zones */}
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                    <div
+                        onDragOver={handleDragOver}
+                        onDrop={handleSplitDrop}
+                        title="Drop a recipe here to split it in half"
+                        className="rounded-lg border border-dashed border-emerald-500/30 bg-emerald-500/5 p-3 text-center cursor-copy"
+                    >
+                        <div className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Split</div>
+                        <div className="text-[9px] text-muted-foreground mt-0.5">Drop to split in half</div>
+                    </div>
+                    <div
+                        onDragOver={handleDragOver}
+                        onDrop={handleCombineDrop}
+                        title="Drop one item, then drop another of the same recipe and day to add their quantities"
+                        className={`rounded-lg border-2 border-dashed p-3 text-center cursor-copy transition-all ${pendingItem
+                            ? 'border-blue-400 bg-blue-500/25 ring-2 ring-blue-400/60 shadow-[0_0_18px_rgba(59,130,246,0.45)]'
+                            : 'border-blue-500/30 bg-blue-500/5'}`}
+                    >
+                        <div className={`text-[10px] font-black uppercase tracking-widest ${pendingItem ? 'text-blue-200 animate-pulse' : 'text-blue-400'}`}>Combine</div>
+                        {pendingItem ? (
+                            <div className="mt-1.5 px-2 py-1.5 rounded-md bg-blue-500/40 border border-blue-300/60 shadow-[0_0_10px_rgba(59,130,246,0.6)]">
+                                <div className="text-[10px] font-black text-white truncate">{pendingItem.recipe_name}</div>
+                                <div className="text-[9px] font-bold text-blue-100 mt-0.5">People: {pendingItem.servings}</div>
+                                <div className="text-[8px] uppercase tracking-wider text-blue-200 mt-1">Drop a 2nd to add</div>
+                            </div>
+                        ) : (
+                            <div className="text-[9px] text-muted-foreground mt-0.5">Drop 2 to add quantities</div>
+                        )}
+                        {pendingItem && (
+                            <button
+                                onClick={() => setCombinePendingId(null)}
+                                className="mt-1.5 text-[8px] font-black uppercase tracking-widest text-blue-300 hover:text-white bg-blue-500/30 hover:bg-blue-500/50 rounded px-2 py-0.5 transition-colors"
+                            >
+                                Cancel selection
+                            </button>
+                        )}
+                    </div>
+                </div>
 
                 <div className="space-y-2 min-h-[100px]">
                     {undecidedRecipes.length === 0 ? (
@@ -409,7 +589,7 @@ export default function WeeklyPlanner() {
                                             key={r.id || r._id || idx}
                                             draggable
                                             onDragStart={(e) => handleDragStart(e, r)}
-                                            className={`cursor-grab active:cursor-grabbing p-3 rounded-lg border flex items-start justify-between group transition-all ${r.isLeftover ? 'bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                                            className={`cursor-grab active:cursor-grabbing p-3 rounded-lg border flex items-start justify-between group transition-all ${r.isLeftover ? 'bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'} ${isPendingCard(r) ? 'ring-2 ring-blue-400 bg-blue-500/20 shadow-[0_0_14px_rgba(59,130,246,0.5)]' : ''}`}
                                         >
                                             <div>
                                                 <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{r.mealType}</div>
@@ -765,7 +945,7 @@ export default function WeeklyPlanner() {
                                                                                 key={r.id || r._id || idx}
                                                                                 draggable
                                                                                 onDragStart={(e) => handleDragStart(e, r)}
-                                                                                className={`cursor-grab active:cursor-grabbing transition-all rounded-xl p-3 border flex items-start justify-between group ${r.isLeftover ? 'bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'} ${analysisData?.isExpensive ? 'ring-1 ring-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : ''} ${analysisData?.isLowNutrition ? 'ring-1 ring-rose-500/50 shadow-[0_0_10px_rgba(244,63,94,0.2)]' : ''}`}
+                                                                                className={`cursor-grab active:cursor-grabbing transition-all rounded-xl p-3 border flex items-start justify-between group ${r.isLeftover ? 'bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'} ${analysisData?.isExpensive ? 'ring-1 ring-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : ''} ${analysisData?.isLowNutrition ? 'ring-1 ring-rose-500/50 shadow-[0_0_10px_rgba(244,63,94,0.2)]' : ''} ${isPendingCard(r) ? 'ring-2 ring-blue-400 bg-blue-500/20 shadow-[0_0_14px_rgba(59,130,246,0.5)]' : ''}`}
                                                                             >
                                                                                 <div>
                                                                                     {r.isLeftover && <div className="text-[10px] font-bold text-amber-500 mb-1 uppercase tracking-wider">(Leftovers)</div>}
@@ -788,9 +968,9 @@ export default function WeeklyPlanner() {
                                                                                 <button
                                                                                     onClick={() => removePlannedRecipe(r.id || r._id)}
                                                                                     className="opacity-0 group-hover:opacity-100 transition-opacity text-rose-500 hover:text-rose-400 p-1"
-                                                                                >
-                                                                                    <FiTrash2Solid size={14} />
-                                                                                </button>
+                                                                                    >
+                                                                                        <FiTrash2Solid size={14} />
+                                                                                    </button>
                                                                             </div>
                                                                         )
                                                                     })}
@@ -855,32 +1035,67 @@ export default function WeeklyPlanner() {
                                 <FiXSolid size={20} />
                             </button>
                         </div>
-                        <div className="p-4 border-b border-white/5 flex items-center gap-3">
-                            <label className="flex items-center gap-2 text-xs font-bold text-muted-foreground cursor-pointer select-none">
-                                <input
-                                    type="checkbox"
-                                    checked={modalOnlySnacks}
-                                    onChange={(e) => setModalOnlySnacks(e.target.checked)}
-                                    className="w-4 h-4 rounded border-white/20 bg-black/50 text-amber-500 focus:ring-amber-500/50"
-                                />
-                                <FiFilterSolid className="text-amber-400" /> Only snacks
-                            </label>
+                        <div className="p-4 border-b border-white/5 flex flex-col gap-3">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <label className="flex items-center gap-2 text-xs font-bold text-muted-foreground cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={modalOnlySnacks}
+                                        onChange={(e) => setModalOnlySnacks(e.target.checked)}
+                                        className="w-4 h-4 rounded border-white/20 bg-black/50 text-amber-500 focus:ring-amber-500/50"
+                                    />
+                                    <FiFilterSolid className="text-amber-400" /> Only snacks
+                                </label>
+                                <div className="flex items-center gap-1 flex-wrap">
+                                    {MEALS.map(m => (
+                                        <button
+                                            key={m}
+                                            onClick={() => toggleMealFilter(m)}
+                                            className={`text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md border transition-colors ${modalMealFilters.has(m) ? 'bg-amber-500/20 border-amber-500/40 text-amber-300' : 'bg-white/5 border-white/10 text-muted-foreground hover:text-white'}`}
+                                        >
+                                            {m}
+                                        </button>
+                                    ))}
+                                    {modalMealFilters.size > 0 && (
+                                        <button
+                                            onClick={() => setModalMealFilters(new Set())}
+                                            className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition-colors"
+                                        >
+                                            Clear
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1 flex-wrap">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mr-1">Group by</span>
+                                {[['carb', 'Carb type'], ['meal', 'Meal type'], ['genre', 'Genre']].map(([key, label]) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => setModalGroupBy(key)}
+                                        className={`text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md border transition-colors ${modalGroupBy === key ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 'bg-white/5 border-white/10 text-muted-foreground hover:text-white'}`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                         <div className="p-4 flex-1 overflow-y-auto space-y-6 custom-scrollbar">
                             {Object.entries(
-                                allRecipes
-                                    .filter(r => !modalOnlySnacks || isSnackRecipe(r))
-                                    .reduce((acc, r) => {
-                                        const type = r.carbType || 'Uncategorized';
-                                        if (!acc[type]) acc[type] = [];
-                                        acc[type].push(r);
-                                        return acc;
-                                    }, {})
-                            ).sort(([a], [b]) => a.localeCompare(b)).map(([carbType, recipes]) => (
-                                <div key={carbType}>
+                                groupModalRecipes(allRecipes.filter(r => {
+                                    if (modalOnlySnacks && !isSnackRecipe(r)) return false;
+                                    if (modalMealFilters.size > 0) {
+                                        const primary = (r.mealTypes && r.mealTypes.length > 0)
+                                            ? normalizeMealType(r.mealTypes[0])
+                                            : 'General';
+                                        if (!modalMealFilters.has(primary)) return false;
+                                    }
+                                    return true;
+                                }))
+                            ).sort(([a], [b]) => sortGroupKeys(a, b)).map(([group, recipes]) => (
+                                <div key={group}>
                                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3 flex items-center gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/50"></span>
-                                        {carbType}
+                                        {group}
                                         <span className="flex-1 h-px bg-white/5"></span>
                                     </h3>
                                     <div className="space-y-2">
@@ -890,9 +1105,16 @@ export default function WeeklyPlanner() {
                                                     type="checkbox"
                                                     checked={modalSelectedRecipeIds.has(r._id)}
                                                     onChange={() => handleToggleModalRecipe(r._id)}
-                                                    className="w-5 h-5 rounded-lg border-white/20 bg-black/50 text-emerald-500 focus:ring-emerald-500/50"
+                                                    className="w-5 h-5 rounded-lg border-white/20 bg-black/50 text-emerald-500 focus:ring-emerald-500/50 shrink-0"
                                                 />
-                                                <div className="flex-1">
+                                                {r.image ? (
+                                                    <img src={r.image} alt={r.name} className="w-12 h-12 rounded-lg object-cover shrink-0 border border-white/10" />
+                                                ) : (
+                                                    <div className="w-12 h-12 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                                                        <FiCoffeeSolid className="text-muted-foreground/40" />
+                                                    </div>
+                                                )}
+                                                <div className="flex-1 min-w-0">
                                                     <div className="font-bold text-sm group-hover:text-emerald-400 transition-colors">{r.name}</div>
                                                     <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mt-0.5">People: {r.servings || 1} • {r.genre || 'General'}{isSnackRecipe(r) ? ' • Snack' : ''}</div>
                                                 </div>
