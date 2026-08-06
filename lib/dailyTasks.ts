@@ -76,6 +76,12 @@ function detectTaskDone(def: DailyTaskDef, todayLog: any, symptomLog: any): bool
     }
 }
 
+function symptomMatches(def: DailyTaskDef, symptomLog: any): boolean {
+    if (!def.symptomName) return false
+    const names = (symptomLog?.symptoms || []).map((s: any) => String(s.name || '').toLowerCase())
+    return names.includes(def.symptomName.toLowerCase())
+}
+
 export function useDailyTasks(date: string, todayLog: any, symptomLog: any) {
     const storageKey = `dailyTasks.${date}`
 
@@ -97,6 +103,31 @@ export function useDailyTasks(date: string, todayLog: any, symptomLog: any) {
         }
     }, [storageKey])
 
+    // Tick off tasks from the symptom log (multi-device sync) and persist locally.
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        if (!symptomLog || !symptomLog.symptoms) return
+        const symptomNames = new Set((symptomLog.symptoms || []).map((s: any) => String(s.name || '').toLowerCase()))
+        let changed = false
+        const updated: Record<string, number> = {}
+        DEFAULT_DAILY_TASKS.forEach(def => {
+            if (!def.symptomName || !symptomNames.has(def.symptomName.toLowerCase())) return
+            const target = def.target || 1
+            if ((manualProgress[def.id] || 0) < target) {
+                updated[def.id] = target
+                changed = true
+            }
+        })
+        if (!changed) return
+        const next = { ...manualProgress, ...updated }
+        setManualProgress(next)
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(next))
+        } catch {
+            /* ignore */
+        }
+    }, [storageKey, symptomLog, manualProgress])
+
     const toggle = useCallback((id: string) => {
         setManualProgress(prev => {
             const def = DEFAULT_DAILY_TASKS.find(t => t.id === id)
@@ -117,7 +148,7 @@ export function useDailyTasks(date: string, todayLog: any, symptomLog: any) {
 
     const tasks: DailyTaskState[] = useMemo(() => {
         return DEFAULT_DAILY_TASKS.map(def => {
-            const autoDone = detectTaskDone(def, todayLog, symptomLog)
+            const autoDone = detectTaskDone(def, todayLog, symptomLog) || symptomMatches(def, symptomLog)
             const target = def.target || 1
             const count = manualProgress[def.id] || 0
             const manual = count > 0
