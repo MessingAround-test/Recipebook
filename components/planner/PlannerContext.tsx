@@ -43,11 +43,14 @@ export interface PlannerApi {
     modalMealFilters: Set<string>;
     setModalMealFilters: (v: any) => void;
     toggleMealFilter: (m: string) => void;
+    modalSearch: string;
+    setModalSearch: (v: string) => void;
     modalSelectedRecipeIds: Set<string>;
     handleToggleModalRecipe: (id: string) => void;
     confirmModalRecipes: () => void;
     browseTarget: { day: string | null; mealType: string | null; pantry?: boolean } | null;
     removePlannedRecipe: (id: string) => void;
+    addAverageMeal: () => void;
     mergeTwoItems: (a: string, b: string) => void;
     splitRecipe: (id: string, amount?: number) => void;
     combinePendingId: string | null;

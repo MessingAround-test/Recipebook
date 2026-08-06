@@ -4,6 +4,7 @@ import PlanHeader from '../components/planner/PlanHeader';
 import DayGrid from '../components/planner/DayGrid';
 import SidePanel from '../components/planner/SidePanel';
 import BrowseRecipesModal from '../components/planner/BrowseRecipesModal';
+import DietaryPanel from '../components/planner/DietaryPanel';
 import { FiX, FiMenu } from 'react-icons/fi';
 
 function PlannerContent() {
@@ -27,6 +28,9 @@ function PlannerContent() {
                         <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6">
                             {/* Day area */}
                             <div className="min-w-0">
+                                <div className="mb-6">
+                                    <DietaryPanel />
+                                </div>
                                 <DayGrid />
                             </div>
 

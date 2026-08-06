@@ -92,10 +92,11 @@ export default function RecipeCard({ item, analysisData, compact = false, timeli
             <div
                 draggable
                 onDragStart={(e) => handleDragStart(e, item)}
-                className={`cursor-grab active:cursor-grabbing transition-all rounded-lg border px-2 py-1.5 flex items-start justify-between group ${item.isLeftover ? 'bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'} ${isPending ? 'ring-2 ring-blue-400 bg-blue-500/20 shadow-[0_0_14px_rgba(59,130,246,0.5)]' : ''}`}
+                className={`cursor-grab active:cursor-grabbing transition-all rounded-lg border px-2 py-1.5 flex items-start justify-between group ${item.isAverageMeal ? 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20' : item.isLeftover ? 'bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'} ${isPending ? 'ring-2 ring-blue-400 bg-blue-500/20 shadow-[0_0_14px_rgba(59,130,246,0.5)]' : ''}`}
                 title={item.recipe_name}
             >
                 <div className="min-w-0 flex-1">
+                    {item.isAverageMeal && <div className="text-[8px] font-black uppercase tracking-widest text-amber-400 mb-0.5">Avg Meal</div>}
                     <div className="font-bold text-xs leading-tight truncate">{item.recipe_name}</div>
                     <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[10px] text-muted-foreground">People: {item.servings}</span>
@@ -120,10 +121,11 @@ export default function RecipeCard({ item, analysisData, compact = false, timeli
         <div
             draggable
             onDragStart={(e) => handleDragStart(e, item)}
-            className={`cursor-grab active:cursor-grabbing transition-all rounded-xl p-3 border flex items-start justify-between group ${item.isLeftover ? 'bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'} ${isPending ? 'ring-2 ring-blue-400 bg-blue-500/20 shadow-[0_0_14px_rgba(59,130,246,0.5)]' : ''}`}
+            className={`cursor-grab active:cursor-grabbing transition-all rounded-xl p-3 border flex items-start justify-between group ${item.isAverageMeal ? 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20' : item.isLeftover ? 'bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20' : 'bg-white/5 border-white/10 hover:bg-white/10'} ${isPending ? 'ring-2 ring-blue-400 bg-blue-500/20 shadow-[0_0_14px_rgba(59,130,246,0.5)]' : ''}`}
         >
             <div className="min-w-0 flex-1">
                 {item.isLeftover && <div className="text-[10px] font-bold text-amber-500 mb-1 uppercase tracking-wider">(Leftovers)</div>}
+                {item.isAverageMeal && <div className="text-[10px] font-bold text-amber-400 mb-1 uppercase tracking-wider">Avg Meal</div>}
                 <div className="font-bold text-sm leading-tight break-words">{item.recipe_name}</div>
                 <div className="flex items-center gap-2 mt-1">
                     <div className="text-xs text-muted-foreground">People: {item.servings}</div>

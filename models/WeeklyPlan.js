@@ -39,7 +39,8 @@ const PlannedRecipeSchema = new mongoose.Schema({
     day: { type: String, required: true }, // YYYY-MM-DD date, or 'Undecided'
     mealType: { type: String, enum: ['Breakfast', 'Lunch', 'Dinner', 'Snack'], required: true },
     isLeftover: { type: Boolean, default: false },
-    isVague: { type: Boolean, default: false } // For "vague lunches"
+    isVague: { type: Boolean, default: false }, // For "vague lunches"
+    isAverageMeal: { type: Boolean, default: false } // Placeholder counted at "average meal" values
 });
 
 const WeeklyPlanSchema = new mongoose.Schema({

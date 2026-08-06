@@ -67,9 +67,9 @@ export default function DailyScoreTrendsView() {
     const summary = useMemo(() => {
         const withScore = days.filter(d => d.score > 0);
         const avg = withScore.length ? Math.round(withScore.reduce((a, b) => a + b.score, 0) / withScore.length) : 0;
-        const totalPos = days.reduce((a, b) => a + (b.positive || 0), 0);
-        const totalNeg = days.reduce((a, b) => a + (b.negative || 0), 0);
-        const totalNeu = days.reduce((a, b) => a + (b.neutral || 0), 0);
+        const totalPos = days.filter(d => (d.positive || 0) > 0).length;
+        const totalNeg = days.filter(d => (d.negative || 0) > 0).length;
+        const totalNeu = days.filter(d => (d.neutral || 0) > 0).length;
         return {
             avg,
             totalPos,
@@ -95,6 +95,22 @@ export default function DailyScoreTrendsView() {
                 fill: false,
                 yAxisID: 'yScore',
                 order: 1,
+            },
+            {
+                type: 'line' as const,
+                label: 'Mood (1-10)',
+                data: days.map(d => d.mood != null ? d.mood * 10 : null),
+                borderColor: 'rgba(217, 70, 239, 1)',
+                backgroundColor: 'rgba(217, 70, 239, 1)',
+                borderWidth: 2,
+                borderDash: [6, 4],
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                tension: 0.4,
+                fill: false,
+                yAxisID: 'yScore',
+                spanGaps: false,
+                order: 2,
             },
             {
                 label: 'Positive',
@@ -219,8 +235,8 @@ export default function DailyScoreTrendsView() {
             <div className="glass-card border-white/5 bg-black/20 p-6 min-h-[400px] flex flex-col">
                 <div className="flex items-center justify-between mb-6">
                     <div>
-                        <h3 className="text-sm font-black uppercase tracking-widest text-white">Daily Score vs Symptoms</h3>
-                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Score overlaid with symptom counts</p>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-white">Daily Score vs Symptoms & Mood</h3>
+                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Score & mood overlaid with symptom counts</p>
                     </div>
                     <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase">
                         <FiTrendingUp size={14} className="text-emerald-500" />

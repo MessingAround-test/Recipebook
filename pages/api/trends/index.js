@@ -57,7 +57,7 @@ export default async function handler(req, res) {
         const symptomLogs = await SymptomLog.find({
             user_id: userId,
             date: { $gte: startDate, $lte: endDate }
-        }).select('date symptoms').lean();
+        }).select('date symptoms mood').lean();
 
         const classifications = await SymptomClassification.find().select('name category').lean();
         const categoryMap = new Map(classifications.map(c => [c.name, c.category]));
@@ -104,6 +104,7 @@ export default async function handler(req, res) {
             days.push({
                 date: dStr,
                 score,
+                mood: symptomLog?.mood ?? null,
                 positive: counts.positive,
                 negative: counts.negative,
                 neutral: counts.neutral,

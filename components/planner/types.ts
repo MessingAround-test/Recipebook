@@ -10,6 +10,8 @@ export interface PlannedRecipeItem {
     mealType: string;
     carbType?: string;
     isLeftover?: boolean;
+    // Placeholder counted at "average meal" values (1/3 macro + 15% micro targets) in analysis.
+    isAverageMeal?: boolean;
     id?: string; // temporary client id
     _id?: string; // server id
 }
@@ -54,12 +56,27 @@ export interface AnalysisRecipe {
     costPercentage?: number;
 }
 
+export interface NutrientCoverageItem {
+    key: string;
+    label: string;
+    unit: string;
+    group: 'macro' | 'mineral' | 'vitamin';
+    value: number;
+    target: number;
+    pct: number;
+    weight: number;
+    isLimit: boolean;
+}
+
 export interface PlanAnalysis {
     numDays: number;
     weeklyTotals: Record<string, number>;
     dailyAverages: Record<string, number>;
     dailyTargets: Record<string, number>;
     deficiencies: { key: string; pct: number }[];
+    nutrientCoverage?: NutrientCoverageItem[];
+    projectedScore?: number | null;
+    healthScoreConfig?: any;
     totalCost: number;
     averageDailyCost: number;
     totalCostPerPerson: number;

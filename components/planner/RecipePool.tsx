@@ -7,6 +7,7 @@ export default function RecipePool() {
     const {
         undecidedRecipes,
         openModal,
+        addAverageMeal,
         handleDragOver,
         handleDrop,
         handleSplitDrop,
@@ -32,9 +33,18 @@ export default function RecipePool() {
                 <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-blue-400">
                     <FiInfo /> Recipe Pool
                 </h3>
-                <button onClick={() => openModal(false)} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-xs font-bold px-2 py-1 rounded-md transition-colors">
-                    + Browse
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={addAverageMeal}
+                        title="Add an 'Average Meal' placeholder — counted at average values once dragged onto a day"
+                        className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs font-bold px-2 py-1 rounded-md transition-colors"
+                    >
+                        + Avg Meal
+                    </button>
+                    <button onClick={() => openModal(false)} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-xs font-bold px-2 py-1 rounded-md transition-colors">
+                        + Browse
+                    </button>
+                </div>
             </div>
             <p className="text-xs text-muted-foreground mb-4">Drag these recipes to your days!</p>
 

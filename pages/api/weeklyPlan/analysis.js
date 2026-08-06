@@ -5,6 +5,8 @@ import IngredientConversion from '../../../models/IngredientConversion';
 import { verifyToken } from '../../../lib/auth';
 import { calculateDailyIntake } from '../../../lib/dailyIntake';
 import { normalizeToGrams } from '../../../lib/conversion';
+import { mergeHealthScoreConfig, getNutrientWeight } from '../../../lib/healthScore';
+import { buildNutrientCoverage, computeProjectedScore } from '../../../lib/planCoverage';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -36,6 +38,7 @@ export default async function handler(req, res) {
         };
         const targets = calculateDailyIntake(profile);
         const nutrientKeys = Object.keys(targets);
+        const healthScoreConfig = mergeHealthScoreConfig(user.health_score_config);
 
         const totals = {};
         nutrientKeys.forEach(k => totals[k] = 0);
@@ -93,7 +96,17 @@ export default async function handler(req, res) {
         for (const item of (plan.plannedRecipes || [])) {
             if (item.day !== 'Undecided') {
                 filledSlots.add(`${item.day}-${item.mealType}`);
-                
+
+                // An explicit "Average Meal" placeholder is counted at average
+                // values (1/3 of daily macro target, 15% for vitamins/minerals).
+                if (item.isAverageMeal) {
+                    nutrientKeys.forEach(k => {
+                        const isMacro = ['energy_kcal', 'protein_g', 'fat_g', 'carbohydrates_g', 'fiber_g'].includes(k);
+                        totals[k] += isMacro ? (targets[k] / 3) : (targets[k] * 0.15);
+                    });
+                    continue;
+                }
+
                 const data = await getRecipeNutritionAndCost(item.recipe_id, item.servings, false, item.isLeftover);
                 if (data) {
                     nutrientKeys.forEach(k => {
@@ -144,28 +157,10 @@ export default async function handler(req, res) {
             }
         }
 
-        // Track which days have any meals planned
-        const activeDays = new Set();
-        for (const item of (plan.plannedRecipes || [])) {
-            if (item.day !== 'Undecided') {
-                activeDays.add(item.day);
-            }
-        }
-
-        // 3. Fill in Missing Meals
-        // We only backfill meals for days that are COMPLETELY empty.
-        // If a day has any meals planned, we assume the user is intentionally skipping the rest.
-        const numEmptyDays = numDays - activeDays.size;
-        const numMissingSlots = numEmptyDays * 3;
-
-        if (numMissingSlots > 0) {
-            nutrientKeys.forEach(k => {
-                // Average meal provides 1/3 of daily target for macros, but only 15% for vitamins/minerals
-                const isMacro = ['energy_kcal', 'protein_g', 'fat_g', 'carbohydrates_g', 'fiber_g'].includes(k);
-                const avgMealValue = isMacro ? (targets[k] / 3) : (targets[k] * 0.15);
-                totals[k] += numMissingSlots * avgMealValue;
-            });
-        }
+        // 3. No auto-backfill: empty meal slots count as no meal. The user can
+        // add explicit "Average Meal" placeholders from the recipe pool if they
+        // want a day estimated at average values (handled in step 1).
+        const numMissingSlots = 0;
 
         // Calculate cost percentage per recipe
         recipeAnalysis.forEach(r => {
@@ -178,10 +173,14 @@ export default async function handler(req, res) {
             dailyAverages[k] = totals[k] / numDays;
         });
 
+        // Deficiencies respect the user's health-score weightings: nutrients
+        // with a weight of 0 are excluded entirely.
         const deficiencies = [];
         nutrientKeys.forEach(k => {
             const target = targets[k];
             if (target <= 0) return;
+            const weight = getNutrientWeight(k, healthScoreConfig);
+            if (weight <= 0) return;
             const pct = dailyAverages[k] / target;
             if (pct < 0.95) {
                 deficiencies.push({ key: k, pct });
@@ -189,6 +188,22 @@ export default async function handler(req, res) {
         });
 
         deficiencies.sort((a, b) => a.pct - b.pct);
+
+        const people = plan.defaultServings || 1;
+        const nutrientCoverage = buildNutrientCoverage({
+            totals,
+            targets,
+            numDays,
+            people,
+            config: healthScoreConfig
+        });
+        const projectedScore = computeProjectedScore({
+            totals,
+            targets,
+            numDays,
+            people,
+            config: healthScoreConfig
+        });
 
         return res.status(200).json({
             success: true,
@@ -198,10 +213,13 @@ export default async function handler(req, res) {
                 dailyAverages,
                 dailyTargets: targets,
                 deficiencies,
+                nutrientCoverage,
+                projectedScore,
+                healthScoreConfig,
                 totalCost,
                 averageDailyCost: totalCost / numDays,
-                totalCostPerPerson: totalCost / (plan.defaultServings || 1),
-                averageDailyCostPerPerson: (totalCost / numDays) / (plan.defaultServings || 1),
+                totalCostPerPerson: totalCost / people,
+                averageDailyCostPerPerson: (totalCost / numDays) / people,
                 numMissingSlots,
                 everydayCost,
                 dailyEverydayCost: everydayCost / numDays,

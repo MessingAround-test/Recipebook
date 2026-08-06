@@ -22,6 +22,25 @@ export async function postPlan(startDate: string, plan: Plan): Promise<any> {
     });
 }
 
+// Fire-and-forget save that survives page unload (used to flush pending edits
+// when the user refreshes or navigates away before the debounced autosave runs).
+export async function postPlanKeepAlive(startDate: string, plan: Plan): Promise<void> {
+    const token = localStorage.getItem('Token');
+    try {
+        await fetch('/api/weeklyPlan', {
+            method: 'POST',
+            keepalive: true,
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { [TOKEN_HEADER]: token } : {})
+            },
+            body: JSON.stringify({ startDate, ...plan })
+        });
+    } catch (err) {
+        console.error(err);
+    }
+}
+
 export async function fetchAnalysis(plan: Plan): Promise<any> {
     return authedFetch('/api/weeklyPlan/analysis', {
         method: 'POST',

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthGuard } from '../../lib/useAuthGuard';
 import { CURRENT_PLAN_VERSION } from '../../lib/planVersion';
 import { getDateRange, addDays, todayStr, daysBetween, parseFlexibleDate } from '../../lib/dateUtils';
-import { fetchPlan, postPlan, fetchAnalysis, postExport, fetchRecipes } from './dataLayer';
+import { fetchPlan, postPlan, postPlanKeepAlive, fetchAnalysis, postExport, fetchRecipes } from './dataLayer';
 import { Plan, PlanAnalysis, Recipe, SaveStatus, BrowseTarget } from './types';
 import { MAX_DAYS } from './types';
 import { makeKey, newTempId } from './utils';
@@ -30,6 +30,7 @@ export function usePlan() {
     const [modalOnlySnacks, setModalOnlySnacks] = useState(false);
     const [modalGroupBy, setModalGroupBy] = useState<'carb' | 'meal' | 'genre'>('carb');
     const [modalMealFilters, setModalMealFilters] = useState<Set<string>>(new Set());
+    const [modalSearch, setModalSearch] = useState('');
     const [browseTarget, setBrowseTarget] = useState<BrowseTarget | null>(null);
 
     // Mobile pool drawer
@@ -49,6 +50,10 @@ export function usePlan() {
     const analysisSeq = useRef(0);
     const lastSavedRef = useRef('');
     const loadedStartRef = useRef(startDate);
+    // Set when a pantry mutation occurs: save immediately instead of debouncing.
+    const immediateSaveRef = useRef(false);
+    // Latest unsaved plan (for flushing pending edits on refresh / tab hide).
+    const pendingSaveRef = useRef<{ startDate: string; plan: any } | null>(null);
 
     const dates = useMemo(() => getDateRange(startDate, numDays), [startDate, numDays]);
     const endDate = dates[dates.length - 1];
@@ -101,27 +106,74 @@ export function usePlan() {
         }
     }, [isAuthed, fetchData]);
 
-    // Autosave (debounced) whenever the plan content changes
+    // Autosave whenever the plan content changes. Pantry mutations bypass the
+    // debounce (immediateSaveRef) so a quick refresh can never lose them.
     useEffect(() => {
         if (!isAuthed || loading) return;
-        if (planContentSnapshot === lastSavedRef.current) return;
+        if (planContentSnapshot === lastSavedRef.current) {
+            immediateSaveRef.current = false;
+            return;
+        }
 
-        setSaveStatus('saving');
-        if (saveTimer.current) clearTimeout(saveTimer.current);
-        saveTimer.current = setTimeout(async () => {
+        const doSave = async () => {
             try {
                 await postPlan(loadedStartRef.current, planWithRange);
                 lastSavedRef.current = planContentSnapshot;
+                pendingSaveRef.current = null;
                 setSaveStatus('saved');
             } catch (err) {
                 console.error(err);
                 setSaveStatus('error');
             }
-        }, 800);
+        };
+
+        setSaveStatus('saving');
+        pendingSaveRef.current = { startDate: loadedStartRef.current, plan: planWithRange };
+
+        if (immediateSaveRef.current) {
+            immediateSaveRef.current = false;
+            doSave();
+            return;
+        }
+
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        saveTimer.current = setTimeout(() => {
+            saveTimer.current = null;
+            doSave();
+        }, 500);
         return () => {
             if (saveTimer.current) clearTimeout(saveTimer.current);
         };
     }, [isAuthed, loading, planContentSnapshot, planWithRange]);
+
+    // Clear pending saves when switching weeks so old-week edits are never
+    // POSTed under the new week's startDate after navigation.
+    useEffect(() => {
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+        pendingSaveRef.current = null;
+    }, [startDate]);
+
+    // Flush any pending (unsaved) plan edits when the tab is being closed,
+    // hidden, or the page is refreshed — before the debounced autosave can run.
+    useEffect(() => {
+        const flush = () => {
+            if (saveTimer.current) clearTimeout(saveTimer.current);
+            if (pendingSaveRef.current) {
+                postPlanKeepAlive(pendingSaveRef.current.startDate, pendingSaveRef.current.plan);
+                pendingSaveRef.current = null;
+            }
+        };
+        const onVisibility = () => {
+            if (document.visibilityState === 'hidden') flush();
+        };
+        window.addEventListener('pagehide', flush);
+        document.addEventListener('visibilitychange', onVisibility);
+        return () => {
+            window.removeEventListener('pagehide', flush);
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
+    }, []);
 
     // Live analysis (debounced) whenever the plan changes
     useEffect(() => {
@@ -198,6 +250,8 @@ export function usePlan() {
     // --- Save / Export ---
     const handleSave = useCallback(async () => {
         setSaveStatus('saving');
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        pendingSaveRef.current = null;
         try {
             await postPlan(loadedStartRef.current, planWithRange);
             lastSavedRef.current = planContentSnapshot;
@@ -231,6 +285,7 @@ export function usePlan() {
         if (!recipeId) return;
         const recipe = allRecipes.find(r => r._id === recipeId);
         if (!recipe) return;
+        immediateSaveRef.current = true;
         setPlan(prev => ({
             ...prev,
             everydayItems: [...prev.everydayItems, { name: recipe.name, quantity: newEverydayQty * numDays, recipe_id: recipe._id }]
@@ -239,6 +294,7 @@ export function usePlan() {
     }, [allRecipes, newEverydayQty, numDays]);
 
     const updateEverydayQty = useCallback((idx: number, qty: number) => {
+        immediateSaveRef.current = true;
         setPlan(prev => ({
             ...prev,
             everydayItems: prev.everydayItems.map((item, i) => i === idx ? { ...item, quantity: qty } : item)
@@ -246,6 +302,7 @@ export function usePlan() {
     }, []);
 
     const removeEverydayItem = useCallback((idx: number) => {
+        immediateSaveRef.current = true;
         setPlan(prev => {
             const everydayItems = prev.everydayItems.filter((_, i) => i !== idx);
             // Re-index placements: drop references to the removed item, shift later ones down
@@ -262,6 +319,7 @@ export function usePlan() {
 
     // Visual-only: pin/unpin a pantry pool item into a specific meal slot
     const togglePantryPlacement = useCallback((itemIndex: number, day: string, mealType: string) => {
+        immediateSaveRef.current = true;
         setPlan(prev => {
             const key = `${day}|${mealType}`;
             const placements = { ...(prev.pantryPlacements || {}) };
@@ -280,6 +338,7 @@ export function usePlan() {
         setModalOnlySnacks(onlySnacks);
         setModalGroupBy('carb');
         setModalMealFilters(target?.mealType ? new Set([target.mealType]) : new Set());
+        setModalSearch('');
         setBrowseTarget(target);
         setShowRecipeModal(true);
     }, []);
@@ -308,6 +367,7 @@ export function usePlan() {
     const confirmModalRecipes = useCallback(() => {
         if (browseTarget?.pantry) {
             // Pantry mode: add selected recipes as everyday items (no auto-split)
+            immediateSaveRef.current = true;
             const newItems = [];
             modalSelectedRecipeIds.forEach((id: string) => {
                 const recipe = allRecipes.find(r => r._id === id);
@@ -371,6 +431,26 @@ export function usePlan() {
         setPlan(prev => ({
             ...prev,
             plannedRecipes: prev.plannedRecipes.filter(r => r.id !== idToRemove && r._id !== idToRemove)
+        }));
+    }, []);
+
+    // Add an "Average Meal" placeholder to the pool. It's counted at average
+    // meal values in analysis once placed on a day (and contributes nothing
+    // while left Undecided).
+    const addAverageMeal = useCallback(() => {
+        setPlan(prev => ({
+            ...prev,
+            plannedRecipes: [
+                ...prev.plannedRecipes,
+                {
+                    recipe_name: 'Average Meal',
+                    servings: prev.defaultServings,
+                    day: 'Undecided',
+                    mealType: 'Dinner',
+                    isAverageMeal: true,
+                    id: newTempId()
+                }
+            ]
         }));
     }, []);
 
@@ -602,11 +682,14 @@ export function usePlan() {
         modalMealFilters,
         setModalMealFilters,
         toggleMealFilter,
+        modalSearch,
+        setModalSearch,
         modalSelectedRecipeIds,
         handleToggleModalRecipe,
         confirmModalRecipes,
         browseTarget,
         removePlannedRecipe,
+        addAverageMeal,
         mergeTwoItems,
         splitRecipe,
         combinePendingId,

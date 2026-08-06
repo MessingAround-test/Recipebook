@@ -117,6 +117,8 @@ export function calculateHealthScore(
     targets: Record<string, number>,
     config: HealthScoreConfig = DEFAULT_HEALTH_SCORE_CONFIG
 ): number {
+    const anyData = Object.values(totals || {}).some(v => v > 0);
+    if (!anyData) return 0;
     let sum = 0;
     let weightSum = 0;
     for (const key of Object.keys(targets)) {

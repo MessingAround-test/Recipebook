@@ -1,4 +1,4 @@
-import { FiX, FiFilter, FiCoffee } from 'react-icons/fi';
+import { FiX, FiFilter, FiCoffee, FiSearch } from 'react-icons/fi';
 import { usePlanner } from '../planner/PlannerContext';
 import { MEALS } from './types';
 import { isSnackRecipe, normalizeMealType, sortCarbKeys } from './utils';
@@ -15,6 +15,8 @@ export default function BrowseRecipesModal() {
         modalMealFilters,
         setModalMealFilters,
         toggleMealFilter,
+        modalSearch,
+        setModalSearch,
         modalSelectedRecipeIds,
         handleToggleModalRecipe,
         confirmModalRecipes,
@@ -23,7 +25,13 @@ export default function BrowseRecipesModal() {
 
     if (!showRecipeModal) return null;
 
+    const searchTerm = modalSearch.trim().toLowerCase();
+
     const filtered = allRecipes.filter(r => {
+        if (searchTerm) {
+            const haystack = `${r.name} ${r.genre || ''} ${(r.mealTypes || []).join(' ')}`.toLowerCase();
+            if (!haystack.includes(searchTerm)) return false;
+        }
         if (modalOnlySnacks && !isSnackRecipe(r)) return false;
         if (modalMealFilters.size > 0) {
             const primary = (r.mealTypes && r.mealTypes.length > 0)
@@ -70,6 +78,25 @@ export default function BrowseRecipesModal() {
                     </button>
                 </div>
                 <div className="p-4 border-b border-white/5 flex flex-col gap-3">
+                    <div className="relative">
+                        <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" size={15} />
+                        <input
+                            type="text"
+                            value={modalSearch}
+                            onChange={(e) => setModalSearch(e.target.value)}
+                            placeholder="Search recipes..."
+                            autoFocus
+                            className="w-full bg-black/40 border border-white/10 rounded-lg pl-9 pr-8 py-2 text-sm text-white placeholder:text-muted-foreground/50 focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-colors"
+                        />
+                        {modalSearch && (
+                            <button
+                                onClick={() => setModalSearch('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-white transition-colors"
+                            >
+                                <FiX size={14} />
+                            </button>
+                        )}
+                    </div>
                     <div className="flex flex-wrap items-center gap-3">
                         <label className="flex items-center gap-2 text-xs font-bold text-muted-foreground cursor-pointer select-none">
                             <input
@@ -115,6 +142,11 @@ export default function BrowseRecipesModal() {
                     </div>
                 </div>
                 <div className="p-4 flex-1 overflow-y-auto space-y-6 custom-scrollbar">
+                    {Object.keys(grouped).length === 0 && (
+                        <div className="text-center py-10 text-muted-foreground/60 text-xs font-bold uppercase tracking-widest">
+                            {searchTerm ? `No recipes match "${modalSearch.trim()}"` : 'No recipes match your filters'}
+                        </div>
+                    )}
                     {Object.entries(grouped).sort(([a], [b]) => sortGroupKeys(a, b)).map(([group, recipes]) => (
                         <div key={group}>
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3 flex items-center gap-2">

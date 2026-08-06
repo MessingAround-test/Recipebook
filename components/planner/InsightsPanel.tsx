@@ -70,6 +70,9 @@ export default function InsightsPanel() {
                                         );
                                     })}
                                 </div>
+                                <p className="text-[10px] text-muted-foreground mt-2 italic">
+                                    See the Weeklong Dietary Requirements panel above the planner for full per-person coverage.
+                                </p>
                             </>
                         ) : (
                             <p className="text-xs text-emerald-400 font-bold">Great job! You are hitting all your nutritional targets.</p>
