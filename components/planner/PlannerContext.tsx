@@ -30,6 +30,7 @@ export interface PlannerApi {
     addEverydayItem: (recipeId: string) => void;
     updateEverydayQty: (idx: number, qty: number) => void;
     removeEverydayItem: (idx: number) => void;
+    togglePantryPlacement: (itemIndex: number, day: string, mealType: string) => void;
     newEverydayQty: number;
     setNewEverydayQty: (v: number) => void;
     showRecipeModal: boolean;

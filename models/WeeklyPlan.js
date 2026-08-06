@@ -49,7 +49,10 @@ const WeeklyPlanSchema = new mongoose.Schema({
     defaultServings: { type: Number, default: 2 },
     version: { type: Number, default: CURRENT_PLAN_VERSION },
     plannedRecipes: [PlannedRecipeSchema],
-    everydayItems: [EverydayItemSchema]
+    everydayItems: [EverydayItemSchema],
+    // Visual-only placements of pantry pool items into meal slots.
+    // Keyed by `${day}|${mealType}`, value is an array of everydayItems indexes.
+    pantryPlacements: { type: mongoose.Schema.Types.Mixed, default: {} }
 }, { 
     timestamps: true 
 });

@@ -26,6 +26,8 @@ export interface Plan {
     plannedRecipes: PlannedRecipeItem[];
     everydayItems: EverydayItem[];
     numDays?: number;
+    // Visual-only pantry pool placements: `${day}|${mealType}` -> everydayItems indexes
+    pantryPlacements?: Record<string, number[]>;
 }
 
 export interface Recipe {

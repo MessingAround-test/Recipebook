@@ -7,7 +7,7 @@ import { Plan, PlanAnalysis, Recipe, SaveStatus, BrowseTarget } from './types';
 import { MAX_DAYS } from './types';
 import { makeKey, newTempId } from './utils';
 
-const emptyPlan = (): Plan => ({ defaultServings: 2, plannedRecipes: [], everydayItems: [], numDays: 7 });
+const emptyPlan = (): Plan => ({ defaultServings: 2, plannedRecipes: [], everydayItems: [], numDays: 7, pantryPlacements: {} });
 
 export function usePlan() {
     const isAuthed = useAuthGuard();
@@ -59,6 +59,7 @@ export function usePlan() {
         defaultServings: plan.defaultServings,
         plannedRecipes: plan.plannedRecipes,
         everydayItems: plan.everydayItems,
+        pantryPlacements: plan.pantryPlacements || {},
         numDays
     }), [plan, numDays]);
 
@@ -70,21 +71,23 @@ export function usePlan() {
             setAllRecipes(recipes);
 
             if (planData.success && planData.plan && planData.plan.version === CURRENT_PLAN_VERSION) {
-                setPlan(planData.plan);
+                const loaded = { ...planData.plan, pantryPlacements: planData.plan.pantryPlacements || {} };
+                setPlan(loaded);
                 if (!planData.created && planData.plan.numDays) {
                     setNumDays(planData.plan.numDays);
                 }
                 loadedStartRef.current = planData.plan.startDate || startDate;
                 lastSavedRef.current = JSON.stringify({
-                    defaultServings: planData.plan.defaultServings,
-                    plannedRecipes: planData.plan.plannedRecipes,
-                    everydayItems: planData.plan.everydayItems,
-                    numDays: planData.plan.numDays || 7
+                    defaultServings: loaded.defaultServings,
+                    plannedRecipes: loaded.plannedRecipes,
+                    everydayItems: loaded.everydayItems,
+                    pantryPlacements: loaded.pantryPlacements,
+                    numDays: loaded.numDays || 7
                 });
             } else {
                 setPlan(emptyPlan());
                 loadedStartRef.current = startDate;
-                lastSavedRef.current = JSON.stringify({ defaultServings: 2, plannedRecipes: [], everydayItems: [], numDays: 7 });
+                lastSavedRef.current = JSON.stringify({ defaultServings: 2, plannedRecipes: [], everydayItems: [], pantryPlacements: {}, numDays: 7 });
             }
         } catch (err) {
             console.error(err);
@@ -243,10 +246,33 @@ export function usePlan() {
     }, []);
 
     const removeEverydayItem = useCallback((idx: number) => {
-        setPlan(prev => ({
-            ...prev,
-            everydayItems: prev.everydayItems.filter((_, i) => i !== idx)
-        }));
+        setPlan(prev => {
+            const everydayItems = prev.everydayItems.filter((_, i) => i !== idx);
+            // Re-index placements: drop references to the removed item, shift later ones down
+            const pantryPlacements = {};
+            Object.entries(prev.pantryPlacements || {}).forEach(([key, list]) => {
+                const adjusted = list
+                    .filter(i => i !== idx)
+                    .map(i => i > idx ? i - 1 : i);
+                if (adjusted.length) pantryPlacements[key] = adjusted;
+            });
+            return { ...prev, everydayItems, pantryPlacements };
+        });
+    }, []);
+
+    // Visual-only: pin/unpin a pantry pool item into a specific meal slot
+    const togglePantryPlacement = useCallback((itemIndex: number, day: string, mealType: string) => {
+        setPlan(prev => {
+            const key = `${day}|${mealType}`;
+            const placements = { ...(prev.pantryPlacements || {}) };
+            const list = placements[key] ? [...placements[key]] : [];
+            const pos = list.indexOf(itemIndex);
+            if (pos >= 0) list.splice(pos, 1);
+            else list.push(itemIndex);
+            if (list.length === 0) delete placements[key];
+            else placements[key] = list;
+            return { ...prev, pantryPlacements: placements };
+        });
     }, []);
 
     // --- Modal helpers ---
@@ -542,6 +568,7 @@ export function usePlan() {
         addEverydayItem,
         updateEverydayQty,
         removeEverydayItem,
+        togglePantryPlacement,
         newEverydayQty,
         setNewEverydayQty,
         showRecipeModal,
