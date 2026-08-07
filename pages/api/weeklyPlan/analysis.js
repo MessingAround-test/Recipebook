@@ -7,6 +7,7 @@ import { calculateDailyIntake, NUTRIENT_LABELS } from '../../../lib/dailyIntake'
 import { normalizeToGrams } from '../../../lib/conversion';
 import { mergeHealthScoreConfig, getNutrientWeight } from '../../../lib/healthScore';
 import { buildNutrientCoverage, computeProjectedScore } from '../../../lib/planCoverage';
+import { computeRecipeNutrientTotals, computePlainIngredientNutrients, escapeRegExp } from '../../../lib/planNutrition';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -49,49 +50,6 @@ export default async function handler(req, res) {
         // Track filled meal slots (only plannedRecipes, not everydayItems)
         const filledSlots = new Set();
 
-        // Helper to fetch and calculate recipe nutrients
-        const getRecipeNutritionAndCost = async (recipeId, servingsToLog, isEveryday = false, isLeftover = false) => {
-            const rec = await Recipe.findById(recipeId);
-            if (!rec) return null;
-
-            const recipeNutrients = {};
-            nutrientKeys.forEach(k => recipeNutrients[k] = 0);
-
-            for (const ing of rec.ingredients) {
-                const conv = await IngredientConversion.findOne({ 
-                    ingredient_name: { $regex: new RegExp(`^${ing.Name}$`, 'i') } 
-                });
-                if (conv) {
-                    const { value: grams } = normalizeToGrams(ing.AmountType, ing.Amount, conv.grams_per_each);
-                    if (grams) {
-                        nutrientKeys.forEach(k => {
-                            recipeNutrients[k] += (conv[k] || 0) * (grams / 100);
-                        });
-                    }
-                }
-            }
-
-            const recServings = rec.servings || 1;
-            const ratio = servingsToLog / recServings;
-
-            // Scale by ratio
-            nutrientKeys.forEach(k => recipeNutrients[k] *= ratio);
-
-            // Use unitCost (cost of buying all ingredients) for a realistic checkout cost, fallback to approxCost
-            const baseCost = rec.unitCost || rec.approxCost || rec.cost || 0;
-            
-            let cost = 0;
-            if (isEveryday) {
-                // If everyday, servingsToLog is actually the total quantity for the day
-                cost = baseCost * servingsToLog;
-            } else {
-                // For planned recipes (including leftovers), split the unit cost proportionally across servings
-                cost = (baseCost / recServings) * servingsToLog;
-            }
-
-            return { rec, nutrients: recipeNutrients, cost };
-        };
-
         // 1. Process Planned Recipes
         for (const item of (plan.plannedRecipes || [])) {
             if (item.day !== 'Undecided') {
@@ -107,7 +65,7 @@ export default async function handler(req, res) {
                     continue;
                 }
 
-                const data = await getRecipeNutritionAndCost(item.recipe_id, item.servings, false, item.isLeftover);
+                const data = await computeRecipeNutrientTotals(item.recipe_id, item.servings, nutrientKeys);
                 if (data) {
                     nutrientKeys.forEach(k => {
                         totals[k] += data.nutrients[k] || 0;
@@ -147,13 +105,25 @@ export default async function handler(req, res) {
         // They are added once to the weekly totals; dailyAverages (totals / numDays) handles the spreading.
         let everydayCost = 0;
         for (const item of (plan.everydayItems || [])) {
-            const data = await getRecipeNutritionAndCost(item.recipe_id, item.quantity, true);
-            if (data) {
+            if (item.recipe_id) {
+                const data = await computeRecipeNutrientTotals(item.recipe_id, item.quantity, nutrientKeys, { isEveryday: true });
+                if (data) {
+                    nutrientKeys.forEach(k => {
+                        totals[k] += data.nutrients[k] || 0;
+                    });
+                    totalCost += data.cost;
+                    everydayCost += data.cost;
+                }
+                continue;
+            }
+
+            // Plain ingredient (no recipe): look up its per-100g nutrition by name.
+            // Quantity is the weekly total; 'each' units use grams_per_each, 'grams' is literal.
+            const plain = await computePlainIngredientNutrients(item.name, item.quantity, item.quantity_unit, nutrientKeys);
+            if (plain) {
                 nutrientKeys.forEach(k => {
-                    totals[k] += data.nutrients[k] || 0;
+                    totals[k] += plain.nutrients[k] || 0;
                 });
-                totalCost += data.cost;
-                everydayCost += data.cost;
             }
         }
 
@@ -211,7 +181,6 @@ export default async function handler(req, res) {
         // the user's library that contain those foods. Foods/recipes already in
         // the plan period are excluded, and each suggestion shows how much of
         // the daily target it covers (foods per 100g, recipes per serving).
-        const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const SUGGEST_PER_GROUP = 2;
         const SUGGEST_FOOD_COUNT = 5;
         const SUGGEST_RECIPE_COUNT = 5;

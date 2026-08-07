@@ -1,6 +1,7 @@
 import { verifyToken } from "../../../lib/auth";
 import { logAPI } from '../../../lib/logger'
 import { callGroqChat } from '../../../lib/ai';
+import { buildDietaryConstraints } from '../../../lib/dietaryRules';
 
 export default async function handler(req, res) {
     logAPI(req)
@@ -20,7 +21,7 @@ export default async function handler(req, res) {
 
         const User = require('../../../models/User').default;
         const user = await User.findById(decoded.id) || await User.findOne({ id: decoded.id });
-        const preference = user?.dietary_preference || 'none';
+        const dietaryConstraints = buildDietaryConstraints(user || {});
 
         const messages = [
             {
@@ -28,10 +29,7 @@ export default async function handler(req, res) {
                 content: `You are a nutrition expert. Suggest 10 ingredients that are exceptionally high in ${nutrientLabel}.
                 Focus on whole foods like fresh produce, nuts, seeds, etc.
                 
-                IMPORTANT: The user has a dietary preference of "${preference}".
-                - If "vegetarian": Do NOT suggest any meat or poultry. Seafood is also discouraged.
-                - If "vegan": Do NOT suggest any animal products (no meat, poultry, seafood, dairy, or eggs).
-                - If "pescetarian": Do NOT suggest any meat or poultry. Seafood is allowed.
+                IMPORTANT DIETARY RULES FOR THIS USER: ${dietaryConstraints}
                 
                 CRITICAL: Return ONLY a simple JSON array of strings (e.g. ["Item 1", "Item 2"]). 
                 Do NOT return an object with a key. Do NOT return any markdown or extra text.`

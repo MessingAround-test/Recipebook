@@ -1,4 +1,5 @@
 import { Fragment } from 'react';
+import { FiZap } from 'react-icons/fi';
 import { usePlanner } from '../planner/PlannerContext';
 import { formatShortDate } from '../../lib/dateUtils';
 import { MEALS } from './types';
@@ -23,7 +24,7 @@ interface WeekTimelineProps {
 }
 
 export default function WeekTimeline({ dayRefs }: WeekTimelineProps) {
-    const { dates, plan, analysis } = usePlanner();
+    const { dates, plan, analysis, openDaySuggest } = usePlanner();
 
     const dayCost = (date: string) => {
         let planned = 0;
@@ -54,7 +55,16 @@ export default function WeekTimeline({ dayRefs }: WeekTimelineProps) {
                         ref={(el) => { if (dayRefs) dayRefs.current[d] = el; }}
                         className="border-b border-white/10 px-3 py-2.5 flex flex-col gap-1"
                     >
-                        <span className="text-xs font-black uppercase tracking-wider">{formatShortDate(d)}</span>
+                        <div className="flex items-start justify-between gap-1">
+                            <span className="text-xs font-black uppercase tracking-wider">{formatShortDate(d)}</span>
+                            <button
+                                onClick={() => openDaySuggest(d)}
+                                title="AI-fill this day"
+                                className="shrink-0 p-1 rounded-md bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-colors"
+                            >
+                                <FiZap size={12} />
+                            </button>
+                        </div>
                         {analysis && (
                             <span className="text-[10px] font-bold text-emerald-400">${dayCost(d).toFixed(2)}</span>
                         )}

@@ -29,6 +29,9 @@ export interface PlannerApi {
     handleExport: () => void;
     addEverydayItem: (recipeId: string) => void;
     updateEverydayQty: (idx: number, qty: number) => void;
+    addEverydayIngredient: (name: string) => void;
+    updateEverydayUnit: (idx: number, unit: string) => void;
+    addSuggestedIngredient: (name: string, gramsPerDay?: number) => void;
     removeEverydayItem: (idx: number) => void;
     togglePantryPlacement: (itemIndex: number, day: string, mealType: string) => void;
     newEverydayQty: number;
@@ -66,6 +69,20 @@ export interface PlannerApi {
     undecidedRecipes: any[];
     mobilePoolOpen: boolean;
     setMobilePoolOpen: (v: boolean) => void;
+    suggestDay: string | null;
+    suggestData: any;
+    suggesting: boolean;
+    suggestError: string | null;
+    generatingRecipe: boolean;
+    generatedRecipe: any;
+    generateCoverArt: boolean;
+    setGenerateCoverArt: (v: boolean) => void;
+    openDaySuggest: (day: string) => void;
+    closeDaySuggest: () => void;
+    addDaySuggestion: (sugg: any) => void;
+    addAllDaySuggestions: () => void;
+    generateRecipe: (timePref: string, requirement?: string) => void;
+    addGeneratedRecipe: () => void;
     setPlan: (v: any) => void;
 }
 

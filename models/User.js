@@ -14,6 +14,7 @@ const UserSchema = new mongoose.Schema(
     height_cm: { type: Number },
     activity_level: { type: String, enum: ['sedentary', 'light', 'moderate', 'active', 'very_active'] },
     dietary_preference: { type: String, enum: ['none', 'vegetarian', 'vegan', 'pescetarian'], default: 'none' },
+    dietary_restrictions: { type: [String], enum: ['gluten_free', 'dairy_free', 'nut_free', 'low_fodmap', 'kosher', 'halal'], default: [] },
     daily_exercise_kj: { type: Number, default: 0 },
     target_weight_kg: { type: Number },
     weekly_goal_kg: { type: Number },

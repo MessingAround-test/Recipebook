@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthGuard } from '../../lib/useAuthGuard';
 import { CURRENT_PLAN_VERSION } from '../../lib/planVersion';
 import { getDateRange, addDays, todayStr, daysBetween, parseFlexibleDate } from '../../lib/dateUtils';
-import { fetchPlan, postPlan, postPlanKeepAlive, fetchAnalysis, postExport, fetchRecipes } from './dataLayer';
-import { Plan, PlanAnalysis, Recipe, SaveStatus, BrowseTarget } from './types';
+import { fetchPlan, postPlan, postPlanKeepAlive, fetchAnalysis, postExport, fetchRecipes, suggestForDay, generateRecipeForDay } from './dataLayer';
+import { Plan, PlanAnalysis, Recipe, SaveStatus, BrowseTarget, DaySuggestion, DaySuggestionResponse, GeneratedRecipe } from './types';
 import { MAX_DAYS } from './types';
 import { makeKey, newTempId } from './utils';
+import { saveRecipe } from '../../lib/recipeExtraction';
 
 const emptyPlan = (): Plan => ({ defaultServings: 2, plannedRecipes: [], everydayItems: [], numDays: 7, pantryPlacements: {} });
 
@@ -35,6 +36,15 @@ export function usePlan() {
 
     // Mobile pool drawer
     const [mobilePoolOpen, setMobilePoolOpen] = useState(false);
+
+    // Day AI suggestions
+    const [suggestDay, setSuggestDay] = useState<string | null>(null);
+    const [suggestData, setSuggestData] = useState<DaySuggestionResponse | null>(null);
+    const [suggesting, setSuggesting] = useState(false);
+    const [suggestError, setSuggestError] = useState<string | null>(null);
+    const [generatingRecipe, setGeneratingRecipe] = useState(false);
+    const [generatedRecipe, setGeneratedRecipe] = useState<GeneratedRecipe | null>(null);
+    const [generateCoverArt, setGenerateCoverArt] = useState(true);
 
     // Combine zone holds the first dropped item, waiting for a second
     const [combinePendingId, setCombinePendingId] = useState<string | null>(null);
@@ -300,6 +310,43 @@ export function usePlan() {
             everydayItems: prev.everydayItems.map((item, i) => i === idx ? { ...item, quantity: qty } : item)
         }));
     }, []);
+
+    // Add a plain ingredient (no recipe) to the pantry pool — e.g. fruit that
+    // doesn't have a recipe. Quantity is a weekly total, stored per the unit
+    // ('each' by default, 'grams' supported via updateEverydayUnit).
+    const addEverydayIngredient = useCallback((name: string) => {
+        const trimmed = (name || '').trim();
+        if (!trimmed) return;
+        immediateSaveRef.current = true;
+        setPlan(prev => ({
+            ...prev,
+            everydayItems: [...prev.everydayItems, { name: trimmed, quantity: newEverydayQty * numDays, recipe_id: null, quantity_unit: 'each' }]
+        }));
+        setNewEverydayQty(1);
+    }, [newEverydayQty, numDays]);
+
+    const updateEverydayUnit = useCallback((idx: number, unit: string) => {
+        immediateSaveRef.current = true;
+        setPlan(prev => ({
+            ...prev,
+            everydayItems: prev.everydayItems.map((item, i) => i === idx ? { ...item, quantity_unit: unit } : item)
+        }));
+    }, []);
+
+    // Add a suggested ingredient at a given grams/day so the shown impact is
+    // realized (energy-dense foods like nuts get a smaller amount). Defaults to
+    // 100g/day. Skips if an item with the same name is already pooled.
+    const addSuggestedIngredient = useCallback((name: string, gramsPerDay = 100) => {
+        const trimmed = (name || '').trim();
+        if (!trimmed) return;
+        if (plan.everydayItems.some(i => i.name && i.name.toLowerCase() === trimmed.toLowerCase())) return;
+        const gpd = Number(gramsPerDay) > 0 ? Number(gramsPerDay) : 100;
+        immediateSaveRef.current = true;
+        setPlan(prev => ({
+            ...prev,
+            everydayItems: [...prev.everydayItems, { name: trimmed, quantity: gpd * numDays, recipe_id: null, quantity_unit: 'grams' }]
+        }));
+    }, [numDays, plan.everydayItems]);
 
     const removeEverydayItem = useCallback((idx: number) => {
         immediateSaveRef.current = true;
@@ -590,6 +637,151 @@ export function usePlan() {
         setCombinePendingId(null);
     }, [plan.plannedRecipes, combinePendingId, mergeTwoItems]);
 
+    // --- Day AI suggestions ---
+    const openDaySuggest = useCallback(async (day: string) => {
+        setSuggestDay(day);
+        setSuggestData(null);
+        setGeneratedRecipe(null);
+        setSuggestError(null);
+        setSuggesting(true);
+        try {
+            const data = await suggestForDay(plan, day);
+            if (data.success) {
+                setSuggestData(data);
+            } else {
+                setSuggestError(data.message || 'Failed to get suggestions');
+            }
+        } catch (err) {
+            console.error(err);
+            setSuggestError('Failed to get suggestions');
+        } finally {
+            setSuggesting(false);
+        }
+    }, [plan]);
+
+    const closeDaySuggest = useCallback(() => {
+        setSuggestDay(null);
+        setSuggestData(null);
+        setGeneratedRecipe(null);
+        setSuggestError(null);
+    }, []);
+
+    // Add a single AI suggestion (recipe into a slot, or a pantry ingredient).
+    const addDaySuggestion = useCallback((sugg: DaySuggestion) => {
+        if (!suggestDay) return;
+        if (sugg.type === 'pantry' && sugg.pantryName) {
+            addSuggestedIngredient(sugg.pantryName, sugg.quantity);
+            return;
+        }
+        if (sugg.type === 'recipe' && sugg.recipe) {
+            const r = sugg.recipe;
+            immediateSaveRef.current = true;
+            setPlan(prev => ({
+                ...prev,
+                plannedRecipes: [
+                    ...prev.plannedRecipes,
+                    {
+                        recipe_id: r._id,
+                        recipe_name: r.name,
+                        servings: prev.defaultServings,
+                        day: suggestDay,
+                        mealType: sugg.mealSlot || 'Snack',
+                        carbType: r.carbType || 'Uncategorized',
+                        id: newTempId()
+                    }
+                ]
+            }));
+        }
+    }, [suggestDay, addSuggestedIngredient]);
+
+    const addAllDaySuggestions = useCallback(() => {
+        (suggestData?.recommendations || []).forEach(s => addDaySuggestion(s));
+    }, [suggestData, addDaySuggestion]);
+
+    // AI-generate a brand-new recipe tuned to what the day is lacking.
+    const generateRecipe = useCallback(async (timePref: string, requirement?: string) => {
+        if (!suggestDay) return;
+        setGeneratingRecipe(true);
+        setGeneratedRecipe(null);
+        setSuggestError(null);
+        try {
+            const data = await generateRecipeForDay(plan, suggestDay, timePref, requirement || undefined);
+            if (data.success) {
+                setGeneratedRecipe({ ...data.recipe, nutrientDelta: data.nutrientDelta });
+            } else {
+                setSuggestError(data.message || 'Failed to generate recipe');
+            }
+        } catch (err) {
+            console.error(err);
+            setSuggestError('Failed to generate recipe');
+        } finally {
+            setGeneratingRecipe(false);
+        }
+    }, [plan, suggestDay]);
+
+    // Save the generated recipe to the library and drop it into the day's slot.
+    const addGeneratedRecipe = useCallback(async () => {
+        if (!generatedRecipe || !suggestDay) return;
+        setGeneratingRecipe(true);
+        setSuggestError(null);
+        try {
+            let image: string | undefined;
+            if (generateCoverArt) {
+                try {
+                    const token = localStorage.getItem('Token');
+                    const imgRes = await fetch(`/api/ai/generate_image_prompt?recipeName=${encodeURIComponent(generatedRecipe.name)}`, {
+                        headers: token ? { edgetoken: token } : {}
+                    });
+                    const imgData = await imgRes.json();
+                    if (imgData.success && imgData.image) image = imgData.image;
+                } catch (e) {
+                    console.error('Cover art failed:', e);
+                }
+            }
+
+            const saved = await saveRecipe({
+                name: generatedRecipe.name,
+                ingreds: generatedRecipe.ingredients || [],
+                instructions: generatedRecipe.instructions || [],
+                image,
+                time: generatedRecipe.time,
+                genre: generatedRecipe.genre,
+                mealTypes: generatedRecipe.mealTypes,
+                carbType: generatedRecipe.carbType,
+                servings: generatedRecipe.servings
+            });
+
+            setAllRecipes(prev => {
+                if (prev.some(r => r._id === saved?._id)) return prev;
+                return [...prev, saved];
+            });
+
+            immediateSaveRef.current = true;
+            setPlan(prev => ({
+                ...prev,
+                plannedRecipes: [
+                    ...prev.plannedRecipes,
+                    {
+                        recipe_id: saved._id,
+                        recipe_name: saved.name,
+                        servings: prev.defaultServings,
+                        day: suggestDay,
+                        mealType: generatedRecipe.suggestedSlot || 'Snack',
+                        carbType: saved.carbType || generatedRecipe.carbType || 'Uncategorized',
+                        id: newTempId()
+                    }
+                ]
+            }));
+
+            closeDaySuggest();
+        } catch (err) {
+            console.error(err);
+            setSuggestError((err as any)?.message || 'Failed to save recipe');
+        } finally {
+            setGeneratingRecipe(false);
+        }
+    }, [generatedRecipe, suggestDay, generateCoverArt, closeDaySuggest]);
+
     // --- Carb Guidance ---
     const getCarbSuggestions = useCallback(() => {
         const plannedRecipeIds = plan.plannedRecipes.map(r => r.recipe_id);
@@ -668,6 +860,9 @@ export function usePlan() {
         handleExport,
         addEverydayItem,
         updateEverydayQty,
+        addEverydayIngredient,
+        updateEverydayUnit,
+        addSuggestedIngredient,
         removeEverydayItem,
         togglePantryPlacement,
         newEverydayQty,
@@ -705,6 +900,20 @@ export function usePlan() {
         undecidedRecipes,
         mobilePoolOpen,
         setMobilePoolOpen,
+        suggestDay,
+        suggestData,
+        suggesting,
+        suggestError,
+        generatingRecipe,
+        generatedRecipe,
+        generateCoverArt,
+        setGenerateCoverArt,
+        openDaySuggest,
+        closeDaySuggest,
+        addDaySuggestion,
+        addAllDaySuggestions,
+        generateRecipe,
+        addGeneratedRecipe,
         setPlan
     };
 }

@@ -11,6 +11,7 @@ export interface UserProfile {
     height_cm?: number;
     activity_level?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
     dietary_preference?: 'none' | 'vegetarian' | 'vegan' | 'pescetarian';
+    dietary_restrictions?: string[];
     daily_exercise_kj?: number;
     target_weight_kg?: number;
     weekly_goal_kg?: number;

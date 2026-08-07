@@ -63,3 +63,17 @@ export async function fetchRecipes(): Promise<Recipe[]> {
     const data = await res.json();
     return data.res || [];
 }
+
+export async function suggestForDay(plan: Plan, day: string): Promise<any> {
+    return authedFetch('/api/weeklyPlan/suggest', {
+        method: 'POST',
+        body: JSON.stringify({ plan, day })
+    });
+}
+
+export async function generateRecipeForDay(plan: Plan, day: string, timePreference: string, requirement?: string): Promise<any> {
+    return authedFetch('/api/weeklyPlan/generateRecipe', {
+        method: 'POST',
+        body: JSON.stringify({ plan, day, timePreference, requirement })
+    });
+}

@@ -5,6 +5,7 @@ import DayGrid from '../components/planner/DayGrid';
 import SidePanel from '../components/planner/SidePanel';
 import BrowseRecipesModal from '../components/planner/BrowseRecipesModal';
 import DietaryPanel from '../components/planner/DietaryPanel';
+import DaySuggestModal from '../components/planner/DaySuggestModal';
 import { FiX, FiMenu } from 'react-icons/fi';
 
 function PlannerContent() {
@@ -72,6 +73,7 @@ function PlannerContent() {
                 )}
 
                 <BrowseRecipesModal />
+                <DaySuggestModal />
             </Layout>
         </PlannerContext.Provider>
     );

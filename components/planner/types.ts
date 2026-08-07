@@ -115,3 +115,45 @@ export interface BrowseTarget {
 }
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+export interface DayCoverageItem {
+    key: string;
+    label: string;
+    unit: string;
+    pct: number;
+    value: number;
+    target: number;
+}
+
+export interface DaySuggestion {
+    type: 'recipe' | 'pantry';
+    recipe?: Recipe;
+    pantryName?: string;
+    // Grams per day for pantry items (added to the pool at this amount).
+    quantity?: number;
+    mealSlot: string | null;
+    reason: string;
+    // Per-person, per-day nutrient contribution as % of daily target.
+    nutrientDelta?: { key: string; label: string; pct: number }[];
+}
+
+export interface DaySuggestionResponse {
+    dayCoverage: DayCoverageItem[];
+    plannedMeals: { mealType: string; name: string; carbType?: string }[];
+    emptySlots: string[];
+    recommendations: DaySuggestion[];
+}
+
+export interface GeneratedRecipe {
+    name: string;
+    ingredients: { Name: string; Amount: string | number; AmountType: string; Note?: string }[];
+    instructions: { Text: string; Note?: string }[];
+    time?: string;
+    genre?: string;
+    mealTypes?: string[];
+    servings?: number;
+    carbType?: string;
+    suggestedSlot: string;
+    // Per-person, per-day contribution as % of daily target (for preview).
+    nutrientDelta?: { key: string; label: string; pct: number }[];
+}

@@ -1,6 +1,7 @@
 import dbConnect from '../../../lib/dbConnect'
 import IngredientConversion from '../../../models/IngredientConversion'
 import { verifyToken } from "../../../lib/auth";
+import { allowedIngredientCategories } from '../../../lib/dietaryRules';
 
 export default async function handler(req, res) {
     const decoded = await verifyToken(req, res);
@@ -20,16 +21,7 @@ export default async function handler(req, res) {
 
         const User = require('../../../models/User').default;
         const user = await User.findById(decoded.id) || await User.findOne({ id: decoded.id });
-        const preference = user?.dietary_preference || 'none';
-
-        let allowedCategories = ["Fresh Produce", "Meat", "Seafood", "Nuts", "Seeds", "Dairy", "Grains", "Pantry"];
-        if (preference === 'vegetarian') {
-            allowedCategories = allowedCategories.filter(c => c !== "Meat" && c !== "Seafood");
-        } else if (preference === 'vegan') {
-            allowedCategories = allowedCategories.filter(c => c !== "Meat" && c !== "Seafood" && c !== "Dairy");
-        } else if (preference === 'pescetarian') {
-            allowedCategories = allowedCategories.filter(c => c !== "Meat");
-        }
+        const allowedCategories = allowedIngredientCategories(user || {});
 
         // We want to filter for whole foods/fresh produce to give better recommendations
         // But we also want to show newly added records that might not have a category yet.

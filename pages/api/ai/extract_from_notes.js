@@ -1,7 +1,8 @@
 import { verifyToken } from "../../../lib/auth";
 import { logAPI } from '../../../lib/logger'
 import { callGroqChat } from '../../../lib/ai';
-import { resolveUnitKey, quantity_unit_conversions } from "../../../lib/conversion";
+import { quantity_unit_conversions } from "../../../lib/conversion";
+import { normalizeExtractedIngredients } from '../../../lib/recipeNormalize';
 
 const VALID_GENRES = [
     'Italian', 'Mexican', 'Asian', 'Indian', 'Mediterranean', 'American',
@@ -78,50 +79,7 @@ STRICT RULES:
 
         // Post-processing cleanup for ingredients
         if (data.ingredients && Array.isArray(data.ingredients)) {
-            data.ingredients = data.ingredients.map(ing => {
-                let cleanIng = { ...ing };
-                
-                // 1. Resolve unit to canonical key
-                cleanIng.AmountType = resolveUnitKey(ing.AmountType);
-
-                // 2. Clean 'Amount' if it contains the unit (e.g., "320g" -> "320")
-                if (typeof cleanIng.Amount === 'string') {
-                    // Remove common units from amount string if duplicated
-                    const unitSynonyms = quantity_unit_conversions[cleanIng.AmountType]?.synonyms || [];
-                    const allSynonyms = [...unitSynonyms, cleanIng.AmountType];
-                    
-                    allSynonyms.forEach(syn => {
-                        if (syn && cleanIng.Amount.toLowerCase().endsWith(syn.toLowerCase())) {
-                            cleanIng.Amount = cleanIng.Amount.toLowerCase().replace(syn.toLowerCase(), '').trim();
-                        }
-                    });
-
-                    // If it's still messy, try to extract just the numeric/fraction part
-                    // Priority: Mixed Fraction (1 1/2) -> Simple Fraction (1/2) -> Decimal (0.5) -> Integer (1)
-                    const numMatch = cleanIng.Amount.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d+\.\d+|\d+)/);
-                    if (numMatch) {
-                        cleanIng.Amount = numMatch[0].trim();
-                    }
-                }
-
-                // 3. Clean 'Name' if it starts with the unit (e.g., "gGrilled Eggplant" -> "Grilled Eggplant")
-                if (cleanIng.Name && typeof cleanIng.Name === 'string') {
-                    const unitSynonyms = quantity_unit_conversions[cleanIng.AmountType]?.synonyms || [];
-                    const allSynonyms = [...unitSynonyms, cleanIng.AmountType];
-                    
-                    allSynonyms.forEach(syn => {
-                        if (syn && cleanIng.Name.toLowerCase().startsWith(syn.toLowerCase())) {
-                            // Only strip if it's followed by a space or capital letter (heuristic)
-                            const potentialRemainder = cleanIng.Name.substring(syn.length);
-                            if (potentialRemainder.startsWith(' ') || /^[A-Z]/.test(potentialRemainder)) {
-                                cleanIng.Name = potentialRemainder.trim();
-                            }
-                        }
-                    });
-                }
-
-                return cleanIng;
-            });
+            data.ingredients = normalizeExtractedIngredients(data.ingredients);
         }
 
         return res.status(200).json({ success: true, data });

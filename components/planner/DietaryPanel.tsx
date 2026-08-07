@@ -22,7 +22,7 @@ function scoreColor(score: number | null | undefined): string {
 }
 
 export default function DietaryPanel() {
-    const { analysis, analyzing, openModal } = usePlanner();
+    const { analysis, analyzing, openModal, addSuggestedIngredient } = usePlanner();
     const [tab, setTab] = useState<'macro' | 'mineral' | 'vitamin'>('macro');
 
     const coverage = analysis?.nutrientCoverage || [];
@@ -117,12 +117,14 @@ export default function DietaryPanel() {
                                                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground mt-2 mb-1">Add more of these</p>
                                                 <div className="flex flex-wrap gap-1">
                                                     {s.foods.map(f => (
-                                                        <span
+                                                        <button
                                                             key={f.name}
-                                                            className="text-[10px] font-bold bg-white/5 border border-white/10 rounded-md px-1.5 py-0.5 text-muted-foreground"
+                                                            onClick={() => addSuggestedIngredient(f.name)}
+                                                            title="Add 100g/day to pantry"
+                                                            className="text-[10px] font-bold bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/30 rounded-md px-1.5 py-0.5 text-muted-foreground hover:text-emerald-300 transition-colors"
                                                         >
                                                             {f.name} <span className="text-emerald-400">+{Math.round(f.pct)}%</span>
-                                                        </span>
+                                                        </button>
                                                     ))}
                                                 </div>
                                             </>

@@ -28,6 +28,15 @@ const DIETARY_OPTIONS = [
     { value: 'pescetarian', label: 'Pescetarian', desc: 'No meat, but seafood is okay' },
 ]
 
+const RESTRICTION_OPTIONS = [
+    { value: 'gluten_free', label: 'Gluten-Free', desc: 'No wheat, barley, rye' },
+    { value: 'dairy_free', label: 'Dairy-Free', desc: 'No milk, butter, cheese' },
+    { value: 'nut_free', label: 'Nut-Free', desc: 'No peanuts or tree nuts' },
+    { value: 'low_fodmap', label: 'Low-FODMAP', desc: 'Avoid high-FODMAP foods' },
+    { value: 'kosher', label: 'Kosher', desc: 'Kosher dietary laws' },
+    { value: 'halal', label: 'Halal', desc: 'Halal dietary laws' },
+]
+
 type Group = 'macro' | 'mineral' | 'vitamin'
 
 function NutrientBar({ label, value, target, unit }: { label: string; value?: number; target: number; unit: string }) {
@@ -62,6 +71,7 @@ export default function DailyIntakePage() {
         height_cm: undefined,
         activity_level: undefined,
         dietary_preference: 'none',
+        dietary_restrictions: [],
         daily_exercise_kj: 0,
         target_weight_kg: undefined,
         weekly_goal_kg: undefined,
@@ -91,6 +101,7 @@ export default function DailyIntakePage() {
                     height_cm: u.height_cm,
                     activity_level: u.activity_level,
                     dietary_preference: u.dietary_preference || 'none',
+                    dietary_restrictions: u.dietary_restrictions || [],
                     daily_exercise_kj: u.daily_exercise_kj ?? 0,
                     target_weight_kg: u.target_weight_kg,
                     weekly_goal_kg: u.weekly_goal_kg,
@@ -127,6 +138,7 @@ export default function DailyIntakePage() {
                         height_cm: u.height_cm,
                         activity_level: u.activity_level,
                         dietary_preference: u.dietary_preference || 'none',
+                        dietary_restrictions: u.dietary_restrictions || [],
                         daily_exercise_kj: u.daily_exercise_kj ?? 0,
                         target_weight_kg: u.target_weight_kg,
                         weekly_goal_kg: u.weekly_goal_kg,
@@ -304,6 +316,45 @@ export default function DailyIntakePage() {
                                             <span className="text-[10px] opacity-70 italic leading-tight">{opt.desc}</span>
                                         </button>
                                     ))}
+                                </div>
+                            </div>
+
+                            {/* Additional Dietary Restrictions */}
+                            <div>
+                                <label className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                                    <span className="inline-flex items-center gap-1"><MdRestaurant size={14} /> Additional Restrictions</span>
+                                </label>
+                                <p className="text-[11px] text-muted-foreground mb-3 leading-tight -mt-1">These combine with your preference and are passed to the planner's AI suggestions.</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {RESTRICTION_OPTIONS.map(opt => {
+                                        const active = (profile.dietary_restrictions || []).includes(opt.value)
+                                        return (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                id={`restriction-${opt.value}`}
+                                                onClick={() => {
+                                                    setProfile(p => {
+                                                        const current = p.dietary_restrictions || []
+                                                        return {
+                                                            ...p,
+                                                            dietary_restrictions: active
+                                                                ? current.filter(v => v !== opt.value)
+                                                                : [...current, opt.value]
+                                                        }
+                                                    })
+                                                }}
+                                                className={`flex flex-col items-start px-3 py-2 rounded-lg border text-left transition-all ${
+                                                    active
+                                                        ? 'bg-emerald-500/20 border-emerald-500 text-foreground'
+                                                        : 'bg-muted/10 border-border/40 text-foreground hover:border-emerald-500/40'
+                                                }`}
+                                            >
+                                                <span className="font-semibold text-xs">{opt.label}</span>
+                                                <span className="text-[10px] opacity-70 italic leading-tight">{opt.desc}</span>
+                                            </button>
+                                        )
+                                    })}
                                 </div>
                             </div>
 
