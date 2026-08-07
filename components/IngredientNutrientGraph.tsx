@@ -187,7 +187,7 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
     const hasVitaminData = Object.values(definitions).some(d => d && (d.vitamin_a_ug > 0 || d.vitamin_c_mg > 0));
 
     return (
-        <div className="w-full">
+        <div className="w-full max-w-full overflow-hidden">
             {/* Ingredient filter */}
             <div className="flex flex-col md:flex-row gap-4 mb-4 items-start md:items-center">
                 <select
@@ -270,11 +270,12 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
             )}
 
             {/* Bar chart */}
-            <div className="bg-white/[0.03] rounded-xl p-4">
+            <div className="relative w-full h-[280px] md:h-[320px] bg-white/[0.03] rounded-xl p-4">
                 <Bar
                     data={chartData}
                     options={{
                         responsive: true,
+                        maintainAspectRatio: false,
                         plugins: {
                             legend: { labels: { color: 'gray' } },
                             tooltip: {

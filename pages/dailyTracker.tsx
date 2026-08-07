@@ -875,7 +875,7 @@ export default function DailyTracker() {
 
                         {/* ═══ MOBILE: Breakdown Overlay ═══ */}
                         {breakdownExpanded && (
-                            <div className="md:hidden fixed inset-0 z-[90] bg-background overflow-y-auto animate-in slide-in-from-bottom duration-300">
+                            <div className="md:hidden fixed inset-0 z-[90] bg-background overflow-y-auto overflow-x-hidden animate-in slide-in-from-bottom duration-300">
                                 <div className="sticky top-0 z-10 flex items-center justify-between p-3 bg-background/95 backdrop-blur-md border-b border-white/5">
                                     <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-emerald-500"><FiPieChart /> Breakdown</h2>
                                     <button onClick={() => setBreakdownExpanded(false)} className="p-2.5 hover:bg-white/10 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
