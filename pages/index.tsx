@@ -4,12 +4,15 @@ import { Layout } from '../components/Layout'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import { NUTRIENT_LABELS } from '../lib/dailyIntake'
 import { calculateHealthScore, DEFAULT_HEALTH_SCORE_CONFIG, HealthScoreConfig } from '../lib/healthScore'
-import { FiZap, FiActivity, FiShoppingCart, FiCalendar, FiArrowRight, FiPlus, FiCheckCircle, FiChevronRight, FiTrendingUp, FiSearch, FiX, FiCoffee, FiRefreshCw } from 'react-icons/fi'
+import { FiZap, FiActivity, FiShoppingCart, FiCalendar, FiArrowRight, FiPlus, FiCheckCircle, FiChevronRight, FiTrendingUp, FiSearch, FiX, FiCoffee, FiRefreshCw, FiInfo } from 'react-icons/fi'
 import IngredientEditor from '../components/IngredientEditor'
 import { fileToBase64 } from '../lib/recipeImage'
 import { extractRecipeFromImage, saveRecipe, Ingredient } from '../lib/recipeExtraction'
 import { useDailyTasks, TASK_SYMPTOM_NAMES } from '../lib/dailyTasks'
 import DailyTasksCard from '../components/DailyTasksCard'
+import { getDailySuggestionFromCoverage } from '../lib/dailySuggestions'
+import TodayNutritionModal from '../components/TodayNutritionModal'
+import PlanDayCoverageModal from '../components/PlanDayCoverageModal'
 
 const getLocalDateString = (d: Date) => {
     const year = d.getFullYear()
@@ -19,6 +22,11 @@ const getLocalDateString = (d: Date) => {
 }
 
 const UNITS = ['gram', 'each', 'kg', 'ml', 'cup', 'tbsp', 'tsp']
+
+// Default occurrence times (minutes from midnight) used to order "closest to happening".
+const MEAL_TIMES: Record<string, number> = { Breakfast: 480, Lunch: 750, Snack: 930, Dinner: 1080 }
+// Latest time (minutes from midnight) a meal still shows; meals without an entry never hide.
+const MEAL_HIDE_AFTER: Record<string, number> = { Breakfast: 660, Lunch: 900, Dinner: 1320 }
 
 const Skeleton = ({ className = '' }: { className?: string }) => (
     <div className={`animate-pulse bg-white/[0.04] rounded-xl ${className}`} />
@@ -37,6 +45,7 @@ export default function Dashboard() {
     const [todayLog, setTodayLog] = useState<any>(null)
     const [recommendations, setRecommendations] = useState<any>(null)
     const [weekPlan, setWeekPlan] = useState<any>(null)
+    const [planCoverage, setPlanCoverage] = useState<any>(null)
     const [shoppingLists, setShoppingLists] = useState<any[]>([])
     const [listItemsCount, setListItemsCount] = useState<number | null>(null)
     const [trendDays, setTrendDays] = useState<any[]>([])
@@ -45,6 +54,8 @@ export default function Dashboard() {
     const [symptomLog, setSymptomLog] = useState<any>(null)
 
     // Quick-log state
+    const [showNutrition, setShowNutrition] = useState(false)
+    const [showPlanCoverage, setShowPlanCoverage] = useState(false)
     const [isLoggingOpen, setIsLoggingOpen] = useState(false)
     const [logSearch, setLogSearch] = useState('')
     const [logSelection, setLogSelection] = useState<any>(null)
@@ -100,6 +111,16 @@ export default function Dashboard() {
             }
             if (planRes.status === 'fulfilled' && planRes.value.success && planRes.value.plan) {
                 setWeekPlan(planRes.value.plan)
+                // Estimated intake for today if we ate everything planned (the
+                // same data the "(i)" modal shows). Feeds the plan-card advice.
+                fetch('/api/weeklyPlan/dayCoverage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', edgetoken: token },
+                    body: JSON.stringify({ plan: planRes.value.plan, day: today })
+                })
+                    .then(r => r.json())
+                    .then(d => { if (d.success) setPlanCoverage(d) })
+                    .catch(() => {})
             }
             if (listRes.status === 'fulfilled') {
                 const lists = (listRes.value.res || []).filter((l: any) => l.complete !== true)
@@ -221,6 +242,8 @@ export default function Dashboard() {
         return calculateHealthScore(totals, targets, healthScoreConfig)
     }, [targets, todayLog, totals, healthScoreConfig])
 
+    const planSuggestion = useMemo(() => getDailySuggestionFromCoverage(planCoverage?.dayCoverage), [planCoverage])
+
     const calories = Math.round(totals.energy_kcal || 0)
     const calorieTarget = targets?.energy_kcal || 0
     const caloriePct = calorieTarget > 0 ? Math.min((calories / calorieTarget) * 100, 100) : 0
@@ -234,7 +257,14 @@ export default function Dashboard() {
     }, [trendDays])
 
     const todayDayName = new Date().toLocaleDateString('en-AU', { weekday: 'long' })
-    const todayMeals = weekPlan?.plannedRecipes?.filter((r: any) => r.day === getLocalDateString(new Date())) || []
+    const todayMealsAll = weekPlan?.plannedRecipes?.filter((r: any) => r.day === getLocalDateString(new Date())) || []
+    const todayMeals = useMemo(() => {
+        const now = new Date()
+        const mins = now.getHours() * 60 + now.getMinutes()
+        return todayMealsAll
+            .filter((r: any) => MEAL_HIDE_AFTER[r.mealType] == null || mins < MEAL_HIDE_AFTER[r.mealType])
+            .sort((a: any, b: any) => (MEAL_TIMES[a.mealType] ?? 0) - (MEAL_TIMES[b.mealType] ?? 0))
+    }, [todayMealsAll])
     const plannedCount = weekPlan?.plannedRecipes?.length || 0
     const everydayCount = weekPlan?.everydayItems?.length || 0
     const hasWeekPlan = plannedCount > 0 || everydayCount > 0
@@ -450,6 +480,14 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2.5">
                     <IconChip className="bg-orange-500/20 text-orange-400"><FiCalendar size={16} /></IconChip>
                     <h3 className="text-sm font-black tracking-tight">This Week</h3>
+                    <button
+                        onClick={() => setShowPlanCoverage(true)}
+                        aria-label="See today's estimated intake from the plan"
+                        title="Today's estimated intake if we ate everything planned"
+                        className="shrink-0 w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 text-muted-foreground hover:text-white text-[10px] font-black flex items-center justify-center transition-colors active:scale-90"
+                    >
+                        <FiInfo size={11} />
+                    </button>
                 </div>
                 <button
                     onClick={() => Router.push('/weeklyPlanner')}
@@ -466,33 +504,39 @@ export default function Dashboard() {
                 </div>
             ) : (
                 <>
-                    <div className="flex gap-2 mb-4">
-                        <div className="flex-1 bg-black/25 rounded-xl p-3 text-center">
-                            <div className="text-2xl md:text-3xl font-black text-orange-300 leading-none">{plannedCount}</div>
-                            <div className="text-[8px] font-bold uppercase tracking-wider text-orange-200/70 mt-1.5">Meals</div>
-                        </div>
-                        <div className="flex-1 bg-black/25 rounded-xl p-3 text-center">
-                            <div className="text-2xl md:text-3xl font-black leading-none">{everydayCount}</div>
-                            <div className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground mt-1.5">Everyday</div>
-                        </div>
-                        <div className="flex-1 bg-black/25 rounded-xl p-3 text-center">
-                            <div className="text-2xl md:text-3xl font-black leading-none">{todayMeals.length}</div>
-                            <div className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground mt-1.5">Today</div>
-                        </div>
-                    </div>
+                    <blockquote className="mb-4 border-l-2 border-white/30 pl-3">
+                        <p className="text-sm md:text-base font-semibold leading-snug text-white/95">
+                            {planSuggestion ? planSuggestion.message : 'Balanced day, enjoy.'}
+                        </p>
+                    </blockquote>
 
-                    {todayMeals.length > 0 ? (
+                    {todayMealsAll.length > 0 ? (
                         <div className="flex-1 space-y-1">
                             <div className="text-[9px] font-bold uppercase tracking-widest text-orange-200/60 mb-1">{todayDayName}</div>
-                            {todayMeals.slice(0, 3).map((r: any, idx: number) => (
-                                <div key={idx} className="flex items-center justify-between gap-2 py-1.5">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
-                                        <span className="text-xs font-semibold truncate">{r.recipe_name}</span>
+                            {todayMeals.slice(0, 3).map((r: any, idx: number) => {
+                                const inner = (
+                                    <>
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
+                                            <span className="text-xs font-semibold truncate">{r.recipe_name}</span>
+                                        </div>
+                                        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">{r.mealType}{r.isLeftover ? ' • L' : ''}</span>
+                                    </>
+                                )
+                                return r.recipe_id ? (
+                                    <button
+                                        key={idx}
+                                        onClick={() => Router.push(`/recipes/${r.recipe_id}`)}
+                                        className="w-full flex items-center justify-between gap-2 py-1.5 px-1 -mx-1 text-left rounded-lg hover:bg-white/[0.05] transition-colors group"
+                                    >
+                                        {inner}
+                                    </button>
+                                ) : (
+                                    <div key={idx} className="flex items-center justify-between gap-2 py-1.5 px-1 -mx-1">
+                                        {inner}
                                     </div>
-                                    <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">{r.mealType}{r.isLeftover ? ' • L' : ''}</span>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     ) : (
                         <div className="flex-1 flex items-center text-xs font-semibold text-muted-foreground">
@@ -514,6 +558,14 @@ export default function Dashboard() {
             <div className="flex items-center gap-2.5">
                 <IconChip className="bg-emerald-500/15 text-emerald-400"><FiActivity size={16} /></IconChip>
                 <h3 className="text-sm font-black tracking-tight">Today's Intake</h3>
+                <button
+                    onClick={() => setShowNutrition(true)}
+                    aria-label="See today's nutrition details"
+                    title="Today's nutrition"
+                    className="shrink-0 w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 text-muted-foreground hover:text-white text-[10px] font-black flex items-center justify-center transition-colors active:scale-90"
+                >
+                    <FiInfo size={11} />
+                </button>
             </div>
             <div className="flex items-center gap-2">
                 <div className="flex flex-col items-center">
@@ -1058,6 +1110,20 @@ export default function Dashboard() {
                     </div>
                 </div>
             )}
+
+            <TodayNutritionModal
+                open={showNutrition}
+                onClose={() => setShowNutrition(false)}
+                totals={totals}
+                targets={targets}
+            />
+            <PlanDayCoverageModal
+                open={showPlanCoverage}
+                onClose={() => setShowPlanCoverage(false)}
+                plan={weekPlan}
+                day={getLocalDateString(new Date())}
+                initialData={planCoverage}
+            />
         </Layout>
     )
 }
