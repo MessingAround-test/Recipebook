@@ -44,6 +44,54 @@ export const DAILY_SUGGESTION_RULES: DailySuggestionRule[] = [
         message: 'High in sodium — drink some extra water today',
         icon: 'droplet',
         priority: 4
+    },
+    {
+        key: 'protein_g',
+        label: 'Protein',
+        thresholdPct: 150,
+        message: 'High in protein — drink extra water to help your kidneys process it',
+        icon: 'droplet',
+        priority: 5
+    },
+    {
+        key: 'fiber_g',
+        label: 'Fiber',
+        thresholdPct: 150,
+        message: 'Very high fiber — drink plenty of water to keep your digestion comfortable',
+        icon: 'droplet',
+        priority: 6
+    },
+    {
+        key: 'vitamin_a_ug',
+        label: 'Vitamin A',
+        thresholdPct: 200,
+        message: 'Very high vitamin A — skip supplements and fortified foods today',
+        icon: 'droplet',
+        priority: 7
+    },
+    {
+        key: 'iron_mg',
+        label: 'Iron',
+        thresholdPct: 200,
+        message: 'Very high iron — skip extra supplements today',
+        icon: 'droplet',
+        priority: 8
+    },
+    {
+        key: 'zinc_mg',
+        label: 'Zinc',
+        thresholdPct: 200,
+        message: 'Very high zinc — skip extra supplements today',
+        icon: 'droplet',
+        priority: 9
+    },
+    {
+        key: 'calcium_mg',
+        label: 'Calcium',
+        thresholdPct: 200,
+        message: 'Very high calcium — skip extra supplements today',
+        icon: 'droplet',
+        priority: 10
     }
 ]
 

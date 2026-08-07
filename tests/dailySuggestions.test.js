@@ -22,6 +22,26 @@ describe('getDailySuggestion', () => {
         expect(getDailySuggestion(totals, targets)).toBeNull();
     });
 
+    test('returns water advice when protein is over 150%', () => {
+        const totals = { protein_g: 180 };
+        const rule = getDailySuggestion(totals, targets);
+        expect(rule).not.toBeNull();
+        expect(rule.message).toMatch(/water/i);
+    });
+
+    test('returns advice when a micronutrient is over 200%', () => {
+        const totals = { zinc_mg: 25 };
+        const micronutTargets = { ...targets, zinc_mg: 8 };
+        const rule = getDailySuggestion(totals, micronutTargets);
+        expect(rule).not.toBeNull();
+        expect(rule.message).toMatch(/supplement/i);
+    });
+
+    test('does not fire micronutrient advice at 100% of target', () => {
+        const totals = { vitamin_c_mg: 90, calcium_mg: 1000, iron_mg: 8 };
+        expect(getDailySuggestion(totals, targets)).toBeNull();
+    });
+
     test('returns null when targets are missing', () => {
         expect(getDailySuggestion({ fat_g: 200 }, null)).toBeNull();
     });

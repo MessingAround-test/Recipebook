@@ -13,6 +13,7 @@ import DailyTasksCard from '../components/DailyTasksCard'
 import { getDailySuggestionFromCoverage } from '../lib/dailySuggestions'
 import TodayNutritionModal from '../components/TodayNutritionModal'
 import PlanDayCoverageModal from '../components/PlanDayCoverageModal'
+import RoundOutModal from '../components/RoundOutModal'
 
 const getLocalDateString = (d: Date) => {
     const year = d.getFullYear()
@@ -56,6 +57,7 @@ export default function Dashboard() {
     // Quick-log state
     const [showNutrition, setShowNutrition] = useState(false)
     const [showPlanCoverage, setShowPlanCoverage] = useState(false)
+    const [showRoundOut, setShowRoundOut] = useState(false)
     const [isLoggingOpen, setIsLoggingOpen] = useState(false)
     const [logSearch, setLogSearch] = useState('')
     const [logSelection, setLogSelection] = useState<any>(null)
@@ -565,6 +567,14 @@ export default function Dashboard() {
                     className="shrink-0 w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 text-muted-foreground hover:text-white text-[10px] font-black flex items-center justify-center transition-colors active:scale-90"
                 >
                     <FiInfo size={11} />
+                </button>
+                <button
+                    onClick={() => setShowRoundOut(true)}
+                    aria-label="Round out today's intake"
+                    title="Round out today's intake with quick foods"
+                    className="shrink-0 p-1 rounded-md bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-colors active:scale-90"
+                >
+                    <FiZap size={12} />
                 </button>
             </div>
             <div className="flex items-center gap-2">
@@ -1123,6 +1133,12 @@ export default function Dashboard() {
                 plan={weekPlan}
                 day={getLocalDateString(new Date())}
                 initialData={planCoverage}
+            />
+            <RoundOutModal
+                open={showRoundOut}
+                onClose={() => setShowRoundOut(false)}
+                date={getLocalDateString(new Date())}
+                onLogged={refreshIntake}
             />
         </Layout>
     )
