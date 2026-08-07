@@ -113,6 +113,7 @@ This is the single most important rule: the dish must be ready in 5 MINUTES or l
 - AT MOST 5 ingredients and AT MOST 3 steps.
 - No-cook or near-no-cook only: raw assemblies, toast, microwave, tinned/pre-cooked staples (canned beans, pre-cooked rice, yoghurt, cheese, eggs, fruit, oats with milk), open-and-serve.
 - Use common, everyday supermarket ingredients you almost certainly already have in the cupboard — no obscure ingredients, no lengthy cooking, no resting/chilling/dough/sauces from scratch.
+- Ingredients must be real whole foods that form the dish (a condiment like soy sauce or salt is only ever a tiny accent inside a real dish — never the main ingredient).
 - Suit the user's dietary rules (STRICT — never break these): ${dietaryConstraints}
 - Boost the day's lowest nutrients and keep protein/fiber strong.
 - Never re-use a food already eaten today: ${alreadySummary}

@@ -18,6 +18,15 @@ const PANTRY_LIMIT = 40;
 // when the client explicitly opts out with excludeMeat: false).
 const EXCLUDED_CATEGORIES = ['Meat', 'Seafood', 'Meat and Seafood', 'Poultry', 'Fish'];
 
+// Categories that are never foods you'd eat on their own (condiments, sauces,
+// spices, seasonings, dressings, oils, sweet spreads). Excluded unconditionally
+// so a recommendation is always something you could eat straight from the bowl.
+const CONDIMENT_CATEGORIES = [
+    'Condiments and Sauces', 'Sauces', 'Condiments', 'Seasonings', 'Spices',
+    'Dressings', 'Marinades', 'Oils', 'Cooking Oils', 'Jams and Spreads',
+    'Jams', 'Spreads', 'Sugar and Sweeteners', 'Syrups'
+];
+
 // Word-boundary keyword fallback so a miscategorised tuna/chicken/etc. never
 // sneaks through, even when its category is missing or generic.
 const MEAT_KEYWORDS = [
@@ -45,6 +54,34 @@ function isMeatName(name) {
         const nextWord = (s.slice(idx + kw.length).trim().split(/\s+/)[0] || '');
         if (MEAT_IGNORE_SUFFIXES.includes(nextWord)) continue;
         return true;
+    }
+    return false;
+}
+
+// Word-boundary fallback for condiments/spices/seasonings that shouldn't be
+// recommended as standalone foods (soy sauce, curry paste, salt, etc.).
+const CONDIMENT_KEYWORDS = [
+    'soy sauce', 'fish sauce', 'oyster sauce', 'worcestershire', 'teriyaki', 'hoisin',
+    'sriracha', 'hot sauce', 'chilli sauce', 'chili sauce', 'tomato sauce', 'bbq sauce',
+    'barbecue sauce', 'satay sauce', 'mustard', 'ketchup', 'mayonnaise', 'mayo',
+    'vinegar', 'dressing', 'relish', 'chutney', 'marmalade', 'jam', 'honey', 'syrup',
+    'curry paste', 'curry powder', 'stock cube', 'bouillon', 'essence', 'seasoning',
+    'spice', 'paprika', 'turmeric', 'cumin', 'oregano', 'thyme', 'rosemary', 'basil',
+    'cinnamon', 'garlic powder', 'onion powder', 'garam masala', 'mixed herbs',
+    'salt', 'pepper', 'sauce', 'paste', 'sprinkle'
+];
+
+function isCondimentName(name) {
+    const s = String(name || '').toLowerCase().trim();
+    if (!s) return false;
+    // "bell pepper", "sweet pepper" and "capsicum" are real vegetables, not spices.
+    if (/(bell|sweet) pepper|capsicum/.test(s)) return false;
+    for (const kw of CONDIMENT_KEYWORDS) {
+        const idx = s.indexOf(kw);
+        if (idx === -1) continue;
+        const before = idx === 0 ? '' : s[idx - 1];
+        const after = idx + kw.length >= s.length ? '' : s[idx + kw.length];
+        if (!/[a-z0-9]/.test(before) && !/[a-z0-9]/.test(after)) return true;
     }
     return false;
 }
@@ -174,10 +211,13 @@ export default async function handler(req, res) {
         };
 
         // 3. Real pantry ingredient candidates for the day's lowest nutrients.
+        //    Only standalone-eatable foods: condiment/spice/sauce/oil categories
+        //    and names are stripped so we never suggest soy sauce "to round out".
         const allowedCategories = new Set(allowedIngredientCategories(user));
         if (noMeat) {
             EXCLUDED_CATEGORIES.forEach(c => allowedCategories.delete(c));
         }
+        CONDIMENT_CATEGORIES.forEach(c => allowedCategories.delete(c));
         const pantrySet = new Set();
         for (const key of lowNutrients.slice(0, 6).map(c => c.key)) {
             const minContribution = targets[key] * 0.1;
@@ -201,6 +241,7 @@ export default async function handler(req, res) {
         const pantryCandidates = [...pantrySet]
             .filter(p => !isFoodOnHand(p))
             .filter(p => noMeat ? !isMeatName(p) : true)
+            .filter(p => !isCondimentName(p))
             .slice(0, PANTRY_LIMIT);
 
         // 4. Build the AI prompt
@@ -238,12 +279,13 @@ DIETARY RULES FOR THIS USER (STRICT — never break these): ${dietaryConstraints
 EFFORT IS EVERYTHING. The whole point is that this is INCREDIBLY SIMPLE — the user wants to round out today with as little effort as possible:
 - STRONGLY prefer 5-minute foods and raw ingredients you likely already have in the cupboard or fridge: fruit, nuts/seeds, yoghurt, eggs, cheese, tinned beans/lentils, peanut butter, rolled oats, milk, bread/toast, rice cakes, raw vegetables (carrot, cucumber, cherry tomatoes), canned corn, dark chocolate, etc.
 - Raw ingredients need zero cooking. If you suggest a small dish, it must be no-cook or under 5 minutes (e.g. toast with peanut butter, Greek yoghurt with fruit and seeds, canned beans mashed on toast, boiled egg, oats with milk).
+- EVERY recommendation must be a real food you would happily eat on its own as a snack or mini-meal. NEVER recommend a condiment, sauce, spice, seasoning, oil, or flavouring (no soy sauce, salt, curry paste, honey, vinegar). These are NOT foods. Even if sodium or another nutrient is low, never reach for a condiment to fix it — pick a genuinely tasty standalone food that helps the other low nutrients instead.
 - ONLY pick a recipe from the catalog when it is genuinely quick (its "time" is "short" OR it has at most 6 ingredients). Otherwise pick pantry items instead.
 - Prioritise foods that boost today's LOWEST nutrients and protein/fiber where they're behind target.
 - Avoid over-suggesting energy-dense foods (nuts/seeds/oils ~15-30g, nut butters ~15-20g, not 100g+).
 - NEVER re-suggest a food already eaten today.
 - Recipe names MUST be chosen from the catalog verbatim. Pantry names MUST be chosen from the pantry list verbatim.
-- For pantry recommendations include a REALISTIC 'quantity' in grams for how the food is actually eaten: nuts/seeds ~15-30g, nut butters ~15-20g, oils ~10-15g, leafy greens ~50-100g, other vegetables ~100-150g, fruit ~120-200g, legumes/canned beans ~80-150g, yoghurt ~150-200g, eggs ~50g each, oats ~40g.
+- For pantry recommendations include a REALISTIC 'quantity' in grams for how the food is actually eaten: nuts/seeds ~15-30g, nut butters ~15-20g, leafy greens ~50-100g, other vegetables ~100-150g, fruit ~120-200g, legumes/canned beans ~80-150g, yoghurt ~150-200g, eggs ~50g each, oats ~40g.
 
 TASTE MATTERS — THIS IS NON-NEGOTIABLE. Every recommendation must be genuinely delicious and appetising on its own. Never suggest a food or pairing just because it scores well on nutrients if it would taste bland, sad, or weird together. A single food is fine when it's great on its own (ripe mango, cold grapes, Greek yoghurt with honey, peanut butter on toast, avocado, berries). If you pair things, they must taste good together (sweet + creamy, crunchy + salty). Never pair savoury fish-flavoured things with sweet things.
 
