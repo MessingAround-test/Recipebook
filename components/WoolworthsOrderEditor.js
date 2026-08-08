@@ -53,9 +53,10 @@ export default function WoolworthsOrderEditor({ isOpen, onClose, onSave }) {
                     backgroundColor: '#0f172a',
                     borderColor: 'rgba(255,255,255,0.1)',
                     color: '#f8fafc',
+                    inset: '1rem',
                     maxWidth: '600px',
                     margin: '0 auto',
-                    padding: '2rem',
+                    padding: '1.5rem',
                     borderRadius: '0.75rem',
                     overflowY: 'auto',
                     maxHeight: '90vh',
@@ -71,12 +72,12 @@ export default function WoolworthsOrderEditor({ isOpen, onClose, onSave }) {
             contentLabel="Edit Woolworths Walkthrough Order"
         >
             <div className="dark flex flex-col gap-6 h-full">
-                <div className="flex justify-between items-center pb-4 border-b border-white/10">
-                    <div>
-                        <h2 className="text-xl font-bold tracking-tight">🏪 Woolworths Walkthrough Order</h2>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pb-4 border-b border-white/10">
+                    <div className="min-w-0">
+                        <h2 className="text-xl font-bold tracking-tight break-words">🏪 Woolworths Walkthrough Order</h2>
                         <p className="text-sm text-gray-400 mt-1">Drag categories to match the store layout from entrance to exit</p>
                     </div>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white text-3xl leading-none transition-colors">&times;</button>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white text-3xl leading-none transition-colors self-end sm:self-auto min-h-[40px] min-w-[40px] flex items-center justify-center">&times;</button>
                 </div>
 
                 <div className="flex flex-col gap-1.5">

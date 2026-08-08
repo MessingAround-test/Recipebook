@@ -12,6 +12,21 @@
     }
 }
 
+@media (max-width: 768px) {
+    .card_title {
+        font-size: 1.5rem;
+        line-height: 1.05;
+    }
+
+    .paperCard {
+        height: 10rem;
+    }
+
+    .card_body {
+        padding: 1rem;
+    }
+}
+
 .main {
     display: flex;
     flex-direction: column;
@@ -123,6 +138,20 @@
 
 .paperCard:hover img {
     transform: scale(1.1);
+}
+
+.modal {
+    position: relative;
+    inset: auto;
+    max-width: min(800px, calc(100vw - 1rem));
+    margin: 0 auto;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 1rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--card-foreground);
+    padding: 1.5rem;
 }
 
 .footer {

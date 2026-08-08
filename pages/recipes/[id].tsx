@@ -602,7 +602,7 @@ export default function RecipeDetail() {
                                     )}
                                 </div>
                             </div>
-                            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute top-4 right-4 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                 <span className="bg-black/60 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm font-semibold text-center">Change<br />Image</span>
                             </div>
                         </div>
@@ -694,7 +694,7 @@ export default function RecipeDetail() {
                                     title={isHidden ? 'Hidden from /recipes grid' : 'Show on /recipes grid'}
                                 >
                                     {isHidden ? <EyeOff className="w-5 h-5 hidden sm:block" /> : <Eye className="w-5 h-5 hidden sm:block" />}
-                                    <span className="hidden sm:inline">{isHidden ? 'Hidden' : 'Hide'}</span>
+                                    <span>{isHidden ? 'Hidden' : 'Hide'}</span>
                                 </Button>
                                 <Button
                                     onClick={() => router.push(`/createRecipe?id=${id}`)}

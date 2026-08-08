@@ -115,8 +115,8 @@ function IngredientCard({
                     {isExpanded && isGroup && (
                         <div className="mt-3 ml-2 pl-4 border-l border-border/10 flex flex-col gap-3">
                             {ingredient.items.map((item, idx) => (
-                                <div key={item._id || idx} className="flex justify-between items-center text-sm text-[var(--text-secondary)] py-1">
-                                    <div className="flex items-center gap-3">
+                                <div key={item._id || idx} className="flex justify-between items-center gap-2 text-sm text-[var(--text-secondary)] py-1">
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
                                         <input
                                             type="checkbox"
                                             checked={item.complete}
@@ -124,12 +124,12 @@ function IngredientCard({
                                                 e.stopPropagation();
                                                 handleCheckboxChange(item);
                                             }}
-                                            className="w-4 h-4 rounded cursor-pointer accent-accent"
+                                            className="w-4 h-4 rounded cursor-pointer accent-accent shrink-0"
                                         />
-                                        <span className="mobile-text-large">{item.quantity} {item.quantity_type_shorthand || item.quantity_type || 'each'}</span>
-                                        {item.note && <span className="italic opacity-60 text-xs">({item.note})</span>}
+                                        <span className="mobile-text-large shrink-0">{item.quantity} {item.quantity_type_shorthand || item.quantity_type || 'each'}</span>
+                                        {item.note && <span className="italic opacity-60 text-xs truncate min-w-0">{item.note}</span>}
                                     </div>
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2 shrink-0">
                                         <span className="font-mono opacity-80">{item.compositionPercentage}%</span>
                                         {handleDeleteItem && (
                                             <button

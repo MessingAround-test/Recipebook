@@ -357,15 +357,15 @@ export default function WeeklyNutrientGraph({ onClickNutrient }: WeeklyNutrientG
                 {/* Navigation */}
                 <div className="flex items-center gap-1 bg-muted/30 rounded-xl p-0.5 border border-white/5 ml-auto">
                     <button onClick={() => navigate(-1)}
-                        className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-muted-foreground active:scale-90">
+                        className="p-2 hover:bg-white/10 rounded-lg transition-colors text-muted-foreground active:scale-90">
                         <FiChevronLeft size={14} />
                     </button>
-                    <div className="flex items-center gap-1.5 px-2">
+                    <div className="flex items-center gap-1.5 px-2 min-w-0">
                         <FiCalendar size={10} className="text-emerald-500 shrink-0" />
-                        <span className="text-[10px] font-black tracking-wide tabular-nums whitespace-nowrap">{periodLabel}</span>
+                        <span className="text-[10px] font-black tracking-wide tabular-nums whitespace-nowrap max-w-[40vw] truncate">{periodLabel}</span>
                     </div>
                     <button onClick={() => navigate(1)} disabled={endDateStr >= todayStr}
-                        className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-muted-foreground disabled:opacity-20 active:scale-90">
+                        className="p-2 hover:bg-white/10 rounded-lg transition-colors text-muted-foreground disabled:opacity-20 active:scale-90">
                         <FiChevronRight size={14} />
                     </button>
                 </div>
@@ -376,7 +376,7 @@ export default function WeeklyNutrientGraph({ onClickNutrient }: WeeklyNutrientG
                 <div className="flex gap-0.5 bg-muted/20 rounded-lg p-0.5 overflow-x-auto no-scrollbar">
                     {(['all', 'macro', 'mineral', 'vitamin', 'symptoms', 'custom'] as const).map(g => (
                         <button key={g} onClick={() => setFilter(g)}
-                            className={`flex-none px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                            className={`flex-none px-3 py-2 min-h-[40px] rounded-md text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                                 filter === g ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
                             }`}>
                             {g === 'all' ? '🌎 All' : g === 'macro' ? '🥗 Macros' : g === 'mineral' ? '⚗️ Minerals' : g === 'vitamin' ? '💊 Vitamins' : g === 'symptoms' ? '🤒 Symptoms' : '🎛️ Custom'}

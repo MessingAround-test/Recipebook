@@ -132,9 +132,9 @@ export default function DbInspector() {
     return (
         <Layout title="DB Inspector">
             <div className="max-w-7xl mx-auto px-4 py-8">
-                <div className="flex justify-between items-start">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <PageHeader title="Database Inspector" />
-                    <Button variant="outline" onClick={handleBackup} className="whitespace-nowrap mt-8">
+                    <Button variant="outline" onClick={handleBackup} className="shrink-0 self-start sm:self-auto">
                         <FiDownload className="mr-2" /> Download Backup (.zip)
                     </Button>
                 </div>

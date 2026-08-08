@@ -302,12 +302,12 @@ export default function AdminDashboard() {
                         </p>
                     </div>
 
-                    <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+                    <div className="flex flex-wrap bg-white/5 p-1 rounded-xl border border-white/5">
                         {['1h', '12h', '24h', '3d', '7d', '30d'].map((r) => (
                             <button
                                 key={r}
                                 onClick={() => setRange(r)}
-                                className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
+                                className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
                                     range === r 
                                     ? 'bg-white text-black shadow-lg shadow-white/10' 
                                     : 'text-gray-400 hover:text-white'
@@ -346,12 +346,12 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                     {/* API Usage Chart */}
                     <div className="lg:col-span-2 glass-card">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-emerald-500 mb-6 flex justify-between items-center">
+                        <h3 className="text-sm font-black uppercase tracking-widest text-emerald-500 mb-6 flex flex-wrap justify-between items-center gap-x-3 gap-y-1">
                             <span>API Usage Over Time</span>
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3 flex-wrap">
                                 <span className="text-[10px] text-emerald-400/70">{totalApiCount.toLocaleString()} Calls</span>
                                 <span className="text-[10px] text-red-400/70">{totalOverloadCount.toLocaleString()} 429s</span>
-                                <span className="text-[11px] font-bold text-gray-500 bg-white/5 px-2 py-0.5 rounded">{range}</span>
+                                <span className="text-[11px] font-bold text-gray-500 bg-white/5 px-2 py-0.5 rounded hidden sm:inline">{range}</span>
                             </div>
                         </h3>
                         <div className="h-[300px]">
@@ -389,12 +389,12 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     {/* Extraction vs Cache Chart */}
                     <div className="glass-card">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-yellow-500 mb-6 flex justify-between items-center">
+                        <h3 className="text-sm font-black uppercase tracking-widest text-yellow-500 mb-6 flex flex-wrap justify-between items-center gap-x-3 gap-y-1">
                             <span>Ingredient Retrieval</span>
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3 flex-wrap">
                                 <span className="text-[10px] text-emerald-400/70">{totalCacheHits.toLocaleString()} Hits</span>
                                 <span className="text-[10px] text-yellow-400/70">{totalExtractions.toLocaleString()} Scrapes</span>
-                                <span className="text-[11px] font-bold text-gray-500 bg-white/5 px-2 py-0.5 rounded">{range}</span>
+                                <span className="text-[11px] font-bold text-gray-500 bg-white/5 px-2 py-0.5 rounded hidden sm:inline">{range}</span>
                             </div>
                         </h3>
                         <div className="h-[300px]">
@@ -412,9 +412,9 @@ export default function AdminDashboard() {
 
                     {/* Database Growth Chart */}
                     <div className="glass-card">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-purple-500 mb-6 flex justify-between items-center">
+                        <h3 className="text-sm font-black uppercase tracking-widest text-purple-500 mb-6 flex flex-wrap justify-between items-center gap-x-3 gap-y-1">
                             <span>Record Growth</span>
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3 flex-wrap">
                                 <span className="text-[10px] text-emerald-400/70">+{totalGrowthRecipes.toLocaleString()} Recipes</span>
                                 <span className="text-[10px] text-blue-400/70">+{totalGrowthUsers.toLocaleString()} Users</span>
                                 <span className="text-[11px] font-bold text-gray-500 bg-white/5 px-2 py-0.5 rounded">30D</span>

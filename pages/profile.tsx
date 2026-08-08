@@ -237,8 +237,8 @@ export default function Profile() {
                     <h3 className="text-sm font-black uppercase tracking-widest text-emerald-500 mb-4">General Settings</h3>
 
                     {/* Theme Toggle */}
-                    <div className="flex items-center justify-between p-4 bg-muted/20 rounded-lg border border-border/20 mb-4 transition-colors">
-                        <div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-muted/20 rounded-lg border border-border/20 mb-4 transition-colors">
+                        <div className="min-w-0">
                             <p className="font-semibold text-foreground">Interface Theme</p>
                             <p className="text-sm text-muted-foreground">Select between deep Midnight Dark or clean Slate Light mode.</p>
                         </div>
@@ -264,8 +264,8 @@ export default function Profile() {
                     </div>
 
                     {/* Conversion Toggle */}
-                    <div className="flex items-center justify-between p-4 bg-muted/20 rounded-lg border border-border/20 transition-colors">
-                        <div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-muted/20 rounded-lg border border-border/20 transition-colors">
+                        <div className="min-w-0">
                             <p className="font-semibold text-foreground">Automatic Quantity Conversion</p>
                             <p className="text-sm text-muted-foreground">Normalize prices across different units using shared factors.</p>
                         </div>

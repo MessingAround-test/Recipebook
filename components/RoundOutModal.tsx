@@ -199,7 +199,7 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div className="bg-[#121214] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl">
                 {/* Header */}
-                <div className="p-4 border-b border-white/10 flex items-center justify-between gap-3">
+                <div className="p-4 border-b border-white/10 flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-lg font-black tracking-widest uppercase flex items-center gap-2 min-w-0">
                         <FiZap className="text-emerald-400 shrink-0" /> Round Out Today
                         <span className="text-sm font-bold text-muted-foreground normal-case tracking-normal truncate">{formatShortDate(date)}</span>
@@ -208,13 +208,13 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
                         <button
                             onClick={() => setExcludeMeat(v => !v)}
                             title={excludeMeat ? 'All suggestions are meat-free (tap to include meat)' : 'Meat allowed (tap to exclude meat)'}
-                            className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-colors ${excludeMeat
+                            className={`flex items-center gap-1 px-2.5 py-1 min-h-[36px] rounded-full text-[9px] font-black uppercase tracking-widest border transition-colors ${excludeMeat
                                 ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
                                 : 'bg-white/5 text-muted-foreground border-white/10 hover:text-white'}`}
                         >
                             <FiZap size={10} /> {excludeMeat ? 'No meat' : 'Meat ok'}
                         </button>
-                        <button onClick={onClose} className="p-2 text-muted-foreground hover:text-white transition-colors">
+                        <button onClick={onClose} className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center text-muted-foreground hover:text-white transition-colors">
                             <FiX size={20} />
                         </button>
                     </div>
@@ -300,9 +300,9 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        {s.reason && <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{s.reason}</p>}
+                                                        {s.reason && <p className="hidden sm:block text-[10px] text-muted-foreground mt-0.5 leading-tight">{s.reason}</p>}
                                                         {s.nutrientDelta && s.nutrientDelta.length > 0 && (
-                                                            <p className="text-[9px] text-muted-foreground/70 mt-0.5 flex flex-wrap gap-x-2">
+                                                            <p className="hidden sm:flex text-[9px] text-muted-foreground/70 mt-0.5 flex-wrap gap-x-2">
                                                                 <span className="uppercase tracking-wider font-bold">Boosts:</span>
                                                                 {s.nutrientDelta.slice(0, 4).map(d => (
                                                                     <span key={d.key}>
@@ -312,7 +312,7 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
                                                             </p>
                                                         )}
                                                     </div>
-                                                    <div className="flex flex-col items-end gap-1 shrink-0">
+                                                    <div className="flex flex-row items-center sm:flex-col sm:items-end gap-1 shrink-0">
                                                         <button
                                                             onClick={() => handleAdd(s)}
                                                             disabled={added}
@@ -396,11 +396,11 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
                                         <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-bold mt-1">
                                             {generatedRecipe.genre} • {generatedRecipe.carbType} • 5 min • {generatedRecipe.servings} serving
                                         </p>
-                                        <p className="text-[10px] text-muted-foreground/90 mt-1.5 leading-tight">
+                                        <p className="hidden sm:block text-[10px] text-muted-foreground/90 mt-1.5 leading-tight">
                                             {(generatedRecipe.ingredients || []).map(i => i.Name).filter(Boolean).join(', ')}
                                         </p>
                                         {generatedRecipe.nutrientDelta && generatedRecipe.nutrientDelta.length > 0 && (
-                                            <p className="text-[9px] text-muted-foreground/70 mt-1.5 flex flex-wrap gap-x-2">
+                                            <p className="hidden sm:flex text-[9px] text-muted-foreground/70 mt-1.5 flex-wrap gap-x-2">
                                                 <span className="uppercase tracking-wider font-bold">Boosts:</span>
                                                 {generatedRecipe.nutrientDelta.slice(0, 4).map(d => (
                                                     <span key={d.key}>

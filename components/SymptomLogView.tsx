@@ -162,7 +162,7 @@ export default function SymptomLogView({ date }: { date: string }) {
                     How do you feel? (1-10)
                 </h3>
                 <div className="flex flex-col items-center gap-6">
-                    <div className="flex gap-1.5 md:gap-2 w-full justify-center">
+                    <div className="grid grid-cols-5 gap-1.5 md:gap-2 w-full">
                         {[1,2,3,4,5,6,7,8,9,10].map(n => {
                             const selected = mood === n;
                             let cls = 'bg-white/[0.02] border-white/5 text-muted-foreground hover:border-white/20 hover:text-white';
@@ -177,7 +177,7 @@ export default function SymptomLogView({ date }: { date: string }) {
                                 <button
                                     key={n}
                                     onClick={() => setMood(selected ? undefined : n)}
-                                    className={`w-full aspect-square rounded-xl md:rounded-2xl font-black text-lg md:text-xl transition-all active:scale-90 ${cls} border-2`}
+                                    className={`aspect-square w-full min-h-[40px] rounded-xl md:rounded-2xl font-black text-lg md:text-xl transition-all active:scale-90 ${cls} border-2`}
                                 >
                                     {n}
                                 </button>

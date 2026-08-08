@@ -65,6 +65,7 @@ export default function TodayNutritionModal({ open, onClose, totals, targets }: 
                     backgroundColor: '#0f172a',
                     border: '1px solid rgba(255,255,255,0.1)',
                     color: '#f8fafc',
+                    inset: '1rem',
                     maxWidth: '560px',
                     margin: '0 auto',
                     padding: '1.5rem',
@@ -97,7 +98,7 @@ export default function TodayNutritionModal({ open, onClose, totals, targets }: 
                         <button
                             key={t.key}
                             onClick={() => setTab(t.key)}
-                            className={`flex-1 text-[10px] font-black uppercase tracking-wider px-2 py-1.5 rounded-lg transition-all ${tab === t.key
+                            className={`flex-1 text-[10px] font-black uppercase tracking-wider px-2 py-1.5 min-h-[40px] rounded-lg transition-all ${tab === t.key
                                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                                 : 'text-muted-foreground hover:text-white hover:bg-white/5 border border-transparent'}`}
                         >
@@ -111,17 +112,17 @@ export default function TodayNutritionModal({ open, onClose, totals, targets }: 
                 ) : (
                     <div className="space-y-2">
                         {rows.map(r => (
-                            <div key={r.key} className="flex items-center gap-3 py-1">
-                                <span className="w-24 shrink-0 font-bold text-xs truncate text-muted-foreground">{r.label}</span>
+                            <div key={r.key} className="flex items-center gap-2 sm:gap-3 py-1">
+                                <span className="w-20 sm:w-24 shrink-0 font-bold text-xs truncate text-muted-foreground">{r.label}</span>
                                 <div className="flex-1 min-w-0">
                                     <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
                                         <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(r.pct, 100)}%`, backgroundColor: barColor(r.pct) }} />
                                     </div>
                                 </div>
-                                <span className="w-16 shrink-0 text-right text-[10px] font-bold text-muted-foreground tabular-nums">
+                                <span className="w-14 sm:w-16 shrink-0 text-right text-[10px] font-bold text-muted-foreground tabular-nums">
                                     {fmtVal(r.consumed, r.unit)}/{fmtVal(r.target, r.unit)}
                                 </span>
-                                <span className={`w-11 shrink-0 text-right font-black text-xs tabular-nums ${r.pct > 130 ? 'text-rose-400' : r.pct > 100 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                <span className={`w-10 sm:w-11 shrink-0 text-right font-black text-xs tabular-nums ${r.pct > 130 ? 'text-rose-400' : r.pct > 100 ? 'text-amber-400' : 'text-emerald-400'}`}>
                                     {Math.round(r.pct)}%
                                 </span>
                             </div>

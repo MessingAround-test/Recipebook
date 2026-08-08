@@ -50,17 +50,17 @@ export default function DailyTasksCard({ tasks, allDone, toggle, compact = false
                 </span>
             </div>
 
-            <div className="flex flex-wrap justify-between gap-x-1 gap-y-3 flex-1">
+            <div className="flex justify-between gap-x-1 gap-y-3 flex-1">
                 {sorted.map((t, idx) => {
                     const pct = t.target > 1 ? Math.min(Math.round((t.count / t.target) * 100), 100) : 0
                     const metal = !t.done && t.target <= 1 && idx < METAL_RINGS.length ? METAL_RINGS[idx] : null
                     return (
-                        <div key={t.id} className="flex flex-col items-center gap-1 w-14 md:w-16">
+                        <div key={t.id} className="flex flex-col items-center gap-1 flex-1 min-w-0 md:flex-none md:w-16">
                             <button
                                 onClick={() => toggle(t.id)}
                                 disabled={!t.allowManual}
                                 title={t.title}
-                                className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all ${t.allowManual ? 'hover:scale-105 active:scale-95 cursor-pointer' : 'cursor-default'}`}
+                                className={`relative w-10 h-10 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all ${t.allowManual ? 'hover:scale-105 active:scale-95 cursor-pointer' : 'cursor-default'}`}
                                 style={t.target > 1 && !t.done
                                     ? { background: `conic-gradient(rgba(251,191,36,0.5) ${pct}%, rgba(255,255,255,0.06) 0)` }
                                     : { background: t.done ? 'rgba(180,83,9,0.22)' : 'rgba(255,255,255,0.04)' }}
@@ -69,21 +69,21 @@ export default function DailyTasksCard({ tasks, allDone, toggle, compact = false
                                     className={`absolute inset-0 rounded-full border pointer-events-none ${t.done ? 'border-amber-700' : 'border'}`}
                                     style={!t.done ? { borderColor: metal || 'rgba(255,255,255,0.12)' } : undefined}
                                 />
-                                <span className={`text-xl md:text-2xl relative z-10 transition-opacity ${t.done ? 'opacity-30' : ''}`}>{t.emoji}</span>
+                                <span className={`text-lg md:text-2xl relative z-10 transition-opacity ${t.done ? 'opacity-30' : ''}`}>{t.emoji}</span>
                                 {t.done && (
                                     <span className="absolute inset-0 flex items-center justify-center z-20">
-                                        <FiCheck size={26} strokeWidth={4} className="text-amber-700" />
+                                        <FiCheck size={22} strokeWidth={4} className="text-amber-700" />
                                     </span>
                                 )}
                             </button>
-                            <span className={`text-[8px] md:text-[9px] font-bold text-center leading-tight ${t.done ? 'text-muted-foreground' : ''}`}>{t.label}</span>
+                            <span className={`text-[7px] md:text-[9px] font-bold text-center leading-tight w-full px-0.5 truncate ${t.done ? 'text-muted-foreground' : ''}`}>{t.label}</span>
                             {t.target > 1 && (
                                 <span className={`text-[8px] font-black -mt-0.5 ${t.done ? 'text-amber-700' : 'text-amber-300/70'}`}>{t.count}/{t.target}</span>
                             )}
                             {t.action && onGo && (
                                 <button
                                     onClick={() => onGo(t.action!)}
-                                    className="mt-0.5 px-1.5 py-0.5 rounded-full bg-white/[0.06] border border-white/10 text-[7px] md:text-[8px] font-black uppercase tracking-widest text-amber-300 hover:bg-amber-400/15 hover:border-amber-400/30 transition-all"
+                                    className="mt-0.5 px-2 py-1 min-h-[28px] rounded-full bg-white/[0.06] border border-white/10 text-[8px] md:text-[9px] font-black uppercase tracking-widest text-amber-300 hover:bg-amber-400/15 hover:border-amber-400/30 transition-all"
                                 >
                                     {t.cta || 'Go'}
                                 </button>

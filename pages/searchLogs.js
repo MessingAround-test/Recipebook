@@ -63,8 +63,8 @@ export default function SearchLogs() {
         <Layout title="Search Logs">
             <div className="max-w-6xl mx-auto mt-8 p-4">
                 <div className="glass-card overflow-hidden">
-                    <div className="flex justify-between items-center mb-6">
-                        <h1 className="text-2xl font-bold text-primary">System Search Logs</h1>
+                    <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
+                        <h1 className="text-2xl font-bold text-primary break-words min-w-0">System Search Logs</h1>
                         <button
                             onClick={fetchLogs}
                             className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded transition-colors"

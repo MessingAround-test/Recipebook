@@ -117,7 +117,7 @@ export default function IngredientEditor({ ingredients, onChange, autoDefaults =
                                     <RiDeleteBin7Line size={18} />
                                 </button>
                             </div>
-                            <div className="grid grid-cols-[90px_1fr_1fr] gap-2.5">
+                            <div className="grid grid-cols-[90px_1fr] sm:grid-cols-[90px_1fr_1fr] gap-2.5">
                                 <input
                                     type="text"
                                     value={String(ing.Amount)}
@@ -137,7 +137,7 @@ export default function IngredientEditor({ ingredients, onChange, autoDefaults =
                                     value={ing.Note || ''}
                                     onChange={e => updateIngredient(i, { Note: e.target.value })}
                                     placeholder="Note"
-                                    className={inputClass}
+                                    className={`${inputClass} col-span-2 sm:col-span-1`}
                                 />
                             </div>
                         </li>

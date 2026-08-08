@@ -39,7 +39,7 @@ export default function Register() {
             </Head>
 
             <main className="flex justify-center items-center w-full">
-                <div className="receipt w-[380px] p-8 max-w-[90vw]">
+                <div className="receipt w-full max-w-[380px] p-8">
                     <h2 className="text-center font-bold uppercase mb-4 border-b-2 border-dashed border-black pb-2 text-black">Sign Up</h2>
 
                     <form onSubmit={onSubmit}>

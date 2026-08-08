@@ -383,13 +383,13 @@ export default function DailyTracker() {
                                             <div className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-0.5">Recipe</div>
                                             <div className="font-black text-sm truncate cursor-pointer hover:text-emerald-400 transition-colors" onClick={() => router.push(`/Recipe/${g.recipe_id}`)}>{g.recipe_name}</div>
                                         </div>
-                                        <button onClick={() => toggleRecipe(recipeKey)} className={`shrink-0 px-2 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest border border-white/10 hover:bg-white/5 transition-all min-h-[36px] ${isExpanded ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'text-muted-foreground'}`}>
+                                        <button onClick={() => toggleRecipe(recipeKey)} className={`shrink-0 px-2.5 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest border border-white/10 hover:bg-white/5 transition-all min-h-[40px] ${isExpanded ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'text-muted-foreground'}`}>
                                             {isExpanded ? <span className="flex items-center gap-1">Hide <FiChevronUp /></span> : <span className="flex items-center gap-1">Details <FiChevronDown /></span>}
                                         </button>
                                     </div>
                                     <div className="flex items-center gap-2 md:gap-4 ml-2 shrink-0">
                                         <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{Math.round(g.totalKcal)} kcal</div>
-                                        <button onClick={() => deleteItem(g.items[0]._id)} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg opacity-100 md:opacity-0 md:group-hover/recipe:opacity-100 transition-all min-h-[36px] min-w-[36px] flex items-center justify-center">
+                                        <button onClick={() => deleteItem(g.items[0]._id)} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg opacity-100 md:opacity-0 md:group-hover/recipe:opacity-100 transition-all min-h-[40px] min-w-[40px] flex items-center justify-center">
                                             <FiTrash2 size={16} />
                                         </button>
                                     </div>
@@ -413,7 +413,7 @@ export default function DailyTracker() {
                                     <div className="font-bold text-sm capitalize cursor-pointer hover:text-emerald-400 transition-colors truncate" onClick={() => setResearchIngredient({ name: g.name, quantity: g.quantity, unit: g.quantity_unit })}>{g.name}</div>
                                     <div className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-0.5">{g.quantity}{g.quantity_unit} • {Math.round(g.nutrients.energy_kcal)} kcal</div>
                                 </div>
-                                <button onClick={() => deleteItem(g._id)} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center">
+                                <button onClick={() => deleteItem(g._id)} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center">
                                     <FiTrash2 size={16} />
                                 </button>
                             </div>
@@ -640,13 +640,13 @@ export default function DailyTracker() {
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-3 md:gap-4">
-                        <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-white/5 shadow-inner overflow-x-auto no-scrollbar w-full sm:w-auto">
-                            <button onClick={() => setViewMode('daily')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'daily' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>food</button>
-                            <button onClick={() => setViewMode('stats')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'stats' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>exercise</button>
-                            <button onClick={() => setViewMode('weekly')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'weekly' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>stats</button>
-                            <button onClick={() => setViewMode('trends')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'trends' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>trends</button>
-                            <button onClick={() => setViewMode('insights')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'insights' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>insights</button>
-                            <button onClick={() => setViewMode('symptoms')} className={`px-3 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'symptoms' ? 'bg-rose-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>symptoms</button>
+                        <div className="flex flex-wrap gap-1 bg-muted/30 p-1 rounded-xl border border-white/5 shadow-inner w-full sm:w-auto">
+                            <button onClick={() => setViewMode('daily')} className={`px-2.5 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'daily' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>food</button>
+                            <button onClick={() => setViewMode('stats')} className={`px-2.5 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'stats' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>exercise</button>
+                            <button onClick={() => setViewMode('weekly')} className={`px-2.5 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'weekly' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>stats</button>
+                            <button onClick={() => setViewMode('trends')} className={`px-2.5 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'trends' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>trends</button>
+                            <button onClick={() => setViewMode('insights')} className={`px-2.5 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'insights' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>insights</button>
+                            <button onClick={() => setViewMode('symptoms')} className={`px-2.5 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'symptoms' ? 'bg-rose-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>symptoms</button>
                         </div>
                         {(viewMode === 'daily' || viewMode === 'stats' || viewMode === 'insights' || viewMode === 'symptoms') && (
                             <div className="flex items-center justify-between sm:justify-start gap-1 md:gap-3 bg-muted/30 p-1 md:p-1.5 rounded-xl border border-white/5 shadow-inner w-full sm:w-auto sm:ml-auto">

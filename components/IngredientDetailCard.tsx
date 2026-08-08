@@ -24,10 +24,13 @@ const IngredientDetailCard = ({ ingredient, show, onHide }: any) => {
                     backgroundColor: 'var(--background)',
                     borderColor: 'var(--border)',
                     color: 'var(--foreground)',
+                    inset: '1rem',
                     maxWidth: '600px',
                     margin: '0 auto',
-                    padding: '2rem',
-                    borderRadius: '0.75rem'
+                    padding: '1.5rem',
+                    borderRadius: '0.75rem',
+                    overflowY: 'auto',
+                    maxHeight: '90vh'
                 },
                 overlay: {
                     backgroundColor: 'rgba(0, 0, 0, 0.75)',
@@ -37,9 +40,9 @@ const IngredientDetailCard = ({ ingredient, show, onHide }: any) => {
             }}
             contentLabel="Ingredient Details"
         >
-            <div className="flex justify-between items-center mb-4 pb-2 border-b border-border">
-                <h2 className="text-xl font-bold">More details</h2>
-                <button onClick={onHide} className="text-muted-foreground hover:text-foreground text-2xl leading-none">&times;</button>
+            <div className="flex justify-between items-center gap-3 mb-4 pb-2 border-b border-border">
+                <h2 className="text-xl font-bold break-words min-w-0">More details</h2>
+                <button onClick={onHide} className="text-muted-foreground hover:text-foreground text-2xl leading-none min-h-[40px] min-w-[40px] flex items-center justify-center shrink-0">&times;</button>
             </div>
             <div className="overflow-y-auto max-h-[60vh] text-sm font-mono break-all bg-muted/20 p-4 rounded-md border border-border">
                 {renderIngredientDetails()}

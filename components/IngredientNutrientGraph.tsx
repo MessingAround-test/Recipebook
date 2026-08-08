@@ -101,7 +101,11 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
 
     // ── Fetch raw conversion definition for one ingredient ─────────────────
     const fetchDefinition = useCallback(async (name: string) => {
-        if (!name || globalDefinitionCache[name]) return;
+        if (!name) return;
+        if (globalDefinitionCache[name]) {
+            setDefinitions(prev => prev[name] ? prev : { ...prev, [name]: globalDefinitionCache[name] });
+            return;
+        }
 
         const token = localStorage.getItem('Token');
         if (!token) return;
@@ -218,13 +222,13 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
             </div>
 
             {/* Group tabs */}
-            <div className="flex gap-1 mb-5 bg-muted/20 rounded-lg p-1 w-full md:w-auto inline-flex shadow-inner">
+            <div className="grid grid-cols-3 gap-1 mb-5 bg-muted/20 rounded-lg p-1 w-full md:inline-flex md:w-auto md:flex-nowrap shadow-inner">
                 {(['macro', 'mineral', 'vitamin'] as NutrientGroup[]).map(g => (
                     <button
                         key={g}
                         id={`nutrient-tab-${g}`}
                         onClick={() => setActiveGroup(g)}
-                        className={`flex-1 md:flex-none px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${
+                        className={`flex items-center justify-center truncate px-1 md:px-4 py-1.5 min-h-[40px] rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${
                             activeGroup === g
                                 ? 'bg-emerald-500 text-white shadow-sm'
                                 : 'text-muted-foreground hover:text-foreground'
@@ -236,7 +240,7 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
             </div>
 
             {/* Nutrient cards */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 mb-6">
+            <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 md:gap-3 mb-6">
                 {activeKeys.map(key => {
                     const meta = NUTRIENT_LABELS[key];
                     const val = totals[key] ?? 0;
@@ -246,15 +250,15 @@ export default function IngredientNutrientGraph({ ingredients, onLogServe = null
                     return (
                         <div 
                             key={key} 
-                            className={`bg-muted/30 rounded-lg p-3 transition-all ${onClickNutrient ? 'cursor-pointer hover:bg-emerald-500/10' : ''}`}
+                            className={`bg-muted/30 rounded-lg p-2 md:p-3 transition-all ${onClickNutrient ? 'cursor-pointer hover:bg-emerald-500/10' : ''}`}
                             onClick={() => onClickNutrient?.(key)}
                         >
-                            <div className="text-xs font-medium text-muted-foreground capitalize mb-1">{meta?.label ?? key}</div>
-                            <div className="text-lg font-bold">
+                            <div className="text-[8px] md:text-xs font-medium text-muted-foreground capitalize mb-0.5 md:mb-1 truncate">{meta?.label ?? key}</div>
+                            <div className="text-[11px] md:text-lg font-bold leading-tight break-words">
                                 {val < 10 ? val.toFixed(2) : Math.round(val)}
-                                <span className="text-xs font-normal text-muted-foreground ml-1">/ {tgt < 10 ? tgt.toFixed(1) : Math.round(tgt)}{meta?.unit}</span>
+                                <span className="text-[8px] md:text-xs font-normal text-muted-foreground ml-0.5 md:ml-1">/ {tgt < 10 ? tgt.toFixed(1) : Math.round(tgt)}{meta?.unit}</span>
                             </div>
-                            <div className="mt-2 h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                            <div className="mt-1 md:mt-2 h-1 md:h-1.5 rounded-full bg-muted/40 overflow-hidden">
                                 <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: colour }} />
                             </div>
                         </div>

@@ -100,7 +100,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
                 <div className="grid grid-cols-12 items-center mb-4 p-3 bg-muted/50 rounded-t-xl font-semibold text-muted-foreground text-xs uppercase tracking-wider">
                     <div className="col-span-1 text-center">Bought</div>
                     <div className="col-span-2 text-center md:text-left">Amount</div>
-                    <div className={essential ? "col-span-6" : "col-span-3"}>Search Term</div>
+                    <div className={essential ? (modifyColumnName ? "col-span-5" : "col-span-6") : (modifyColumnName ? "col-span-2" : "col-span-3")}>Search Term</div>
                     {essential ? (
                         <div className="col-span-3 text-center md:text-left">Category</div>
                     ) : (
@@ -132,7 +132,7 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
                                 {ingred.quantity} {ingred.quantity_type}
                             </div>
 
-                            <div className={essential ? "col-span-6" : "col-span-3"}>
+                            <div className={essential ? (modifyColumnName ? "col-span-5" : "col-span-6") : (modifyColumnName ? "col-span-2" : "col-span-3")}>
                                 <div
                                     onClick={() => openModal(ingred.name)}
                                     className="cursor-pointer hover:text-primary transition-colors truncate px-1"
@@ -213,10 +213,13 @@ function IngredientTable({ ingredients, handleCheckboxChange, reload, availableC
                         backgroundColor: 'var(--background)',
                         borderColor: 'var(--border)',
                         color: 'var(--foreground)',
+                        inset: '1rem',
                         maxWidth: '800px',
                         margin: '0 auto',
-                        padding: '2rem',
+                        padding: '1.5rem',
                         borderRadius: '1.5rem',
+                        overflowY: 'auto',
+                        maxHeight: '90vh'
                     },
                     overlay: {
                         backgroundColor: 'rgba(0, 0, 0, 0.7)',

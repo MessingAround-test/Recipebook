@@ -4,7 +4,7 @@ import { Layout } from '../components/Layout'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import { NUTRIENT_LABELS } from '../lib/dailyIntake'
 import { calculateHealthScore, DEFAULT_HEALTH_SCORE_CONFIG, HealthScoreConfig } from '../lib/healthScore'
-import { FiZap, FiActivity, FiShoppingCart, FiCalendar, FiArrowRight, FiPlus, FiCheckCircle, FiChevronRight, FiTrendingUp, FiSearch, FiX, FiCoffee, FiRefreshCw, FiInfo } from 'react-icons/fi'
+import { FiZap, FiActivity, FiShoppingCart, FiCalendar, FiArrowRight, FiPlus, FiCheckCircle, FiChevronRight, FiTrendingUp, FiSearch, FiX, FiCoffee, FiRefreshCw } from 'react-icons/fi'
 import IngredientEditor from '../components/IngredientEditor'
 import { fileToBase64 } from '../lib/recipeImage'
 import { extractRecipeFromImage, saveRecipe, Ingredient } from '../lib/recipeExtraction'
@@ -33,9 +33,20 @@ const Skeleton = ({ className = '' }: { className?: string }) => (
     <div className={`animate-pulse bg-white/[0.04] rounded-xl ${className}`} />
 )
 
-const IconChip = ({ className = '', children }: { className?: string; children: React.ReactNode }) => (
-    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${className}`}>{children}</div>
-)
+const IconChip = ({ className = '', children, onClick }: { className?: string; children: React.ReactNode; onClick?: () => void }) =>
+    onClick ? (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-label="Show details"
+            title="Show details"
+            className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 cursor-pointer transition-all hover:brightness-125 active:scale-90 ${className}`}
+        >
+            {children}
+        </button>
+    ) : (
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${className}`}>{children}</div>
+    )
 
 export default function Dashboard() {
     const isAuthed = useAuthGuard()
@@ -480,16 +491,8 @@ export default function Dashboard() {
         <div className="bg-gradient-to-br from-orange-500/[0.28] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col flex-1 min-w-0">
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2.5">
-                    <IconChip className="bg-orange-500/20 text-orange-400"><FiCalendar size={16} /></IconChip>
+                    <IconChip className="bg-orange-500/20 text-orange-400" onClick={() => setShowPlanCoverage(true)}><FiCalendar size={16} /></IconChip>
                     <h3 className="text-sm font-black tracking-tight">This Week</h3>
-                    <button
-                        onClick={() => setShowPlanCoverage(true)}
-                        aria-label="See today's estimated intake from the plan"
-                        title="Today's estimated intake if we ate everything planned"
-                        className="shrink-0 w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 text-muted-foreground hover:text-white text-[10px] font-black flex items-center justify-center transition-colors active:scale-90"
-                    >
-                        <FiInfo size={11} />
-                    </button>
                 </div>
                 <button
                     onClick={() => Router.push('/weeklyPlanner')}
@@ -558,23 +561,15 @@ export default function Dashboard() {
         <div className="bg-gradient-to-br from-emerald-500/[0.26] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col flex-1 min-w-0">
             <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
-                <IconChip className="bg-emerald-500/15 text-emerald-400"><FiActivity size={16} /></IconChip>
+                <IconChip className="bg-emerald-500/15 text-emerald-400" onClick={() => setShowNutrition(true)}><FiActivity size={16} /></IconChip>
                 <h3 className="text-sm font-black tracking-tight">Today's Intake</h3>
-                <button
-                    onClick={() => setShowNutrition(true)}
-                    aria-label="See today's nutrition details"
-                    title="Today's nutrition"
-                    className="shrink-0 w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 text-muted-foreground hover:text-white text-[10px] font-black flex items-center justify-center transition-colors active:scale-90"
-                >
-                    <FiInfo size={11} />
-                </button>
                 <button
                     onClick={() => setShowRoundOut(true)}
                     aria-label="Round out today's intake"
                     title="Round out today's intake with quick foods"
-                    className="shrink-0 p-1 rounded-md bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-colors active:scale-90"
+                    className="shrink-0 w-8 h-8 rounded-md bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-colors active:scale-90 flex items-center justify-center"
                 >
-                    <FiZap size={12} />
+                    <FiZap size={14} />
                 </button>
             </div>
             <div className="flex items-center gap-2">
@@ -595,7 +590,7 @@ export default function Dashboard() {
             {loading && !targets ? (
                 <div className="space-y-2 flex-1">
                     <Skeleton className="h-8 w-full" />
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <Skeleton className="h-12" />
                         <Skeleton className="h-12" />
                         <Skeleton className="h-12" />
@@ -611,7 +606,7 @@ export default function Dashboard() {
                     <div className="h-2 w-full bg-black/25 rounded-full overflow-hidden mt-3 mb-5">
                         <div className={`h-full rounded-full transition-all duration-700 ${caloriePct >= 100 ? 'bg-amber-400' : 'bg-emerald-400'}`} style={{ width: `${caloriePct}%` }} />
                     </div>
-                    <div className="grid grid-cols-4 gap-2 flex-1 items-stretch">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-1 items-stretch">
                         {macroCell('protein_g')}
                         {macroCell('carbohydrates_g')}
                         {macroCell('fat_g')}
@@ -688,7 +683,7 @@ export default function Dashboard() {
 
     return (
         <Layout title="Dashboard" description="Your health, plans and lists at a glance">
-            <div className="-mx-6 md:mx-0">
+            <div className="-mx-3 sm:mx-0">
                 <div className="mx-auto max-w-6xl px-3 md:px-4 pt-1 pb-3 md:pt-2 md:pb-8 space-y-3 md:space-y-6">
                     {/* ═══ HEADER ═══ */}
                     <div className="flex items-center gap-2 min-w-0">
@@ -871,9 +866,9 @@ export default function Dashboard() {
 
             {/* ═══ QUICK LOG MODAL ═══ */}
             {isLoggingOpen && (
-                <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center md:p-8">
+                <div className="fixed inset-0 z-[100] flex items-start md:items-center justify-center md:p-8">
                     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={closeLog} />
-                    <div className="relative w-full md:max-w-lg bg-background border-t md:border border-white/10 rounded-t-2xl md:rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+2.5rem)]">
+                    <div className="relative w-full md:max-w-lg bg-background border-b md:border border-white/10 rounded-b-2xl md:rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+2.5rem)]">
                         <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-background/95 backdrop-blur-md border-b border-white/5">
                             <div className="flex items-center gap-2.5">
                                 <IconChip className="bg-emerald-500/15 text-emerald-400"><FiPlus size={16} /></IconChip>

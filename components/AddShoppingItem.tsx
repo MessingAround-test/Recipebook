@@ -195,7 +195,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                 <button
                     type="button"
                     onClick={onCancel}
-                    className="absolute top-3 right-3 md:top-6 md:right-6 text-muted-foreground hover:text-white transition-colors z-[70] p-2 hover:bg-white/5 rounded-full"
+                    className="absolute top-3 right-3 md:top-6 md:right-6 text-muted-foreground hover:text-white transition-colors z-[70] p-2.5 hover:bg-white/5 rounded-full flex items-center justify-center min-h-[40px] min-w-[40px]"
                 >
                     <X size={18} />
                 </button>

@@ -337,8 +337,8 @@ export default function IngredientResearchComponent({
 
                         return (
                             <div key={item._id} className={`p-6 rounded-xl border transition-all duration-300 bg-card ${isEditing ? 'ring-2 ring-primary border-primary/50' : 'border-border hover:border-primary/30'}`}>
-                                <div className="flex justify-between items-start mb-6">
-                                    <div className="flex-1">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                                    <div className="flex-1 min-w-0">
                                         <div>
                                             {isEditing ? (
                                                 <input
@@ -347,14 +347,14 @@ export default function IngredientResearchComponent({
                                                     onChange={e => setEditForm({ ...editForm, ingredient_name: e.target.value })}
                                                 />
                                             ) : (
-                                                <h4 className="text-xl font-bold capitalize">{item.ingredient_name}</h4>
+                                                <h4 className="text-xl font-bold capitalize break-words">{item.ingredient_name}</h4>
                                             )}
                                             <p className="text-xs text-muted-foreground mt-1">
                                                 Version: {item.nutrients_version} | Last Updated: {new Date(item.last_updated).toLocaleDateString()}
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 flex-wrap shrink-0">
                                         {isAdmin && (
                                             isEditing ? (
                                                 <>
@@ -934,7 +934,7 @@ export default function IngredientResearchComponent({
                 {
                     selectedBinIndex !== -1 && (
                         <div className="mt-2 text-center">
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedBinIndex(-1)} className="text-xs">
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedBinIndex(-1)} className="text-xs min-h-[40px]">
                                 Clear Filter
                             </Button>
                         </div>
@@ -1298,7 +1298,7 @@ export default function IngredientResearchComponent({
                                     <Button 
                                         size="sm" 
                                         variant={isChosen ? "default" : "outline"}
-                                        className={`h-7 text-[10px] px-3 ${isChosen ? 'bg-yellow-400 hover:bg-yellow-500 text-black border-none' : ''}`}
+                                        className={`h-9 min-h-[40px] text-[10px] px-3 ${isChosen ? 'bg-yellow-400 hover:bg-yellow-500 text-black border-none' : ''}`}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setChosenProductId(isChosen ? null : product.id);

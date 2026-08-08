@@ -640,7 +640,7 @@ export default function Home() {
                             <div className="flex flex-row items-center gap-2">
                                 <button
                                     onClick={resetToDefault}
-                                    className="p-2 rounded-lg border border-[var(--border)] text-gray-400 hover:text-white hover:bg-white/5 transition-all active:scale-95"
+                                    className="p-2.5 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg border border-[var(--border)] text-gray-400 hover:text-white hover:bg-white/5 transition-all active:scale-95"
                                     title="Reset View"
                                 >
                                     <RotateCcw size={16} />
@@ -648,7 +648,7 @@ export default function Home() {
                                 
                                 <button
                                     onClick={() => setIsOptionsOpen(!isOptionsOpen)}
-                                    className={`p-2 rounded-lg border transition-all active:scale-95 ${isOptionsOpen ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-[var(--border)] text-gray-400 hover:text-white'}`}
+                                    className={`p-2.5 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg border transition-all active:scale-95 ${isOptionsOpen ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-[var(--border)] text-gray-400 hover:text-white'}`}
                                     title="Options"
                                 >
                                     <Settings size={16} className={isOptionsOpen ? 'animate-spin-slow' : ''} />
@@ -656,7 +656,7 @@ export default function Home() {
 
                                 {!createNewIngredOpen && (
                                     <button
-                                        className="bg-emerald-500 hover:bg-emerald-400 text-black p-2 rounded-lg transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center"
+                                        className="bg-emerald-500 hover:bg-emerald-400 text-black p-2.5 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
                                         onClick={() => setCreateNewIngredOpen(true)}
                                         title="Add Item"
                                     >
@@ -746,7 +746,7 @@ export default function Home() {
                             <div className="glass-card w-full p-3 sm:p-4">
                                 <h6 className="font-bold uppercase tracking-wider text-gray-500 mb-2" style={{ fontSize: '0.65rem' }}>Active Suppliers</h6>
                                 <div className="flex items-center justify-between gap-2 sm:gap-4 flex-wrap sm:flex-nowrap">
-                                    <div className="scale-65 sm:scale-75 origin-left flex-1 min-w-[200px]">
+                                    <div className="scale-[0.65] sm:scale-75 origin-left flex-1 min-w-0 sm:min-w-[200px]">
                                         <ImageList
                                             images={["/WW.png", "/Panetta.png", "/IGA.png", "/Aldi.png", "/Coles.png"]}
                                             onImageChange={(e) => setPendingSuppliers(e)}

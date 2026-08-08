@@ -12,17 +12,17 @@ function IngredientCardProduct({ ingredient, handleDeleteIngredient, essential, 
         <div className={`flex flex-col gap-1.5 ${ingredient?.complete ? 'grayscale opacity-75' : ''}`}>
 
             {/* Top row: Image & Name */}
-            <div className="flex flex-row items-center gap-2">
+            <div className="flex flex-row items-center gap-2 min-w-0">
                 {showSupplierImage && (
                     <img
-                        className="w-5 h-5 object-contain rounded-sm"
+                        className="w-5 h-5 object-contain rounded-sm shrink-0"
                         src={`/${ingredient?.source ? ingredient.source : 'cross'}.png`}
                         alt={ingredient?.name}
                     />
                 )}
 
-                <div className="text-sm font-medium relative group cursor-pointer" onClick={() => setIsOpen(true)}>
-                    <span className="group-hover:text-primary transition-colors hover:underline truncate max-w-[200px] inline-block align-bottom">
+                <div className="text-sm font-medium relative group cursor-pointer min-w-0" onClick={() => setIsOpen(true)}>
+                    <span className="group-hover:text-primary transition-colors hover:underline truncate max-w-full min-w-0 inline-block align-bottom">
                         {ingredient ? ingredient.name : ""}
                     </span>
                 </div>
@@ -33,8 +33,8 @@ function IngredientCardProduct({ ingredient, handleDeleteIngredient, essential, 
             </div>
 
             {/* Middle row: Price & Efficiency Bar */}
-            <div className="flex flex-row items-center gap-3">
-                <div className="flex flex-row items-baseline gap-1 font-semibold text-foreground text-sm">
+            <div className="flex flex-row flex-wrap items-center gap-x-2 gap-y-1">
+                <div className="flex flex-row items-baseline gap-1 font-semibold text-foreground text-sm min-w-0 flex-wrap">
                     <span>${(ingredient?.total_price || 0).toFixed(2)}</span>
                     <span className="text-xs text-muted-foreground font-normal">
                         ({ingredient?.units_needed > 1 ? `${ingredient.units_needed}x ` : ''}${(ingredient?.price || 0).toFixed(2)}/ea)
@@ -45,7 +45,7 @@ function IngredientCardProduct({ ingredient, handleDeleteIngredient, essential, 
                 </div>
 
                 {ingredient !== undefined && matchEfficiency < 100 && (
-                    <div className="w-24 bg-muted rounded-full overflow-hidden border border-border h-1.5 mt-0.5" title={`${Math.max(matchEfficiency, 0).toFixed(0)}% match efficiency`}>
+                    <div className="w-full sm:w-24 bg-muted rounded-full overflow-hidden border border-border h-1.5 mt-0.5" title={`${Math.max(matchEfficiency, 0).toFixed(0)}% match efficiency`}>
                         <div className="bg-green-500 h-full rounded-full transition-all" style={{ width: `${Math.max(matchEfficiency, 0)}%` }}></div>
                     </div>
                 )}

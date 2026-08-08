@@ -16,9 +16,10 @@ const CardListModal = ({ ingredient, show, onHide, filters, enabledSuppliers = [
                     backgroundColor: '#0f172a', // Deep slate for better chart contrast
                     borderColor: 'rgba(255,255,255,0.1)',
                     color: '#f8fafc', // Light slate text
+                    inset: '1rem',
                     maxWidth: '900px',
                     margin: '0 auto',
-                    padding: '2rem',
+                    padding: '1.5rem',
                     borderRadius: '0.75rem',
                     overflowY: 'auto',
                     maxHeight: '90vh',
@@ -34,15 +35,15 @@ const CardListModal = ({ ingredient, show, onHide, filters, enabledSuppliers = [
             contentLabel="Ingredient Detail & Research"
         >
             <div className="dark flex flex-col gap-8 h-full">
-                <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10 sticky top-0 bg-[#0f172a] z-10 -mt-2 -mx-2 px-2">
-                    <div className="flex flex-col">
-                        <h2 className="text-2xl font-bold tracking-tight">{ingredient?.name?.toUpperCase()}</h2>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 pb-4 border-b border-white/10 sticky top-0 bg-[#0f172a] z-10 -mt-2 -mx-2 px-2">
+                    <div className="flex flex-col min-w-0">
+                        <h2 className="text-2xl font-bold tracking-tight break-words">{ingredient?.name?.toUpperCase()}</h2>
                         <p className="text-sm text-muted-foreground">Detail & Advanced Research</p>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <button
                             onClick={() => setShowNutrition(!showNutrition)}
-                            className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all border ${
+                            className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 min-h-[40px] rounded-lg transition-all border ${
                                 showNutrition 
                                 ? 'bg-emerald-500 text-white border-emerald-400' 
                                 : 'bg-white/5 text-muted-foreground border-white/10 hover:text-white hover:bg-white/10'
@@ -58,13 +59,13 @@ const CardListModal = ({ ingredient, show, onHide, filters, enabledSuppliers = [
                                         onHide();
                                     }
                                 }}
-                                className="text-xs font-bold uppercase tracking-widest text-red-500 border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 py-1.5 px-3 rounded-lg transition-all"
+                                className="text-xs font-bold uppercase tracking-widest text-red-500 border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 py-1.5 px-3 min-h-[40px] rounded-lg transition-all"
                                 title="Remove from Shopping List"
                             >
                                 🗑️ Remove
                             </button>
                         )}
-                        <button onClick={onHide} className="text-muted-foreground hover:text-foreground text-3xl leading-none transition-colors">&times;</button>
+                        <button onClick={onHide} className="text-muted-foreground hover:text-foreground text-3xl leading-none transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center">&times;</button>
                     </div>
                 </div>
 

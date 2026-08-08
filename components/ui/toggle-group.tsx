@@ -33,7 +33,7 @@ export const ToggleGroup = ({ type, value, onValueChange, children, className }:
 
     return (
         <ToggleGroupContext.Provider value={{ value, onValueChange: handleValueChange }}>
-            <div className={cn("flex items-center gap-1", className)}>{children}</div>
+            <div className={cn("flex flex-wrap items-center gap-1", className)}>{children}</div>
         </ToggleGroupContext.Provider>
     )
 }
@@ -53,7 +53,7 @@ export const ToggleGroupItem = ({ value, children, className }: ToggleGroupItemP
             type="button"
             onClick={() => context.onValueChange(value)}
             className={cn(
-                "px-3 py-1 text-sm rounded-md transition-colors",
+                "px-3 py-2 min-h-[40px] text-sm rounded-md transition-colors",
                 isSelected ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200",
                 className
             )}

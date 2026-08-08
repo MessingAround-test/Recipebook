@@ -21,7 +21,6 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   min-height: 100vh;
-  overflow-x: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -71,18 +70,6 @@ a {
   justify-content: space-between;
 }
 
-.gap-1 {
-  gap: 0.5rem;
-}
-
-.gap-2 {
-  gap: 1rem;
-}
-
-.gap-4 {
-  gap: 2rem;
-}
-
 .w-full {
   width: 100%;
 }
@@ -128,6 +115,50 @@ a {
   transform: translateY(-4px);
   box-shadow: 0 20px 40px -20px rgba(16, 185, 129, 0.2);
   border-color: var(--accent);
+}
+
+/* Toggle Switch */
+.toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--muted-foreground);
+  transition: transform 0.2s ease;
+}
+
+.toggle:checked {
+  background: #10b981;
+  border-color: #10b981;
+}
+
+.toggle:checked::after {
+  transform: translateX(20px);
+  background: #ffffff;
+}
+
+.toggle-emerald:checked {
+  background: #10b981;
+  border-color: #10b981;
 }
 
 /* Receipt Style - Light Background for Forms */
@@ -390,6 +421,10 @@ a {
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .glass-card {
+    padding: 1rem;
   }
 }
 
