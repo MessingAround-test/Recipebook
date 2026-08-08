@@ -22,43 +22,43 @@ export function Toolbar() {
                 <ul className={styles.nav_links}>
                     <li className={styles.nav_item}>
                         <Link href="/" className={`${styles.nav_link} ${isActive('/') ? styles.active : ''}`}>
-                            <div className={styles.icon_wrapper}><MdHome size={24} /></div>
+                            <div className={styles.icon_wrapper}><MdHome size={30} /></div>
                             <span className={styles.nav_label}>Home</span>
                         </Link>
                     </li>
                     <li className={styles.nav_item}>
                         <Link href="/recipes" className={`${styles.nav_link} ${isActive('/recipes') ? styles.active : ''}`}>
-                            <div className={styles.icon_wrapper}><MdOutlineMenuBook size={24} /></div>
+                            <div className={styles.icon_wrapper}><MdOutlineMenuBook size={30} /></div>
                             <span className={styles.nav_label}>Recipes</span>
                         </Link>
                     </li>
                     <li className={styles.nav_item}>
                         <Link href="/shoppingList" className={`${styles.nav_link} ${isActive('/shoppingList') ? styles.active : ''}`}>
-                            <div className={styles.icon_wrapper}><MdShoppingCart size={24} /></div>
+                            <div className={styles.icon_wrapper}><MdShoppingCart size={30} /></div>
                             <span className={styles.nav_label}>List</span>
                         </Link>
                     </li>
                     <li className={styles.nav_item}>
                         <Link href="/dailyTracker" className={`${styles.nav_link} ${isActive('/dailyTracker') ? styles.active : ''}`}>
-                            <div className={styles.icon_wrapper}><MdTimeline size={24} /></div>
+                            <div className={styles.icon_wrapper}><MdTimeline size={30} /></div>
                             <span className={styles.nav_label}>Health</span>
                         </Link>
                     </li>
                     <li className={styles.nav_item}>
                         <Link href="/ingredientResearch" className={`${styles.nav_link} ${isActive('/ingredientResearch') ? styles.active : ''}`}>
-                            <div className={styles.icon_wrapper}><MdSearch size={24} /></div>
+                            <div className={styles.icon_wrapper}><MdSearch size={30} /></div>
                             <span className={styles.nav_label}>Ingredients</span>
                         </Link>
                     </li>
-                    <li className={styles.nav_item}>
+                    <li className={`${styles.nav_item} ${styles.hide_mobile}`}>
                         <Link href="/tools" className={`${styles.nav_link} ${isActive('/tools') ? styles.active : ''}`}>
-                            <div className={styles.icon_wrapper}><MdApps size={24} /></div>
+                            <div className={styles.icon_wrapper}><MdApps size={30} /></div>
                             <span className={styles.nav_label}>Tools</span>
                         </Link>
                     </li>
-                    <li className={styles.nav_item}>
+                    <li className={`${styles.nav_item} ${styles.hide_mobile}`}>
                         <Link href="/profile" className={`${styles.nav_link} ${isActive('/profile') ? styles.active : ''}`}>
-                            <div className={styles.icon_wrapper}><HiOutlineCog size={24} /></div>
+                            <div className={styles.icon_wrapper}><HiOutlineCog size={30} /></div>
                             <span className={styles.nav_label}>Settings</span>
                         </Link>
                     </li>
