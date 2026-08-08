@@ -21,7 +21,7 @@ export function Layout({ title, description = 'Premium Culinary Management', chi
                     <meta name="description" content={description} />
                     <link rel="icon" href="/avo.ico" />
                     <link rel="manifest" href="/manifest.json" />
-                    <meta name="theme-color" content="#ffffff" />
+                    <meta name="theme-color" content="#000000" />
                     <meta name="apple-mobile-web-app-capable" content="yes" />
                     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
                     <meta name="apple-mobile-web-app-title" content="Recipebook" />

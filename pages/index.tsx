@@ -683,10 +683,10 @@ export default function Dashboard() {
 
     return (
         <Layout title="Dashboard" description="Your health, plans and lists at a glance">
-            <div className="-mx-3 sm:mx-0">
-                <div className="mx-auto max-w-6xl px-3 md:px-4 pt-1 pb-3 md:pt-2 md:pb-8 space-y-3 md:space-y-6">
+            <div className="-mx-6 sm:mx-0">
+                <div className="mx-auto max-w-6xl px-0 md:px-4 pt-1 pb-3 md:pt-2 md:pb-8 space-y-3 md:space-y-6">
                     {/* ═══ HEADER ═══ */}
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 px-3 md:px-0">
                         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400 shrink-0">Dashboard</p>
                         <span className="w-1.5 h-1.5 rounded-full bg-white/20 shrink-0" />
                         <h1 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white truncate">
