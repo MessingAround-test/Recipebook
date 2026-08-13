@@ -21,6 +21,7 @@ export default function Tools() {
         { name: "Health Tracker", _id: "/dailyTracker", image: "/health_tracker_oragami.png", adminOnly: false },
         { name: "Weekly Planner", _id: "/weeklyPlanner", image: "/weekly_planner_oragami.png", adminOnly: false },
         { name: "Ingredients", _id: "/ingredientResearch", image: "/ingredients_oragami.png", adminOnly: false },
+        { name: "Hidden Items", _id: "/hiddenItems", image: "", adminOnly: false },
         { name: "DB Inspector", _id: "/admin/dbInspector", image: "/db_inspector_oragami.png", adminOnly: true },
         { name: "Admin", _id: "/admin", image: "/admin_oragami.png", adminOnly: true }
     ])

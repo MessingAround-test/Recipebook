@@ -184,12 +184,25 @@ export default async function handler(req, res) {
                     filterDetails.grams_per_each = conversion.grams_per_each;
                 }
 
-                // Exclude user-hidden products before ranking so ranks stay consecutive
+                // Exclude user-hidden products before ranking so ranks stay consecutive,
+                // unless the caller explicitly wants them included (hidden item manager).
                 const hiddenPatterns = await getHiddenPatterns();
-                const visibleData = applyHiddenFilter(enrichedData, hiddenPatterns);
+                const includeHidden = req.query.includeHidden === 'true';
+                const dataForFilter = includeHidden ? enrichedData : applyHiddenFilter(enrichedData, hiddenPatterns);
 
                 // Final filtering
-                let filteredIngredData = addCalculatedFields(filter(visibleData, filterDetails))
+                let filteredIngredData = addCalculatedFields(filter(dataForFilter, filterDetails))
+
+                // Tag hidden status + covering patterns so the hidden item manager can show
+                // exactly what a search would return and which products are excluded.
+                if (includeHidden) {
+                    filteredIngredData = filteredIngredData.map(item => {
+                        const lower = String(item.name || '').toLowerCase();
+                        const hiddenBy = hiddenPatterns.filter(p => lower.includes(p));
+                        return { ...item, hidden: hiddenBy.length > 0, hiddenBy };
+                    });
+                }
+
                 return res.status(200).send({ success: true, res: filteredIngredData, "loadedSource": loadedFromSource })
             }
         } else if (req.method === "DELETE") {
