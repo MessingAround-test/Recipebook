@@ -7,7 +7,7 @@ import Ingredients from '../../../../models/Ingredients'
 import axios from 'axios';
 import JSSoup from 'jssoup';
 import { convertMetricReading } from '../../../../lib/conversion'
-import { filterValidEntries } from '../../../../lib/commonAPIs'
+import { isProviderDisabled } from '../../../../lib/providerStatus'
 
 
 export default async function handler(req, res) {
@@ -15,6 +15,10 @@ export default async function handler(req, res) {
 
     const decoded = await verifyToken(req, res);
     if (!decoded) return;
+
+    if (await isProviderDisabled("Aldi")) {
+        return res.status(200).json({ success: false, message: "Aldi is currently disabled by an administrator" });
+    }
 
     try {
         await dbConnect();
@@ -104,7 +108,7 @@ export default async function handler(req, res) {
                     }
                 }
 
-                let validatedEntries = await filterValidEntries(filteredDataArray, search_term, req.headers.edgetoken || req.query.EDGEtoken)
+                let validatedEntries = filteredDataArray
                 for (let ingredient of validatedEntries) {
                     await Ingredients.findOneAndUpdate(
                         { id: ingredient.id },

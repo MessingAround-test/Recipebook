@@ -10,6 +10,8 @@ import { verifyToken } from "../../../lib/auth.ts";
 import { logAPI } from '../../../lib/logger.ts';
 import User from '../../../models/User'
 import { safeToObject } from '../../../lib/utils'
+import { getHiddenPatterns, applyHiddenFilter } from '../../../lib/hiddenItems'
+import { getDisabledProviders } from '../../../lib/providerStatus'
 
 
 export default async function handler(req, res) {
@@ -49,6 +51,10 @@ export default async function handler(req, res) {
 
             if (search_term === "" || search_term === undefined) {
                 let IngredData = await Ingredients.find({}).exec()
+                const disabledProviders = await getDisabledProviders();
+                if (disabledProviders.size > 0) {
+                    IngredData = IngredData.filter(i => !disabledProviders.has(i.source));
+                }
                 return res.status(200).send({ res: IngredData })
             } else {
                 const force = req.query.force === 'true';
@@ -65,6 +71,16 @@ export default async function handler(req, res) {
                         companies = [supplierParam]
                     }
                     search_query["source"] = { "$in": companies }
+                }
+
+                // Remove any providers that admins have disabled (e.g. broken APIs)
+                const disabledProviders = await getDisabledProviders();
+                if (disabledProviders.size > 0) {
+                    companies = companies.filter(c => !disabledProviders.has(c));
+                    if (companies.length === 0) {
+                        return res.status(200).send({ success: true, res: [], loadedSource: false, message: "All requested providers are disabled" });
+                    }
+                    search_query["source"] = { "$in": companies };
                 }
 
                 let IngredData = force ? [] : await Ingredients.find(search_query).exec()
@@ -168,8 +184,12 @@ export default async function handler(req, res) {
                     filterDetails.grams_per_each = conversion.grams_per_each;
                 }
 
+                // Exclude user-hidden products before ranking so ranks stay consecutive
+                const hiddenPatterns = await getHiddenPatterns();
+                const visibleData = applyHiddenFilter(enrichedData, hiddenPatterns);
+
                 // Final filtering
-                let filteredIngredData = addCalculatedFields(filter(enrichedData, filterDetails))
+                let filteredIngredData = addCalculatedFields(filter(visibleData, filterDetails))
                 return res.status(200).send({ success: true, res: filteredIngredData, "loadedSource": loadedFromSource })
             }
         } else if (req.method === "DELETE") {

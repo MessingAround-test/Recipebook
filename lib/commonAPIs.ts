@@ -82,34 +82,3 @@ export async function getShoppingListItems(list_id: string | number) {
     })).json()
     return (data.res)
 }
-
-export async function filterValidEntries(filteredDataArray: any[], search_term: string, EDGEtoken: string) {
-    const allNames = filteredDataArray.map((entry) => entry.name);
-    try {
-        let response = await fetch(`http://localhost:8080/api/ai/determine_bad_entries?search_term=${search_term}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'edgetoken': EDGEtoken
-            },
-            body: JSON.stringify({ returned_terms: allNames })
-        });
-        let responseParsed = await response.json();
-        if (responseParsed.success !== true) {
-            console.error("API returned fail:", responseParsed);
-            return filteredDataArray;
-        }
-
-        let data = responseParsed.data
-        if (data && Array.isArray(data)) {
-            const validEntries = filteredDataArray.filter((entry) => data.includes(entry.name));
-            return validEntries;
-        } else {
-            console.error("Unexpected response format from AI API:", data);
-            return filteredDataArray;
-        }
-    } catch (error) {
-        console.error("Error fetching AI response:", error);
-        return filteredDataArray;
-    }
-}

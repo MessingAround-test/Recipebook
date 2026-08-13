@@ -5,7 +5,7 @@ import User from '../../../../models/User'
 import Ingredients from '../../../../models/Ingredients'
 import axios from 'axios';
 import { convertMetricReading } from '../../../../lib/conversion'
-import { filterValidEntries } from '../../../../lib/commonAPIs'
+import { isProviderDisabled } from '../../../../lib/providerStatus'
 
 let cachedBuildId = "20260310.4-d51173fab603623c68e557a054992d8939a1a9e7";
 let lastBuildIdFetch = 0;
@@ -38,6 +38,10 @@ export default async function handler(req, res) {
 
     const decoded = await verifyToken(req, res);
     if (!decoded) return;
+
+    if (await isProviderDisabled("Coles")) {
+        return res.status(200).json({ success: false, message: "Coles is currently disabled by an administrator" });
+    }
 
     try {
         if (req.method === "GET") {
@@ -168,7 +172,7 @@ export default async function handler(req, res) {
                     }
                 }
 
-                let validatedEntries = await filterValidEntries(filteredDataArray, search_term, req.headers.edgetoken || req.query.EDGEtoken)
+                let validatedEntries = filteredDataArray
                 for (let ingredient of validatedEntries) {
                     await Ingredients.findOneAndUpdate(
                         { id: ingredient.id },

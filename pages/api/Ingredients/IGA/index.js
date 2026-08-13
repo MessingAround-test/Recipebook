@@ -5,13 +5,17 @@ import User from '../../../../models/User'
 import Ingredients from '../../../../models/Ingredients'
 import axios from 'axios';
 import { convertMetricReading } from '../../../../lib/conversion'
-import { filterValidEntries } from '../../../../lib/commonAPIs'
+import { isProviderDisabled } from '../../../../lib/providerStatus'
 
 export default async function handler(req, res) {
     let search_term = req.query.name
 
     const decoded = await verifyToken(req, res);
     if (!decoded) return;
+
+    if (await isProviderDisabled("IGA")) {
+        return res.status(200).json({ success: false, message: "IGA is currently disabled by an administrator" });
+    }
 
     try {
         if (req.method === "GET") {
@@ -91,7 +95,7 @@ export default async function handler(req, res) {
                     }
                 }
 
-                let validatedEntries = await filterValidEntries(filteredDataArray, search_term, req.headers.edgetoken || req.query.EDGEtoken)
+                let validatedEntries = filteredDataArray
                 for (let ingredient of validatedEntries) {
                     await Ingredients.findOneAndUpdate(
                         { id: ingredient.id },

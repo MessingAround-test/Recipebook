@@ -8,6 +8,7 @@ import { Label } from "./ui/label";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import axios from 'axios';
 import SearchableDropdown from './SearchableDropdown';
+import HiddenItemsManager from './HiddenItemsManager';
 
 interface IngredientResearchComponentProps {
     initialSearchTerm?: string;
@@ -91,6 +92,7 @@ export default function IngredientResearchComponent({
     const deletingIds = useState<Set<string>>(new Set())[0];
     const [deletingIdsState, setDeletingIds] = useState<Set<string>>(new Set());
     const [selectedDeleteIds, setSelectedDeleteIds] = useState<Set<string>>(new Set());
+    const [showHiddenManager, setShowHiddenManager] = useState(false);
 
     const executeSearch = async (term: string, unit: string, qty: number | string, skipConv: boolean = false, modeOverride?: 'price' | 'nutrition') => {
         const activeMode = modeOverride || viewMode;
@@ -987,6 +989,12 @@ export default function IngredientResearchComponent({
         return binIndex === selectedBinIndex;
     };
 
+    const handlePatternsChanged = async () => {
+        if (searchTerm && viewMode === 'price') {
+            await executeSearch(searchTerm, quantityUnit, quantity, skipConversion);
+        }
+    };
+
     return (
         <div className="w-full">
             <div className="flex justify-center mb-8">
@@ -998,6 +1006,17 @@ export default function IngredientResearchComponent({
                         🥗 Nutrition Data
                     </ToggleGroupItem>
                 </ToggleGroup>
+            </div>
+            <div className="flex justify-center mb-8">
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => setShowHiddenManager(v => !v)}
+                >
+                    {showHiddenManager ? '▲ Close Hidden Item Manager' : '🚫 Manage Hidden Items'}
+                </Button>
             </div>
 
             {showForm && (
@@ -1431,6 +1450,19 @@ export default function IngredientResearchComponent({
                             })}
                         </tbody>
                     </table>
+                </div>
+            )}
+
+            {showHiddenManager && (
+                <div className="mt-8">
+                    <div className="glass-card p-6">
+                        <h3 className="text-lg font-bold mb-2 text-foreground">Manage Hidden Items</h3>
+                        <p className="text-xs text-muted-foreground mb-5">
+                            Products matching a hidden word are excluded from search results. Add words you keep seeing that don't
+                            match what you searched for, or hide individual products below.
+                        </p>
+                        <HiddenItemsManager onPatternsChanged={handlePatternsChanged} />
+                    </div>
                 </div>
             )}
         </div>
