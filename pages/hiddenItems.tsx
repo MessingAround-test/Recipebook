@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Router from 'next/router'
 import { Layout } from '../components/Layout'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import { PageHeader } from '../components/PageHeader'
 import { Button } from '../components/ui/button'
+import SearchableDropdown from '../components/SearchableDropdown'
 
 interface HiddenItemResult {
     id?: string
@@ -32,16 +33,22 @@ export default function HiddenItemsPage() {
     const isAuthed = useAuthGuard()
 
     const [patterns, setPatterns] = useState<string[]>([])
+    const [availableIngredients, setAvailableIngredients] = useState<string[]>([])
     const [searchTerm, setSearchTerm] = useState('')
     const [results, setResults] = useState<HiddenItemResult[]>([])
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
     const [hasSearched, setHasSearched] = useState(false)
     const [searching, setSearching] = useState(false)
     const [saving, setSaving] = useState(false)
-    const [bulkWord, setBulkWord] = useState('')
+    const [filterText, setFilterText] = useState('')
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
     const [error, setError] = useState('')
 
+    const searchingRef = useRef(false)
+
     const token = typeof window !== 'undefined' ? localStorage.getItem('Token') || '' : ''
+
+    const keyFor = useCallback((p: HiddenItemResult) => p.id || `${p.name}|${p.source}|${p.price}`, [])
 
     const tagResults = useCallback((list: HiddenItemResult[], pats: string[]): HiddenItemResult[] => {
         return list.map(item => {
@@ -61,32 +68,39 @@ export default function HiddenItemsPage() {
         }
     }, [token])
 
+    const fetchAvailableIngredients = useCallback(async () => {
+        try {
+            const res = await fetch('/api/Ingredients/list', { headers: { 'edgetoken': token } })
+            const data = await res.json()
+            if (data.success) setAvailableIngredients(data.data || [])
+        } catch (err) {
+            console.error('Failed to fetch ingredient list:', err)
+        }
+    }, [token])
+
     useEffect(() => {
-        if (isAuthed) loadPatterns()
-    }, [isAuthed, loadPatterns])
-
-    const isNameHidden = useCallback((name: string) => {
-        const lower = String(name || '').toLowerCase()
-        return patterns.some(p => lower.includes(p))
-    }, [patterns])
-
-    const matchingPatternsFor = useCallback((name: string) => {
-        const lower = String(name || '').toLowerCase()
-        return patterns.filter(p => lower.includes(p))
-    }, [patterns])
+        if (isAuthed) {
+            loadPatterns()
+            fetchAvailableIngredients()
+        }
+    }, [isAuthed, loadPatterns, fetchAvailableIngredients])
 
     const countForPattern = useCallback((pattern: string) => {
         return results.filter(p => String(p?.name || '').toLowerCase().includes(pattern)).length
     }, [results])
 
-    const runSearch = async (e?: React.FormEvent) => {
-        if (e) e.preventDefault()
-        const term = searchTerm.trim()
-        if (!term) return
+    const doSearch = async (term: string) => {
+        const t = (term || '').trim()
+        if (!t) return
+        if (searchingRef.current) return
+        setSearchTerm(t)
+        setStatusFilter('all')
+        setSelectedIds(new Set())
         setSearching(true)
+        searchingRef.current = true
         setError('')
         try {
-            const url = `/api/Ingredients?name=${encodeURIComponent(term)}&supplier=WW,Coles,Aldi,IGA,Panetta&includeHidden=true`
+            const url = `/api/Ingredients?name=${encodeURIComponent(t)}&supplier=WW,Coles,Aldi,IGA,Panetta&includeHidden=true`
             const res = await fetch(url, { headers: { 'edgetoken': token } })
             const data = await res.json()
             if (data.success === false) {
@@ -101,6 +115,7 @@ export default function HiddenItemsPage() {
             setError('Search failed')
         } finally {
             setSearching(false)
+            searchingRef.current = false
         }
     }
 
@@ -128,44 +143,112 @@ export default function HiddenItemsPage() {
         }
     }
 
-    const handleToggleItem = async (name: string) => {
-        if (!isNameHidden(name)) {
-            await savePatterns('add', [name.toLowerCase()])
+    const handleHideSelected = async () => {
+        const selected = results.filter(r => selectedIds.has(keyFor(r)))
+        const toHide = selected.filter(r => !r.hidden).map(r => r.name.toLowerCase())
+        if (toHide.length === 0) {
+            alert('No selected products are currently shown.')
             return
         }
-        const covering = matchingPatternsFor(name)
-        if (covering.length === 0) return
+        await savePatterns('add', toHide)
+    }
+
+    const handleUnhideSelected = async () => {
+        const selected = results.filter(r => selectedIds.has(keyFor(r)))
+        const coveringSet = new Set<string>()
+        selected.forEach(r => {
+            if (r.hidden) (r.hiddenBy || []).forEach(p => coveringSet.add(p))
+        })
+        const covering = Array.from(coveringSet)
+        if (covering.length === 0) {
+            alert('No selected products are currently hidden.')
+            return
+        }
+        const selectedHiddenCount = selected.filter(r => r.hidden).length
         const affected = covering.reduce((sum, p) => sum + countForPattern(p), 0)
         if (affected > covering.length) {
             const ok = confirm(
-                `"${name}" is hidden by ${covering.length} pattern(s): ${covering.map(c => `"${c}"`).join(', ')}.\n` +
-                `Removing them will unhide ${affected} product(s) in total for this search. Continue?`
+                `Unhiding ${selectedHiddenCount} selected product(s) will remove ${covering.length} pattern(s): ${covering.map(c => `"${c}"`).join(', ')}.\n` +
+                `This will unhide ${affected} product(s) in total for this search. Continue?`
             )
             if (!ok) return
         }
         await savePatterns('remove', covering)
     }
 
-    const handleHideAllMatching = () => {
-        const word = bulkWord.trim().toLowerCase()
-        if (!word) return
-        savePatterns('add', [word])
+    const handleHideAllShown = async () => {
+        const toHide = shownResults.filter(r => !r.hidden).map(r => r.name.toLowerCase())
+        if (toHide.length === 0) {
+            alert('All shown products are already hidden.')
+            return
+        }
+        await savePatterns('add', toHide)
     }
 
-    const handleUnhideAllMatching = () => {
-        const word = bulkWord.trim().toLowerCase()
-        if (!word) return
-        savePatterns('remove', [word])
+    const handleUnhideAllShown = async () => {
+        const hiddenShown = shownResults.filter(r => r.hidden)
+        const coveringSet = new Set<string>()
+        hiddenShown.forEach(r => {
+            (r.hiddenBy || []).forEach(p => coveringSet.add(p))
+        })
+        const covering = Array.from(coveringSet)
+        if (covering.length === 0) {
+            alert('No shown products are currently hidden.')
+            return
+        }
+        const affected = covering.reduce((sum, p) => sum + countForPattern(p), 0)
+        if (affected > covering.length) {
+            const ok = confirm(
+                `Unhiding ${hiddenShown.length} shown product(s) will remove ${covering.length} pattern(s): ${covering.map(c => `"${c}"`).join(', ')}.\n` +
+                `This will unhide ${affected} product(s) in total for this search. Continue?`
+            )
+            if (!ok) return
+        }
+        await savePatterns('remove', covering)
     }
 
     const visibleCount = useMemo(() => results.filter(r => !r.hidden).length, [results])
     const hiddenCount = useMemo(() => results.filter(r => r.hidden).length, [results])
 
+    const filterTerm = filterText.trim().toLowerCase()
+
     const shownResults = useMemo(() => {
-        if (statusFilter === 'hidden') return results.filter(r => r.hidden)
-        if (statusFilter === 'visible') return results.filter(r => !r.hidden)
-        return results
-    }, [results, statusFilter])
+        let list = results
+        if (filterTerm) list = list.filter(r => String(r?.name || '').toLowerCase().includes(filterTerm))
+        if (statusFilter === 'hidden') list = list.filter(r => r.hidden)
+        if (statusFilter === 'visible') list = list.filter(r => !r.hidden)
+        return list
+    }, [results, statusFilter, filterTerm])
+
+    const shownVisibleCount = useMemo(() => shownResults.filter(r => !r.hidden).length, [shownResults])
+    const shownHiddenCount = useMemo(() => shownResults.filter(r => r.hidden).length, [shownResults])
+
+    const selectedCount = useMemo(() => {
+        return results.filter(r => selectedIds.has(keyFor(r))).length
+    }, [results, selectedIds, keyFor])
+
+    const allShownSelected = shownResults.length > 0 && shownResults.every(r => selectedIds.has(keyFor(r)))
+
+    const toggleSelectAll = (checked: boolean) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev)
+            shownResults.forEach(r => {
+                if (checked) next.add(keyFor(r))
+                else next.delete(keyFor(r))
+            })
+            return next
+        })
+    }
+
+    const toggleSelect = (p: HiddenItemResult) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev)
+            const k = keyFor(p)
+            if (next.has(k)) next.delete(k)
+            else next.add(k)
+            return next
+        })
+    }
 
     const formatUnitPrice = (p: HiddenItemResult) => {
         const val = p.unit_price_converted
@@ -188,21 +271,24 @@ export default function HiddenItemsPage() {
                     <p className="text-xs text-muted-foreground mb-5">
                         Search for any term (e.g. "watermelon") to preview exactly which products and prices a
                         normal search returns. Products matching a hidden word are excluded from real search
-                        results — hide the ones that don't actually match what you searched for.
+                        results — tick the ones that don't actually match, then hide them.
                     </p>
 
-                    <form onSubmit={runSearch} className="flex flex-col sm:flex-row gap-2">
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Search term, e.g. watermelon"
-                            className="flex-1 h-10 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        />
-                        <Button type="submit" size="lg" disabled={searching || !searchTerm.trim()}>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="flex-1">
+                            <SearchableDropdown
+                                name="hiddenItemSearch"
+                                value={searchTerm}
+                                placeholder="Search a previously searched ingredient (e.g. watermelon)"
+                                options={availableIngredients}
+                                onChange={(e: any) => setSearchTerm(e.target.value)}
+                                onComplete={(val: string) => doSearch(val)}
+                            />
+                        </div>
+                        <Button type="button" size="lg" onClick={() => doSearch(searchTerm)} disabled={searching || !searchTerm.trim()}>
                             {searching ? 'Searching...' : '🔍 Search'}
                         </Button>
-                    </form>
+                    </div>
 
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                         <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Try:</span>
@@ -210,11 +296,9 @@ export default function HiddenItemsPage() {
                             <button
                                 key={term}
                                 type="button"
-                                onClick={() => {
-                                    setSearchTerm(term)
-                                    setStatusFilter('all')
-                                }}
-                                className="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-muted-foreground border border-white/10"
+                                onClick={() => doSearch(term)}
+                                disabled={searching}
+                                className="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-muted-foreground border border-white/10 disabled:opacity-50"
                             >
                                 {term}
                             </button>
@@ -261,8 +345,56 @@ export default function HiddenItemsPage() {
                                 </button>
                             ))}
                         </div>
-                        <div className="ml-auto text-[10px] uppercase tracking-widest text-muted-foreground">
-                            Prices for 1 {results[0]?.quantity_unit || 'each'}
+
+                        {filterTerm && hasSearched && (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-foreground bg-white/10 rounded-full px-2.5 py-1">
+                                filtered: "{filterTerm}"
+                                <button
+                                    type="button"
+                                    onClick={() => setFilterText('')}
+                                    className="hover:opacity-70"
+                                    title="Clear filter"
+                                >
+                                    ✕
+                                </button>
+                            </span>
+                        )}
+
+                        {hasSearched && !searching && shownResults.length > 0 && (
+                            <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={allShownSelected}
+                                    onChange={(e) => toggleSelectAll(e.target.checked)}
+                                    className="h-4 w-4 accent-emerald-500"
+                                />
+                                Select all ({shownResults.length})
+                            </label>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-2 ml-auto">
+                            {selectedCount > 0 && (
+                                <span className="text-xs text-muted-foreground">{selectedCount} selected</span>
+                            )}
+                            <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={handleHideSelected}
+                                disabled={saving || selectedCount === 0}
+                            >
+                                Hide selected{selectedCount > 0 ? ` (${selectedCount})` : ''}
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleUnhideSelected}
+                                disabled={saving || selectedCount === 0}
+                            >
+                                Unhide selected{selectedCount > 0 ? ` (${selectedCount})` : ''}
+                            </Button>
+                            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                                Prices for 1 {results[0]?.quantity_unit || 'each'}
+                            </span>
                         </div>
                     </div>
 
@@ -278,7 +410,9 @@ export default function HiddenItemsPage() {
 
                     {hasSearched && !searching && shownResults.length === 0 && (
                         <div className="p-10 text-center text-sm text-muted-foreground">
-                            No {statusFilter !== 'all' ? statusFilter + ' ' : ''}products found for this search.
+                            {filterTerm
+                                ? `No ${statusFilter !== 'all' ? statusFilter + ' ' : ''}products match "${filterTerm}" for this search.`
+                                : `No ${statusFilter !== 'all' ? statusFilter + ' ' : ''}products found for this search.`}
                         </div>
                     )}
 
@@ -286,21 +420,31 @@ export default function HiddenItemsPage() {
                         const hidden = !!p.hidden
                         const covering = p.hiddenBy || []
                         const unitPrice = formatUnitPrice(p)
+                        const selected = selectedIds.has(keyFor(p))
                         return (
                             <div
-                                key={p.id || `${p.name}|${p.source}|${p.price}`}
-                                className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3 border-b border-border last:border-b-0 text-sm ${hidden ? 'opacity-70 bg-destructive/5' : ''}`}
+                                key={keyFor(p)}
+                                onClick={() => toggleSelect(p)}
+                                className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3 border-b border-border last:border-b-0 text-sm cursor-pointer transition-colors ${
+                                    selected ? 'bg-primary/5 ring-1 ring-inset ring-primary/30' : ''
+                                } ${hidden ? 'opacity-70 bg-destructive/5' : ''}`}
                             >
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={hidden ? 'outline' : 'ghost'}
-                                    className={`h-7 text-[10px] shrink-0 ${hidden ? 'text-emerald-500 hover:bg-emerald-500/10' : 'text-destructive hover:bg-destructive/10'}`}
-                                    onClick={() => handleToggleItem(p.name)}
-                                    disabled={saving}
-                                >
-                                    {hidden ? 'Show' : 'Hide'}
-                                </Button>
+                                <input
+                                    type="checkbox"
+                                    checked={selected}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onChange={(e) => {
+                                        e.stopPropagation()
+                                        const k = keyFor(p)
+                                        setSelectedIds(prev => {
+                                            const next = new Set(prev)
+                                            if (e.target.checked) next.add(k)
+                                            else next.delete(k)
+                                            return next
+                                        })
+                                    }}
+                                    className="h-4 w-4 shrink-0 accent-emerald-500"
+                                />
                                 <div className="flex-1 min-w-0">
                                     <div className="font-medium truncate">{p.name}</div>
                                     <div className="text-[10px] text-muted-foreground">
@@ -339,18 +483,19 @@ export default function HiddenItemsPage() {
                     })}
                 </div>
 
-                {/* Bulk actions */}
+                {/* Secondary search & bulk hide */}
                 <div className="glass-card p-6 mb-8">
-                    <h3 className="text-sm font-bold uppercase tracking-widest text-foreground mb-1">Bulk hide / unhide</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-foreground mb-1">Secondary search &amp; bulk hide</h3>
                     <p className="text-xs text-muted-foreground mb-4">
-                        Hide or unhide every product whose name contains a word. Hidden words apply to every search.
+                        Type a word to filter the results shown above, then hide or unhide everything currently
+                        shown. Only the shown products are affected — nothing else changes.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-2">
                         <input
                             type="text"
-                            value={bulkWord}
-                            onChange={(e) => setBulkWord(e.target.value)}
-                            placeholder="Word to match in product names (e.g. kombucha)"
+                            value={filterText}
+                            onChange={(e) => setFilterText(e.target.value)}
+                            placeholder="Filter the results above, e.g. kombucha"
                             className="flex-1 h-10 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         />
                         <div className="flex gap-2">
@@ -359,23 +504,30 @@ export default function HiddenItemsPage() {
                                 variant="destructive"
                                 size="sm"
                                 className="flex-1 sm:flex-none"
-                                onClick={handleHideAllMatching}
-                                disabled={saving || !bulkWord.trim()}
+                                onClick={handleHideAllShown}
+                                disabled={saving || !hasSearched || shownVisibleCount === 0}
                             >
-                                Hide all matching
+                                Hide all shown ({shownVisibleCount})
                             </Button>
                             <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
                                 className="flex-1 sm:flex-none"
-                                onClick={handleUnhideAllMatching}
-                                disabled={saving || !bulkWord.trim()}
+                                onClick={handleUnhideAllShown}
+                                disabled={saving || !hasSearched || shownHiddenCount === 0}
                             >
-                                Unhide all matching
+                                Unhide all shown ({shownHiddenCount})
                             </Button>
                         </div>
                     </div>
+                    {hasSearched && (
+                        <div className="mt-3 text-[10px] text-muted-foreground">
+                            {filterTerm
+                                ? `Showing ${shownResults.length} of ${results.length} result(s) matching "${filterTerm}"`
+                                : `Showing all ${shownResults.length} result(s). Use the filter to narrow them down before hiding.`}
+                        </div>
+                    )}
                 </div>
 
                 {/* Active patterns */}
