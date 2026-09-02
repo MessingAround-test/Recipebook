@@ -1,5 +1,5 @@
 import { useState, useEffect, useId, useRef } from 'react'
-import { quantity_unit_conversions } from '../lib/conversion'
+import { quantity_unit_conversions, convertToStandardUnit } from '../lib/conversion'
 import { Ingredient } from '../lib/recipeExtraction'
 import { RiDeleteBin7Line, RiAddLine } from 'react-icons/ri'
 
@@ -11,13 +11,14 @@ interface IngredientEditorProps {
     onChange: (next: Ingredient[]) => void
     autoDefaults?: boolean
     className?: string
+    pendingConversions?: string[]
 }
 
 const inputClass = "w-full bg-white/[0.06] border border-white/10 rounded-xl px-3.5 py-3 text-sm font-semibold text-white placeholder:text-white/30 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/30 transition-all [&>option]:text-black"
 
 const emptyDraft = (): Ingredient => ({ Name: '', Amount: 1, AmountType: 'each', Note: '' })
 
-export default function IngredientEditor({ ingredients, onChange, autoDefaults = false, className = '' }: IngredientEditorProps) {
+export default function IngredientEditor({ ingredients, onChange, autoDefaults = false, className = '', pendingConversions = [] }: IngredientEditorProps) {
     const [draft, setDraft] = useState<Ingredient>(emptyDraft())
     const [knownIngredients, setKnownIngredients] = useState<string[]>([])
     const [aiLoading, setAiLoading] = useState(false)
@@ -73,10 +74,12 @@ export default function IngredientEditor({ ingredients, onChange, autoDefaults =
             setAiLoading(true)
             const defaults = await fetchDefaults(name)
             setAiLoading(false)
+            const standard = convertToStandardUnit(defaults.unit, defaults.quantity ?? draft.Amount)
             resolved = {
                 ...draft,
-                Amount: defaults.quantity ?? draft.Amount ?? 1,
-                AmountType: defaults.unit || draft.AmountType || 'each'
+                Amount: standard.amount ?? draft.Amount ?? 1,
+                AmountType: standard.unit || draft.AmountType || 'each',
+                Note: [standard.note, draft.Note].filter(Boolean).join(', ')
             }
         }
 
@@ -98,50 +101,59 @@ export default function IngredientEditor({ ingredients, onChange, autoDefaults =
                 </div>
             ) : (
                 <ul className="flex flex-col gap-3">
-                    {ingredients.map((ing, i) => (
-                        <li key={i} className="bg-white/[0.05] border border-white/10 rounded-2xl p-3.5 space-y-3">
-                            <div className="flex items-center gap-2.5">
-                                <input
-                                    type="text"
-                                    value={ing.Name}
-                                    onChange={e => updateIngredient(i, { Name: e.target.value })}
-                                    placeholder="Ingredient name"
-                                    className={inputClass}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => removeIngredient(i)}
-                                    className="shrink-0 p-3 rounded-xl bg-white/[0.06] text-muted-foreground hover:text-white hover:bg-rose-500/60 transition-all"
-                                    title="Remove ingredient"
-                                >
-                                    <RiDeleteBin7Line size={18} />
-                                </button>
-                            </div>
-                            <div className="grid grid-cols-[90px_1fr] sm:grid-cols-[90px_1fr_1fr] gap-2.5">
-                                <input
-                                    type="text"
-                                    value={String(ing.Amount)}
-                                    onChange={e => updateIngredient(i, { Amount: e.target.value })}
-                                    placeholder="Amount"
-                                    className={inputClass}
-                                />
-                                <select
-                                    value={ing.AmountType}
-                                    onChange={e => updateIngredient(i, { AmountType: e.target.value })}
-                                    className={inputClass}
-                                >
-                                    {UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
-                                </select>
-                                <input
-                                    type="text"
-                                    value={ing.Note || ''}
-                                    onChange={e => updateIngredient(i, { Note: e.target.value })}
-                                    placeholder="Note"
-                                    className={`${inputClass} col-span-2 sm:col-span-1`}
-                                />
-                            </div>
-                        </li>
-                    ))}
+                    {ingredients.map((ing, i) => {
+                        const conversionPending = (ing.AmountType || '').toLowerCase() === 'each'
+                            && pendingConversions.some(p => p.trim().toLowerCase() === (ing.Name || '').trim().toLowerCase())
+                        return (
+                            <li key={i} className="bg-white/[0.05] border border-white/10 rounded-2xl p-3.5 space-y-3">
+                                <div className="flex items-center gap-2.5">
+                                    <input
+                                        type="text"
+                                        value={ing.Name}
+                                        onChange={e => updateIngredient(i, { Name: e.target.value })}
+                                        placeholder="Ingredient name"
+                                        className={inputClass}
+                                    />
+                                    {conversionPending && (
+                                        <span title="Resolving standard conversion..." className="shrink-0">
+                                            <span className="inline-block w-4 h-4 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
+                                        </span>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => removeIngredient(i)}
+                                        className="shrink-0 p-3 rounded-xl bg-white/[0.06] text-muted-foreground hover:text-white hover:bg-rose-500/60 transition-all"
+                                        title="Remove ingredient"
+                                    >
+                                        <RiDeleteBin7Line size={18} />
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-[90px_1fr] sm:grid-cols-[90px_1fr_1fr] gap-2.5">
+                                    <input
+                                        type="text"
+                                        value={String(ing.Amount)}
+                                        onChange={e => updateIngredient(i, { Amount: e.target.value })}
+                                        placeholder="Amount"
+                                        className={inputClass}
+                                    />
+                                    <select
+                                        value={ing.AmountType}
+                                        onChange={e => updateIngredient(i, { AmountType: e.target.value })}
+                                        className={inputClass}
+                                    >
+                                        {(UNIT_OPTIONS.includes(ing.AmountType) ? UNIT_OPTIONS : [ing.AmountType, ...UNIT_OPTIONS]).map(u => <option key={u} value={u}>{u}</option>)}
+                                    </select>
+                                    <input
+                                        type="text"
+                                        value={ing.Note || ''}
+                                        onChange={e => updateIngredient(i, { Note: e.target.value })}
+                                        placeholder="Note"
+                                        className={`${inputClass} col-span-2 sm:col-span-1`}
+                                    />
+                                </div>
+                            </li>
+                        )
+                    })}
                 </ul>
             )}
 

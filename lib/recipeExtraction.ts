@@ -1,3 +1,5 @@
+import { quantity_unit_conversions, resolveUnitKey } from './conversion'
+
 export interface Ingredient {
     Name: string
     Amount: string | number
@@ -104,12 +106,18 @@ export const saveRecipe = async (payload: SaveRecipePayload): Promise<any> => {
             servings: payload.servings,
             hidden: payload.hidden,
             instructions: payload.instructions || [],
-            ingreds: (payload.ingreds || []).map(ing => ({
-                Name: ing.Name,
-                Amount: normalizeAmount(ing.Amount),
-                AmountType: ing.AmountType || 'each',
-                note: ing.Note
-            }))
+            ingreds: (payload.ingreds || []).map(ing => {
+                // Safety net: only standard unit keys may be saved (the Recipe
+                // model requires AmountType); park anything else in the note.
+                const resolvedType = resolveUnitKey(ing.AmountType)
+                const isStandard = quantity_unit_conversions[resolvedType] != null
+                return {
+                    Name: ing.Name,
+                    Amount: normalizeAmount(ing.Amount),
+                    AmountType: isStandard ? resolvedType : 'each',
+                    note: isStandard ? ing.Note : [ing.Note, ing.AmountType].filter(Boolean).join(', ')
+                }
+            })
         })
     })
     const data = await res.json()
@@ -117,4 +125,54 @@ export const saveRecipe = async (payload: SaveRecipePayload): Promise<any> => {
         throw new Error(data.message || "Failed to create recipe")
     }
     return data.data
+}
+
+export interface ConversionWarmResult {
+    name: string
+    ok: boolean
+}
+
+/**
+ * Collects the (deduped, trimmed) names of ingredients whose unit is 'each' —
+ * these are the rows that need an ingredient-specific grams conversion factor
+ * from the IngredientConversion table for pricing/nutrition to resolve.
+ */
+export const getEachUnitIngredientNames = (ingredients: Ingredient[]): string[] => {
+    const seen = new Set<string>()
+    const names: string[] = []
+    for (const ing of ingredients || []) {
+        if (!ing || (ing.AmountType || '').toLowerCase() !== 'each') continue
+        const name = (ing.Name || '').trim()
+        if (!name) continue
+        const key = name.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        names.push(name)
+    }
+    return names
+}
+
+/**
+ * Warms the IngredientConversion table for the given ingredient names by
+ * calling the SearchLogLookup endpoint (checks the table first, queries AI
+ * only on a miss, and caches the result). Never throws — each name resolves
+ * to { name, ok } so the UI can stop spinning regardless of failures.
+ */
+export const warmIngredientConversions = async (
+    names: string[],
+    fetchImpl: typeof fetch = fetch
+): Promise<ConversionWarmResult[]> => {
+    const token = localStorage.getItem('Token')
+    return Promise.all((names || []).map(async (name): Promise<ConversionWarmResult> => {
+        try {
+            const res = await fetchImpl(`/api/Ingredients/SearchLogLookup?search_term=${encodeURIComponent(name)}`, {
+                headers: { 'edgetoken': token || '' }
+            })
+            if (!res.ok) return { name, ok: false }
+            const data = await res.json()
+            return { name, ok: data.success === true }
+        } catch {
+            return { name, ok: false }
+        }
+    }))
 }

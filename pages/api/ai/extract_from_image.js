@@ -1,7 +1,8 @@
 import { verifyToken } from "../../../lib/auth";
 import { logAPI } from '../../../lib/logger';
 import { callGeminiVision } from '../../../lib/ai';
-import { resolveUnitKey, quantity_unit_conversions } from "../../../lib/conversion";
+import { quantity_unit_conversions } from "../../../lib/conversion";
+import { normalizeExtractedIngredients, normalizeExtractedInstructions } from '../../../lib/recipeNormalize';
 
 const VALID_GENRES = [
     'Italian', 'Mexican', 'Asian', 'Indian', 'Mediterranean', 'American',
@@ -68,7 +69,7 @@ Extract the following information:
    - 'AmountType': String. This MUST be one of the following exact keys: ${VALID_UNITS.join(', ')}.
    - 'Note': String (Optional extra info like "diced" or "room temperature").
 3. 'instructions': Array of objects with:
-   - 'Text': The step description.
+   - 'Text': The step description. Each step MUST be self-contained and include the relevant ingredient quantities inline (e.g. "Fry 500g chicken for 5 minutes" instead of "Fry the chicken").
    - 'Note': String (Optional tip or step number).
 4. 'time': How long it takes. Use one of: "short", "medium", "long".
 5. 'genre': The cuisine type. Use one of: ${VALID_GENRES.join(', ')}.
@@ -77,6 +78,7 @@ Extract the following information:
 8. 'carbType': The primary carbohydrate source. Use exactly one of: ${VALID_CARB_TYPES.join(', ')}.
 
 STRICT RULES:
+- The cooking steps MUST be returned under the 'instructions' key. NEVER use a different key such as 'method'.
 - Use metric units (gram, ml) and tablespoons primarily. Avoid fluid ounces and ounces unless no other unit makes sense.
 - If a unit is not in the list, use 'each' and put the unit in 'Note' or 'Name'.
 - 'Amount' must be clean. If you see "320g", 'Amount' is "320" and 'AmountType' is "gram".
@@ -97,48 +99,15 @@ STRICT RULES:
             }
         }
 
-        // Post-processing cleanup for ingredients
+        // Normalize the cooking method — the AI may return it under 'method'/'steps'
+        // or as plain strings instead of a [{ Text, Note }] array
+        data.instructions = normalizeExtractedInstructions(data.instructions ?? data.method ?? data.steps);
+        delete data.method;
+        delete data.steps;
+
+        // Post-processing cleanup for ingredients (unit resolution + cleanup)
         if (data.ingredients && Array.isArray(data.ingredients)) {
-            data.ingredients = data.ingredients.map(ing => {
-                let cleanIng = { ...ing };
-
-                // 1. Resolve unit to canonical key
-                cleanIng.AmountType = resolveUnitKey(ing.AmountType);
-
-                // 2. Clean 'Amount' if it contains the unit (e.g., "320g" -> "320")
-                if (typeof cleanIng.Amount === 'string') {
-                    const unitSynonyms = quantity_unit_conversions[cleanIng.AmountType]?.synonyms || [];
-                    const allSynonyms = [...unitSynonyms, cleanIng.AmountType];
-
-                    allSynonyms.forEach(syn => {
-                        if (syn && cleanIng.Amount.toLowerCase().endsWith(syn.toLowerCase())) {
-                            cleanIng.Amount = cleanIng.Amount.toLowerCase().replace(syn.toLowerCase(), '').trim();
-                        }
-                    });
-
-                    const numMatch = cleanIng.Amount.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d+\.\d+|\d+)/);
-                    if (numMatch) {
-                        cleanIng.Amount = numMatch[0].trim();
-                    }
-                }
-
-                // 3. Clean 'Name' if it starts with the unit
-                if (cleanIng.Name && typeof cleanIng.Name === 'string') {
-                    const unitSynonyms = quantity_unit_conversions[cleanIng.AmountType]?.synonyms || [];
-                    const allSynonyms = [...unitSynonyms, cleanIng.AmountType];
-
-                    allSynonyms.forEach(syn => {
-                        if (syn && cleanIng.Name.toLowerCase().startsWith(syn.toLowerCase())) {
-                            const potentialRemainder = cleanIng.Name.substring(syn.length);
-                            if (potentialRemainder.startsWith(' ') || /^[A-Z]/.test(potentialRemainder)) {
-                                cleanIng.Name = potentialRemainder.trim();
-                            }
-                        }
-                    });
-                }
-
-                return cleanIng;
-            });
+            data.ingredients = normalizeExtractedIngredients(data.ingredients);
         }
 
         return res.status(200).json({ success: true, data });

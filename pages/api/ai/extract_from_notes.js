@@ -2,7 +2,7 @@ import { verifyToken } from "../../../lib/auth";
 import { logAPI } from '../../../lib/logger'
 import { callGroqChat } from '../../../lib/ai';
 import { quantity_unit_conversions } from "../../../lib/conversion";
-import { normalizeExtractedIngredients } from '../../../lib/recipeNormalize';
+import { normalizeExtractedIngredients, normalizeExtractedInstructions } from '../../../lib/recipeNormalize';
 
 const VALID_GENRES = [
     'Italian', 'Mexican', 'Asian', 'Indian', 'Mediterranean', 'American',
@@ -35,7 +35,11 @@ export default async function handler(req, res) {
             {
                 role: "system",
                 content: `You are a culinary assistant expert at extracting structured recipe data from unstructured notes, snippets, or messy text.
-                
+
+FIRST, assess how complete the notes are and pick a mode:
+- TRANSCRIPTION MODE — the notes contain a clear ingredient list WITH quantities AND a cooking method/steps. In this mode you are a faithful transcriber: use the user's own wording for each step and do NOT paraphrase, add, remove, reorder, or "improve" any step (even trivial ones like "Preheat oven"). Copy ingredient amounts, units and qualifiers EXACTLY as written (e.g. "2 level cups", "room temperature"). Never round, convert, or estimate an amount the user already stated.
+- GAP-FILL MODE — the notes are sparse (e.g. only an ingredient list, missing amounts, or no method). In this mode keep everything the user DID provide exactly as written, and fill ONLY the gaps: estimate sensible quantities for missing amounts and write the standard cooking method for the dish if none is given.
+
 Extract the following information:
 1. 'name': The recipe title.
 2. 'ingredients': Array of objects with:
@@ -44,7 +48,7 @@ Extract the following information:
    - 'AmountType': String. This MUST be one of the following exact keys: ${VALID_UNITS.join(', ')}.
    - 'Note': String (Optional extra info like "diced" or "room temperature").
 3. 'instructions': Array of objects with:
-   - 'Text': The step description.
+   - 'Text': The step description. Each step MUST be self-contained and include the relevant ingredient quantities inline (e.g. "Fry 500g chicken for 5 minutes" instead of "Fry the chicken"), using the amounts from the ingredient list.
    - 'Note': String (Optional tip or step number).
 4. 'time': How long it takes. Use one of: "short", "medium", "long".
 5. 'genre': The cuisine type. Use one of: ${VALID_GENRES.join(', ')}.
@@ -53,6 +57,8 @@ Extract the following information:
 8. 'carbType': The primary carbohydrate source. Use exactly one of: ${VALID_CARB_TYPES.join(', ')}.
 
 STRICT RULES:
+- The cooking steps MUST be returned under the 'instructions' key as an array, even if the source text labels them "Method", "Directions", or "Steps". NEVER return them under a different key.
+- Never invent or alter an amount that is stated in the notes. Never drop a step the user wrote.
 - If a unit is not in the list, use 'each' and put the unit in 'Note' or 'Name'.
 - 'Amount' must be clean. If you see "320g", 'Amount' is "320" and 'AmountType' is "gram".
 - Output MUST be a single valid JSON object. No markdown.`
@@ -76,6 +82,12 @@ STRICT RULES:
                 throw new Error("Failed to parse AI response as JSON");
             }
         }
+
+        // Normalize the cooking method — the AI may return it under 'method'/'steps'
+        // or as plain strings instead of a [{ Text, Note }] array
+        data.instructions = normalizeExtractedInstructions(data.instructions ?? data.method ?? data.steps);
+        delete data.method;
+        delete data.steps;
 
         // Post-processing cleanup for ingredients
         if (data.ingredients && Array.isArray(data.ingredients)) {

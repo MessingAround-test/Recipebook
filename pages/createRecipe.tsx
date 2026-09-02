@@ -9,7 +9,7 @@ import { quantity_unit_conversions } from "../lib/conversion"
 import { RiDeleteBin7Line, RiArrowDownSLine, RiArrowUpSLine } from 'react-icons/ri'
 import IngredientEditor from '../components/IngredientEditor'
 import { fileToBase64 } from '../lib/recipeImage'
-import { extractRecipeFromImage, extractRecipeFromNotes, saveRecipe, Ingredient } from '../lib/recipeExtraction'
+import { extractRecipeFromImage, extractRecipeFromNotes, saveRecipe, Ingredient, getEachUnitIngredientNames, warmIngredientConversions } from '../lib/recipeExtraction'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 
@@ -39,6 +39,7 @@ export default function CreateRecipe() {
     const [extractImage, setExtractImage] = useState<string | undefined>()
     const [formPhase, setFormPhase] = useState<'setup' | 'builder'>('setup')
     const [extractionStatus, setExtractionStatus] = useState("")
+    const [pendingConversions, setPendingConversions] = useState<string[]>([])
 
     const router = useRouter();
     const { id } = router.query || {};
@@ -82,6 +83,21 @@ export default function CreateRecipe() {
             return confirm("This will overwrite your current ingredients and instructions. Are you sure you want to proceed?");
         }
         return true;
+    }
+
+    // Fire-and-forget: warm the IngredientConversion table for 'each'-unit rows
+    // (table lookup first, AI query only on a miss) so pricing/nutrition resolve
+    // downstream. Rows are never modified — failures are left for manual entry.
+    const startConversionWarmup = (list: Ingredient[]) => {
+        const names = getEachUnitIngredientNames(list)
+        if (names.length === 0) return
+        setPendingConversions(names)
+        warmIngredientConversions(names)
+            .then(results => {
+                const settled = new Set(results.map(r => r.name.toLowerCase()))
+                setPendingConversions(prev => prev.filter(n => !settled.has(n.toLowerCase())))
+            })
+            .catch(() => setPendingConversions([]))
     }
 
     const handleContinue = () => {
@@ -241,7 +257,10 @@ export default function CreateRecipe() {
             const { name, ingredients, instructions, time, genre, mealTypes, servings, carbType } = result
 
             if (name) setRecipeName(name)
-            if (ingredients) setIngreds(ingredients)
+            if (ingredients) {
+                setIngreds(ingredients)
+                startConversionWarmup(ingredients)
+            }
             if (instructions) setInstructions(instructions)
             if (time) setRecipeTime(time)
             if (genre) setRecipeGenre(genre)
@@ -280,7 +299,10 @@ export default function CreateRecipe() {
             const { name, ingredients, instructions, time, genre, mealTypes, servings, carbType } = result
 
             if (name) setRecipeName(name)
-            if (ingredients) setIngreds(ingredients)
+            if (ingredients) {
+                setIngreds(ingredients)
+                startConversionWarmup(ingredients)
+            }
             if (instructions) setInstructions(instructions)
             if (time) setRecipeTime(time)
             if (genre) setRecipeGenre(genre)
@@ -603,7 +625,7 @@ export default function CreateRecipe() {
                                 <div className="p-6 md:p-8 pt-0">
                                     <div className="bg-secondary/20 rounded-2xl p-4 md:p-6 border border-border/5">
                                         <h4 className="text-xs font-black uppercase text-muted-foreground tracking-widest mb-4">Current List</h4>
-                                        <IngredientEditor ingredients={ingreds} onChange={setIngreds} autoDefaults />
+                                        <IngredientEditor ingredients={ingreds} onChange={setIngreds} autoDefaults pendingConversions={pendingConversions} />
                                     </div>
                                 </div>
                             </div>
