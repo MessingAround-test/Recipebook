@@ -1,4 +1,27 @@
-const { getEachUnitIngredientNames, warmIngredientConversions } = require('../lib/recipeExtraction');
+const { getEachUnitIngredientNames, warmIngredientConversions, normalizeAmount } = require('../lib/recipeExtraction');
+
+describe('normalizeAmount', () => {
+    test('parses plain numbers and ASCII fractions', () => {
+        expect(normalizeAmount(2)).toBe(2);
+        expect(normalizeAmount('320')).toBe(320);
+        expect(normalizeAmount('1/2')).toBe(0.5);
+        expect(normalizeAmount('1 1/2')).toBe(1.5);
+    });
+
+    test('converts unicode fraction glyphs from social media captions', () => {
+        expect(normalizeAmount('½')).toBe(0.5);
+        expect(normalizeAmount('¼')).toBe(0.25);
+        expect(normalizeAmount('¾')).toBe(0.75);
+        expect(normalizeAmount('1½')).toBe(1.5);
+        expect(normalizeAmount('½ cup')).toBe(0.5);
+    });
+
+    test('ignores non-numeric text', () => {
+        expect(normalizeAmount('')).toBe(0);
+        expect(normalizeAmount('to taste')).toBe(0);
+        expect(normalizeAmount(NaN)).toBe(0);
+    });
+});
 
 describe('getEachUnitIngredientNames', () => {
     test('collects deduped names from each-unit rows only', () => {

@@ -145,3 +145,25 @@ describe('normalizePrepWords', () => {
         expect(result[0].Name).toBe('Roasted');
     });
 });
+
+describe('normalizeExtractedIngredients (unicode fractions)', () => {
+    const { normalizeUnicodeFractions } = require('../lib/conversion');
+
+    test('normalizeUnicodeFractions expands glyphs to ASCII fractions', () => {
+        expect(normalizeUnicodeFractions('\u00bd tbsp')).toBe('1/2 tbsp');
+        expect(normalizeUnicodeFractions('1\u00bd cups')).toBe('1 1/2 cups');
+        expect(normalizeUnicodeFractions('\u00bc')).toBe('1/4');
+        expect(normalizeUnicodeFractions(3)).toBe(3);
+    });
+
+    test('converts unicode fraction amounts to parseable fractions', () => {
+        const result = normalizeExtractedIngredients([
+            { Name: 'Neutral oil', Amount: '\u00bd', AmountType: 'tablespoon' },
+            { Name: 'Soy milk', Amount: '\u00bd cup', AmountType: 'cup' }
+        ]);
+        expect(result[0].Amount).toBe('1/2');
+        expect(result[0].AmountType).toBe('tablespoon');
+        expect(result[1].Amount).toBe('1/2');
+        expect(result[1].AmountType).toBe('cup');
+    });
+});

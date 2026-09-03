@@ -4,8 +4,9 @@ import ApiKeyStatus from "../models/ApiKeyStatus";
 import ApiKeyUsage from "../models/ApiKeyUsage";
 
 export const GROQ_MODELS = {
-    PRIMARY: 'llama-3.1-8b-instant',
-    FALLBACK: 'allam-2-7b',
+    PRIMARY: 'openai/gpt-oss-120b',
+    FALLBACK: 'qwen/qwen3.8-27b',
+    FALLBACK_2: 'openai/gpt-oss-20b',
     AUDIO: 'whisper-large-v3'
 };
 
@@ -129,6 +130,16 @@ export async function callGroqWithFallback(body: any, modelOverride?: string) {
     const primaryModel = modelOverride || GROQ_MODELS.PRIMARY;
     const fallbackModel = modelOverride || GROQ_MODELS.FALLBACK;
 
+    // gpt-oss models are reasoners — cap reasoning so the completion budget
+    // goes to the actual answer instead of being eaten (and truncating JSON)
+    const buildModelBody = (modelName: string) => {
+        const modelBody: any = { ...body, model: modelName };
+        if (String(modelName).startsWith('openai/gpt-oss')) {
+            modelBody.reasoning_effort = 'low';
+        }
+        return JSON.stringify(modelBody);
+    };
+
     for (const keyStatus of statuses) {
         const index = keyStatus.keyIndex;
         const apiKey = process.env[`GROQ_API_KEY_${index}`] || (index === 1 ? process.env.GROQ_API_KEY : null);
@@ -151,7 +162,7 @@ export async function callGroqWithFallback(body: any, modelOverride?: string) {
                             'Authorization': `Bearer ${apiKey}`,
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ ...body, model: primaryModel }),
+                        body: buildModelBody(primaryModel),
                         signal: controller.signal
                     });
 
@@ -179,7 +190,7 @@ export async function callGroqWithFallback(body: any, modelOverride?: string) {
                             'Authorization': `Bearer ${apiKey}`,
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ ...body, model: fallbackModel }),
+                        body: buildModelBody(fallbackModel),
                         signal: controller.signal
                     });
 
@@ -195,6 +206,26 @@ export async function callGroqWithFallback(body: any, modelOverride?: string) {
                     // Fail fast
                 }
             }
+
+            // 3. Last-resort model on this key (not status-tracked; only
+            //    reached when primary and fallback both failed)
+            try {
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: buildModelBody(GROQ_MODELS.FALLBACK_2),
+                    signal: controller.signal
+                });
+                if (response.ok) {
+                    clearTimeout(timeoutId);
+                    return response;
+                }
+            } catch (err) {
+                // Fail fast
+            }
         } finally {
             clearTimeout(timeoutId);
         }
@@ -206,6 +237,9 @@ export async function callGroqWithFallback(body: any, modelOverride?: string) {
 export async function callGroqChat(messages: any[], jsonMode: boolean = false) {
     const body: any = {
         messages: messages,
+        // Reasoning models (gpt-oss) burn completion tokens before emitting
+        // JSON — without an explicit budget the output gets truncated mid-list
+        max_completion_tokens: 8192,
     };
 
     if (jsonMode) {

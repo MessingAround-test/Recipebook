@@ -1,4 +1,4 @@
-import { quantity_unit_conversions, resolveUnitKey } from './conversion'
+import { quantity_unit_conversions, resolveUnitKey, normalizeUnicodeFractions } from './conversion'
 
 export interface Ingredient {
     Name: string
@@ -38,7 +38,7 @@ export interface SaveRecipePayload {
 
 export const normalizeAmount = (value: string | number): number => {
     if (typeof value === 'number') return Number.isFinite(value) ? value : 0
-    const s = (value || '').toString().trim()
+    const s = normalizeUnicodeFractions((value || '').toString())
     if (!s) return 0
     const parts = s.split(/\s+/)
     let total = 0
