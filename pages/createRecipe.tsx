@@ -34,7 +34,7 @@ export default function CreateRecipe() {
     const [showAdvanced, setShowAdvanced] = useState(false)
     const [recipeNotes, setRecipeNotes] = useState("")
     const [isExtracting, setIsExtracting] = useState(false)
-    const [creationMethod, setCreationMethod] = useState<'url' | 'notes' | 'manual' | 'image' | null>(null)
+    const [creationMethod, setCreationMethod] = useState<'url' | 'notes' | 'manual' | 'image' | 'social' | null>(null)
     const [imageNotes, setImageNotes] = useState("")
     const [extractImage, setExtractImage] = useState<string | undefined>()
     const [formPhase, setFormPhase] = useState<'setup' | 'builder'>('setup')
@@ -243,6 +243,68 @@ export default function CreateRecipe() {
         setLoading(false)
     }
 
+    const onSubmitFacebookImport = async (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const target = e.target as typeof e.target & {
+            tasteURL: { value: string }
+        }
+        const fbUrl = target.tasteURL.value
+
+        if (!confirmOverwrite()) return;
+
+        setLoading(true)
+        try {
+            const token = localStorage.getItem('Token')
+            const res = await fetch(`/api/recipeSiteExtract/facebook?url=${encodeURIComponent(fbUrl)}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'edgetoken': token || ''
+                }
+            })
+            const data = await res.json()
+            if (!data.success) {
+                throw new Error(data.message || "Failed to import from Facebook.")
+            }
+
+            const { description, image } = data.data || {}
+            if (!description) {
+                throw new Error("Couldn't find a description on that post — check the link is public.")
+            }
+
+            // Keep the raw caption in the notes box so it can be reviewed or
+            // re-parsed via the AI Notes flow if auto-extraction ever fails.
+            setRecipeNotes(description)
+            if (image) setImageData(image)
+
+            try {
+                const result = await extractRecipeFromNotes(description)
+                const { name, ingredients, instructions, time, genre, mealTypes, servings, carbType } = result
+
+                if (name) setRecipeName(name)
+                if (ingredients) {
+                    setIngreds(ingredients)
+                    startConversionWarmup(ingredients)
+                }
+                if (instructions) setInstructions(instructions)
+                if (time) setRecipeTime(time)
+                if (genre) setRecipeGenre(genre)
+                if (mealTypes) setRecipeMealTypes(mealTypes)
+                if (carbType) setRecipeCarbType(carbType)
+                if (servings) setRecipeServings(servings)
+
+                setFormPhase('builder')
+            } catch (extractError) {
+                console.error("Facebook AI extraction error:", extractError)
+                throw new Error("Got the post description, but AI parsing failed. The raw text is saved in AI Notes — try Extract & Continue there.")
+            }
+        } catch (error: any) {
+            console.error("Facebook import error:", error)
+            alert(error?.message || "An error occurred during import.")
+        }
+        setLoading(false)
+    }
+
     const onSubmitNotesExtract = async () => {
         if (!recipeNotes.trim()) {
             alert("Please paste some notes first!")
@@ -412,7 +474,7 @@ export default function CreateRecipe() {
                             <label className="label-modern text-sm font-medium mb-3 block">
                                 How would you like to start?
                             </label>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setCreationMethod('image')}
@@ -434,6 +496,17 @@ export default function CreateRecipe() {
                                 >
                                     <span className="text-2xl mb-1">🌐</span>
                                     <span className="font-bold text-sm">Web URL</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setCreationMethod('social')}
+                                    className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center transition-all duration-300 ${creationMethod === 'social'
+                                        ? 'bg-accent text-accent-foreground border-accent shadow-lg shadow-accent/20'
+                                        : 'bg-secondary/30 border-border/10 text-muted-foreground hover:border-accent/30 hover:bg-secondary/50'
+                                        }`}
+                                >
+                                    <span className="text-2xl mb-1">🔗</span>
+                                    <span className="font-bold text-sm">Social</span>
                                 </button>
                                 <button
                                     type="button"
@@ -470,6 +543,20 @@ export default function CreateRecipe() {
                                 />
                                 <Button type="submit" className="w-full bg-accent hover:bg-accent-hover font-bold" disabled={loading}>
                                     {loading ? "Parsing Recipe..." : "Import & Continue"}
+                                </Button>
+                            </form>
+                        )}
+
+                        {creationMethod === 'social' && (
+                            <form onSubmit={onSubmitFacebookImport} className="border-t border-border pt-6 mb-2 animate-in fade-in slide-in-from-top-4">
+                                <FormField
+                                    label="Social Media Link"
+                                    id="tasteURL"
+                                    placeholder="Paste a Facebook link (fb.watch, facebook.com/share/...)"
+                                    className="w-full mb-4"
+                                />
+                                <Button type="submit" className="w-full bg-accent hover:bg-accent-hover font-bold" disabled={loading}>
+                                    {loading ? "Parsing Post..." : "Import & Continue"}
                                 </Button>
                             </form>
                         )}
