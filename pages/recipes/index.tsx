@@ -11,6 +11,7 @@ import {
     SlidersHorizontal, 
     Plus, 
     Dices, 
+    Sparkles,
     Calendar,
     ArrowUpDown,
     ChefHat,
@@ -239,6 +240,15 @@ export default function Recipes() {
                                 title="Pick for me"
                             >
                                 <Dices size={18} />
+                            </Button>
+                            <Button
+                                size="icon"
+                                variant="secondary"
+                                onClick={() => redirect('/recipes/quiz')}
+                                className="h-10 w-10 rounded-xl shrink-0 bg-secondary/50 hover:bg-accent/20 hover:text-accent transition-colors"
+                                title="Recipe quiz"
+                            >
+                                <Sparkles size={18} />
                             </Button>
                         </div>
                     </div>
