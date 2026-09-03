@@ -909,6 +909,23 @@ export default function CreateRecipe() {
                                             ))}
                                         </select>
                                     </div>
+                                    <div className="space-y-3 sm:col-span-2 lg:col-span-4">
+                                        <div className="flex items-center justify-between ml-1">
+                                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground underline decoration-accent/20 underline-offset-4">Source Link</label>
+                                            {recipeSourceUrl && (
+                                                <a href={recipeSourceUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-accent hover:underline">
+                                                    Open ↗
+                                                </a>
+                                            )}
+                                        </div>
+                                        <input
+                                            type="url"
+                                            value={recipeSourceUrl}
+                                            onChange={(e) => setRecipeSourceUrl(e.target.value)}
+                                            placeholder="https://www.facebook.com/share/r/... (where this recipe came from)"
+                                            className="input-modern bg-background/50 border-border/10 focus:ring-accent/20"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
