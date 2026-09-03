@@ -38,7 +38,8 @@ export default async function handler(req, res) {
           mealTypes: req.body.mealTypes,
           carbType: req.body.carbType,
           servings: req.body.servings,
-          hidden: req.body.hidden
+          hidden: req.body.hidden,
+          sourceUrl: req.body.sourceUrl
         });
         return res.status(200).json({ success: true, data: response, message: "Success" })
       } catch (error) {

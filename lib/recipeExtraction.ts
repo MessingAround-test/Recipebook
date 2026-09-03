@@ -34,6 +34,7 @@ export interface SaveRecipePayload {
     carbType?: string
     servings?: number
     hidden?: boolean
+    sourceUrl?: string
 }
 
 export const normalizeAmount = (value: string | number): number => {
@@ -105,6 +106,7 @@ export const saveRecipe = async (payload: SaveRecipePayload): Promise<any> => {
             carbType: payload.carbType || undefined,
             servings: payload.servings,
             hidden: payload.hidden,
+            sourceUrl: payload.sourceUrl || undefined,
             instructions: payload.instructions || [],
             ingreds: (payload.ingreds || []).map(ing => {
                 // Safety net: only standard unit keys may be saved (the Recipe

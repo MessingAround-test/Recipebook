@@ -31,6 +31,7 @@ export default function CreateRecipe() {
     const [recipeMealTypes, setRecipeMealTypes] = useState<string[]>([])
     const [recipeCarbType, setRecipeCarbType] = useState<string>("")
     const [recipeServings, setRecipeServings] = useState<number | string>("")
+    const [recipeSourceUrl, setRecipeSourceUrl] = useState("")
     const [showAdvanced, setShowAdvanced] = useState(false)
     const [recipeNotes, setRecipeNotes] = useState("")
     const [isExtracting, setIsExtracting] = useState(false)
@@ -140,7 +141,8 @@ export default function CreateRecipe() {
                         "genre": recipeGenre || undefined,
                         "mealTypes": recipeMealTypes,
                         "carbType": recipeCarbType || undefined,
-                        "servings": recipeServings !== "" ? Number(recipeServings) : undefined
+                        "servings": recipeServings !== "" ? Number(recipeServings) : undefined,
+                        "sourceUrl": recipeSourceUrl || undefined
                     })
                 })
                 const data = await res.json()
@@ -159,7 +161,8 @@ export default function CreateRecipe() {
                     genre: recipeGenre || undefined,
                     mealTypes: recipeMealTypes,
                     carbType: recipeCarbType || undefined,
-                    servings: recipeServings !== "" ? Number(recipeServings) : undefined
+                    servings: recipeServings !== "" ? Number(recipeServings) : undefined,
+                    sourceUrl: recipeSourceUrl || undefined
                 })
                 Router.push("/recipes")
             }
@@ -193,6 +196,7 @@ export default function CreateRecipe() {
 
         if (!confirmOverwrite()) return;
 
+        setRecipeSourceUrl(tasteURL)
         setLoading(true)
         try {
             const res = await fetch(`/api/recipeSiteExtract/${siteProvider}?url=${tasteURL}`, {
@@ -252,6 +256,8 @@ export default function CreateRecipe() {
 
         if (!confirmOverwrite()) return;
 
+        // Remember where the recipe came from so it can be re-watched later
+        setRecipeSourceUrl(fbUrl)
         setLoading(true)
         try {
             const token = localStorage.getItem('Token')
@@ -423,6 +429,7 @@ export default function CreateRecipe() {
                         setRecipeMealTypes(data.res.mealTypes || [])
                         setRecipeCarbType(data.res.carbType || "")
                         setRecipeServings(data.res.servings || "")
+                        setRecipeSourceUrl(data.res.sourceUrl || "")
                         setInstructions(data.res.instructions.map((i: any) => ({ Text: i.Text, Note: i.note })))
                         setIngreds(data.res.ingredients.map((i: any) => ({
                             Name: i.name,

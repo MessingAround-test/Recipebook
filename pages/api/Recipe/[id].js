@@ -99,6 +99,7 @@ export default async function handler(req, res) {
         if (req.body.feedback !== undefined) updateData.feedback = req.body.feedback;
         if (req.body.carbType !== undefined) updateData.carbType = req.body.carbType;
         if (req.body.servings !== undefined) updateData.servings = req.body.servings;
+        if (req.body.sourceUrl !== undefined) updateData.sourceUrl = req.body.sourceUrl;
 
         if (Object.keys(updateData).length === 0) {
           return res.status(400).json({ res: "No data provided to update" })

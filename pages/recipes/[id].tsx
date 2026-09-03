@@ -523,6 +523,8 @@ export default function RecipeDetail() {
 
     const displayCost = approxCost ?? getAproxTotalRecipeCost()
     const displayPriceCategory = recipePriceCategory || (displayCost > 0 ? getPriceCategory(displayCost) : null)
+    const sourceUrl: string | null = recipe.sourceUrl || null
+    const isVideoSource = !!sourceUrl && (sourceUrl.includes('facebook.com') || sourceUrl.includes('fb.watch'))
 
     return (
         <Layout title={recipeName || "Recipe"}>
@@ -569,6 +571,18 @@ export default function RecipeDetail() {
                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-amber-500/25 text-amber-200 border-white/5`}>
                                             <EyeOff size={12} /> Hidden
                                         </span>
+                                    )}
+                                    {sourceUrl && (
+                                        <a
+                                            href={sourceUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                            title={sourceUrl}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-white/10 text-white border-white/5 hover:bg-white/25 transition-colors"
+                                        >
+                                            {isVideoSource ? '▶ Watch Original Video' : '🔗 View Source'}
+                                        </a>
                                     )}
                                 </div>
 
@@ -631,6 +645,17 @@ export default function RecipeDetail() {
                                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border bg-amber-500/15 text-amber-400 border-amber-500/30">
                                         <EyeOff size={12} /> Hidden
                                     </span>
+                                )}
+                                {sourceUrl && (
+                                    <a
+                                        href={sourceUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title={sourceUrl}
+                                        className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border bg-sky-500/15 text-sky-400 border-sky-500/30 hover:bg-sky-500/25 transition-colors"
+                                    >
+                                        {isVideoSource ? '▶ Watch Original Video' : '🔗 View Source'}
+                                    </a>
                                 )}
                             </div>
 

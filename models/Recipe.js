@@ -38,7 +38,8 @@ const RecipeSchema = new mongoose.Schema(
         timesCooked: { type: Number, default: 0 },
         hidden: { type: Boolean, default: false },
         feedback: { type: String, required: false },
-        servings: { type: Number, required: false }
+        servings: { type: Number, required: false },
+        sourceUrl: { type: String, required: false } // Original link the recipe was imported from (e.g. a Facebook reel)
     },
     { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 )
