@@ -306,7 +306,7 @@ export default function SymptomLogView({ date }: { date: string }) {
 
             {/* Browse modal */}
             {browseOpen && (
-                <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center md:p-8">
+                <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center md:p-8 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-8">
                     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setBrowseOpen(false)} />
                     <div className="relative bg-background border-t md:border border-white/10 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full md:max-w-xl max-h-[90vh] md:max-h-[80vh] overflow-hidden animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in md:zoom-in-95">
                         {/* Header */}

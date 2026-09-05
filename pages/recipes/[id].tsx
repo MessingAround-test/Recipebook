@@ -756,7 +756,7 @@ export default function RecipeDetail() {
                                 }, {})
                             ).sort(([a], [b]) => {
                                 // Priority categories first (using simplified names)
-                                const priority = ['Fresh Produce', 'Fridge', 'Freezer', 'Staple Food'];
+                                const priority = ['Fresh Produce', 'Fridge', 'Freezer', 'Bakery', 'Snacks', 'Staple Food'];
                                 const aIdx = priority.indexOf(a);
                                 const bIdx = priority.indexOf(b);
                                 if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
@@ -972,7 +972,8 @@ export default function RecipeDetail() {
                             maxHeight: '85vh',
                             overflowY: 'auto',
                             boxShadow: '0 -20px 40px rgba(0,0,0,0.4)',
-                            borderBottom: 'none'
+                            borderBottom: 'none',
+                            marginBottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))'
                         },
                         overlay: {
                             backgroundColor: 'rgba(0, 0, 0, 0.85)',
