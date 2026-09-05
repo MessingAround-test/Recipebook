@@ -32,8 +32,9 @@ function SearchableDropdown({ options, placeholder, onChange, name, value, onCom
     setInputValue(val);
     setIsOpen(true);
     // Only trigger onChange if it's a string-only dropdown, 
-    // otherwise wait for selection for object-based ones
-    if (typeof options[0] === 'string') {
+    // otherwise wait for selection for object-based ones.
+    // Empty options are treated as string mode so free-typed text still syncs.
+    if (options.length === 0 || typeof options[0] === 'string') {
         onChange(e);
     }
   };

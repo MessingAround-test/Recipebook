@@ -730,14 +730,13 @@ export default function Home() {
                     )}
 
                     {createNewIngredOpen && (
-                        <div className="w-full mb-6">
-                            <AddShoppingItem
-                                shoppingListId={id}
-                                handleSubmit={handleSubmitCreateNewItem}
-                                reload={getRecipeDetails}
-                                onCancel={() => setCreateNewIngredOpen(false)}
-                            />
-                        </div>
+                        <AddShoppingItem
+                            variant="overlay"
+                            shoppingListId={id}
+                            handleSubmit={handleSubmitCreateNewItem}
+                            reload={getRecipeDetails}
+                            onCancel={() => setCreateNewIngredOpen(false)}
+                        />
                     )}
 
                     {/* Secondary Filters (Suppliers) */}
