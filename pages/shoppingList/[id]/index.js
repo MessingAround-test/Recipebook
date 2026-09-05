@@ -6,14 +6,13 @@ import Router from 'next/router'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
 import ImageList from '../../../components/ImageList'
-import CopyToClipboard from '../../../components/CopyToClipboard'
 import AddShoppingItem from '../../../components/AddShoppingItem'
 import NewIngredientTable from '../../../components/NewIngredientTable'
 import ToggleList from '../../../components/ToggleList'
 import { getGroceryStoreProducts } from '../../../lib/commonAPIs'
 import { groupByKeys } from '../../../lib/grouping'
 import { getColorForCategory, getLightColorForCategory } from '../../../lib/colors'
-import { Info, Settings, RotateCcw, Plus, Check } from 'lucide-react'
+import { Info, Settings, RotateCcw, Plus, Check, Copy, ClipboardCheck } from 'lucide-react'
 import WoolworthsOrderEditor from '../../../components/WoolworthsOrderEditor'
 import EditShoppingItemOverlay from '../../../components/EditShoppingItemOverlay'
 import { compareByWoolworthsOrder, compareGroupsByWoolworthsOrder, getStoredOrder } from '../../../lib/woolworthsOrder'
@@ -77,6 +76,7 @@ export default function Home() {
     const [pricingStrategy, setPricingStrategy] = useState("value")
     const [isGrouped, setIsGrouped] = useState(true)
     const [isOptionsOpen, setIsOptionsOpen] = useState(false)
+    const [copySuccess, setCopySuccess] = useState(false)
     const [isLoaded, setIsLoaded] = useState(false)
     const [sortMode, setSortMode] = useState('alphabetical')
     const [isOrderEditorOpen, setIsOrderEditorOpen] = useState(false)
@@ -259,6 +259,17 @@ export default function Home() {
             let error = await response.json();
             alert(error.message);
         }
+    }
+
+    function handleCopyToClipboard() {
+        const text = listIngreds
+            .filter((ingred) => !ingred.complete)
+            .map((ingred) => `${ingred.quantity} ${ingred.quantity_type_shorthand || ingred.quantity_type} ${ingred.name}`)
+            .join('\n');
+        navigator.clipboard.writeText(text).then(() => {
+            setCopySuccess(true);
+            setTimeout(() => setCopySuccess(false), 1500);
+        });
     }
 
     async function handleSubmitCreateNewItem(e) {
@@ -630,54 +641,73 @@ export default function Home() {
                 <main className={styles.main}>
 
                     {/* Consolidated Header & Actions */}
-                    <div className="glass-card w-full mb-4 p-3 flex flex-col gap-3 relative z-[100]">
-                        <div className="flex items-center justify-between gap-4">
-                            <h1 className="text-lg sm:text-xl font-bold m-0 tracking-tight flex items-center gap-2">
-                                <span>🛒</span>
-                                <span className="truncate max-w-[150px] sm:max-w-none">{list?.name || 'Loading...'}</span>
+                    <div className="w-full mb-2 sm:mb-4 px-2 py-2 sm:p-3 flex flex-col gap-1.5 sm:gap-3 relative z-[100]">
+                        <div className="flex items-center justify-between gap-3 sm:gap-4">
+                            <h1 className="text-[15px] sm:text-xl font-bold m-0 tracking-tight items-center gap-1.5 min-w-0 leading-none truncate max-w-[45%] sm:max-w-none">
+                                <span className="hidden sm:inline">🛒</span>
+                                <span className="truncate block">{list?.name || '...'}</span>
                             </h1>
 
-                            <div className="flex flex-row items-center gap-2">
+                            <div className="flex flex-row items-center gap-2 sm:gap-2 shrink-0 flex-1 justify-end">
+                                {!isListEmpty && (
+                                    <button
+                                        onClick={markListAsComplete}
+                                        className="p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-all active:scale-95"
+                                        title="Mark List as Complete"
+                                    >
+                                        <ClipboardCheck size={16} className="sm:w-4 sm:h-4" />
+                                    </button>
+                                )}
+
+                                {!isListEmpty && (
+                                    <button
+                                        onClick={handleCopyToClipboard}
+                                        className={`p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border border-white/10 transition-all active:scale-95 ${copySuccess ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                        title="Copy to Clipboard"
+                                    >
+                                        {copySuccess ? <Check size={16} className="sm:w-4 sm:h-4" /> : <Copy size={16} className="sm:w-4 sm:h-4" />}
+                                    </button>
+                                )}
+
                                 <button
                                     onClick={resetToDefault}
-                                    className="p-2.5 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg border border-[var(--border)] text-gray-400 hover:text-white hover:bg-white/5 transition-all active:scale-95"
+                                    className="p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition-all active:scale-95"
                                     title="Reset View"
                                 >
-                                    <RotateCcw size={16} />
+                                    <RotateCcw size={16} className="sm:w-4 sm:h-4" />
                                 </button>
                                 
+                                {!isListEmpty && (
+                                    <div className="w-10 sm:w-auto">
+                                        <ToggleList
+                                            inputList={availableFilters.filter(f => f !== 'complete')}
+                                            onUpdateList={(currentState) => setFilters(currentState.includes('complete') ? currentState : [...currentState, 'complete'])}
+                                            value={filters}
+                                            text={"Group By"}
+                                            mapping={FRIENDLY_NAMES}
+                                        />
+                                    </div>
+                                )}
+
                                 <button
                                     onClick={() => setIsOptionsOpen(!isOptionsOpen)}
-                                    className={`p-2.5 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg border transition-all active:scale-95 ${isOptionsOpen ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-[var(--border)] text-gray-400 hover:text-white'}`}
+                                    className={`p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border transition-all active:scale-95 ${isOptionsOpen ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-gray-400 hover:text-white'}`}
                                     title="Options"
                                 >
-                                    <Settings size={16} className={isOptionsOpen ? 'animate-spin-slow' : ''} />
+                                    <Settings size={16} className={`sm:w-4 sm:h-4 ${isOptionsOpen ? 'animate-spin-slow' : ''}`} />
                                 </button>
 
                                 {!createNewIngredOpen && (
                                     <button
-                                        className="bg-emerald-500 hover:bg-emerald-400 text-black p-2.5 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                                        className="bg-emerald-500 hover:bg-emerald-400 text-black p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
                                         onClick={() => setCreateNewIngredOpen(true)}
                                         title="Add Item"
                                     >
-                                        <Plus size={18} strokeWidth={3} />
+                                        <Plus size={18} className="sm:w-[18px] sm:h-[18px]" strokeWidth={3} />
                                     </button>
                                 )}
                             </div>
                         </div>
-
-                        {/* Row 2: Always visible Group By */}
-                        {!isListEmpty && (
-                            <div className="w-full">
-                                <ToggleList
-                                    inputList={availableFilters.filter(f => f !== 'complete')}
-                                    onUpdateList={(currentState) => setFilters(currentState.includes('complete') ? currentState : [...currentState, 'complete'])}
-                                    value={filters}
-                                    text={"Group By"}
-                                    mapping={FRIENDLY_NAMES}
-                                />
-                            </div>
-                        )}
                     </div>
 
                     {/* Collapsible Options Panel */}
@@ -741,7 +771,7 @@ export default function Home() {
 
                     {/* Secondary Filters (Suppliers) */}
                     {filters.includes("supplier") && !isListEmpty && (
-                        <div className="flex flex-col gap-4 mb-3 w-full">
+                        <div className="flex flex-col gap-3 sm:gap-4 mb-2 sm:mb-3 w-full">
                             {/* Desktop: Full ImageList + Apply */}
                             <div className="hidden sm:block glass-card w-full p-3 sm:p-4">
                                 <h6 className="font-bold uppercase tracking-wider text-gray-500 mb-2" style={{ fontSize: '0.65rem' }}>Active Suppliers</h6>
@@ -889,11 +919,10 @@ export default function Home() {
                     <div className={`flex flex-col items-center gap-4 mt-8 pb-8 w-full border-t border-[var(--border)] pt-8 ${filters.includes("supplier") ? 'hidden sm:flex' : ''}`}>
 
                         {!isListEmpty && (
-                            <div className="w-full mb-6">
-                                <h3 className="text-xl font-bold mb-4 text-center text-white">Recommended Supplier Options</h3>
-                                <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-3 sm:gap-4">
+                            <div className="w-full sm:mb-6 mt-4">
+                                <h3 className="text-xl font-bold mb-4 text-center text-white hidden sm:block">Recommended Supplier Options</h3>
+                                <div className="flex flex-col sm:flex-row sm:flex-wrap justify-center gap-1.5 sm:gap-4">
                                     {(() => {
-                                        // Always show all 5 suppliers in recommendations, regardless of current filter
                                         const allSuppliers = ["WW", "Panetta", "IGA", "Aldi", "Coles"];
                                         const allOptions = calculateSupplierTotals(matchedListIngreds, allSuppliers, pricingStrategy);
                                         const sortedOptions = allOptions.sort((a, b) => {
@@ -902,7 +931,6 @@ export default function Home() {
                                         });
 
                                         const someComplete = sortedOptions.some(opt => opt.itemsFound === matchedListIngreds.length);
-
                                         const bestCost = sortedOptions[0]?.cost || 0;
                                         const rankLabels = ["BEST", "GOOD", "OK", "FAIR", "POOR"];
 
@@ -914,11 +942,9 @@ export default function Home() {
                                             const supplierNames = option.suppliers.join(' + ');
                                             const primarySupplier = option.suppliers[0];
                                             const supplierColor = getColorForCategory(primarySupplier) || 'var(--accent)';
-
                                             const percentDiff = bestCost > 0 ? ((option.cost - bestCost) / bestCost * 100).toFixed(0) : 0;
                                             const rankLabel = rankLabels[idx] || "POOR";
 
-                                            // Highlight currently active selection
                                             const isActive = enabledSuppliers.length === option.suppliers.length &&
                                                 option.suppliers.every(s => enabledSuppliers.includes(s));
 
@@ -926,27 +952,29 @@ export default function Home() {
                                                 <div
                                                     key={supplierNames}
                                                     onClick={() => handleSupplierClick(option.suppliers)}
-                                                    className={`glass-card flex flex-col sm:p-4 p-2 w-full sm:w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer group ${isActive ? 'ring-2 ring-[var(--accent)] shadow-[0_0_20px_rgba(var(--accent-rgb),0.5)]' :
+                                                    className={`glass-card flex flex-row sm:flex-col items-center sm:items-center justify-between sm:justify-center sm:p-4 px-3 py-2 w-full sm:w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer group ${isActive ? 'ring-2 ring-[var(--accent)] shadow-[0_0_20px_rgba(var(--accent-rgb),0.5)]' :
                                                         isRecommended ? 'border shadow-[0_0_15px_rgba(var(--accent-rgb),0.2)]' : ''
                                                         }`}
                                                     style={{ borderColor: isActive ? 'var(--accent)' : isRecommended ? supplierColor : `${supplierColor}20` }}
                                                 >
-                                                    {/* Mobile: Compact layout */}
-                                                    <div className="flex flex-col items-center gap-1 sm:hidden py-1">
+                                                    {/* Mobile: Compact horizontal layout */}
+                                                    <div className="flex items-center gap-2 sm:hidden">
                                                         <div className="flex -space-x-1">
                                                             {option.suppliers.map(s => (
-                                                                <div key={s} className="h-5 w-5 rounded-full border-2 border-[var(--bg-secondary)] bg-white p-0.5 overflow-hidden shadow-sm">
+                                                                <div key={s} className="h-6 w-6 rounded-full border border-[var(--bg-secondary)] bg-white p-[1px] overflow-hidden shadow-sm">
                                                                     <img src={`/${s}.png`} alt={s} className="w-full h-full object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
                                                                 </div>
                                                             ))}
                                                         </div>
-                                                        <span className="text-lg font-black text-white tracking-tighter">${option.cost.toFixed(2)}</span>
-                                                        <span className="text-[8px] font-bold text-gray-500 uppercase">{option.itemsFound} found</span>
+                                                        <span className="text-[9px] font-bold text-gray-400 uppercase">{supplierNames}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 sm:hidden">
+                                                        <span className="text-sm font-black text-white">${option.cost.toFixed(2)}</span>
+                                                        <span className="text-[8px] font-bold text-gray-500">{option.itemsFound}/{matchedListIngreds.length}</span>
                                                     </div>
 
                                                     {/* Desktop: Full layout */}
                                                     <div className="hidden sm:flex sm:flex-col">
-                                                        {/* Header: Rank & Icons */}
                                                         <div className="flex items-start justify-between mb-4">
                                                             <div className="flex flex-col gap-1">
                                                                 {isActive && (
@@ -971,7 +999,6 @@ export default function Home() {
                                                             </div>
                                                         </div>
 
-                                                        {/* Main: Price */}
                                                         <div className="flex flex-col items-center justify-center py-1">
                                                             <div className="flex items-baseline gap-1.5">
                                                                 <span className="text-3xl font-black text-white tracking-tighter">${option.cost.toFixed(2)}</span>
@@ -982,7 +1009,6 @@ export default function Home() {
                                                             <span className="text-[9px] uppercase font-bold text-gray-500 tracking-[0.2em] mt-1 filter brightness-125">Est. Total</span>
                                                         </div>
 
-                                                        {/* Footer: Details */}
                                                         <div className="mt-4 pt-3 border-t border-white/[0.03] flex items-center justify-between">
                                                             <div className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5 ${allFound ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
                                                                 <span>{option.itemsFound} found</span>
@@ -995,7 +1021,6 @@ export default function Home() {
                                                         </div>
                                                     </div>
 
-                                                    {/* Accent Line */}
                                                     <div className="absolute top-0 left-0 right-0 h-0.5 opacity-50 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: supplierColor }}></div>
                                                 </div>
                                             );
@@ -1004,15 +1029,6 @@ export default function Home() {
                                 </div>
                             </div>
                         )}
-
-                        {!isListEmpty && <CopyToClipboard listIngreds={listIngreds} />}
-                        <button
-                            onClick={() => markListAsComplete()}
-                            className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 border border-emerald-500/10 bg-emerald-500/5 hover:bg-emerald-500/10 py-2 px-6 rounded-lg transition-all"
-                        >
-                            ✅ Mark List as Complete
-                        </button>
-                        <p className="text-xs text-center mt-4 text-gray-500 uppercase tracking-widest font-mono">List ID: {id}</p>
                     </div>
 
                     <WoolworthsOrderEditor
