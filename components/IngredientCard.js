@@ -15,6 +15,7 @@ function IngredientCard({
     handleCheckboxChange = undefined, 
     markAsIncorrect = undefined, 
     handleDeleteItem = undefined, 
+    handleEditItem = undefined,
     filters = [], 
     modalVersion = false, 
     enabledSuppliers = [], 
@@ -83,7 +84,15 @@ function IngredientCard({
 
                 <div style={{ flex: 1 }} className="flex-col gap-1">
                     <div className="flex items-center justify-between">
-                        <div onClick={() => isGroup ? setIsExpanded(!isExpanded) : setOtherOptionsModalIsOpen(true)} className="hover-accent transition-all hover:translate-x-1" style={{
+                        <div onClick={() => {
+                            if (isGroup) {
+                                setIsExpanded(!isExpanded);
+                            } else if (handleEditItem) {
+                                handleEditItem(ingredient);
+                            } else {
+                                setOtherOptionsModalIsOpen(true);
+                            }
+                        }} className="hover-accent transition-all hover:translate-x-1" style={{
                             fontSize: isMinimal ? '1rem' : '1.15rem',
                             lineHeight: '1.4',
                             fontWeight: isMinimal ? '600' : '800',
@@ -116,7 +125,10 @@ function IngredientCard({
                         <div className="mt-3 ml-2 pl-4 border-l border-border/10 flex flex-col gap-3">
                             {ingredient.items.map((item, idx) => (
                                 <div key={item._id || idx} className="flex justify-between items-center gap-2 text-sm text-[var(--text-secondary)] py-1">
-                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                    <div 
+                                        className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer hover:text-white transition-colors"
+                                        onClick={() => handleEditItem && handleEditItem(item)}
+                                    >
                                         <input
                                             type="checkbox"
                                             checked={item.complete}
@@ -185,6 +197,7 @@ IngredientCard.propTypes = {
     handleCheckboxChange: PropTypes.func,
     markAsIncorrect: PropTypes.func,
     handleDeleteItem: PropTypes.func,
+    handleEditItem: PropTypes.func,
     filters: PropTypes.array,
     modalVersion: PropTypes.bool,
     enabledSuppliers: PropTypes.array,

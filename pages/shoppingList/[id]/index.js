@@ -15,6 +15,7 @@ import { groupByKeys } from '../../../lib/grouping'
 import { getColorForCategory, getLightColorForCategory } from '../../../lib/colors'
 import { Info, Settings, RotateCcw, Plus, Check } from 'lucide-react'
 import WoolworthsOrderEditor from '../../../components/WoolworthsOrderEditor'
+import EditShoppingItemOverlay from '../../../components/EditShoppingItemOverlay'
 import { compareByWoolworthsOrder, compareGroupsByWoolworthsOrder, getStoredOrder } from '../../../lib/woolworthsOrder'
 
 const FRIENDLY_NAMES = {
@@ -79,6 +80,7 @@ export default function Home() {
     const [isLoaded, setIsLoaded] = useState(false)
     const [sortMode, setSortMode] = useState('alphabetical')
     const [isOrderEditorOpen, setIsOrderEditorOpen] = useState(false)
+    const [editingItem, setEditingItem] = useState(null)
     const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type", "category_simple", "recipe_name"]
 
     useEffect(() => {
@@ -870,6 +872,7 @@ export default function Home() {
                                                 ingredients={ingredientsInGroup.sort(ingredientSortFunction)}
                                                 handleCheckboxChange={handleCheckboxChange}
                                                 handleDeleteItem={handleDeleteItem}
+                                                handleEditItem={setEditingItem}
                                                 filters={filters}
                                                 enabledSuppliers={enabledSuppliers}
                                                 groupColor={groupColorAccent}
@@ -1015,6 +1018,17 @@ export default function Home() {
                     <WoolworthsOrderEditor
                         isOpen={isOrderEditorOpen}
                         onClose={() => setIsOrderEditorOpen(false)}
+                    />
+
+                    <EditShoppingItemOverlay
+                        item={editingItem}
+                        show={!!editingItem}
+                        onClose={() => setEditingItem(null)}
+                        onSaved={() => {
+                            setEditingItem(null);
+                            getRecipeDetails();
+                            getShoppingListItems();
+                        }}
                     />
 
                 </main>

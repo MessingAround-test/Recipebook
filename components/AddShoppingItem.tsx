@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { quantity_unit_conversions } from "../lib/conversion"
 import SearchableDropdown from './SearchableDropdown'
 import { Button } from './ui/button'
-import { X, Check, Loader2, Sparkles, Search, Minus, Plus } from 'lucide-react'
+import { X, Check, Loader2, Sparkles, Search, Minus, Plus, RefreshCw, Save } from 'lucide-react'
 
 const categories = [
     { name: 'Fresh Produce', image: 'FreshProduce.png' },
@@ -36,14 +36,18 @@ interface AddShoppingItemProps {
         quantity_type: string;
         note?: string;
     }
+    initialCategory?: string;
     hideHeader?: boolean;
     hideNote?: boolean;
     hideNameInput?: boolean;
     triggerSearchOnInit?: boolean;
     variant?: 'inline' | 'overlay';
+    editMode?: boolean;
+    editItemId?: string;
+    onEditComplete?: () => void;
 }
 
-export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false, onCancel, initialData, hideHeader = false, hideNote = false, hideNameInput = false, triggerSearchOnInit = false, variant = 'inline' }: AddShoppingItemProps) {
+export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCategories = false, onCancel, initialData, initialCategory = '', hideHeader = false, hideNote = false, hideNameInput = false, triggerSearchOnInit = false, variant = 'inline', editMode = false, editItemId, onEditComplete }: AddShoppingItemProps) {
     const isOverlay = variant === 'overlay';
 
     const [formData, setFormData] = useState({
@@ -52,16 +56,19 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
         quantity_type: initialData?.quantity_type || "each",
         note: initialData?.note || "",
         shoppingListId: shoppingListId,
-        category: ""
+        category: initialCategory || ""
     });
 
     const [isAiLoading, setIsAiLoading] = useState(false);
-    const [fieldsRevealed, setFieldsRevealed] = useState(!triggerSearchOnInit && !!initialData);
-    const [isNoteOpen, setIsNoteOpen] = useState(!!initialData?.note);
+    const [fieldsRevealed, setFieldsRevealed] = useState(editMode || (!triggerSearchOnInit && !!initialData));
+    const [isNoteOpen, setIsNoteOpen] = useState(!!initialData?.note || editMode && !!initialData?.note);
     const [showCancelOption, setShowCancelOption] = useState(false);
-    const [justAdded, setJustAdded] = useState(false);
+    const [justSaved, setJustSaved] = useState(false);
+    const [showRefreshPrompt, setShowRefreshPrompt] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const userChangedFields = useRef(false);
     const initialFormRef = useRef<string | null>(null);
+    const originalNameRef = useRef<string>(initialData?.name || '');
 
     // Abortable lookup state (DB + AI) so the user can cancel slow requests
     const lookupGenRef = useRef(0);
@@ -81,9 +88,15 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
         setFieldsRevealed(false);
         userChangedFields.current = false;
         initialFormRef.current = null;
-        setJustAdded(true);
+        setJustSaved(true);
         if (justAddedTimerRef.current) clearTimeout(justAddedTimerRef.current);
-        justAddedTimerRef.current = setTimeout(() => setJustAdded(false), 2000);
+        justAddedTimerRef.current = setTimeout(() => setJustSaved(false), 2000);
+    };
+
+    const resetFormEdit = () => {
+        setJustSaved(true);
+        if (justAddedTimerRef.current) clearTimeout(justAddedTimerRef.current);
+        justAddedTimerRef.current = setTimeout(() => setJustSaved(false), 2000);
     };
 
     const cancelLookup = () => {
@@ -128,8 +141,18 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
             userChangedFields.current = true;
         }
 
+        if (editMode && name === 'name' && value !== originalNameRef.current) {
+            setShowRefreshPrompt(true);
+        } else if (editMode && name === 'name') {
+            setShowRefreshPrompt(false);
+        }
+
         if (option && name === 'name') {
-            startItemLookup(value);
+            if (editMode) {
+                setShowRefreshPrompt(true);
+            } else {
+                startItemLookup(value);
+            }
         }
     };
 
@@ -144,8 +167,16 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
         if (fieldsRevealed && nameToUse === formData.name) return;
         // Same lookup already running — let it finish
         if (isAiLoading && nameToUse === formData.name) return;
+        // In edit mode, don't auto-lookup on name change — user must click refresh
+        if (editMode) return;
         // New item name — reload its metrics from the DB
         startItemLookup(nameToUse);
+    };
+
+    const handleRefreshDefaults = async () => {
+        setShowRefreshPrompt(false);
+        userChangedFields.current = false;
+        await determineDefaults(formData.name);
     };
 
     const handleSubmitLocal = async (e: any) => {
@@ -155,6 +186,40 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
             return;
         }
         submitIntentRef.current = false;
+
+        if (editMode && editItemId) {
+            setIsSaving(true);
+            try {
+                const token = localStorage.getItem('Token');
+                const response = await fetch(`/api/ShoppingListItem/${editItemId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'edgetoken': token || ''
+                    },
+                    body: JSON.stringify({
+                        name: formData.name,
+                        quantity: Number(formData.quantity) || formData.quantity,
+                        quantity_type: formData.quantity_type,
+                        category: formData.category,
+                        note: formData.note || undefined
+                    })
+                });
+                if (response.ok) {
+                    resetFormEdit();
+                    onEditComplete?.();
+                } else {
+                    const error = await response.json();
+                    alert(error.message || error.error || 'Failed to save');
+                }
+            } catch (error) {
+                alert(error);
+            } finally {
+                setIsSaving(false);
+            }
+            return;
+        }
+
         e.value = formData
         e.resetForm = resetForm;
         handleSubmit(e)
@@ -314,20 +379,20 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                 <div className="hidden md:flex flex-col gap-1 mb-1">
                     <div className="text-[10px] font-black uppercase tracking-[0.3em] text-accent flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                        Quick Add Ingredient
+                        {editMode ? 'Edit Ingredient' : 'Quick Add Ingredient'}
                     </div>
                 </div>
             )}
 
             {isOverlay && (
                 <div className="flex items-center min-h-[22px] pr-10">
-                    {justAdded ? (
+                    {justSaved ? (
                         <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-black uppercase tracking-[0.25em] animate-in fade-in slide-in-from-top-1 duration-300">
                             <Check size={13} strokeWidth={3} />
-                            Added to list
+                            {editMode ? 'Saved' : 'Added to list'}
                         </div>
                     ) : (
-                        <div className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">Add Item</div>
+                        <div className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">{editMode ? 'Edit Item' : 'Add Item'}</div>
                     )}
                 </div>
             )}
@@ -340,7 +405,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                     <div className={`relative group/input z-30 ${isOverlay ? '[&_input]:!py-3.5 [&_input]:!text-base [&_input]:!rounded-2xl [&_input]:!font-medium' : ''}`}>
                         <SearchableDropdown
                             options={knownIngredients}
-                            placeholder={isOverlay ? "Search or type a new item…" : "What are we adding?"}
+                            placeholder={isOverlay ? (editMode ? "Edit item name…" : "Search or type a new item…") : "What are we adding?"}
                             onChange={handleChange}
                             name={"name"}
                             value={formData.name}
@@ -348,6 +413,19 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                             remoteSearch={searchIngredientDatabase}
                         />
                     </div>
+                    {editMode && showRefreshPrompt && !isAiLoading && (
+                        <div className="flex items-center gap-2 mt-1 animate-in fade-in duration-200">
+                            <span className="text-[9px] text-white/40 font-medium">Name changed</span>
+                            <button
+                                type="button"
+                                onClick={handleRefreshDefaults}
+                                className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-accent hover:text-accent/80 bg-accent/10 hover:bg-accent/15 border border-accent/20 rounded-full px-2.5 py-1 transition-all active:scale-95"
+                            >
+                                <RefreshCw size={10} />
+                                Refresh defaults
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -493,9 +571,14 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                         : 'bg-accent/20 hover:bg-accent/30 text-accent border border-accent/20 shadow-none'
                         }`}
                     type="submit"
+                    disabled={isSaving}
                     onMouseDown={() => { submitIntentRef.current = true; }}
                 >
-                    {fieldsRevealed ? (
+                    {editMode ? (
+                        <>
+                            {isSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Save Changes
+                        </>
+                    ) : fieldsRevealed ? (
                         <>
                             <Sparkles size={15} /> Add to Collection
                         </>

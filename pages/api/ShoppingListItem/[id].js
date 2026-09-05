@@ -42,11 +42,31 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'ShoppingListItem not found' });
       }
 
-      // Update the Complete property with the value from the request body
-      dbData.complete = req.body.complete;
+      const allowedFields = ['complete', 'name', 'quantity', 'quantity_type', 'category', 'note'];
+      allowedFields.forEach(field => {
+        if (req.body[field] !== undefined) {
+          dbData[field] = req.body[field];
+        }
+      });
 
-      // Save the updated document
       await dbData.save();
+
+      if (req.body.category && req.body.name) {
+        try {
+          await IngredientConversion.findOneAndUpdate(
+            { ingredient_name: req.body.name.toLowerCase() },
+            {
+              $set: {
+                category: req.body.category,
+                last_updated: new Date()
+              }
+            },
+            { upsert: true }
+          );
+        } catch (e) {
+          console.error('Failed to update IngredientConversion from ShoppingListItem PUT:', e);
+        }
+      }
 
       return res.json(dbData);
 
