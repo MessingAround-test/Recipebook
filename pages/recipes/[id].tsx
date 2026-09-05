@@ -29,6 +29,26 @@ function getPriceCategory(cost: number): 'cheap' | 'medium' | 'expensive' {
     return 'expensive'
 }
 
+const STOP_WORDS = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'shall', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'its', 'our', 'their', 'over', 'until', 'all', 'into', 'each', 'both', 'than', 'then', 'also', 'just', 'about', 'from', 'up', 'down', 'out', 'off', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'any', 'every', 'some', 'few', 'more', 'most', 'other', 'only', 'very', 'now'])
+
+function getRecommendedIngredients(stepText: string, ingredients: any[]): { recommended: any[]; others: any[] } {
+    const stepWords = stepText
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !STOP_WORDS.has(w))
+
+    const scored = ingredients.map(ing => {
+        const nameWords = ing.name.toLowerCase().split(/\s+/)
+        const score = nameWords.filter(nw => stepWords.some(sw => nw.includes(sw) || sw.includes(nw))).length
+        return { ...ing, score, recommended: score > 0 }
+    })
+
+    const recommended = scored.filter(i => i.recommended).sort((a, b) => b.score - a.score)
+    const others = scored.filter(i => !i.recommended)
+    return { recommended, others }
+}
+
 export default function RecipeDetail() {
     const router = useRouter()
     const { id } = router.query
@@ -1056,79 +1076,95 @@ export default function RecipeDetail() {
                 </Modal>
 
                 {/* Cooking Mode Overlay */}
-                {isCookingMode && (
-                    <div className="cooking-mode-overlay">
-                        <div className="cooking-mode-header">
-                            <h2 className="text-xl font-bold truncate pr-4">{recipeName}</h2>
-                            <Button variant="ghost" size="sm" onClick={() => setIsCookingMode(false)} className="rounded-full w-10 h-10 p-0">
-                                <img src="/cross.png" className="w-4 h-4 invert-[.25] dark:invert" alt="close" />
-                            </Button>
-                        </div>
+                {isCookingMode && (() => {
+                    const stepText = instructions[currentStep]?.Text || ''
+                    const { recommended, others } = getRecommendedIngredients(stepText, listIngreds)
+                    return (
+                        <div className="cooking-mode-overlay">
+                            <div className="cooking-mode-header">
+                                <h2 className="text-xl font-bold truncate pr-4">{recipeName}</h2>
+                                <Button variant="ghost" size="sm" onClick={() => setIsCookingMode(false)} className="rounded-full w-10 h-10 p-0">
+                                    <img src="/cross.png" className="w-4 h-4 invert-[.25] dark:invert" alt="close" />
+                                </Button>
+                            </div>
 
-                        <div className="cooking-mode-content">
-                            <div className="mb-8">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-bold">
-                                        Step {currentStep + 1} of {instructions.length}
-                                    </span>
-                                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-emerald-500 transition-all duration-300"
-                                            style={{ width: `${((currentStep + 1) / instructions.length) * 100}%` }}
-                                        ></div>
+                            <div className="cooking-mode-layout">
+                                {/* Step - central and prominent */}
+                                <div className="cooking-mode-step-panel">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-bold">
+                                            Step {currentStep + 1} of {instructions.length}
+                                        </span>
+                                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-emerald-500 transition-all duration-300"
+                                                style={{ width: `${((currentStep + 1) / instructions.length) * 100}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="cooking-mode-step bg-[var(--cooking-card-bg)] border border-[var(--cooking-border)] rounded-2xl p-6 md:p-10 shadow-xl flex-1 flex flex-col justify-center">
+                                        <p className="text-2xl md:text-4xl font-bold leading-relaxed text-center text-[var(--cooking-text)]">
+                                            {stepText}
+                                        </p>
                                     </div>
                                 </div>
 
-                                <div className="cooking-mode-step bg-[var(--cooking-card-bg)] border border-[var(--cooking-border)] rounded-2xl p-6 md:p-10 shadow-xl min-h-[250px] flex flex-col justify-center">
-                                    <p className="text-2xl md:text-3xl font-bold leading-relaxed text-center sm:text-left text-[var(--cooking-text)]">
-                                        {instructions[currentStep]?.Text}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="mb-8">
-                                <h3 className="text-lg sm:text-xl font-bold mb-4 flex items-center gap-2 text-[var(--cooking-text)]">
-                                    <span className="w-2 h-6 bg-emerald-500 rounded-full"></span>
-                                    All Ingredients
-                                </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                                    {listIngreds.map((ingred, idx) => (
-                                        <div key={idx} className="bg-[var(--cooking-card-bg)] p-3 sm:p-4 rounded-lg flex justify-between items-center border border-[var(--cooking-border)] shadow-sm">
-                                            <span className="font-bold text-sm text-[var(--cooking-text)]">{ingred.name}</span>
-                                            <span className="text-xs sm:text-sm font-semibold text-emerald-600 bg-emerald-500/10 px-2 sm:px-3 py-1 rounded-full border border-emerald-500/20">
-                                                {ingred.quantity} {ingred.quantity_type_shorthand || ingred.quantity_type}
-                                            </span>
+                                {/* Ingredients - scrollable below the step */}
+                                <div className="cooking-mode-ingredients-panel">
+                                    <h3 className="text-sm font-bold mb-2 flex items-center gap-2 text-[var(--cooking-text)] opacity-70">
+                                        <span className="w-1.5 h-4 bg-emerald-500 rounded-full"></span>
+                                        Ingredients
+                                    </h3>
+                                    <div className="cooking-mode-ingredients-scroll">
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                            {recommended.length > 0 && recommended.map((ingred, idx) => (
+                                                <div key={`rec-${idx}`} className="cooking-ingredient-card cooking-ingredient-recommended">
+                                                    <span className="font-bold text-xs sm:text-sm text-[var(--cooking-text)]">{ingred.name}</span>
+                                                    <span className="text-[10px] sm:text-xs font-semibold text-emerald-400 bg-emerald-500/15 px-1.5 sm:px-2 py-0.5 rounded-full border border-emerald-500/25">
+                                                        {ingred.quantity} {ingred.quantity_type_shorthand || ingred.quantity_type}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                            {others.map((ingred, idx) => (
+                                                <div key={`other-${idx}`} className="cooking-ingredient-card">
+                                                    <span className="font-bold text-xs sm:text-sm text-[var(--cooking-text)]">{ingred.name}</span>
+                                                    <span className="text-[10px] sm:text-xs font-semibold text-emerald-600 bg-emerald-500/10 px-1.5 sm:px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                                        {ingred.quantity} {ingred.quantity_type_shorthand || ingred.quantity_type}
+                                                    </span>
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="cooking-mode-controls">
-                            <Button
-                                variant="outline"
-                                className="flex-1 py-7 sm:py-8 text-base sm:text-lg font-bold rounded-2xl"
-                                onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
-                                disabled={currentStep === 0}
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                className="flex-[2] py-7 sm:py-8 text-base sm:text-lg font-bold rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white"
-                                onClick={() => {
-                                    if (currentStep < instructions.length - 1) {
-                                        setCurrentStep(currentStep + 1)
-                                    } else {
-                                        setIsCookingMode(false)
-                                        setCurrentStep(0)
-                                    }
-                                }}
-                            >
-                                {currentStep === instructions.length - 1 ? "🎉 Finish!" : "Next Step →"}
-                            </Button>
+                            <div className="cooking-mode-controls">
+                                <Button
+                                    variant="outline"
+                                    className="flex-1 py-7 sm:py-8 text-base sm:text-lg font-bold rounded-2xl"
+                                    onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
+                                    disabled={currentStep === 0}
+                                >
+                                    Previous
+                                </Button>
+                                <Button
+                                    className="flex-[2] py-7 sm:py-8 text-base sm:text-lg font-bold rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white"
+                                    onClick={() => {
+                                        if (currentStep < instructions.length - 1) {
+                                            setCurrentStep(currentStep + 1)
+                                        } else {
+                                            setIsCookingMode(false)
+                                            setCurrentStep(0)
+                                        }
+                                    }}
+                                >
+                                    {currentStep === instructions.length - 1 ? "🎉 Finish!" : "Next Step →"}
+                                </Button>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )
+                })()}
             </div>
         </Layout>
     )

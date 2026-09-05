@@ -169,6 +169,7 @@ export default function PantryPanel() {
                             name=""
                             value=""
                             onComplete={() => { }}
+                            showUseAnyway={false}
                         />
                     </div>
                 </div>

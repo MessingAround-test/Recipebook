@@ -52,7 +52,21 @@ export default async function handler(req, res) {
 
                 let ShoppingListItemData = await ShoppingListItem.find({
                     name: { $regex: new RegExp('^' + escaped + '$', 'i') }
-                });
+                }).lean();
+
+                // Fuzzy fallback: no exact record? Try progressively looser token matches so
+                // quantity/unit/category can still come from a similar stored record
+                const tokens = search_term.split(/\s+/).filter(t => t.length > 0).map(t => new RegExp(escapeRegex(t), 'i'));
+                if (ShoppingListItemData.length === 0 && tokens.length > 0) {
+                    ShoppingListItemData = await ShoppingListItem.find({
+                        $and: tokens.map(rx => ({ name: rx }))
+                    }).limit(100).lean();
+                }
+                if (ShoppingListItemData.length === 0 && tokens.length > 0) {
+                    ShoppingListItemData = await ShoppingListItem.find({
+                        name: { $in: tokens }
+                    }).limit(100).lean();
+                }
 
                 const keysToCheck = [
                     { name: 'category', disallowed: [] },
@@ -63,9 +77,14 @@ export default async function handler(req, res) {
                 const mostCommonValues = findCountsForKeys(ShoppingListItemData, keysToCheck)
 
                 try {
-                    const conversion = await IngredientConversion.findOne({
+                    let conversion = await IngredientConversion.findOne({
                         ingredient_name: { $regex: new RegExp('^' + escaped + '$', 'i') }
                     });
+                    if (!conversion && tokens.length > 0) {
+                        conversion = await IngredientConversion.findOne({
+                            $and: tokens.map(rx => ({ ingredient_name: rx }))
+                        });
+                    }
                     if (conversion && conversion.category) {
                         if (!mostCommonValues.category.find(c => c.value === conversion.category)) {
                             mostCommonValues.category.unshift({ value: conversion.category, count: 999 });

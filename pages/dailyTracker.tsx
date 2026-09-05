@@ -558,6 +558,22 @@ export default function DailyTracker() {
         setUnifiedSearch(text);
     };
 
+    // Thorough database lookup for ingredient names when local suggestions fall short
+    const searchIngredientDatabase = useCallback(async (q: string, signal?: AbortSignal) => {
+        try {
+            const token = localStorage.getItem('Token');
+            const res = await fetch(`/api/Ingredients/suggest?q=${encodeURIComponent(q)}`, {
+                headers: { edgetoken: token || '' },
+                signal
+            });
+            const data = await res.json();
+            if (!data?.success) return [];
+            return (data.data || []).map((n: string) => ({ label: n, value: n, type: 'ingredient', data: n }));
+        } catch (err) {
+            return [];
+        }
+    }, []);
+
     // Removed renderMetricsForm as it's now in its own tab
 
     // Shared: render the logging form
@@ -583,6 +599,7 @@ export default function DailyTracker() {
                         onChange={handleUnifiedSearch}
                         onComplete={handleUnifiedComplete}
                         placeholder="Search recipes or ingredients..."
+                        remoteSearch={searchIngredientDatabase}
                     />
 
                     {prefillData ? (

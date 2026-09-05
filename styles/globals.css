@@ -437,7 +437,7 @@ a {
   z-index: 2000;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .cooking-mode-header {
@@ -446,19 +446,23 @@ a {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: sticky;
-  top: 0;
   background-color: var(--cooking-bg);
   backdrop-filter: blur(8px);
   z-index: 10;
+  flex-shrink: 0;
 }
 
-.cooking-mode-content {
+.cooking-mode-layout {
   flex: 1;
-  padding: 2.5rem 1.5rem;
-  max-width: 900px;
-  margin: 0 auto;
-  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.cooking-mode-step-panel {
+  flex-shrink: 0;
+  padding: 1.5rem 1.5rem 1rem;
 }
 
 .cooking-mode-step {
@@ -470,14 +474,66 @@ a {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.cooking-mode-ingredients-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 1.5rem 1.5rem;
+  overflow: hidden;
+}
+
+.cooking-mode-ingredients-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Custom scrollbar */
+.cooking-mode-ingredients-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cooking-mode-ingredients-scroll::-webkit-scrollbar-track {
+  background: var(--cooking-border);
+  border-radius: 3px;
+}
+
+.cooking-mode-ingredients-scroll::-webkit-scrollbar-thumb {
+  background: var(--cooking-text);
+  border-radius: 3px;
+  opacity: 0.4;
+}
+
+.cooking-mode-ingredients-scroll::-webkit-scrollbar-thumb:hover {
+  opacity: 0.6;
+}
+
+.cooking-ingredient-card {
+  background: var(--cooking-card-bg);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid var(--cooking-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 0.3s ease;
+  gap: 0.5rem;
+}
+
+.cooking-ingredient-recommended {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: linear-gradient(135deg, var(--cooking-card-bg) 0%, rgba(16, 185, 129, 0.08) 100%);
+}
+
 .cooking-mode-controls {
   padding: 1.5rem;
   padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
   border-top: 1px solid var(--cooking-border);
   display: flex;
   gap: 1rem;
-  position: sticky;
-  bottom: 0;
   background-color: var(--cooking-bg);
   z-index: 10;
+  flex-shrink: 0;
 }

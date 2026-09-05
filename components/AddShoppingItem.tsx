@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { quantity_unit_conversions } from "../lib/conversion"
 import SearchableDropdown from './SearchableDropdown'
 import { Button } from './ui/button'
@@ -107,6 +107,19 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
 
     const [knownIngredients, setKnownIngredients] = useState<any[]>([])
 
+    // Set while the submit button is being clicked, so the name-input blur it causes
+    // doesn't kick off a re-lookup in the middle of submitting
+    const submitIntentRef = useRef(false);
+
+    // Begin a fresh lookup for an item: clear any previous item's metrics so the
+    // quantity/unit/category shown always belong to the item being searched
+    const startItemLookup = (name: string) => {
+        setFieldsRevealed(false);
+        userChangedFields.current = false;
+        setFormData(prev => ({ ...prev, name, category: "", quantity: 1, quantity_type: "each" }));
+        determineDefaults(name);
+    };
+
     const handleChange = (e: any) => {
         const { name, value, option } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -116,19 +129,23 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
         }
 
         if (option && name === 'name') {
-            setFieldsRevealed(false);
-            userChangedFields.current = false;
-            setFormData(prev => ({ ...prev, category: "", quantity: 1, quantity_type: "each" }));
-            determineDefaults(value);
+            startItemLookup(value);
         }
     };
 
-    const handleNameSubmit = async (nameOverride?: string) => {
-        if (fieldsRevealed || isAiLoading) return;
-        const nameToUse = typeof nameOverride === 'string' ? nameOverride : formData.name;
-        if (nameToUse !== undefined && nameToUse !== "") {
-            await determineDefaults(nameToUse)
+    const handleNameSubmit = (nameOverride?: string) => {
+        if (submitIntentRef.current) {
+            submitIntentRef.current = false;
+            return;
         }
+        const nameToUse = typeof nameOverride === 'string' ? nameOverride : formData.name;
+        if (nameToUse === undefined || nameToUse === "") return;
+        // Same item already shown — keep whatever the user has edited
+        if (fieldsRevealed && nameToUse === formData.name) return;
+        // Same lookup already running — let it finish
+        if (isAiLoading && nameToUse === formData.name) return;
+        // New item name — reload its metrics from the DB
+        startItemLookup(nameToUse);
     };
 
     const handleSubmitLocal = async (e: any) => {
@@ -137,6 +154,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
             await handleNameSubmit();
             return;
         }
+        submitIntentRef.current = false;
         e.value = formData
         e.resetForm = resetForm;
         handleSubmit(e)
@@ -178,16 +196,18 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
 
             if (response.success && response.data.category && response.data.category[0]) {
                 const values = response.data
-                let category = values.category[0] ? values.category[0].value : formData.category
-                let quantity = values.quantity[0] ? values.quantity[0].value : formData.quantity
-                let quantity_type = values.quantity_type[0] ? values.quantity_type[0].value : formData.quantity_type
-                setFormData(prev => ({ ...prev, category, quantity, quantity_type }));
+                // Fill from the matched DB record; anything it lacks keeps the current (reset) values
+                setFormData(prev => ({
+                    ...prev,
+                    category: values.category[0] ? values.category[0].value : prev.category,
+                    quantity: values.quantity[0] ? values.quantity[0].value : prev.quantity,
+                    quantity_type: values.quantity_type[0] ? values.quantity_type[0].value : prev.quantity_type
+                }));
                 setFieldsRevealed(true);
                 setIsAiLoading(false);
             } else {
                 setFieldsRevealed(true);
                 userChangedFields.current = false;
-                initialFormRef.current = JSON.stringify({ quantity: formData.quantity, quantity_type: formData.quantity_type, category: formData.category });
 
                 fetch(`/api/ai/determine_default_categories?search_term=${name}`, {
                     headers: { 'edgetoken': token || "" },
@@ -236,6 +256,20 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
             alert(error)
         }
     }
+
+    // Thorough database lookup used by the name dropdown when local suggestions fall short
+    const searchIngredientDatabase = useCallback(async (q: string, signal?: AbortSignal) => {
+        try {
+            const token = localStorage.getItem('Token')
+            const response = await (await fetch(`/api/Ingredients/suggest?q=${encodeURIComponent(q)}`, {
+                headers: { 'edgetoken': token || "" },
+                signal
+            })).json()
+            return response.success ? response.data : []
+        } catch (error) {
+            return []
+        }
+    }, [])
 
     useEffect(() => {
         getKnownIngredients()
@@ -311,6 +345,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                             name={"name"}
                             value={formData.name}
                             onComplete={handleNameSubmit}
+                            remoteSearch={searchIngredientDatabase}
                         />
                     </div>
                 </div>
@@ -443,6 +478,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                                     name={"category"}
                                     value={formData.category}
                                     onComplete={() => { }}
+                                    showUseAnyway={false}
                                 />
                             </div>
                         </div>
@@ -457,6 +493,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                         : 'bg-accent/20 hover:bg-accent/30 text-accent border border-accent/20 shadow-none'
                         }`}
                     type="submit"
+                    onMouseDown={() => { submitIntentRef.current = true; }}
                 >
                     {fieldsRevealed ? (
                         <>
