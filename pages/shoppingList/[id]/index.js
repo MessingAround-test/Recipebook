@@ -13,7 +13,7 @@ import ToggleList from '../../../components/ToggleList'
 import { getGroceryStoreProducts } from '../../../lib/commonAPIs'
 import { groupByKeys } from '../../../lib/grouping'
 import { getColorForCategory, getLightColorForCategory } from '../../../lib/colors'
-import { Info, Settings, RotateCcw, Plus } from 'lucide-react'
+import { Info, Settings, RotateCcw, Plus, Check } from 'lucide-react'
 import WoolworthsOrderEditor from '../../../components/WoolworthsOrderEditor'
 import { compareByWoolworthsOrder, compareGroupsByWoolworthsOrder, getStoredOrder } from '../../../lib/woolworthsOrder'
 
@@ -740,7 +740,8 @@ export default function Home() {
                     {/* Secondary Filters (Suppliers) */}
                     {filters.includes("supplier") && !isListEmpty && (
                         <div className="flex flex-col gap-4 mb-3 w-full">
-                            <div className="glass-card w-full p-3 sm:p-4">
+                            {/* Desktop: Full ImageList + Apply */}
+                            <div className="hidden sm:block glass-card w-full p-3 sm:p-4">
                                 <h6 className="font-bold uppercase tracking-wider text-gray-500 mb-2" style={{ fontSize: '0.65rem' }}>Active Suppliers</h6>
                                 <div className="flex items-center justify-between gap-2 sm:gap-4 flex-wrap sm:flex-nowrap">
                                     <div className="scale-[0.65] sm:scale-75 origin-left flex-1 min-w-0 sm:min-w-[200px]">
@@ -757,6 +758,45 @@ export default function Home() {
                                         APPLY
                                     </button>
                                 </div>
+                            </div>
+
+                            {/* Mobile: Minimal circle dials */}
+                            <div className="flex sm:hidden items-center justify-center gap-2 w-full px-1">
+                                {["WW", "Panetta", "IGA", "Aldi", "Coles"].map((s) => {
+                                    const isActive = enabledSuppliers.includes(s);
+                                    return (
+                                        <button
+                                            key={s}
+                                            onClick={() => {
+                                                const newSuppliers = isActive
+                                                    ? enabledSuppliers.filter(x => x !== s)
+                                                    : [...enabledSuppliers, s];
+                                                if (newSuppliers.length === 0) {
+                                                    resetToDefault();
+                                                    return;
+                                                }
+                                                setEnabledSuppliers(newSuppliers);
+                                                const newPending = {
+                                                    "/WW.png": newSuppliers.includes("WW"),
+                                                    "/Panetta.png": newSuppliers.includes("Panetta"),
+                                                    "/IGA.png": newSuppliers.includes("IGA"),
+                                                    "/Aldi.png": newSuppliers.includes("Aldi"),
+                                                    "/Coles.png": newSuppliers.includes("Coles")
+                                                };
+                                                setPendingSuppliers(newPending);
+                                            }}
+                                            className={`relative h-9 w-9 rounded-full flex-shrink-0 transition-all duration-200 active:scale-90 ${isActive ? 'ring-2 ring-emerald-400 shadow-lg shadow-emerald-500/20' : 'opacity-40 grayscale'}`}
+                                            style={{ background: 'rgba(255,255,255,0.06)' }}
+                                        >
+                                            <img src={`/${s}.png`} alt={s} className="w-full h-full object-contain p-1" onError={(e) => { e.target.style.display = 'none'; }} />
+                                            {isActive && (
+                                                <div className="absolute -top-1 -right-1 h-4 w-4 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm border-2 border-[var(--bg-main)]">
+                                                    <Check size={8} className="text-white" strokeWidth={4} />
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
@@ -843,7 +883,7 @@ export default function Home() {
                     )}
 
                     {/* Footer Actions */}
-                    <div className="flex flex-col items-center gap-4 mt-8 pb-8 w-full border-t border-[var(--border)] pt-8">
+                    <div className={`flex flex-col items-center gap-4 mt-8 pb-8 w-full border-t border-[var(--border)] pt-8 ${filters.includes("supplier") ? 'hidden sm:flex' : ''}`}>
 
                         {!isListEmpty && (
                             <div className="w-full mb-6">
