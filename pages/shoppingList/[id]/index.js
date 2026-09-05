@@ -529,9 +529,9 @@ export default function Home() {
                 "/Aldi.png": true,
                 "/Coles.png": true
             });
-            setFilters(filters.filter(f => f !== "supplier"));
+            setFilters(["complete"]);
         } else {
-            // Filter to the selected suppliers
+            // Filter to the selected suppliers and group by supplier
             setEnabledSuppliers(suppliers);
             const newPending = {
                 "/WW.png": suppliers.includes("WW"),
@@ -541,9 +541,7 @@ export default function Home() {
                 "/Coles.png": suppliers.includes("Coles")
             };
             setPendingSuppliers(newPending);
-            if (!filters.includes("supplier")) {
-                setFilters([...filters, "supplier"]);
-            }
+            setFilters(["complete", "supplier"]);
         }
     };
 
@@ -851,17 +849,6 @@ export default function Home() {
                             <div className="w-full mb-6">
                                 <h3 className="text-xl font-bold mb-4 text-center text-white">Recommended Supplier Options</h3>
                                 <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-3 sm:gap-4">
-                                    {/* Reset View Option */}
-                                    <div
-                                        onClick={resetToDefault}
-                                        className="glass-card flex flex-col items-center justify-center p-3 sm:p-4 w-full sm:w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer group hover:border-gray-500"
-                                        style={{ borderColor: 'var(--border)' }}
-                                    >
-                                        <div className="text-2xl mb-1 group-hover:rotate-12 transition-transform">🔄</div>
-                                        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Reset View</div>
-                                        <div className="text-[9px] text-gray-500 mt-1">Clear all filters</div>
-                                    </div>
-
                                     {(() => {
                                         // Always show all 5 suppliers in recommendations, regardless of current filter
                                         const allSuppliers = ["WW", "Panetta", "IGA", "Aldi", "Coles"];
@@ -896,56 +883,72 @@ export default function Home() {
                                                 <div
                                                     key={supplierNames}
                                                     onClick={() => handleSupplierClick(option.suppliers)}
-                                                    className={`glass-card flex flex-col p-4 w-full sm:w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer group ${isActive ? 'ring-2 ring-[var(--accent)] shadow-[0_0_20px_rgba(var(--accent-rgb),0.5)]' :
+                                                    className={`glass-card flex flex-col sm:p-4 p-2 w-full sm:w-48 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer group ${isActive ? 'ring-2 ring-[var(--accent)] shadow-[0_0_20px_rgba(var(--accent-rgb),0.5)]' :
                                                         isRecommended ? 'border shadow-[0_0_15px_rgba(var(--accent-rgb),0.2)]' : ''
                                                         }`}
                                                     style={{ borderColor: isActive ? 'var(--accent)' : isRecommended ? supplierColor : `${supplierColor}20` }}
                                                 >
-                                                    {/* Header: Rank & Icons */}
-                                                    <div className="flex items-start justify-between mb-4">
-                                                        <div className="flex flex-col gap-1">
-                                                            {isActive && (
-                                                                <span className="bg-white text-black text-[7px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-tighter w-fit shadow-sm">ACTIVE</span>
-                                                            )}
-                                                            <span
-                                                                className="text-[9px] font-black px-2 py-0.5 rounded-sm uppercase tracking-wider w-fit shadow-sm"
-                                                                style={{
-                                                                    backgroundColor: isActive ? 'var(--accent)' : idx === 0 ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
-                                                                    color: isActive || idx === 0 ? 'black' : 'rgba(255,255,255,0.4)'
-                                                                }}
-                                                            >
-                                                                {rankLabel}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex -space-x-1.5">
+                                                    {/* Mobile: Compact layout */}
+                                                    <div className="flex flex-col items-center gap-1 sm:hidden py-1">
+                                                        <div className="flex -space-x-1">
                                                             {option.suppliers.map(s => (
-                                                                <div key={s} className="h-6 w-6 sm:h-7 sm:w-7 rounded-full border-2 border-[var(--bg-secondary)] bg-white p-0.5 overflow-hidden shadow-sm transition-transform group-hover:scale-110">
+                                                                <div key={s} className="h-5 w-5 rounded-full border-2 border-[var(--bg-secondary)] bg-white p-0.5 overflow-hidden shadow-sm">
                                                                     <img src={`/${s}.png`} alt={s} className="w-full h-full object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
                                                                 </div>
                                                             ))}
                                                         </div>
+                                                        <span className="text-lg font-black text-white tracking-tighter">${option.cost.toFixed(2)}</span>
+                                                        <span className="text-[8px] font-bold text-gray-500 uppercase">{option.itemsFound} found</span>
                                                     </div>
 
-                                                    {/* Main: Price */}
-                                                    <div className="flex flex-col items-center justify-center py-1">
-                                                        <div className="flex items-baseline gap-1.5">
-                                                            <span className="text-2xl sm:text-3xl font-black text-white tracking-tighter">${option.cost.toFixed(2)}</span>
-                                                            {idx > 0 && (
-                                                                <span className="text-[10px] font-bold text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded ring-1 ring-inset ring-red-400/20">+{percentDiff}%</span>
-                                                            )}
+                                                    {/* Desktop: Full layout */}
+                                                    <div className="hidden sm:flex sm:flex-col">
+                                                        {/* Header: Rank & Icons */}
+                                                        <div className="flex items-start justify-between mb-4">
+                                                            <div className="flex flex-col gap-1">
+                                                                {isActive && (
+                                                                    <span className="bg-white text-black text-[7px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-tighter w-fit shadow-sm">ACTIVE</span>
+                                                                )}
+                                                                <span
+                                                                    className="text-[9px] font-black px-2 py-0.5 rounded-sm uppercase tracking-wider w-fit shadow-sm"
+                                                                    style={{
+                                                                        backgroundColor: isActive ? 'var(--accent)' : idx === 0 ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
+                                                                        color: isActive || idx === 0 ? 'black' : 'rgba(255,255,255,0.4)'
+                                                                    }}
+                                                                >
+                                                                    {rankLabel}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex -space-x-1.5">
+                                                                {option.suppliers.map(s => (
+                                                                    <div key={s} className="h-7 w-7 rounded-full border-2 border-[var(--bg-secondary)] bg-white p-0.5 overflow-hidden shadow-sm transition-transform group-hover:scale-110">
+                                                                        <img src={`/${s}.png`} alt={s} className="w-full h-full object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
+                                                                    </div>
+                                                                ))}
+                                                            </div>
                                                         </div>
-                                                        <span className="text-[9px] uppercase font-bold text-gray-500 tracking-[0.2em] mt-1 filter brightness-125">Est. Total</span>
-                                                    </div>
 
-                                                    {/* Footer: Details */}
-                                                    <div className="mt-4 pt-3 border-t border-white/[0.03] flex items-center justify-between">
-                                                        <div className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5 ${allFound ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                                                            <span>{option.itemsFound} found</span>
-                                                            <Info
-                                                                size={10}
-                                                                className="opacity-40 group-hover:opacity-100 cursor-help transition-opacity"
-                                                                title={supplierNames}
-                                                            />
+                                                        {/* Main: Price */}
+                                                        <div className="flex flex-col items-center justify-center py-1">
+                                                            <div className="flex items-baseline gap-1.5">
+                                                                <span className="text-3xl font-black text-white tracking-tighter">${option.cost.toFixed(2)}</span>
+                                                                {idx > 0 && (
+                                                                    <span className="text-[10px] font-bold text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded ring-1 ring-inset ring-red-400/20">+{percentDiff}%</span>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-[9px] uppercase font-bold text-gray-500 tracking-[0.2em] mt-1 filter brightness-125">Est. Total</span>
+                                                        </div>
+
+                                                        {/* Footer: Details */}
+                                                        <div className="mt-4 pt-3 border-t border-white/[0.03] flex items-center justify-between">
+                                                            <div className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5 ${allFound ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                                                                <span>{option.itemsFound} found</span>
+                                                                <Info
+                                                                    size={10}
+                                                                    className="opacity-40 group-hover:opacity-100 cursor-help transition-opacity"
+                                                                    title={supplierNames}
+                                                                />
+                                                            </div>
                                                         </div>
                                                     </div>
 
