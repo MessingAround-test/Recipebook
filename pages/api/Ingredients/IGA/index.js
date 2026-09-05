@@ -56,25 +56,42 @@ export default async function handler(req, res) {
                             if (!filteredData) continue;
 
                             let internal_id = filteredData.sku
-                            let quantity_unit = filteredData.unitOfPrice?.type?.size
                             let quantity_type;
                             let name = filteredData.name
                             let priceString = filteredData.price?.replace("$", "").replace("avg/ea", "")
                             let price = parseFloat(priceString)
-                            let quantity = filteredData.unitOfPrice?.size || 1
+                            let quantity;
+                            let quantity_unit;
 
-                            if (!(quantity_unit)) {
-                                let metricConversion = convertMetricReading(name)
-                                quantity = metricConversion.quantity
-                                quantity_unit = metricConversion.quantity_unit
-                                quantity_type = metricConversion.quantity_type
-                            } else {
-                                let metricConversion = convertMetricReading(quantity_unit)
-                                quantity_unit = metricConversion.quantity_unit
-                                quantity_type = metricConversion.quantity_type
+                            const uopType = filteredData.unitOfPrice?.type;
+                            const uosAbbr = filteredData.unitOfSize?.abbreviation;
+                            const uosSize = filteredData.unitOfSize?.size;
+                            const uopAbbr = filteredData.unitOfPrice?.abbreviation;
+                            const uopSize = filteredData.unitOfPrice?.size;
+
+                            if (uopType !== 'each' && uopAbbr) {
+                                quantity = uopSize || 1;
+                                quantity_unit = uopAbbr;
+                                let metricConversion = convertMetricReading(quantity_unit);
+                                quantity_unit = metricConversion.quantity_unit;
+                                quantity_type = metricConversion.quantity_type;
                                 if (metricConversion.quantity !== 1) {
-                                    quantity = quantity * metricConversion.quantity
+                                    quantity = quantity * metricConversion.quantity;
                                 }
+                            } else if (uosAbbr) {
+                                quantity = uosSize || 1;
+                                quantity_unit = uosAbbr;
+                                let metricConversion = convertMetricReading(quantity_unit);
+                                quantity_unit = metricConversion.quantity_unit;
+                                quantity_type = metricConversion.quantity_type;
+                                if (metricConversion.quantity !== 1) {
+                                    quantity = quantity * metricConversion.quantity;
+                                }
+                            } else {
+                                let metricConversion = convertMetricReading(name);
+                                quantity = metricConversion.quantity;
+                                quantity_unit = metricConversion.quantity_unit;
+                                quantity_type = metricConversion.quantity_type;
                             }
                             let unit_price = parseFloat((price / quantity).toFixed(3))
                             let filteredObj = {
