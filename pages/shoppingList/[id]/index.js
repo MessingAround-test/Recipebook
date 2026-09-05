@@ -241,7 +241,9 @@ export default function Home() {
     }
 
     async function markListAsComplete() {
-        const isConfirmed = confirm("Are you sure you want to mark this list as COMPLETE?");
+        const willBeComplete = !list.complete;
+        const action = willBeComplete ? "COMPLETE" : "INCOMPLETE";
+        const isConfirmed = confirm(`Are you sure you want to mark this list as ${action}?`);
         if (!isConfirmed) return;
 
         const response = await fetch(`/api/ShoppingList/${String(id)}/`, {
@@ -250,11 +252,11 @@ export default function Home() {
                 'Content-Type': 'application/json',
                 'edgetoken': localStorage.getItem('Token') || ''
             },
-            body: JSON.stringify({ "complete": "true", "_id": String(id) }),
+            body: JSON.stringify({ "complete": willBeComplete, "_id": String(id) }),
         });
 
         if (response.ok) {
-            redirect("/shoppingList");
+            setlist(prev => ({ ...prev, complete: willBeComplete }));
         } else {
             let error = await response.json();
             alert(error.message);
@@ -652,10 +654,10 @@ export default function Home() {
                                 {!isListEmpty && (
                                     <button
                                         onClick={markListAsComplete}
-                                        className="p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-all active:scale-95"
-                                        title="Mark List as Complete"
+                                        className={`p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border transition-all active:scale-95 ${list.complete ? 'border-amber-500/30 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10' : 'border-emerald-500/30 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10'}`}
+                                        title={list.complete ? "Mark List as Incomplete" : "Mark List as Complete"}
                                     >
-                                        <ClipboardCheck size={16} className="sm:w-4 sm:h-4" />
+                                        <ClipboardCheck size={16} className={`sm:w-4 sm:h-4 ${list.complete ? 'line-through decoration-2' : ''}`} />
                                     </button>
                                 )}
 

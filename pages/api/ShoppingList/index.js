@@ -23,6 +23,9 @@ export default async function handler(req, res) {
             if (decoded.role !== 'admin') {
                 query.createdBy = userData._id
             }
+            if (req.query.complete !== undefined) {
+                query.complete = req.query.complete === 'true'
+            }
             let ShoppingListData = await ShoppingList.find(query)
             return res.status(200).json({ res: ShoppingListData })
         } else if (req.method === "POST") {

@@ -7,12 +7,16 @@ import { Button } from '../../components/ui/button'
 import Router from 'next/router'
 import ImageCard from '../../components/ImageCard'
 import { useAuthGuard } from '../../lib/useAuthGuard'
+import { CheckCircle, History } from 'lucide-react'
 
 export default function Home() {
     useAuthGuard()
     const [userData, setUserData] = useState<any>({})
     const [recipes, setRecipes] = useState<any[]>([])
+    const [completedRecipes, setCompletedRecipes] = useState<any[]>([])
     const [allowDelete, setAllowDelete] = useState(false)
+    const [showCompleted, setShowCompleted] = useState(false)
+    const [loadingCompleted, setLoadingCompleted] = useState(false)
 
     async function getUserDetails() {
         let res = await fetch("/api/UserDetails", {
@@ -36,6 +40,26 @@ export default function Home() {
             recipe.complete === false
         ))
         setRecipes(localRecipes)
+    }
+
+    async function getCompletedRecipeDetails() {
+        setLoadingCompleted(true)
+        let res = await fetch("/api/ShoppingList?complete=true", {
+            headers: {
+                'edgetoken': localStorage.getItem('Token') || ''
+            }
+        })
+        let data = await res.json()
+        setCompletedRecipes(data.res || [])
+        setLoadingCompleted(false)
+    }
+
+    const toggleShowCompleted = async () => {
+        const newShowCompleted = !showCompleted
+        setShowCompleted(newShowCompleted)
+        if (newShowCompleted && completedRecipes.length === 0) {
+            await getCompletedRecipeDetails()
+        }
     }
 
     useEffect(() => {
@@ -84,6 +108,26 @@ export default function Home() {
                     <Button onClick={() => redirect("/shoppingList/create/")} className="flex-1 sm:flex-none">
                         + Create New List
                     </Button>
+                    <Button
+                        variant={showCompleted ? "default" : "outline"}
+                        onClick={toggleShowCompleted}
+                        disabled={loadingCompleted}
+                        className="flex-1 sm:flex-none text-xs sm:text-sm"
+                    >
+                        {loadingCompleted ? (
+                            "Loading..."
+                        ) : showCompleted ? (
+                            <>
+                                <CheckCircle size={14} className="mr-1" />
+                                Hide Completed
+                            </>
+                        ) : (
+                            <>
+                                <History size={14} className="mr-1" />
+                                Show Completed
+                            </>
+                        )}
+                    </Button>
                     {userData?.role === "admin" && (
                         <Button variant="destructive" onClick={toggleMassDelete} className="flex-1 sm:flex-none text-xs sm:text-sm">
                             Allow Mass Delete
@@ -104,10 +148,26 @@ export default function Home() {
                         />
                     </div>
                 ))}
+                {showCompleted && completedRecipes.map((recipe) => (
+                    <div key={recipe._id} className="bg-green-100/50 opacity-80">
+                        <ImageCard
+                            recipe={recipe}
+                            allowDelete={allowDelete}
+                            onDelete={deleteRecipe}
+                            onRedirect={redirect}
+                            cardHeight={'5rem'}
+                        />
+                    </div>
+                ))}
             </div>
-            {recipes.length === 0 && (
+            {recipes.length === 0 && !showCompleted && (
                 <div className="text-center text-muted-foreground mt-8">
                     No active shopping lists found.
+                </div>
+            )}
+            {showCompleted && completedRecipes.length === 0 && !loadingCompleted && (
+                <div className="text-center text-muted-foreground mt-8">
+                    No completed shopping lists found.
                 </div>
             )}
         </Layout>
