@@ -42,6 +42,15 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'ShoppingListItem not found' });
       }
 
+      if (req.body.expectedComplete !== undefined && req.body.complete !== undefined) {
+        if (dbData.complete !== req.body.expectedComplete) {
+          if (dbData.complete === req.body.complete) {
+            return res.status(200).json({ alreadyInState: true, ...dbData.toObject() });
+          }
+          return res.status(409).json({ error: 'conflict', currentComplete: dbData.complete, message: 'This item was modified by someone else' });
+        }
+      }
+
       const allowedFields = ['complete', 'name', 'quantity', 'quantity_type', 'category', 'note'];
       allowedFields.forEach(field => {
         if (req.body[field] !== undefined) {

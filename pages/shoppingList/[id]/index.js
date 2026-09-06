@@ -339,19 +339,43 @@ export default function Home() {
             // Top-level item toggle
             const item = updatedIngredients[topLevelIndex];
             const isGroup = !!item.items;
+            const expectedComplete = item.complete;
             const newComplete = !item.complete;
 
             if (isGroup) {
                 // Bulk update group
+                const originalItems = item.items.map(sub => ({ ...sub }));
                 item.items = item.items.map(sub => ({ ...sub, complete: newComplete }));
                 item.complete = newComplete;
-                for (const sub of item.items) {
-                    await updateCompleteInDB(sub._id, newComplete);
+                setMatchedListIngreds(updatedIngredients);
+
+                let conflict = false;
+                for (const sub of originalItems) {
+                    const result = await updateCompleteInDB(sub._id, newComplete, sub.complete);
+                    if (result === 'conflict') {
+                        conflict = true;
+                        break;
+                    }
+                }
+                if (conflict) {
+                    alert('Some items in this group were modified by someone else. Refreshing...');
+                    getShoppingListItems();
                 }
             } else {
                 // Normal item
                 item.complete = newComplete;
-                await updateCompleteInDB(item._id, newComplete);
+                setMatchedListIngreds(updatedIngredients);
+
+                const result = await updateCompleteInDB(item._id, newComplete, expectedComplete);
+                if (result === 'conflict') {
+                    item.complete = expectedComplete;
+                    setMatchedListIngreds([...updatedIngredients]);
+                    alert('This item was already checked off by someone else. Refreshing...');
+                    getShoppingListItems();
+                } else if (result === 'alreadyInState') {
+                    alert('This item is already ' + (newComplete ? 'checked off' : 'unchecked'));
+                    getShoppingListItems();
+                }
             }
         } else {
             // 2. Search deeper for a sub-item
@@ -360,6 +384,7 @@ export default function Home() {
                     const subIndex = updatedIngredients[i].items.findIndex(sub => sub._id === ingred._id);
                     if (subIndex !== -1) {
                         const subItem = updatedIngredients[i].items[subIndex];
+                        const expectedComplete = subItem.complete;
                         const newSubComplete = !subItem.complete;
 
                         // Update specific sub-item
@@ -368,32 +393,54 @@ export default function Home() {
                         // Recalculate group completion
                         updatedIngredients[i].complete = updatedIngredients[i].items.every(sub => sub.complete);
 
-                        await updateCompleteInDB(subItem._id, newSubComplete);
+                        setMatchedListIngreds(updatedIngredients);
+
+                        const result = await updateCompleteInDB(subItem._id, newSubComplete, expectedComplete);
+                        if (result === 'conflict') {
+                            updatedIngredients[i].items[subIndex].complete = expectedComplete;
+                            updatedIngredients[i].complete = updatedIngredients[i].items.every(sub => sub.complete);
+                            setMatchedListIngreds([...updatedIngredients]);
+                            alert('This item was already checked off by someone else. Refreshing...');
+                            getShoppingListItems();
+                        } else if (result === 'alreadyInState') {
+                            alert('This item is already ' + (newSubComplete ? 'checked off' : 'unchecked'));
+                            getShoppingListItems();
+                        }
                         break;
                     }
                 }
             }
         }
-
-        setMatchedListIngreds(updatedIngredients);
     };
 
-    async function updateCompleteInDB(id, complete) {
+    async function updateCompleteInDB(id, complete, expectedComplete) {
         try {
+            const body = { complete };
+            if (expectedComplete !== undefined) {
+                body.expectedComplete = expectedComplete;
+            }
             const response = await fetch(`/api/ShoppingListItem/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'edgetoken': localStorage.getItem('Token') || ''
                 },
-                body: JSON.stringify({ "complete": complete }),
+                body: JSON.stringify(body),
             });
-            if (!response.ok) {
-                let error = await response.json()
-                alert(error.message)
+            const data = await response.json();
+            if (response.status === 409) {
+                return 'conflict';
             }
+            if (data.alreadyInState) {
+                return 'alreadyInState';
+            }
+            if (!response.ok) {
+                alert(data.message || 'Failed to update item');
+            }
+            return 'ok';
         } catch (error) {
-            alert(error)
+            alert(error);
+            return 'error';
         }
     }
 
