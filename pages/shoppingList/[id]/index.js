@@ -370,10 +370,11 @@ export default function Home() {
                 if (result === 'conflict') {
                     item.complete = expectedComplete;
                     setMatchedListIngreds([...updatedIngredients]);
-                    alert('This item was already checked off by someone else. Refreshing...');
+                    alert(`"${item.name}" was modified by someone else. Refreshing...`);
                     getShoppingListItems();
                 } else if (result === 'alreadyInState') {
-                    alert('This item is already ' + (newComplete ? 'checked off' : 'unchecked'));
+                    const action = newComplete ? 'checked off' : 'unchecked';
+                    alert(`"${item.name}" is already ${action}. If 2 people are shopping, check if they already got "${item.name}".`);
                     getShoppingListItems();
                 }
             }
@@ -400,10 +401,11 @@ export default function Home() {
                             updatedIngredients[i].items[subIndex].complete = expectedComplete;
                             updatedIngredients[i].complete = updatedIngredients[i].items.every(sub => sub.complete);
                             setMatchedListIngreds([...updatedIngredients]);
-                            alert('This item was already checked off by someone else. Refreshing...');
+                            alert(`"${subItem.name}" was modified by someone else. Refreshing...`);
                             getShoppingListItems();
                         } else if (result === 'alreadyInState') {
-                            alert('This item is already ' + (newSubComplete ? 'checked off' : 'unchecked'));
+                            const action = newSubComplete ? 'checked off' : 'unchecked';
+                            alert(`"${subItem.name}" is already ${action}. If 2 people are shopping, check if they already got "${subItem.name}".`);
                             getShoppingListItems();
                         }
                         break;
