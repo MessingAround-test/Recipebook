@@ -40,10 +40,11 @@ UNITS: Always use metric/Celsius. Convert temperatures to Celsius (e.g., 400°F 
 
 2. Estimate time in minutes for EACH cooking instruction step. Consider:
    - The actual cooking/processing time, NOT just heating time (e.g., "fry the onions" means time to actually fry them until done, not just heating the oil)
-   - Active cooking time (stirring, flipping, etc.)
+   - Active cooking time (stirring, flipping, waiting for browning)
    - Waiting time (simmering, baking, resting)
    - Be realistic but conservative
    - For frying/sautéing: estimate time to cook the ingredient until properly done (e.g., onions until golden = ~5-8 min)
+   - CRITICAL: Read ALL steps together before assigning times. If multiple frying steps use the same pan, do NOT double-count heating time. For example, "fry onions" then "fry garlic" in the same pan = only 1x heating time, plus the sequential cooking time for each. Steps that can happen in parallel (e.g., frying in one pan while boiling in another) should be estimated independently, but sequential steps sharing equipment should account for shared prep/heating time.
 
 Output MUST be a single JSON object with:
 - "prepWork": array of objects with "ingredient" (string or null for general tasks), "action" (string describing the prep), "timeEstimate" (number in minutes), and "optional" (boolean, true for pre-prepared ingredient alternatives)
