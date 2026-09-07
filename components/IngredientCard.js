@@ -146,8 +146,9 @@ function IngredientCard({
                                                 width: '1.25rem',
                                                 height: '1.25rem',
                                                 borderRadius: '50%',
-                                                border: `2px solid ${item.complete ? accentColor : 'var(--border)'}`,
-                                                background: item.complete ? accentColor : 'transparent',
+                                                border: `2px solid ${item.complete ? accentColor : 'rgba(255,255,255,0.25)'}`,
+                                                background: item.complete ? accentColor : 'rgba(255,255,255,0.05)',
+                                                boxShadow: item.complete ? `0 0 8px ${accentColor}40` : 'inset 0 1px 2px rgba(0,0,0,0.2)',
                                             }}
                                         >
                                             {item.complete && (
