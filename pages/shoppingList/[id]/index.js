@@ -1019,7 +1019,7 @@ export default function Home() {
                                                         });
                                                     })()}
                                                 </h6>
-                                                <div className="flex items-center gap-1.5 shrink-0 text-white/50">
+                                                <div className="flex items-center gap-1.5 shrink-0" style={{ color: 'var(--muted-foreground)' }}>
                                                     <span className="text-[10px] sm:text-[11px] font-medium">${groupCost}</span>
                                                     <span className="text-[9px]">·</span>
                                                     <span className="text-[9px] sm:text-[10px]">{ingredientsInGroup.length}</span>

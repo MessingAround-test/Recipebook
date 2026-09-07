@@ -67,18 +67,25 @@ function IngredientCard({
 
                 {handleCheckboxChange !== undefined && (
                     <div className="mobile-touch-target" style={{ display: 'flex', justifyContent: 'center', minWidth: '48px' }}>
-                        <input
-                            type="checkbox"
-                            checked={ingredient.complete}
-                            onChange={() => handleCheckboxChange(ingredient)}
+                        <button
+                            onClick={() => handleCheckboxChange(ingredient)}
+                            className="relative shrink-0 flex items-center justify-center transition-all duration-200 active:scale-90"
                             style={{
-                                width: '1.75rem',
-                                height: '1.75rem',
+                                width: '1.625rem',
+                                height: '1.625rem',
+                                borderRadius: '50%',
+                                border: `2px solid ${ingredient.complete ? accentColor : 'var(--border)'}`,
+                                background: ingredient.complete ? accentColor : 'transparent',
                                 cursor: 'pointer',
-                                accentColor: accentColor,
-                                borderRadius: '0.25rem'
+                                boxShadow: ingredient.complete ? `0 0 8px ${accentColor}40` : 'none',
                             }}
-                        />
+                        >
+                            {ingredient.complete && (
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))' }}>
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            )}
+                        </button>
                     </div>
                 )}
 
@@ -129,15 +136,26 @@ function IngredientCard({
                                         className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer hover:text-white transition-colors"
                                         onClick={() => handleEditItem && handleEditItem(item)}
                                     >
-                                        <input
-                                            type="checkbox"
-                                            checked={item.complete}
-                                            onChange={(e) => {
+                                        <button
+                                            onClick={(e) => {
                                                 e.stopPropagation();
                                                 handleCheckboxChange(item);
                                             }}
-                                            className="w-4 h-4 rounded cursor-pointer accent-accent shrink-0"
-                                        />
+                                            className="relative shrink-0 flex items-center justify-center transition-all duration-200 active:scale-90 cursor-pointer"
+                                            style={{
+                                                width: '1.25rem',
+                                                height: '1.25rem',
+                                                borderRadius: '50%',
+                                                border: `2px solid ${item.complete ? accentColor : 'var(--border)'}`,
+                                                background: item.complete ? accentColor : 'transparent',
+                                            }}
+                                        >
+                                            {item.complete && (
+                                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                                </svg>
+                                            )}
+                                        </button>
                                         <span className="mobile-text-large shrink-0">{item.quantity} {item.quantity_type_shorthand || item.quantity_type || 'each'}</span>
                                         {item.note && <span className="italic opacity-60 text-xs truncate min-w-0">{item.note}</span>}
                                     </div>
