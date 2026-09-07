@@ -74,10 +74,10 @@ function IngredientCard({
                                 width: '1.625rem',
                                 height: '1.625rem',
                                 borderRadius: '50%',
-                                border: `2px solid ${ingredient.complete ? accentColor : 'var(--border)'}`,
-                                background: ingredient.complete ? accentColor : 'transparent',
+                                border: `2.5px solid ${ingredient.complete ? accentColor : 'rgba(255,255,255,0.25)'}`,
+                                background: ingredient.complete ? accentColor : 'rgba(255,255,255,0.05)',
                                 cursor: 'pointer',
-                                boxShadow: ingredient.complete ? `0 0 8px ${accentColor}40` : 'none',
+                                boxShadow: ingredient.complete ? `0 0 10px ${accentColor}50, inset 0 0 4px rgba(255,255,255,0.2)` : 'inset 0 1px 3px rgba(0,0,0,0.2)',
                             }}
                         >
                             {ingredient.complete && (

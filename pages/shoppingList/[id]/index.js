@@ -743,14 +743,14 @@ export default function Home() {
             </Head>
 
             {categoryNavItems.length > 2 && (
-                <div className="fixed bottom-[4.5rem] left-0 right-0 sm:hidden z-[50] pointer-events-none" style={{ background: 'linear-gradient(to top, var(--background) 70%, transparent)' }}>
-                    <div className="flex justify-center gap-2 px-3 py-2 pointer-events-auto" style={{ borderTop: '1px solid var(--border)', background: 'var(--card)' }}>
+                <div className="fixed bottom-[4.5rem] left-0 right-0 sm:hidden z-[50] pointer-events-none">
+                    <div className="flex justify-center gap-2.5 px-3 py-2 pointer-events-auto">
                         {categoryNavItems.map(({ group, color, Icon, label }) => (
                             <button
                                 key={group}
                                 onClick={() => scrollToGroup(group)}
                                 className="flex items-center justify-center shrink-0 h-8 w-8 rounded-full transition-all active:scale-90"
-                                style={{ background: color }}
+                                style={{ background: color, boxShadow: `0 2px 8px ${color}60` }}
                                 title={label}
                             >
                                 {Icon ? <Icon size={15} strokeWidth={2.5} className="text-white" /> : <span className="text-white text-[10px] font-bold">{label[0]}</span>}

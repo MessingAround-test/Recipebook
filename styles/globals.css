@@ -97,9 +97,7 @@ a {
 
 /* Modern Glass Card */
 .glass-card {
-  background: var(--card);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: 1.25rem;
   padding: 1.5rem;
@@ -405,7 +403,7 @@ a {
 
 /* Category Group Card */
 .category-group-card {
-  background: var(--card);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: 1rem;
   overflow: hidden;
