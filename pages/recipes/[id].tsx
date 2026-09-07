@@ -2,7 +2,7 @@ import { Layout } from '../../components/Layout'
 import { PageHeader } from '../../components/PageHeader'
 import { useEffect, useState, useRef } from 'react'
 import { Button } from '../../components/ui/button'
-import { Flame, DollarSign, Clock, Utensils, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff } from 'lucide-react'
+import { Flame, DollarSign, Clock, Utensils, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff } from 'lucide-react'
 import Router, { useRouter } from 'next/router'
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
 import IngredientCard from '../../components/IngredientCard'
@@ -531,6 +531,16 @@ export default function RecipeDetail() {
         document.querySelector<HTMLInputElement>('input[type="file"]')?.click()
     }
 
+    const scrollToSection = (section: string) => {
+        const el = document.querySelector(`[data-section="${section}"]`) as HTMLElement | null;
+        if (!el) return;
+        el.classList.remove('group-flash');
+        void el.offsetWidth;
+        el.classList.add('group-flash');
+        const y = el.getBoundingClientRect().top + window.scrollY - 120;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+
     if (recipe === undefined) {
         return (
             <Layout title="Recipes">
@@ -548,6 +558,51 @@ export default function RecipeDetail() {
 
     return (
         <Layout title={recipeName || "Recipe"}>
+            {/* Quick Jump Bar */}
+            <div className="fixed bottom-[4.5rem] sm:bottom-0 left-0 right-0 z-[50] bg-card border-t border-border/10 shadow-sm">
+                <div className="flex justify-center gap-3 py-3">
+                    <button
+                        onClick={() => scrollToSection('ingredients')}
+                        className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-all active:scale-90"
+                        style={{ background: '#10b981', boxShadow: '0 2px 8px #10b98160' }}
+                        title="Ingredients"
+                    >
+                        <ShoppingBasket size={16} strokeWidth={2.5} className="text-white" />
+                    </button>
+                    <button
+                        onClick={() => scrollToSection('instructions')}
+                        className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-all active:scale-90"
+                        style={{ background: '#6366f1', boxShadow: '0 2px 8px #6366f160' }}
+                        title="Instructions"
+                    >
+                        <ListOrdered size={16} strokeWidth={2.5} className="text-white" />
+                    </button>
+                    <button
+                        onClick={() => scrollToSection('feedback')}
+                        className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-all active:scale-90"
+                        style={{ background: '#f59e0b', boxShadow: '0 2px 8px #f59e0b60' }}
+                        title="Cooking Reflection"
+                    >
+                        <MessageSquare size={16} strokeWidth={2.5} className="text-white" />
+                    </button>
+                    <button
+                        onClick={() => scrollToSection('nutrients')}
+                        className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-all active:scale-90"
+                        style={{ background: '#a855f7', boxShadow: '0 2px 8px #a855f760' }}
+                        title="Nutritional Density"
+                    >
+                        <Sparkles size={16} strokeWidth={2.5} className="text-white" />
+                    </button>
+                    <button
+                        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                        className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-all active:scale-90"
+                        style={{ background: '#64748b', boxShadow: '0 2px 8px #64748b60' }}
+                        title="Back to Top"
+                    >
+                        <ChevronUp size={16} strokeWidth={2.5} className="text-white" />
+                    </button>
+                </div>
+            </div>
             <div className="max-w-4xl mx-auto pb-12">
                 {/* Hero Header */}
                 <div className="relative bg-card text-card-foreground rounded-2xl border-0 sm:border sm:border-border/20 shadow-xl overflow-hidden mb-8">
@@ -755,7 +810,7 @@ export default function RecipeDetail() {
 
                 <div className="bg-card text-card-foreground border-0 sm:border sm:border-border/10 shadow-sm p-2 sm:p-4 md:p-6 mb-8 transition-shadow duration-500 hover:shadow-md overflow-hidden">
                     {/* Ingredients Section */}
-                    <div className="pt-10 pb-14 px-6 sm:px-10 bg-emerald-500/[0.02]">
+                    <div data-section="ingredients" className="pt-10 pb-14 px-6 sm:px-10 bg-emerald-500/[0.02]">
                         <div className="flex items-center gap-4 mb-10">
                             <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/10 shadow-sm shadow-emerald-500/5">
                                 <ShoppingBasket className="w-6 h-6 sm:w-8 sm:h-8" />
@@ -810,7 +865,7 @@ export default function RecipeDetail() {
 
                     {/* Instructions Section */}
                     {instructions.length > 0 && (
-                        <div className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-indigo-500/[0.02]">
+                        <div data-section="instructions" className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-indigo-500/[0.02]">
                             <div className="flex items-center gap-4 mb-10">
                                 <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/10 shadow-sm shadow-indigo-500/5">
                                     <ListOrdered className="w-6 h-6 sm:w-8 sm:h-8" />
@@ -838,7 +893,7 @@ export default function RecipeDetail() {
 
 
                     {/* Feedback & Reflection Section */}
-                        <div className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-amber-500/[0.02]">
+                        <div data-section="feedback" className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-amber-500/[0.02]">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/10 shadow-sm shadow-amber-500/5">
@@ -897,7 +952,7 @@ export default function RecipeDetail() {
                     </div>
 
                     {/* Nutrients density — TOGGLEABLE & SUBTLE */}
-                    <div className="py-10 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-muted/[0.01]">
+                    <div data-section="nutrients" className="py-10 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-muted/[0.01]">
                         <button
                             onClick={() => setShowNutrients(!showNutrients)}
                             className="flex items-center gap-2 group text-muted-foreground/60 hover:text-rose-400 transition-all duration-300"
