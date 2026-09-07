@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import styles from '../../../styles/Home.module.css'
 import { Toolbar } from '../../../components/Toolbar'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Router from 'next/router'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
@@ -708,13 +708,57 @@ export default function Home() {
     }
 
     const groupedIngredients = groupByKeys(displayIngredients, activeFilters);
-    const sortedGroups = Object.keys(groupedIngredients).sort(sortFunction);
+    const sortedGroups = useMemo(() => Object.keys(groupedIngredients).sort(sortFunction), [groupedIngredients, sortMode]);
+
+    const categoryNavItems = useMemo(() => {
+        return sortedGroups
+            .filter(g => groupedIngredients[g]?.length > 0)
+            .map(group => {
+                const parts = group.split('|').map(p => p.includes('=') ? p.split('=')[1] : p).filter(v => v !== 'true' && v !== 'false' && v !== '');
+                const isCompleted = group.includes('complete=true');
+                const color = isCompleted ? '#047857' : parts.reduce((f, p) => f || getColorForCategory(p), null) || 'var(--accent)';
+                const Icon = isCompleted ? Check : CATEGORY_ICONS[parts[0]];
+                const label = parts.map(p => FRIENDLY_NAMES[p] || p).join(' & ') || (isCompleted ? 'Done' : 'Other');
+                return { group, color, Icon, label };
+            });
+    }, [sortedGroups]);
+
+    const scrollToGroup = (group) => {
+        const el = document.querySelector(`[data-group="${CSS.escape(group)}"]`);
+        if (!el) return;
+        el.classList.remove('group-flash');
+        void el.offsetWidth;
+        el.classList.add('group-flash');
+        const y = el.getBoundingClientRect().top + window.scrollY - 120;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+    };
 
     const isListEmpty = matchedListIngreds.length === 0;
 
     return (
         <div className={styles.wrapper}>
             <Toolbar />
+            <Head>
+                <title>{`Shopping List | ${list?.name || 'Loading...'}`}</title>
+            </Head>
+
+            {categoryNavItems.length > 2 && (
+                <div className="fixed bottom-[4.5rem] left-0 right-0 sm:hidden z-[50] pointer-events-none" style={{ background: 'linear-gradient(to top, var(--background) 70%, transparent)' }}>
+                    <div className="flex justify-center gap-2 px-3 py-2 pointer-events-auto" style={{ borderTop: '1px solid var(--border)', background: 'var(--card)' }}>
+                        {categoryNavItems.map(({ group, color, Icon, label }) => (
+                            <button
+                                key={group}
+                                onClick={() => scrollToGroup(group)}
+                                className="flex items-center justify-center shrink-0 h-8 w-8 rounded-full transition-all active:scale-90"
+                                style={{ background: color }}
+                                title={label}
+                            >
+                                {Icon ? <Icon size={15} strokeWidth={2.5} className="text-white" /> : <span className="text-white text-[10px] font-bold">{label[0]}</span>}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
             <Head>
                 <title>{`Shopping List | ${list?.name || 'Loading...'}`}</title>
             </Head>
@@ -917,31 +961,32 @@ export default function Home() {
 
                     {/* Ingredients List */}
                     {!isListEmpty && (
-                        <div className="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 items-start">
+                        <div className="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-px sm:gap-6 items-start" style={{ background: 'var(--border)' }}>
                             {sortedGroups.map((group) => {
                                 const ingredientsInGroup = groupedIngredients[group];
                                 if (!ingredientsInGroup || ingredientsInGroup.length === 0) return null;
 
                                 const groupParts = group.split('|').map(p => p.includes('=') ? p.split('=')[1] : p).filter(v => v !== 'true' && v !== 'false' && v !== '');
-                                const groupColorAccent = groupParts.reduce((found, part) => found || getColorForCategory(part), null) || 'var(--accent)';
+                                const isCompletedGroup = group.includes('complete=true');
+                                const groupColorAccent = isCompletedGroup ? '#047857' : groupParts.reduce((found, part) => found || getColorForCategory(part), null) || 'var(--accent)';
                                 const groupColorLight = getLightColorForCategory(group);
 
                                 // Always show group cost
                                 const groupCost = calculateTotalOfList(ingredientsInGroup, enabledSuppliers, pricingStrategy);
 
                                 return (
-                                    <div key={group} className="category-group-card w-full" style={{ borderLeft: 'none' }}>
-                                        <div className="px-3 sm:px-4 py-2.5 sm:py-3" style={{ background: `linear-gradient(to right, ${groupColorAccent || 'var(--accent)'}, color-mix(in srgb, ${groupColorAccent || 'var(--accent)'} 30%, var(--card)) 70%, var(--card))` }}>
+                                    <div key={group} data-group={group} className="category-group-card w-full" style={{ borderLeft: 'none' }}>
+                                        <div className="px-3 sm:px-4 py-2.5 sm:py-3" style={{ background: `color-mix(in srgb, var(--background) 80%, var(--card))` }}>
                                             <div className="flex justify-between items-center gap-2">
-                                                <h6 className="font-bold uppercase tracking-wider text-sm sm:text-base m-0 flex flex-wrap items-center text-white">
+                                                <h6 className="font-black uppercase tracking-wider text-sm sm:text-base m-0 flex flex-wrap items-center" style={{ color: groupColorAccent || 'var(--accent)' }}>
                                                     {(() => {
                                                         const parts = group.split('|')
                                                             .map(p => p.includes('=') ? p.split('=')[1] : p)
                                                             .filter(v => v !== 'true' && v !== 'false' && v !== '');
 
                                                         if (parts.length === 0) {
-                                                            if (group.includes("complete=true")) return <span className="text-emerald-200">COMPLETED</span>;
-                                                            return <span>OTHER</span>;
+                                                            if (group.includes("complete=true")) return <span className="flex items-center gap-1.5 text-emerald-500"><Check size={14} strokeWidth={3} /> COMPLETED</span>;
+                                                            return <span style={{ color: 'var(--muted-foreground)' }}>OTHER</span>;
                                                         }
 
                                                         return parts.map((part, index) => {
@@ -956,7 +1001,7 @@ export default function Home() {
                                                             return (
                                                                 <span key={index} className="flex items-center">
                                                                     {recipeId ? (
-                                                                     <Link href={`/recipes/${recipeId}`} className="hover:underline flex items-center gap-1.5 text-white">
+                                                                     <Link href={`/recipes/${recipeId}`} className="hover:underline flex items-center gap-1.5" style={{ color: getColorForCategory(part) || 'var(--accent)' }}>
                                                                             {Icon && <Icon size={14} strokeWidth={2.5} />}
                                                                             <span>{FRIENDLY_NAMES[part] || part}</span>
                                                                         </Link>
@@ -981,7 +1026,7 @@ export default function Home() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="bg-[var(--bg-main)] rounded-b-[0.8rem] sm:rounded-b-[0.9rem]">
+                                        <div className="bg-[var(--bg-main)] sm:rounded-b-[0.9rem]">
                                             <NewIngredientTable
                                                 reload={() => reloadAllIngredients()}
                                                 ingredients={ingredientsInGroup.sort(ingredientSortFunction)}

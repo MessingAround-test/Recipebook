@@ -419,7 +419,35 @@ a {
 
 @media (max-width: 768px) {
   .category-group-card {
-    border-radius: 0.875rem;
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+}
+
+@keyframes group-flash {
+  0% { box-shadow: inset 0 0 0 0 var(--accent); }
+  30% { box-shadow: inset 0 0 0 3px var(--accent); }
+  100% { box-shadow: inset 0 0 0 0 var(--accent); }
+}
+
+.group-flash {
+  animation: group-flash 0.8s ease-out;
+}
+
+@media (max-width: 768px) {
+  .category-group-card {
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid var(--border);
   }
 }
 
@@ -445,6 +473,20 @@ a {
 
   .glass-card {
     padding: 1rem;
+    border-radius: 0;
+  }
+
+  /* Flatten all rounded elements on mobile for cohesive look */
+  .rounded-lg,
+  .rounded-xl,
+  .rounded-2xl,
+  .rounded-3xl {
+    border-radius: 0 !important;
+  }
+
+  /* Keep circles round (supplier icons, avatars, checkboxes) */
+  .rounded-full {
+    border-radius: 50% !important;
   }
 }
 

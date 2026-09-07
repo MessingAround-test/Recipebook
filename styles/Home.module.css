@@ -8,8 +8,7 @@
 
 @media (max-width: 768px) {
     .container {
-        padding-top: 0.75rem;
-        padding-bottom: 5rem; /* Space for fixed toolbar */
+        padding: 0.75rem 0 5rem 0;
     }
 }
 
