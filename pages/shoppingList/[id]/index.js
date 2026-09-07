@@ -12,34 +12,34 @@ import ToggleList from '../../../components/ToggleList'
 import { getGroceryStoreProducts } from '../../../lib/commonAPIs'
 import { groupByKeys } from '../../../lib/grouping'
 import { getColorForCategory, getLightColorForCategory } from '../../../lib/colors'
-import { Info, Settings, RotateCcw, Plus, Check, Copy, ClipboardCheck } from 'lucide-react'
+import { Info, Settings, RotateCcw, Plus, Check, Copy, ClipboardCheck, Leaf, Egg, CakeSlice, Beef, Package, Wheat, FlaskConical, Popcorn, CupSoda, Snowflake, Trash2, User, Heart, Globe, UtensilsCrossed, Home as HomeIcon, ShoppingBag, CircleDot } from 'lucide-react'
 import WoolworthsOrderEditor from '../../../components/WoolworthsOrderEditor'
 import EditShoppingItemOverlay from '../../../components/EditShoppingItemOverlay'
 import { compareByWoolworthsOrder, compareGroupsByWoolworthsOrder, getStoredOrder } from '../../../lib/woolworthsOrder'
 
 const FRIENDLY_NAMES = {
-    'Fresh Produce': '🥦 Fresh Produce',
-    'Dairy and Eggs': '🥛 Dairy & Eggs',
-    'Bakery': '🍞 Bakery',
-    'Meat and Seafood': '🥩 Meat & Seafood',
-    'Canned Goods': '🥫 Pantry (Canned)',
-    'Pasta and Grains': '🍝 Pasta & Grains',
-    'Condiments and Sauces': '🧴 Sauces & Condiments',
-    'Snacks': '🍿 Snacks',
-    'Beverages': '🥤 Beverages',
-    'Frozen Foods': '❄️ Frozen Foods',
-    'Cereal and Breakfast Foods': '🥣 Breakfast',
-    'Baking Supplies': '🧁 Baking',
-    'Household and Cleaning': '🧺 Household',
-    'Personal Care': '🧴 Personal Care',
-    'Health and Wellness': '💊 Health',
-    'International Foods': '🌏 International',
-    'Deli and Prepared Foods': '🍱 Deli',
-    'Home and Garden': '🏡 Home',
-    'Staple Food': '🥫 Staple Food',
-    'Fridge': '🥛 Fridge',
-    'Freezer': '❄️ Freezer',
-    'Staple Other': '🧴 Staple Other',
+    'Fresh Produce': 'Fresh Produce',
+    'Dairy and Eggs': 'Dairy & Eggs',
+    'Bakery': 'Bakery',
+    'Meat and Seafood': 'Meat & Seafood',
+    'Canned Goods': 'Pantry (Canned)',
+    'Pasta and Grains': 'Pasta & Grains',
+    'Condiments and Sauces': 'Sauces & Condiments',
+    'Snacks': 'Snacks',
+    'Beverages': 'Beverages',
+    'Frozen Foods': 'Frozen Foods',
+    'Cereal and Breakfast Foods': 'Breakfast',
+    'Baking Supplies': 'Baking',
+    'Household and Cleaning': 'Household',
+    'Personal Care': 'Personal Care',
+    'Health and Wellness': 'Health',
+    'International Foods': 'International',
+    'Deli and Prepared Foods': 'Deli',
+    'Home and Garden': 'Home',
+    'Staple Food': 'Staple Food',
+    'Fridge': 'Fridge',
+    'Freezer': 'Freezer',
+    'Staple Other': 'Staple Other',
     'WW': 'Woolworths',
     'Coles': 'Coles',
     'Aldi': 'Aldi',
@@ -51,7 +51,38 @@ const FRIENDLY_NAMES = {
     'recipe_name': 'Recipe',
     'price_category': 'Price',
     'quantity_type': 'Unit',
-    'Other (No Match)': '⚠️ Figure This Out'
+    'Other (No Match)': 'No Match'
+};
+
+const CATEGORY_ICONS = {
+    'Fresh Produce': Leaf,
+    'Dairy and Eggs': Egg,
+    'Bakery': CakeSlice,
+    'Meat and Seafood': Beef,
+    'Canned Goods': Package,
+    'Pasta and Grains': Wheat,
+    'Condiments and Sauces': FlaskConical,
+    'Snacks': Popcorn,
+    'Beverages': CupSoda,
+    'Frozen Foods': Snowflake,
+    'Cereal and Breakfast Foods': Egg,
+    'Baking Supplies': CakeSlice,
+    'Household and Cleaning': Trash2,
+    'Personal Care': User,
+    'Health and Wellness': Heart,
+    'International Foods': Globe,
+    'Deli and Prepared Foods': UtensilsCrossed,
+    'Home and Garden': HomeIcon,
+    'Staple Food': ShoppingBag,
+    'Fridge': CircleDot,
+    'Freezer': Snowflake,
+    'Staple Other': ShoppingBag,
+    'WW': ShoppingBag,
+    'Coles': ShoppingBag,
+    'Aldi': ShoppingBag,
+    'IGA': ShoppingBag,
+    'Panetta': ShoppingBag,
+    'Other (No Match)': CircleDot,
 };
 
 export default function Home() {
@@ -886,30 +917,31 @@ export default function Home() {
 
                     {/* Ingredients List */}
                     {!isListEmpty && (
-                        <div className="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
+                        <div className="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 items-start">
                             {sortedGroups.map((group) => {
                                 const ingredientsInGroup = groupedIngredients[group];
                                 if (!ingredientsInGroup || ingredientsInGroup.length === 0) return null;
 
-                                const groupColorAccent = getColorForCategory(group);
+                                const groupParts = group.split('|').map(p => p.includes('=') ? p.split('=')[1] : p).filter(v => v !== 'true' && v !== 'false' && v !== '');
+                                const groupColorAccent = groupParts.reduce((found, part) => found || getColorForCategory(part), null) || 'var(--accent)';
                                 const groupColorLight = getLightColorForCategory(group);
 
                                 // Always show group cost
                                 const groupCost = calculateTotalOfList(ingredientsInGroup, enabledSuppliers, pricingStrategy);
 
                                 return (
-                                    <div key={group} className="glass-card w-full" style={{ padding: '0', overflow: 'hidden' }}>
-                                        <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}>
+                                    <div key={group} className="category-group-card w-full" style={{ borderLeft: 'none' }}>
+                                        <div className="px-3 sm:px-4 py-2.5 sm:py-3" style={{ background: `linear-gradient(to right, ${groupColorAccent || 'var(--accent)'}, color-mix(in srgb, ${groupColorAccent || 'var(--accent)'} 30%, var(--card)) 70%, var(--card))` }}>
                                             <div className="flex justify-between items-center gap-2">
-                                                <h6 className="font-bold uppercase tracking-wider text-xs sm:text-base m-0 flex flex-wrap items-center">
+                                                <h6 className="font-bold uppercase tracking-wider text-sm sm:text-base m-0 flex flex-wrap items-center text-white">
                                                     {(() => {
                                                         const parts = group.split('|')
                                                             .map(p => p.includes('=') ? p.split('=')[1] : p)
                                                             .filter(v => v !== 'true' && v !== 'false' && v !== '');
 
                                                         if (parts.length === 0) {
-                                                            if (group.includes("complete=true")) return <span className="text-emerald-400">✅ COMPLETED</span>;
-                                                            return <span className="text-white">OTHER</span>;
+                                                            if (group.includes("complete=true")) return <span className="text-emerald-200">COMPLETED</span>;
+                                                            return <span>OTHER</span>;
                                                         }
 
                                                         return parts.map((part, index) => {
@@ -919,35 +951,37 @@ export default function Home() {
                                                                 if (matchingItem) recipeId = matchingItem.recipe_id;
                                                             }
 
+                                                            const Icon = CATEGORY_ICONS[part];
+
                                                             return (
                                                                 <span key={index} className="flex items-center">
                                                                     {recipeId ? (
-                                                                     <Link href={`/recipes/${recipeId}`} className="hover:underline flex items-center gap-1.5" style={{ color: 'var(--accent)' }}>
-                                                                            <span>🍳</span>
+                                                                     <Link href={`/recipes/${recipeId}`} className="hover:underline flex items-center gap-1.5 text-white">
+                                                                            {Icon && <Icon size={14} strokeWidth={2.5} />}
                                                                             <span>{FRIENDLY_NAMES[part] || part}</span>
                                                                         </Link>
                                                                     ) : (
-                                                                        <span style={{ color: getColorForCategory(part) || 'white' }}>
-                                                                            {FRIENDLY_NAMES[part] || part}
+                                                                        <span className="flex items-center gap-1.5">
+                                                                            {Icon && <Icon size={14} strokeWidth={2.5} />}
+                                                                            <span>{FRIENDLY_NAMES[part] || part}</span>
                                                                         </span>
                                                                     )}
                                                                     {index < parts.length - 1 && (
-                                                                        <span className="mx-1 sm:mx-2 text-gray-500 opacity-50">&</span>
+                                                                        <span className="mx-1 sm:mx-2 opacity-50">&</span>
                                                                     )}
                                                                 </span>
                                                             );
                                                         });
                                                     })()}
                                                 </h6>
-                                                <div className="text-right flex flex-col justify-center min-w-[60px]">
-                                                    <h4 className="font-bold m-0 text-[var(--accent)]" style={{ fontSize: '0.65rem' }}>
-                                                        <span className="text-white">${groupCost}</span>
-                                                    </h4>
-                                                    <span className="text-[8px] sm:text-[9px] font-medium text-gray-400 mt-0.5 uppercase">({ingredientsInGroup.length} items)</span>
+                                                <div className="flex items-center gap-1.5 shrink-0 text-white/50">
+                                                    <span className="text-[10px] sm:text-[11px] font-medium">${groupCost}</span>
+                                                    <span className="text-[9px]">·</span>
+                                                    <span className="text-[9px] sm:text-[10px]">{ingredientsInGroup.length}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="bg-[var(--bg-main)]">
+                                        <div className="bg-[var(--bg-main)] rounded-b-[0.8rem] sm:rounded-b-[0.9rem]">
                                             <NewIngredientTable
                                                 reload={() => reloadAllIngredients()}
                                                 ingredients={ingredientsInGroup.sort(ingredientSortFunction)}
