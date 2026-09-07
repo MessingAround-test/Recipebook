@@ -587,18 +587,22 @@ export default function RecipeDetail() {
         }
     }, [])
 
+    const [prepDone, setPrepDone] = useState(false)
+
     useEffect(() => {
         if (!hasCheckedPrepRef.current && listIngreds && listIngreds.length > 0 && recipe) {
             hasCheckedPrepRef.current = true
-            extractPrepWork()
+            extractPrepWork().then(() => setPrepDone(true))
+        } else if (hasCheckedPrepRef.current) {
+            setPrepDone(true)
         }
     }, [recipe, listIngreds])
 
     useEffect(() => {
-        if (listIngreds && listIngreds.length > 0) {
+        if (prepDone && listIngreds && listIngreds.length > 0) {
             reloadAllIngredients()
         }
-    }, [listIngreds])
+    }, [prepDone, listIngreds])
 
     // When ingredients finish loading: save cost + AI auto-fill
     useEffect(() => {
