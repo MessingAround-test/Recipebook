@@ -39,9 +39,11 @@ IMPORTANT: Do NOT make assumptions about ingredient state. Only include prep wor
 UNITS: Always use metric/Celsius. Convert temperatures to Celsius (e.g., 400°F → 200°C). Use standard metric units: ml for liquids, g for weight, cm for measurements. Do not use imperial units.
 
 2. Estimate time in minutes for EACH cooking instruction step. Consider:
-   - Active cooking time
+   - The actual cooking/processing time, NOT just heating time (e.g., "fry the onions" means time to actually fry them until done, not just heating the oil)
+   - Active cooking time (stirring, flipping, etc.)
    - Waiting time (simmering, baking, resting)
    - Be realistic but conservative
+   - For frying/sautéing: estimate time to cook the ingredient until properly done (e.g., onions until golden = ~5-8 min)
 
 Output MUST be a single JSON object with:
 - "prepWork": array of objects with "ingredient" (string or null for general tasks), "action" (string describing the prep), "timeEstimate" (number in minutes), and "optional" (boolean, true for pre-prepared ingredient alternatives)
