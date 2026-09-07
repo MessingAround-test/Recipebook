@@ -18,6 +18,13 @@ const instructionsSchema = new mongoose.Schema(
     }
 )
 
+const prepWorkSchema = new mongoose.Schema({
+    ingredient: { type: String },
+    action: { type: String, required: true },
+    timeEstimate: { type: Number },
+    isCustom: { type: Boolean, default: false },
+    optional: { type: Boolean, default: false }
+})
 
 const RecipeSchema = new mongoose.Schema(
     {
@@ -26,6 +33,7 @@ const RecipeSchema = new mongoose.Schema(
         name: { type: String, required: true },
         ingredients: [ingredsSchema],
         instructions: [instructionsSchema],
+        prepWork: [prepWorkSchema],
         image: { type: String },
         cost: { type: Number },
         approxCost: { type: Number, required: false }, // Store the initial calculated proportional cost

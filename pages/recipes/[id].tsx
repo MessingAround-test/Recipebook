@@ -82,6 +82,14 @@ export default function RecipeDetail() {
     const [showNutrients, setShowNutrients] = useState(false)
     const [recipeServings, setRecipeServings] = useState<number>(0)
 
+    // Prep work state
+    const [prepWork, setPrepWork] = useState<any[]>([])
+    const [checkedPrep, setCheckedPrep] = useState<Set<number>>(new Set())
+    const [editingPrepIndex, setEditingPrepIndex] = useState<number | null>(null)
+    const [editingPrepText, setEditingPrepText] = useState("")
+    const [isExtractingPrep, setIsExtractingPrep] = useState(false)
+    const hasCheckedPrepRef = useRef(false)
+
     // Add to shopping list modal
     const [shopModalOpen, setShopModalOpen] = useState(false)
     const [shoppingLists, setShoppingLists] = useState<any[]>([])
@@ -90,6 +98,9 @@ export default function RecipeDetail() {
     const [addSuccess, setAddSuccess] = useState<string | null>(null)
 
     const costSavedRef = useRef(false)
+
+    const totalTimeEstimate = (prepWork || []).filter((p: any) => !p.optional).reduce((sum: number, p: any) => sum + (p.timeEstimate || 0), 0)
+        + (instructions || []).reduce((sum: number, i: any) => sum + (i.time || 0), 0)
 
     async function openModal(ingredName: string) {
         setIsOpen(true)
@@ -187,6 +198,11 @@ export default function RecipeDetail() {
         setFeedback(data.res.feedback || "")
         setRecipeServings(data.res.servings || 0)
         if (data.res.approxCost != null) setApproxCost(data.res.approxCost)
+        setPrepWork(data.res.prepWork || [])
+        // If recipe already has prepWork field (even empty array), we've already extracted
+        if (data.res.prepWork !== undefined) {
+            hasCheckedPrepRef.current = true
+        }
         costSavedRef.current = false // allow re-save on each page load
     }
 
@@ -498,6 +514,86 @@ export default function RecipeDetail() {
         }
     }
 
+    const savePrepWork = async (items: any[]) => {
+        const token = localStorage.getItem('Token') || ""
+        try {
+            await fetch(`/api/Recipe/${String(id)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': token },
+                body: JSON.stringify({ prepWork: items })
+            })
+        } catch (e) {
+            console.error("Failed to save prep work")
+        }
+    }
+
+    const extractPrepWork = async () => {
+        if (!recipe || !listIngreds || listIngreds.length === 0) return
+        setIsExtractingPrep(true)
+        try {
+            const token = localStorage.getItem('Token') || ""
+            const ingredientList = listIngreds.map(i =>
+                `${i.name}${i.note ? ` (${i.note})` : ''}`
+            ).join(', ')
+            const instructionList = instructions.map(i => i.Text).join('; ')
+            const res = await fetch(
+                `/api/ai/extract_prep_work?recipeName=${encodeURIComponent(recipeName)}&ingredients=${encodeURIComponent(ingredientList)}&instructions=${encodeURIComponent(instructionList)}`,
+                { headers: { 'edgetoken': token } }
+            )
+            const data = await res.json()
+            if (data.success && data.data) {
+                let extracted = data.data.prepWork || []
+
+                // Deduplicate: remove any prep work that overlaps with instruction text
+                const instructionLower = instructions.map(i => i.Text.toLowerCase()).join(' ')
+                extracted = extracted.filter((item: any) => {
+                    const actionLower = (item.action || '').toLowerCase()
+                    // Check if key verbs from prep appear in instruction context
+                    const verbs = actionLower.split(/\s+/).filter((w: string) => w.length > 3)
+                    const overlapCount = verbs.filter((v: string) => instructionLower.includes(v)).length
+                    // If more than half the words overlap with instructions, skip it
+                    return overlapCount < Math.ceil(verbs.length / 2)
+                })
+
+                setPrepWork(extracted)
+                await savePrepWork(extracted)
+
+                // Update instruction times
+                if (data.data.instructionTimes && instructions.length > 0) {
+                    const updatedInstructions = instructions.map((inst, idx) => {
+                        const timeData = data.data.instructionTimes.find(
+                            (t: any) => t.step === idx + 1
+                        )
+                        return timeData ? { ...inst, time: timeData.timeEstimate } : inst
+                    })
+                    setInstructions(updatedInstructions)
+                    const token2 = localStorage.getItem('Token') || ""
+                    await fetch(`/api/Recipe/${String(id)}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'edgetoken': token2 },
+                        body: JSON.stringify({ instructions: updatedInstructions })
+                    })
+                }
+            }
+        } catch (e) {
+            console.error('Prep work extraction failed:', e)
+        }
+        setIsExtractingPrep(false)
+    }
+
+    useEffect(() => {
+        return () => {
+            setCheckedPrep(new Set())
+        }
+    }, [])
+
+    useEffect(() => {
+        if (!hasCheckedPrepRef.current && listIngreds && listIngreds.length > 0 && recipe) {
+            hasCheckedPrepRef.current = true
+            extractPrepWork()
+        }
+    }, [recipe, listIngreds])
+
     useEffect(() => {
         if (listIngreds && listIngreds.length > 0) {
             reloadAllIngredients()
@@ -570,6 +666,14 @@ export default function RecipeDetail() {
                         <ShoppingBasket size={16} strokeWidth={2.5} className="text-white" />
                     </button>
                     <button
+                        onClick={() => scrollToSection('prep')}
+                        className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-all active:scale-90"
+                        style={{ background: '#f97316', boxShadow: '0 2px 8px #f9731660' }}
+                        title="Prep Work"
+                    >
+                        <ChefHat size={16} strokeWidth={2.5} className="text-white" />
+                    </button>
+                    <button
                         onClick={() => scrollToSection('instructions')}
                         className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-all active:scale-90"
                         style={{ background: '#6366f1', boxShadow: '0 2px 8px #6366f160' }}
@@ -637,11 +741,6 @@ export default function RecipeDetail() {
                                             💰 {priceLabelMap[displayPriceCategory].label}
                                         </span>
                                     )}
-                                    {recipeServings > 0 && (
-                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-emerald-500/20 text-emerald-200 border-white/5`}>
-                                            👥 Feeds {recipeServings}
-                                        </span>
-                                    )}
                                     {isHidden && (
                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-amber-500/25 text-amber-200 border-white/5`}>
                                             <EyeOff size={12} /> Hidden
@@ -690,6 +789,20 @@ export default function RecipeDetail() {
                                         </div>
                                     )}
                                 </div>
+                                {(totalTimeEstimate > 0 || recipeServings > 0) && (
+                                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/70">
+                                        {totalTimeEstimate > 0 && (
+                                            <span className="flex items-center gap-1.5">
+                                                <Clock size={12} /> {totalTimeEstimate} min
+                                            </span>
+                                        )}
+                                        {recipeServings > 0 && (
+                                            <span className="flex items-center gap-1.5">
+                                                👥 {recipeServings} servings
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             <div className="absolute top-4 right-4 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                 <span className="bg-black/60 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm font-semibold text-center">Change<br />Image</span>
@@ -709,11 +822,6 @@ export default function RecipeDetail() {
                                 {recipeGenre && (
                                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border bg-purple-500/15 text-purple-400 border-purple-500/30">
                                         🍳 {recipeGenre}
-                                    </span>
-                                )}
-                                {recipeServings > 0 && (
-                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
-                                        👥 Feeds {recipeServings}
                                     </span>
                                 )}
                                 {isHidden && (
@@ -762,6 +870,20 @@ export default function RecipeDetail() {
                                     </div>
                                 )}
                             </div>
+                            {(totalTimeEstimate > 0 || recipeServings > 0) && (
+                                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                                    {totalTimeEstimate > 0 && (
+                                        <span className="flex items-center gap-1.5">
+                                            <Clock size={12} /> {totalTimeEstimate} min
+                                        </span>
+                                    )}
+                                    {recipeServings > 0 && (
+                                        <span className="flex items-center gap-1.5">
+                                            👥 {recipeServings} servings
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -863,6 +985,103 @@ export default function RecipeDetail() {
                         </div>
                     </div>
 
+                    {/* Prep Work Section */}
+                    <div data-section="prep" className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-orange-500/[0.02]">
+                        <div className="flex items-center gap-4 mb-10">
+                            <div className="p-3 rounded-2xl bg-orange-500/10 text-orange-500 border border-orange-500/10 shadow-sm shadow-orange-500/5">
+                                <ChefHat className="w-6 h-6 sm:w-8 sm:h-8" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground/90">Prep Work</h2>
+                                <p className="text-[10px] font-bold text-orange-500/60 uppercase tracking-widest mt-1">Before You Start</p>
+                            </div>
+                            <div className="ml-auto flex items-center gap-2">
+                                {isExtractingPrep && <Loader2 className="w-4 h-4 animate-spin text-orange-500" />}
+                                <button
+                                    onClick={extractPrepWork}
+                                    disabled={isExtractingPrep}
+                                    className="text-xs text-orange-500/60 hover:text-orange-500 disabled:opacity-50"
+                                >
+                                    Re-extract
+                                </button>
+                            </div>
+                        </div>
+
+                        {isExtractingPrep ? (
+                            <p className="text-foreground/40 text-sm">Analyzing recipe...</p>
+                        ) : prepWork.length === 0 ? (
+                            <p className="text-foreground/40 text-sm">Nothing to do... add items manually or click Re-extract.</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {prepWork.map((item, index) => (
+                                    <div key={index} className={`flex items-center gap-4 p-3 rounded-xl border ${item.optional ? 'bg-orange-500/[0.02] border-orange-500/5 border-dashed' : 'bg-orange-500/5 border-orange-500/10'}`}>
+                                        <button
+                                            onClick={() => setCheckedPrep(prev => {
+                                                const next = new Set(prev)
+                                                if (next.has(index)) next.delete(index)
+                                                else next.add(index)
+                                                return next
+                                            })}
+                                            className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                                                checkedPrep.has(index)
+                                                    ? 'bg-orange-500 border-orange-500 text-white'
+                                                    : item.optional ? 'border-orange-500/20 hover:border-orange-500/50' : 'border-orange-500/30 hover:border-orange-500'
+                                            }`}
+                                        >
+                                            {checkedPrep.has(index) && <Check size={14} />}
+                                        </button>
+                                        {editingPrepIndex === index ? (
+                                            <input
+                                                value={editingPrepText}
+                                                onChange={(e) => setEditingPrepText(e.target.value)}
+                                                onBlur={() => {
+                                                    const updated = [...prepWork]
+                                                    updated[index] = { ...updated[index], action: editingPrepText }
+                                                    setPrepWork(updated)
+                                                    savePrepWork(updated)
+                                                    setEditingPrepIndex(null)
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        (e.target as HTMLInputElement).blur()
+                                                    }
+                                                }}
+                                                className="flex-1 bg-transparent border-b border-orange-500/30 focus:border-orange-500 outline-none text-foreground/80"
+                                                autoFocus
+                                            />
+                                        ) : (
+                                            <span
+                                                onClick={() => { setEditingPrepIndex(index); setEditingPrepText(item.action) }}
+                                                className={`flex-1 cursor-pointer ${checkedPrep.has(index) ? 'line-through opacity-50' : item.optional ? 'text-foreground/50' : 'text-foreground/80'}`}
+                                            >
+                                                {item.ingredient && <span className="font-medium">{item.ingredient}: </span>}
+                                                {item.action}
+                                                {item.optional && <span className="ml-2 text-[10px] text-orange-500/50 font-semibold uppercase">(optional)</span>}
+                                            </span>
+                                        )}
+                                        {item.timeEstimate && (
+                                            <span className="text-xs text-orange-500/60 whitespace-nowrap">
+                                                ~{item.timeEstimate} min
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <button
+                            onClick={() => {
+                                const newItem = { ingredient: '', action: '', timeEstimate: null, isCustom: true }
+                                setPrepWork([...prepWork, newItem])
+                                setEditingPrepIndex(prepWork.length)
+                                setEditingPrepText('')
+                            }}
+                            className="mt-4 flex items-center gap-2 text-sm text-orange-500/60 hover:text-orange-500"
+                        >
+                            <Plus size={16} /> Add custom prep work
+                        </button>
+                    </div>
+
                     {/* Instructions Section */}
                     {instructions.length > 0 && (
                         <div data-section="instructions" className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-indigo-500/[0.02]">
@@ -882,7 +1101,14 @@ export default function RecipeDetail() {
                                             {index + 1}
                                         </div>
                                         <div className="flex-1 pt-1.5 border-0 sm:border-b sm:border-border/10 pb-8 group-last:border-0">
-                                            <p className="text-foreground/80 leading-relaxed text-base sm:text-xl font-medium">{instruction.Text}</p>
+                                            <div className="flex items-start gap-2">
+                                                <p className="flex-1 text-foreground/80 leading-relaxed text-base sm:text-xl font-medium">{instruction.Text}</p>
+                                                {instruction.time && (
+                                                    <span className="text-xs text-indigo-500/60 whitespace-nowrap mt-1">
+                                                        ~{instruction.time} min
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
