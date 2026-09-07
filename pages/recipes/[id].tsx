@@ -550,7 +550,7 @@ export default function RecipeDetail() {
         <Layout title={recipeName || "Recipe"}>
             <div className="max-w-4xl mx-auto pb-12">
                 {/* Hero Header */}
-                <div className="relative bg-card text-card-foreground rounded-2xl border border-border/20 shadow-xl overflow-hidden mb-8">
+                <div className="relative bg-card text-card-foreground rounded-2xl border-0 sm:border sm:border-border/20 shadow-xl overflow-hidden mb-8">
                     {imageData && (
                         <div className="relative min-h-[20rem] sm:h-80 md:h-96 w-full cursor-pointer group" onClick={handleClick}>
                             <img src={imageData} alt={recipeName} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -679,7 +679,7 @@ export default function RecipeDetail() {
                                 )}
                             </div>
 
-                            <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 border-t border-border/10 pt-4">
+                            <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 border-0 sm:border-t sm:border-border/10 pt-4">
                                 <div className="flex sm:block items-center justify-between gap-4">
                                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mb-1">Total Approx. Cost</p>
                                     {isCalculatingCost ? (
@@ -710,7 +710,7 @@ export default function RecipeDetail() {
                         </div>
                     )}
 
-                    <div className="p-6 md:p-8 border-t border-border/5 bg-muted/10">
+                    <div className="p-6 md:p-8 border-0 sm:border-t sm:border-border/5 bg-muted/10">
                         <div className="flex flex-col sm:flex-row gap-3">
                             <Button
                                 onClick={() => setIsCookingMode(true)}
@@ -753,7 +753,7 @@ export default function RecipeDetail() {
                     </div>
                 </div>
 
-                <div className="bg-card text-card-foreground rounded-[2.5rem] border border-border/10 shadow-sm p-2 sm:p-4 md:p-6 mb-8 transition-shadow duration-500 hover:shadow-md overflow-hidden">
+                <div className="bg-card text-card-foreground border-0 sm:border sm:border-border/10 shadow-sm p-2 sm:p-4 md:p-6 mb-8 transition-shadow duration-500 hover:shadow-md overflow-hidden">
                     {/* Ingredients Section */}
                     <div className="pt-10 pb-14 px-6 sm:px-10 bg-emerald-500/[0.02]">
                         <div className="flex items-center gap-4 mb-10">
@@ -810,7 +810,7 @@ export default function RecipeDetail() {
 
                     {/* Instructions Section */}
                     {instructions.length > 0 && (
-                        <div className="py-14 px-6 sm:px-10 border-t border-border/10 bg-indigo-500/[0.02]">
+                        <div className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-indigo-500/[0.02]">
                             <div className="flex items-center gap-4 mb-10">
                                 <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/10 shadow-sm shadow-indigo-500/5">
                                     <ListOrdered className="w-6 h-6 sm:w-8 sm:h-8" />
@@ -826,7 +826,7 @@ export default function RecipeDetail() {
                                         <div className="flex-shrink-0 w-11 h-11 rounded-2xl bg-indigo-500/5 border border-indigo-500/5 flex items-center justify-center font-black text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300 shadow-sm">
                                             {index + 1}
                                         </div>
-                                        <div className="flex-1 pt-1.5 border-b border-border/10 pb-8 group-last:border-0">
+                                        <div className="flex-1 pt-1.5 border-0 sm:border-b sm:border-border/10 pb-8 group-last:border-0">
                                             <p className="text-foreground/80 leading-relaxed text-base sm:text-xl font-medium">{instruction.Text}</p>
                                         </div>
                                     </div>
@@ -838,7 +838,7 @@ export default function RecipeDetail() {
 
 
                     {/* Feedback & Reflection Section */}
-                    <div className="py-14 px-6 sm:px-10 border-t border-border/10 bg-amber-500/[0.02]">
+                        <div className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-amber-500/[0.02]">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/10 shadow-sm shadow-amber-500/5">
@@ -897,7 +897,7 @@ export default function RecipeDetail() {
                     </div>
 
                     {/* Nutrients density — TOGGLEABLE & SUBTLE */}
-                    <div className="py-10 px-6 sm:px-10 border-t border-border/10 bg-muted/[0.01]">
+                    <div className="py-10 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-muted/[0.01]">
                         <button
                             onClick={() => setShowNutrients(!showNutrients)}
                             className="flex items-center gap-2 group text-muted-foreground/60 hover:text-rose-400 transition-all duration-300"
@@ -912,7 +912,7 @@ export default function RecipeDetail() {
                         </button>
 
                         {showNutrients && (
-                            <div className="mt-6 bg-muted/10 backdrop-blur-sm rounded-3xl p-6 border border-border/20 animate-in fade-in slide-in-from-top-4 duration-500">
+                            <div className="mt-6 bg-muted/10 backdrop-blur-sm rounded-3xl p-6 border-0 sm:border sm:border-border/20 animate-in fade-in slide-in-from-top-4 duration-500">
                                 <IngredientNutrientGraph 
                                     ingredients={matchedListIngreds} 
                                     onLogServe={logRecipeServe} 
@@ -930,7 +930,7 @@ export default function RecipeDetail() {
                         accept="image/*"
                     />
 
-                    <div className="flex justify-between items-center mt-8 pt-6 border-t border-border/10">
+                    <div className="flex justify-between items-center mt-8 pt-6 border-0 sm:border-t sm:border-border/10">
                         <span className="text-xs text-muted-foreground font-mono">ID: {id}</span>
                         <Button variant="destructive" onClick={deleteRecipe} size="sm">
                             Delete Recipe
