@@ -762,14 +762,22 @@ export default function RecipeDetail() {
     }
 
     const sendNotification = (title: string, body: string) => {
-        if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(title, { body, icon: '/favicon.ico' })
+        try {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(title, { body, icon: '/favicon.ico' })
+            }
+        } catch (e) {
+            console.error('Notification failed:', e)
         }
     }
 
     useEffect(() => {
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission()
+        try {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission()
+            }
+        } catch (e) {
+            console.error('Notification permission request failed:', e)
         }
     }, [])
 
