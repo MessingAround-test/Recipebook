@@ -12,7 +12,7 @@ import Modal from 'react-modal'
 const PRICE_THRESHOLDS = { cheap: 15, expensive: 35 }
 
 const timeLabelMap: Record<string, { label: string; icon: string; color: string }> = {
-    short: { label: 'Quick', icon: '⚡', color: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
+    short: { label: 'Quick', icon: '⚡', color: 'bg-orange-500/15 text-orange-400 border-orange-500/30' },
     medium: { label: 'Medium', icon: '⏱️', color: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
     long: { label: 'Slow Cook', icon: '🍲', color: 'bg-orange-500/15 text-orange-400 border-orange-500/30' }
 }
@@ -196,6 +196,7 @@ export default function RecipeDetail() {
     const [editTimerSeconds, setEditTimerSeconds] = useState("")
     const [customExtendId, setCustomExtendId] = useState<string | null>(null)
     const [customExtendMin, setCustomExtendMin] = useState("")
+    const [acknowledgedTimers, setAcknowledgedTimers] = useState<Set<string>>(new Set())
 
     const costSavedRef = useRef(false)
 
@@ -1216,7 +1217,7 @@ export default function RecipeDetail() {
                     <div className="p-6 md:p-8 border-0 sm:border-t sm:border-border/5 bg-muted/10">
                         <div className="flex flex-col sm:flex-row gap-3">
                             <Button
-                                onClick={() => setIsCookingMode(true)}
+                                onClick={() => { setIsCookingMode(true); setTimerSheetOpen(false); setPrepSheetOpen(false) }}
                                 className="flex-[2] py-7 sm:py-8 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xl shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                             >
                                 <ChefHat className="w-6 h-6" />
@@ -1422,6 +1423,101 @@ export default function RecipeDetail() {
                         </button>
                     </div>
 
+                    {/* Instructions Section */}
+                    {instructions.length > 0 && (
+                        <div data-section="instructions" className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-indigo-500/[0.02]">
+                            <div className="flex items-center gap-4 mb-10">
+                                <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/10 shadow-sm shadow-indigo-500/5">
+                                    <ListOrdered className="w-6 h-6 sm:w-8 sm:h-8" />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground/90">Instructions</h2>
+                                    <p className="text-[10px] font-bold text-indigo-500/60 uppercase tracking-widest mt-1">Step-by-step Process</p>
+                                </div>
+                            </div>
+                            <div className="flex flex-col gap-8">
+                                {instructions.map((instruction, index) => (
+                                    <div key={index} className="flex gap-4 sm:gap-8 group">
+                                        <div className="flex-shrink-0 w-11 h-11 rounded-2xl bg-indigo-500/5 border border-indigo-500/5 flex items-center justify-center font-black text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300 shadow-sm">
+                                            {index + 1}
+                                        </div>
+                                        <div className="flex-1 pt-1.5 border-0 sm:border-b sm:border-border/10 pb-8 group-last:border-0">
+                                            <div className="flex items-start gap-2">
+                                                <p className="flex-1 text-foreground/80 leading-relaxed text-base sm:text-xl font-medium">{instruction.Text}</p>
+                                                {instruction.time && (
+                                                    <span className="text-xs text-indigo-500/60 whitespace-nowrap mt-1">
+                                                        ~{instruction.time} min
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+
+
+                    {/* Feedback & Reflection Section */}
+                        <div data-section="feedback" className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-amber-500/[0.02]">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/10 shadow-sm shadow-amber-500/5">
+                                    <MessageSquare className="w-6 h-6 sm:w-8 sm:h-8" />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground/90">Cooking Reflection</h2>
+                                    <p className="text-[10px] font-bold text-amber-500/60 uppercase tracking-widest mt-1">Results & Notes</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1 group">
+                                    <Button
+                                        onClick={() => updateTimesCooked(timesCooked - 1)}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-9 w-9 p-0 rounded-full hover:bg-orange-500/10 hover:text-orange-500 transition-colors"
+                                        disabled={timesCooked <= 0}
+                                    >
+                                        -
+                                    </Button>
+                                    <input
+                                        type="number"
+                                        value={timesCooked}
+                                        onChange={(e) => updateTimesCooked(parseInt(e.target.value) || 0)}
+                                        className="w-10 text-center bg-transparent font-black text-lg focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    />
+                                    <Button
+                                        onClick={() => updateTimesCooked(timesCooked + 1)}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-9 w-9 p-0 rounded-full hover:bg-emerald-500/10 hover:text-emerald-500 transition-colors"
+                                    >
+                                        +
+                                    </Button>
+                                </div>
+                                <Button
+                                    onClick={() => updateTimesCooked(timesCooked + 1)}
+                                    className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold h-11 px-5 rounded-xl flex items-center gap-2.5 transition-all active:scale-95 shadow-md shadow-emerald-500/10"
+                                >
+                                    <ChefHat size={18} /> <span className="hidden sm:inline">Mark as Cooked</span>
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <textarea
+                                value={feedback}
+                                onChange={(e) => setFeedback(e.target.value)}
+                                onBlur={(e) => saveFeedback(e.target.value)}
+                                placeholder="How did it turn out? Any tweaks for next time? (Auto-saves on blur)"
+                                className="w-full min-h-[140px] rounded-2xl border border-border/10 bg-secondary px-5 py-4 text-sm focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/10 focus:bg-emerald-500/[0.04] transition-all duration-300 resize-none placeholder:text-muted-foreground/30 shadow-inner"
+                            />
+                            {isSavingFeedback && <div className="text-[10px] font-bold text-emerald-500 animate-pulse text-right pr-2 uppercase tracking-widest">Saving changes...</div>}
+                        </div>
+                    </div>
+
                     {/* Timing Section */}
                     <div data-section="timers" className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-rose-500/[0.02]">
                         <div className="flex items-center gap-4 mb-10">
@@ -1498,106 +1594,11 @@ export default function RecipeDetail() {
                         )}
                     </div>
 
-                    {/* Instructions Section */}
-                    {instructions.length > 0 && (
-                        <div data-section="instructions" className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-indigo-500/[0.02]">
-                            <div className="flex items-center gap-4 mb-10">
-                                <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/10 shadow-sm shadow-indigo-500/5">
-                                    <ListOrdered className="w-6 h-6 sm:w-8 sm:h-8" />
-                                </div>
-                                <div>
-                                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground/90">Instructions</h2>
-                                    <p className="text-[10px] font-bold text-indigo-500/60 uppercase tracking-widest mt-1">Step-by-step Process</p>
-                                </div>
-                            </div>
-                            <div className="flex flex-col gap-8">
-                                {instructions.map((instruction, index) => (
-                                    <div key={index} className="flex gap-4 sm:gap-8 group">
-                                        <div className="flex-shrink-0 w-11 h-11 rounded-2xl bg-indigo-500/5 border border-indigo-500/5 flex items-center justify-center font-black text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300 shadow-sm">
-                                            {index + 1}
-                                        </div>
-                                        <div className="flex-1 pt-1.5 border-0 sm:border-b sm:border-border/10 pb-8 group-last:border-0">
-                                            <div className="flex items-start gap-2">
-                                                <p className="flex-1 text-foreground/80 leading-relaxed text-base sm:text-xl font-medium">{instruction.Text}</p>
-                                                {instruction.time && (
-                                                    <span className="text-xs text-indigo-500/60 whitespace-nowrap mt-1">
-                                                        ~{instruction.time} min
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-
-
-                    {/* Feedback & Reflection Section */}
-                        <div data-section="feedback" className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-amber-500/[0.02]">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/10 shadow-sm shadow-amber-500/5">
-                                    <MessageSquare className="w-6 h-6 sm:w-8 sm:h-8" />
-                                </div>
-                                <div>
-                                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground/90">Cooking Reflection</h2>
-                                    <p className="text-[10px] font-bold text-amber-500/60 uppercase tracking-widest mt-1">Results & Notes</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-1 group">
-                                    <Button
-                                        onClick={() => updateTimesCooked(timesCooked - 1)}
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-9 w-9 p-0 rounded-full hover:bg-blue-500/10 hover:text-blue-500 transition-colors"
-                                        disabled={timesCooked <= 0}
-                                    >
-                                        -
-                                    </Button>
-                                    <input
-                                        type="number"
-                                        value={timesCooked}
-                                        onChange={(e) => updateTimesCooked(parseInt(e.target.value) || 0)}
-                                        className="w-10 text-center bg-transparent font-black text-lg focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                    />
-                                    <Button
-                                        onClick={() => updateTimesCooked(timesCooked + 1)}
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-9 w-9 p-0 rounded-full hover:bg-emerald-500/10 hover:text-emerald-500 transition-colors"
-                                    >
-                                        +
-                                    </Button>
-                                </div>
-                                <Button
-                                    onClick={() => updateTimesCooked(timesCooked + 1)}
-                                    className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold h-11 px-5 rounded-xl flex items-center gap-2.5 transition-all active:scale-95 shadow-md shadow-emerald-500/10"
-                                >
-                                    <ChefHat size={18} /> <span className="hidden sm:inline">Mark as Cooked</span>
-                                </Button>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <textarea
-                                value={feedback}
-                                onChange={(e) => setFeedback(e.target.value)}
-                                onBlur={(e) => saveFeedback(e.target.value)}
-                                placeholder="How did it turn out? Any tweaks for next time? (Auto-saves on blur)"
-                                className="w-full min-h-[140px] rounded-2xl border border-border/10 bg-secondary px-5 py-4 text-sm focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/10 focus:bg-emerald-500/[0.04] transition-all duration-300 resize-none placeholder:text-muted-foreground/30 shadow-inner"
-                            />
-                            {isSavingFeedback && <div className="text-[10px] font-bold text-emerald-500 animate-pulse text-right pr-2 uppercase tracking-widest">Saving changes...</div>}
-                        </div>
-                    </div>
-
                     {/* Nutrients density — TOGGLEABLE & SUBTLE */}
                     <div data-section="nutrients" className="py-10 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-muted/[0.01]">
                         <button
                             onClick={() => setShowNutrients(!showNutrients)}
-                            className="flex items-center gap-2 group text-muted-foreground/60 hover:text-blue-400 transition-all duration-300"
+                            className="flex items-center gap-2 group text-muted-foreground/60 hover:text-orange-400 transition-all duration-300"
                         >
                             <Sparkles className={`w-4 h-4 transition-transform duration-500 ${showNutrients ? 'rotate-180 scale-110' : ''}`} />
                             <h2 className="text-[10px] font-black uppercase tracking-[0.2em] group-hover:opacity-100 transition-opacity">
@@ -1782,31 +1783,37 @@ export default function RecipeDetail() {
                         <div className="cooking-mode-overlay">
                             <div className="cooking-mode-header">
                                 <div className="flex items-center gap-2 flex-1 justify-center">
-                                    {instructions.map((_: any, idx: number) => {
-                                        const isDone = completedSteps.has(idx)
-                                        const isCurrent = idx === currentStep
-                                        return (
-                                            <button
-                                                key={idx}
-                                                onClick={() => setCurrentStep(idx)}
-                                                className={`w-8 h-8 rounded-full text-xs font-bold transition-all flex items-center justify-center ${
-                                                    isCurrent
-                                                        ? 'bg-white text-black'
-                                                        : isDone
-                                                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                                            : 'bg-white/5 text-white/30 border border-white/10 hover:bg-white/10'
-                                                }`}
-                                            >
-                                                {isDone ? '✓' : idx + 1}
-                                            </button>
-                                        )
-                                    })}
+                                    {(() => {
+                                        const lastStepHasTimer = cookingTimers.some((t: any) => t.type === 'timer' && t.stepIndex === instructions.length - 1)
+                                        const totalSteps = lastStepHasTimer ? instructions.length + 1 : instructions.length
+                                        const isOnTimerStep = lastStepHasTimer && currentStep === instructions.length
+                                        return Array.from({ length: totalSteps }, (_, idx) => {
+                                            const isTimerStep = idx === instructions.length
+                                            const isDone = isTimerStep ? false : completedSteps.has(idx)
+                                            const isCurrent = idx === currentStep
+                                            return (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => setCurrentStep(idx)}
+                                                    className={`w-8 h-8 rounded-full text-xs font-bold transition-all flex items-center justify-center ${
+                                                        isCurrent
+                                                            ? 'bg-white text-black'
+                                                            : isDone
+                                                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                                                : 'bg-white/5 text-white/30 border border-white/10 hover:bg-white/10'
+                                                    }`}
+                                                >
+                                                    {isDone ? '✓' : isTimerStep ? '⏱' : idx + 1}
+                                                </button>
+                                            )
+                                        })
+                                    })()}
                                 </div>
                                 <Button variant="ghost" size="sm" onClick={() => setResetConfirm(true)} className="rounded-full h-10 px-3 text-xs font-bold text-white/40 hover:text-white/70 hover:bg-white/5 gap-1.5">
                                     <RotateCcw size={14} />
                                     Reset
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={() => { setIsCookingMode(false); setCompletedSteps(new Set()) }} className="rounded-full w-10 h-10 p-0">
+                                <Button variant="ghost" size="sm" onClick={() => { setIsCookingMode(false); setCompletedSteps(new Set()); setAcknowledgedTimers(new Set()) }} className="rounded-full w-10 h-10 p-0">
                                     <img src="/cross.png" className="w-4 h-4 invert-[.25] dark:invert" alt="close" />
                                 </Button>
                             </div>
@@ -1827,7 +1834,7 @@ export default function RecipeDetail() {
                                         })
                                         const completedPrevTimers = prevStepTimers.filter((t: any) => {
                                             const s = activeSession[t.id]
-                                            return s && s.status === 'completed'
+                                            return s && s.status === 'completed' && !acknowledgedTimers.has(t.id)
                                         })
                                         if (activePrevTimers.length === 0 && pendingPrevTimers.length === 0 && completedPrevTimers.length === 0) return null
 
@@ -1840,6 +1847,13 @@ export default function RecipeDetail() {
                                             const newSession = { ...activeSession }
                                             newSession[timer.id] = { ...newSession[timer.id], status: 'completed', remaining: 0 }
                                             setActiveSession(newSession)
+                                            setAcknowledgedTimers(prev => new Set([...Array.from(prev), timer.id]))
+                                        }
+                                        const completeTimer = (timer: any) => {
+                                            const newSession = { ...activeSession }
+                                            newSession[timer.id] = { ...newSession[timer.id], status: 'completed', remaining: 0 }
+                                            setActiveSession(newSession)
+                                            setAcknowledgedTimers(prev => new Set([...Array.from(prev), timer.id]))
                                         }
 
                                         return (
@@ -1854,24 +1868,30 @@ export default function RecipeDetail() {
                                                     const endTime = session.endTime ? new Date(session.endTime) : null
                                                     const finishTimeStr = endTime ? endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null
                                                     return (
-                                                        <div key={timer.id} className="p-3 rounded-2xl bg-blue-500/[0.07] border border-blue-500/15 shadow-sm shadow-blue-500/5">
+                                                        <div key={timer.id} className="p-3 rounded-2xl bg-orange-500/[0.07] border border-orange-500/15 shadow-sm shadow-orange-500/5">
                                                             <div className="flex items-center justify-between mb-1.5">
-                                                                <span className="text-[10px] font-bold text-blue-400/80 uppercase tracking-wider">
+                                                                <span className="text-[10px] font-bold text-orange-400/80 uppercase tracking-wider">
                                                                     Timer for — {timer.name || 'current step'}
                                                                 </span>
-                                                                <span className="text-base font-bold font-mono text-blue-400 tabular-nums">
+                                                                <span className="text-base font-bold font-mono text-orange-400 tabular-nums">
                                                                     {remaining > 300 ? `${mins}m` : `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`}
                                                                 </span>
                                                             </div>
                                                             {finishTimeStr && (
                                                                 <div className="text-[10px] text-white/20 mb-1.5 text-right">Done at {finishTimeStr}</div>
                                                             )}
-                                                            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                                            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden mb-2">
                                                                 <div
-                                                                    className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full transition-all duration-1000 shadow-sm shadow-blue-500/30"
+                                                                    className="h-full bg-gradient-to-r from-orange-600 to-orange-400 rounded-full transition-all duration-1000 shadow-sm shadow-orange-500/30"
                                                                     style={{ width: `${progress}%` }}
                                                                 />
                                                             </div>
+                                                            <button
+                                                                onClick={() => completeTimer(timer)}
+                                                                className="w-full py-1.5 rounded-xl text-[10px] font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/15 hover:border-emerald-500/25 transition-all"
+                                                            >
+                                                                Complete ✓
+                                                            </button>
                                                         </div>
                                                     )
                                                 })}
@@ -1881,8 +1901,8 @@ export default function RecipeDetail() {
                                                             Timer done — {timer.name || 'current step'}
                                                         </div>
                                                         <div className="flex gap-1.5">
-                                                            <button onClick={() => extendTimer(timer, 2)} className="flex-1 py-2 rounded-xl text-[10px] font-bold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/15 hover:border-blue-500/25 transition-all">+2 min</button>
-                                                            <button onClick={() => extendTimer(timer, 5)} className="flex-1 py-2 rounded-xl text-[10px] font-bold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/15 hover:border-blue-500/25 transition-all">+5 min</button>
+                                                            <button onClick={() => extendTimer(timer, 2)} className="flex-1 py-2 rounded-xl text-[10px] font-bold bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/15 hover:border-orange-500/25 transition-all">+2 min</button>
+                                                            <button onClick={() => extendTimer(timer, 5)} className="flex-1 py-2 rounded-xl text-[10px] font-bold bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/15 hover:border-orange-500/25 transition-all">+5 min</button>
                                                             {customExtendId === timer.id ? (
                                                                 <div className="flex items-center gap-1 flex-1">
                                                                     <input
@@ -1893,7 +1913,7 @@ export default function RecipeDetail() {
                                                                         onChange={(e) => setCustomExtendMin(e.target.value)}
                                                                         placeholder="X"
                                                                         autoFocus
-                                                                        className="w-full bg-white/5 rounded-xl px-2 py-1.5 text-[10px] text-[var(--cooking-text)] placeholder:text-white/20 outline-none border border-white/10 focus:border-blue-500/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                        className="w-full bg-white/5 rounded-xl px-2 py-1.5 text-[10px] text-[var(--cooking-text)] placeholder:text-white/20 outline-none border border-white/10 focus:border-orange-500/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                         onKeyDown={(e) => {
                                                                             if (e.key === 'Enter' && customExtendMin) {
                                                                                 extendTimer(timer, parseInt(customExtendMin))
@@ -1909,30 +1929,30 @@ export default function RecipeDetail() {
                                                                     <button
                                                                         onClick={() => { if (customExtendMin) { extendTimer(timer, parseInt(customExtendMin)); setCustomExtendId(null); setCustomExtendMin("") } }}
                                                                         disabled={!customExtendMin}
-                                                                        className="py-1.5 px-2 rounded-xl text-[10px] font-bold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/15 transition-all disabled:opacity-30"
+                                                                        className="py-1.5 px-2 rounded-xl text-[10px] font-bold bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/15 transition-all disabled:opacity-30"
                                                                     >
                                                                         min
                                                                     </button>
                                                                 </div>
                                                             ) : (
-                                                                <button onClick={() => setCustomExtendId(timer.id)} className="flex-1 py-2 rounded-xl text-[10px] font-bold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/15 hover:border-blue-500/25 transition-all">+X min</button>
+                                                                <button onClick={() => setCustomExtendId(timer.id)} className="flex-1 py-2 rounded-xl text-[10px] font-bold bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/15 hover:border-orange-500/25 transition-all">+X min</button>
                                                             )}
                                                             <button onClick={() => doneTimer(timer)} className="flex-1 py-2 rounded-xl text-[10px] font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/15 hover:border-emerald-500/25 transition-all">Done ✓</button>
                                                         </div>
                                                     </div>
                                                 ))}
                                                 {pendingPrevTimers.map((timer: any) => (
-                                                    <div key={timer.id} className="p-3 rounded-2xl bg-blue-500/[0.04] border border-blue-500/10 border-dashed animate-pulse">
+                                                    <div key={timer.id} className="p-3 rounded-2xl bg-orange-500/[0.04] border border-orange-500/10 border-dashed animate-pulse">
                                                         <div className="flex items-center justify-between mb-1.5">
-                                                            <span className="text-[10px] font-bold text-blue-400/50 uppercase tracking-wider">
+                                                            <span className="text-[10px] font-bold text-orange-400/50 uppercase tracking-wider">
                                                                 Timer for — {timer.name || 'current step'}
                                                             </span>
-                                                            <span className="text-base font-bold font-mono text-blue-400/50">
+                                                            <span className="text-base font-bold font-mono text-orange-400/50">
                                                                 {timer.duration}m
                                                             </span>
                                                         </div>
                                                         <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                                            <div className="h-full bg-gradient-to-r from-blue-600/20 to-blue-400/20 rounded-full" style={{ width: '0%' }} />
+                                                            <div className="h-full bg-gradient-to-r from-orange-600/20 to-orange-400/20 rounded-full" style={{ width: '0%' }} />
                                                         </div>
                                                     </div>
                                                 ))}
@@ -1956,19 +1976,34 @@ export default function RecipeDetail() {
                                             return <div className="mb-3 px-4 py-2.5 rounded-2xl bg-amber-500/[0.07] border border-amber-500/15 text-[10px] font-bold text-amber-400/80 uppercase tracking-wider text-center shadow-sm shadow-amber-500/5">Prepare for this step</div>
                                         }
                                         if (hasTimers) {
-                                            return <div className="mb-3 px-4 py-2.5 rounded-2xl bg-blue-500/[0.07] border border-blue-500/15 text-[10px] font-bold text-blue-400/80 uppercase tracking-wider text-center shadow-sm shadow-blue-500/5">Do this step</div>
+                                            return <div className="mb-3 px-4 py-2.5 rounded-2xl bg-orange-500/[0.07] border border-orange-500/15 text-[10px] font-bold text-orange-400/80 uppercase tracking-wider text-center shadow-sm shadow-orange-500/5">Do this step</div>
                                         }
                                         return null
                                     })()}
 
-                                    <div className="cooking-mode-step bg-[var(--cooking-card-bg)] border border-[var(--cooking-border)] rounded-2xl p-6 md:p-10 shadow-xl flex-1 flex flex-col justify-center">
-                                        <p className="text-2xl md:text-4xl font-bold leading-relaxed text-center text-[var(--cooking-text)]">
-                                            {stepText}
-                                        </p>
-                                    </div>
+                                    {currentStep < instructions.length ? (
+                                        <div className="cooking-mode-step bg-[var(--cooking-card-bg)] border border-[var(--cooking-border)] rounded-2xl p-6 md:p-10 shadow-xl flex-1 flex flex-col justify-center">
+                                            <p className="text-2xl md:text-4xl font-bold leading-relaxed text-center text-[var(--cooking-text)]">
+                                                {stepText}
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="cooking-mode-step bg-[var(--cooking-card-bg)] border border-orange-500/20 rounded-2xl p-6 md:p-10 shadow-xl flex-1 flex flex-col justify-center">
+                                            <p className="text-xl md:text-2xl font-bold leading-relaxed text-center text-orange-400/80">
+                                                Waiting for timer to finish
+                                            </p>
+                                            <p className="text-sm text-white/30 text-center mt-2">All steps complete — just waiting on the timer</p>
+                                        </div>
+                                    )}
 
                                     {(() => {
-                                        const currentStepTimers = cookingTimers.filter((t: any) => t.type === 'timer' && t.stepIndex === currentStep)
+                                        const isOnTimerStep = currentStep === instructions.length
+                                        const lastStepIdx = instructions.length - 1
+                                        const currentStepTimers = cookingTimers.filter((t: any) => {
+                                            if (t.type !== 'timer') return false
+                                            if (isOnTimerStep) return t.stepIndex === lastStepIdx
+                                            return t.stepIndex === currentStep
+                                        })
                                         const pendingCurrentTimers = currentStepTimers.filter((t: any) => {
                                             const s = activeSession[t.id]
                                             if (s && s.status !== 'pending') return false
@@ -1989,13 +2024,16 @@ export default function RecipeDetail() {
                                             }
                                             setActiveSession(newSession)
 
-                                            const currentStepTimersAll = cookingTimers.filter((t: any) => t.type === 'timer' && t.stepIndex === currentStep)
-                                            const allNowStarted = currentStepTimersAll.every((t: any) => {
+                                            const allStepTimers = cookingTimers.filter((t: any) => {
+                                                if (t.type !== 'timer') return false
+                                                return t.stepIndex === currentStep
+                                            })
+                                            const allNowStarted = allStepTimers.every((t: any) => {
                                                 if (t.id === timer.id) return true
                                                 const s = newSession[t.id]
                                                 return s && (s.status === 'active' || s.status === 'paused' || s.status === 'completed')
                                             })
-                                            if (allNowStarted && currentStep < (recipe?.instructions?.length || 1) - 1) {
+                                            if (allNowStarted && currentStep < instructions.length) {
                                                 setTimeout(() => {
                                                     setCompletedSteps(prev => new Set([...Array.from(prev), currentStep]))
                                                     setTimerSheetOpen(false)
@@ -2016,7 +2054,7 @@ export default function RecipeDetail() {
                                                                 disabled={!isDepMet}
                                                                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                                                                     isDepMet
-                                                                        ? 'bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/20 hover:border-blue-500/30 shadow-sm shadow-blue-500/10'
+                                                                        ? 'bg-orange-500/15 hover:bg-orange-500/25 text-orange-400 border border-orange-500/20 hover:border-orange-500/30 shadow-sm shadow-orange-500/10'
                                                                         : 'bg-white/[0.02] text-white/15 border border-white/[0.04] cursor-not-allowed'
                                                                 }`}
                                                             >
@@ -2071,7 +2109,12 @@ export default function RecipeDetail() {
                                 <Button
                                     className="flex-[2] py-7 sm:py-8 text-base sm:text-lg font-bold rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white"
                                     onClick={() => {
-                                        const stepTimers = cookingTimers.filter((t: any) => t.type === 'timer' && t.stepIndex === currentStep)
+                                        const isOnTimerStep = currentStep === instructions.length
+                                        const lastStepIdx = instructions.length - 1
+                                        const stepTimers = cookingTimers.filter((t: any) => {
+                                            if (t.type !== 'timer') return false
+                                            return t.stepIndex === (isOnTimerStep ? lastStepIdx : currentStep)
+                                        })
                                         const hasActiveStepTimer = stepTimers.some((t: any) => {
                                             const s = activeSession[t.id]
                                             return s && (s.status === 'active' || s.status === 'paused')
@@ -2081,22 +2124,48 @@ export default function RecipeDetail() {
                                                 setCompletedSteps(prev => new Set([...Array.from(prev), currentStep]))
                                             }
                                             setCurrentStep(currentStep + 1)
-                                        } else {
-                                            if (!hasActiveStepTimer) {
-                                                setCompletedSteps(prev => new Set([...Array.from(prev), currentStep]))
-                                            }
+                                        } else if (isOnTimerStep) {
                                             const hasActive = Object.values(activeSession).some((s: any) => s.status === 'active' || s.status === 'paused')
                                             if (hasActive || customTimers.length > 0) {
                                                 setFinishConfirm(true)
                                             } else {
+                                                setActiveSession({})
+                                                setCustomTimers([])
+                                                if (id) {
+                                                    const keys = Object.keys(localStorage).filter(k => k.startsWith('timer-session-'))
+                                                    keys.forEach(k => localStorage.removeItem(k))
+                                                }
                                                 setIsCookingMode(false)
                                                 setCurrentStep(0)
-                                                setCompletedSteps(new Set())
+                                                setCompletedSteps(new Set()); setAcknowledgedTimers(new Set())
+                                            }
+                                        } else {
+                                            const lastStepHasTimer = cookingTimers.some((t: any) => t.type === 'timer' && t.stepIndex === lastStepIdx)
+                                            if (lastStepHasTimer) {
+                                                setCurrentStep(instructions.length)
+                                            } else {
+                                                if (!hasActiveStepTimer) {
+                                                    setCompletedSteps(prev => new Set([...Array.from(prev), currentStep]))
+                                                }
+                                                const hasActive = Object.values(activeSession).some((s: any) => s.status === 'active' || s.status === 'paused')
+                                                if (hasActive || customTimers.length > 0) {
+                                                    setFinishConfirm(true)
+                                                } else {
+                                                    setActiveSession({})
+                                                    setCustomTimers([])
+                                                    if (id) {
+                                                        const keys = Object.keys(localStorage).filter(k => k.startsWith('timer-session-'))
+                                                        keys.forEach(k => localStorage.removeItem(k))
+                                                    }
+                                                    setIsCookingMode(false)
+                                                    setCurrentStep(0)
+                                                    setCompletedSteps(new Set()); setAcknowledgedTimers(new Set())
+                                                }
                                             }
                                         }
                                     }}
                                 >
-                                    {currentStep === instructions.length - 1 ? "🎉 Finish!" : "Next Step →"}
+                                    {currentStep >= instructions.length ? "🎉 Finish!" : "Next Step →"}
                                 </Button>
                             </div>
 
@@ -2105,7 +2174,7 @@ export default function RecipeDetail() {
                                 <>
                                     <div className="prep-sheet-tab" onClick={() => setPrepSheetOpen(!prepSheetOpen)}>
                                         <div className="relative flex items-center gap-2">
-                                            <ChefHat size={16} className="text-orange-400" />
+                                            <ChefHat size={16} className="text-purple-400" />
                                             <span className="text-sm font-bold text-[var(--cooking-text)]">Prep</span>
                                             {relevantPrepCount > 0 && (
                                                 <span className="prep-sheet-badge">{relevantPrepCount}</span>
@@ -2167,7 +2236,7 @@ export default function RecipeDetail() {
                                         }}
                                     >
                                         <div className="relative flex items-center gap-2">
-                                            <Clock size={16} className="text-blue-400" />
+                                            <Clock size={16} className="text-orange-400" />
                                             <span className="text-sm font-bold text-[var(--cooking-text)]">Timers</span>
                                             {Object.values(activeSession).filter((t: any) => t.status === 'active').length > 0 && (
                                                 <span className="timer-sheet-badge">{Object.values(activeSession).filter((t: any) => t.status === 'active').length}</span>
@@ -2179,8 +2248,8 @@ export default function RecipeDetail() {
                                         <div className="timer-sheet-handle" onClick={() => setTimerSheetOpen(false)} />
                                         <div className="flex items-center justify-between px-6 mb-4">
                                             <div className="flex items-center gap-2.5">
-                                                <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
-                                            <Clock size={16} className="text-blue-400" />
+                                                <div className="w-8 h-8 rounded-lg bg-orange-500/15 flex items-center justify-center">
+                                            <Clock size={16} className="text-orange-400" />
                                                 </div>
                                                 <h3 className="text-sm font-bold text-[var(--cooking-text)]">Cooking Timers</h3>
                                             </div>
@@ -2196,7 +2265,7 @@ export default function RecipeDetail() {
                                                         })
                                                         setActiveSession(newSession)
                                                     }}
-                                                    className="text-xs text-blue-400/50 hover:text-blue-400 transition-colors"
+                                                    className="text-xs text-orange-400/50 hover:text-orange-400 transition-colors"
                                                 >
                                                     Reset All
                                                 </button>
@@ -2240,7 +2309,7 @@ export default function RecipeDetail() {
                                                                             <span className="font-bold text-sm text-[var(--cooking-text)]">{timer.name}</span>
                                                                             <div className="flex items-center gap-2">
                                                                                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                                                                                    status === 'active' ? 'bg-blue-500/20 text-blue-400' :
+                                                                                    status === 'active' ? 'bg-orange-500/20 text-orange-400' :
                                                                                     status === 'paused' ? 'bg-amber-500/20 text-amber-400' :
                                                                                     'bg-white/5 text-white/30'
                                                                                 }`}>
@@ -2252,7 +2321,7 @@ export default function RecipeDetail() {
                                                                                         newSession[timer.id] = { endTime: null, remaining: timer.duration * 60, status: 'pending', checkpointsHit: [] }
                                                                                         setActiveSession(newSession)
                                                                                     }}
-                                                                                    className="text-[10px] text-white/30 hover:text-blue-400 transition-colors px-1"
+                                                                                    className="text-[10px] text-white/30 hover:text-orange-400 transition-colors px-1"
                                                                                     title="Reset timer"
                                                                                 >
                                                                                     Reset
@@ -2272,7 +2341,7 @@ export default function RecipeDetail() {
                                                                                                 max="999"
                                                                                                 value={editTimerMinutes}
                                                                                                 onChange={(e) => setEditTimerMinutes(e.target.value)}
-                                                                                                className="w-16 bg-white/10 rounded-lg px-2 py-2 text-center text-lg font-bold text-[var(--cooking-text)] outline-none border border-white/10 focus:border-blue-500/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                                className="w-16 bg-white/10 rounded-lg px-2 py-2 text-center text-lg font-bold text-[var(--cooking-text)] outline-none border border-white/10 focus:border-orange-500/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                                                 placeholder="00"
                                                                                             />
                                                                                             <span className="text-lg font-bold text-white/30">:</span>
@@ -2282,7 +2351,7 @@ export default function RecipeDetail() {
                                                                                                 max="59"
                                                                                                 value={editTimerSeconds}
                                                                                                 onChange={(e) => setEditTimerSeconds(e.target.value)}
-                                                                                                className="w-16 bg-white/10 rounded-lg px-2 py-2 text-center text-lg font-bold text-[var(--cooking-text)] outline-none border border-white/10 focus:border-blue-500/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                                className="w-16 bg-white/10 rounded-lg px-2 py-2 text-center text-lg font-bold text-[var(--cooking-text)] outline-none border border-white/10 focus:border-orange-500/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                                                 placeholder="00"
                                                                                             />
                                                                                         </div>
@@ -2309,7 +2378,7 @@ export default function RecipeDetail() {
                                                                                                     setActiveSession(newSession)
                                                                                                     setEditingTimerId(null)
                                                                                                 }}
-                                                                                                className="flex-1 py-1.5 rounded-lg text-xs font-bold bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-all"
+                                                                                                className="flex-1 py-1.5 rounded-lg text-xs font-bold bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 transition-all"
                                                                                             >
                                                                                                 Save
                                                                                             </button>
@@ -2428,7 +2497,7 @@ export default function RecipeDetail() {
                                                                                             </span>
                                                                                         )}
                                                                                         {timer.stepIndex != null && (
-                                                                                            <span className="text-[10px] text-blue-400/40 bg-blue-500/5 px-1.5 py-0.5 rounded">
+                                                                                            <span className="text-[10px] text-orange-400/40 bg-orange-500/5 px-1.5 py-0.5 rounded">
                                                                                                 Step {(timer.stepIndex ?? 0) + 1}
                                                                                             </span>
                                                                                         )}
@@ -2463,7 +2532,7 @@ export default function RecipeDetail() {
                                                                                                 }
                                                                                                 setActiveSession(newSession)
                                                                                             }}
-                                                                                            className="w-full py-2 rounded-lg text-xs font-bold bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/20 hover:border-blue-500/30 transition-all"
+                                                                                            className="w-full py-2 rounded-lg text-xs font-bold bg-orange-500/15 hover:bg-orange-500/25 text-orange-400 border border-orange-500/20 hover:border-orange-500/30 transition-all"
                                                                                         >
                                                                                             Start {timer.duration}m Timer
                                                                                         </button>
@@ -2495,7 +2564,7 @@ export default function RecipeDetail() {
                                                                                     newSession[timer.id] = { endTime: null, remaining: timer.duration * 60, status: 'pending', checkpointsHit: [] }
                                                                                     setActiveSession(newSession)
                                                                                 }}
-                                                                                className="text-[10px] text-blue-400/40 hover:text-blue-400 transition-colors"
+                                                                                className="text-[10px] text-orange-400/40 hover:text-orange-400 transition-colors"
                                                                             >
                                                                                 Restart
                                                                             </button>
@@ -2535,7 +2604,7 @@ export default function RecipeDetail() {
                                                                         </div>
                                                                         <div className="flex items-center gap-2">
                                                                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                                                                status === 'active' ? 'bg-blue-500/20 text-blue-400' :
+                                                                                status === 'active' ? 'bg-orange-500/20 text-orange-400' :
                                                                                 status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
                                                                                 status === 'paused' ? 'bg-amber-500/20 text-amber-400' :
                                                                                 'bg-white/5 text-white/30'
@@ -2548,7 +2617,7 @@ export default function RecipeDetail() {
                                                                                     newSession[timer.id] = { endTime: null, remaining: timer.duration * 60, status: 'pending', checkpointsHit: [] }
                                                                                     setActiveSession(newSession)
                                                                                 }}
-                                                                                className="text-[10px] text-white/30 hover:text-blue-400 transition-colors px-1"
+                                                                                className="text-[10px] text-white/30 hover:text-orange-400 transition-colors px-1"
                                                                                 title="Reset timer"
                                                                             >
                                                                                 Reset
@@ -2722,7 +2791,7 @@ export default function RecipeDetail() {
                                                                                     }
                                                                                     setActiveSession(newSession)
                                                                                 }}
-                                                                                className="w-full py-2 rounded-lg text-xs font-bold bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/20 hover:border-blue-500/30 transition-all"
+                                                                                className="w-full py-2 rounded-lg text-xs font-bold bg-orange-500/15 hover:bg-orange-500/25 text-orange-400 border border-orange-500/20 hover:border-orange-500/30 transition-all"
                                                                             >
                                                                                 Start {timer.duration}m Timer
                                                                             </button>
@@ -2742,14 +2811,14 @@ export default function RecipeDetail() {
                                                             value={customTimerName}
                                                             onChange={(e) => setCustomTimerName(e.target.value)}
                                                             placeholder="Name"
-                                                            className="flex-1 bg-white/5 rounded-lg px-3 py-2 text-xs text-[var(--cooking-text)] placeholder:text-white/20 outline-none border border-white/10 focus:border-blue-500/40 transition-colors"
+                                                            className="flex-1 bg-white/5 rounded-lg px-3 py-2 text-xs text-[var(--cooking-text)] placeholder:text-white/20 outline-none border border-white/10 focus:border-orange-500/40 transition-colors"
                                                         />
                                                         <input
                                                             type="number"
                                                             value={customTimerMinutes}
                                                             onChange={(e) => setCustomTimerMinutes(e.target.value)}
                                                             placeholder="Min"
-                                                            className="w-16 bg-white/5 rounded-lg px-3 py-2 text-xs text-[var(--cooking-text)] placeholder:text-white/20 outline-none border border-white/10 focus:border-blue-500/40 text-center transition-colors"
+                                                            className="w-16 bg-white/5 rounded-lg px-3 py-2 text-xs text-[var(--cooking-text)] placeholder:text-white/20 outline-none border border-white/10 focus:border-orange-500/40 text-center transition-colors"
                                                         />
                                                         <button
                                                             onClick={() => {
@@ -2765,7 +2834,7 @@ export default function RecipeDetail() {
                                                                 setCustomTimerName("")
                                                                 setCustomTimerMinutes("")
                                                             }}
-                                                            className="px-4 py-2 rounded-lg text-xs font-bold bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/20 hover:border-blue-500/30 transition-all"
+                                                            className="px-4 py-2 rounded-lg text-xs font-bold bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border border-orange-500/20 hover:border-orange-500/30 transition-all"
                                                         >
                                                             Add
                                                         </button>
@@ -2786,7 +2855,7 @@ export default function RecipeDetail() {
                     <div className="bg-card border border-border/20 rounded-2xl p-6 max-w-sm mx-4 shadow-xl">
                         <h3 className="text-lg font-bold mb-2">Finish Cooking?</h3>
                         <p className="text-sm text-foreground/60 mb-4">
-                            You have active timers. Are you sure you want to finish?
+                            This will clear all timers, completed steps, and reset everything.
                         </p>
                         <div className="flex gap-3">
                             <Button
@@ -2808,7 +2877,7 @@ export default function RecipeDetail() {
                                     }
                                     setIsCookingMode(false)
                                     setCurrentStep(0)
-                                    setCompletedSteps(new Set())
+                                    setCompletedSteps(new Set()); setAcknowledgedTimers(new Set())
                                 }}
                             >
                                 Finish & Reset
@@ -2834,7 +2903,7 @@ export default function RecipeDetail() {
                                 Cancel
                             </Button>
                             <Button
-                                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
+                                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
                                 onClick={() => {
                                     setResetConfirm(false)
                                     setActiveSession({})
@@ -2844,7 +2913,7 @@ export default function RecipeDetail() {
                                         keys.forEach(k => localStorage.removeItem(k))
                                     }
                                     setCurrentStep(0)
-                                    setCompletedSteps(new Set())
+                                    setCompletedSteps(new Set()); setAcknowledgedTimers(new Set())
                                 }}
                             >
                                 Reset All
@@ -2871,7 +2940,7 @@ export default function RecipeDetail() {
                                 Keep Them
                             </Button>
                             <Button
-                                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
+                                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
                                 onClick={() => {
                                     const keys = Object.keys(localStorage).filter(k => k.startsWith('timer-session-'))
                                     keys.forEach(k => localStorage.removeItem(k))

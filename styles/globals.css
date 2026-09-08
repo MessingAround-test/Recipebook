@@ -603,12 +603,12 @@ a {
 .prep-sheet-tab {
   position: fixed;
   bottom: 6.6rem;
-  left: calc(50% - 4rem);
+  left: calc(50% - 5rem);
   transform: translateX(-50%);
   z-index: 10;
   padding: 0.5rem 1.75rem 0.6rem;
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.25) 100%);
-  border: 1px solid rgba(249, 115, 22, 0.3);
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(168, 85, 247, 0.25) 100%);
+  border: 1px solid rgba(168, 85, 247, 0.3);
   border-bottom: none;
   border-radius: 0.75rem 0.75rem 0 0;
   cursor: pointer;
@@ -616,12 +616,12 @@ a {
   backdrop-filter: blur(12px);
   user-select: none;
   -webkit-user-select: none;
-  box-shadow: 0 -4px 20px rgba(249, 115, 22, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 -4px 20px rgba(168, 85, 247, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .prep-sheet-tab:hover {
   transform: translateX(-50%) translateY(-3px);
-  box-shadow: 0 -6px 28px rgba(249, 115, 22, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -6px 28px rgba(168, 85, 247, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .prep-sheet-tab:active {
@@ -631,11 +631,11 @@ a {
 .prep-sheet-badge {
   position: absolute;
   top: -6px;
-  right: -20px;
+  right: -24px;
   min-width: 18px;
   height: 18px;
   border-radius: 9px;
-  background: #f97316;
+  background: #a855f7;
   color: white;
   font-size: 10px;
   font-weight: 700;
@@ -643,7 +643,7 @@ a {
   align-items: center;
   justify-content: center;
   padding: 0 4px;
-  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.5);
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.5);
 }
 
 .prep-sheet-panel {
@@ -652,15 +652,15 @@ a {
   left: 0;
   right: 0;
   z-index: 11;
-  background: linear-gradient(180deg, oklch(0.12 0.04 240) 0%, oklch(0.08 0.02 240) 100%);
-  border-top: 1px solid rgba(249, 115, 22, 0.15);
+  background: linear-gradient(180deg, oklch(0.16 0.04 240) 0%, oklch(0.12 0.03 240) 100%);
+  border-top: 2px solid rgba(168, 85, 247, 0.4);
   border-radius: 1.5rem 1.5rem 0 0;
   transform: translateY(calc(100% + 6rem));
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   max-height: 50vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4), 0 -2px 12px rgba(249, 115, 22, 0.08);
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5), 0 -2px 12px rgba(168, 85, 247, 0.1);
 }
 
 .prep-sheet-panel.open {
@@ -671,7 +671,7 @@ a {
   width: 40px;
   height: 4px;
   border-radius: 2px;
-  background: rgba(249, 115, 22, 0.3);
+  background: rgba(168, 85, 247, 0.5);
   margin: 0.75rem auto 0.5rem;
   flex-shrink: 0;
   cursor: pointer;
@@ -694,7 +694,7 @@ a {
 }
 
 .prep-sheet-scroll::-webkit-scrollbar-thumb {
-  background: rgba(249, 115, 22, 0.3);
+  background: rgba(168, 85, 247, 0.3);
   border-radius: 2px;
 }
 
@@ -729,12 +729,12 @@ a {
 .timer-sheet-tab {
   position: fixed;
   bottom: 6.6rem;
-  left: calc(50% + 2rem);
+  left: calc(50% + 3rem);
   transform: translateX(-50%);
   z-index: 10;
   padding: 0.5rem 1.75rem 0.6rem;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.25) 100%);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.25) 100%);
+  border: 1px solid rgba(249, 115, 22, 0.3);
   border-bottom: none;
   border-radius: 0.75rem 0.75rem 0 0;
   cursor: pointer;
@@ -742,12 +742,12 @@ a {
   backdrop-filter: blur(12px);
   user-select: none;
   -webkit-user-select: none;
-  box-shadow: 0 -4px 20px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 -4px 20px rgba(249, 115, 22, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .timer-sheet-tab:hover {
   transform: translateX(-50%) translateY(-3px);
-  box-shadow: 0 -6px 28px rgba(59, 130, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -6px 28px rgba(249, 115, 22, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .timer-sheet-tab:active {
@@ -757,11 +757,11 @@ a {
 .timer-sheet-badge {
   position: absolute;
   top: -6px;
-  right: -20px;
+  right: -24px;
   min-width: 18px;
   height: 18px;
   border-radius: 9px;
-  background: #3b82f6;
+  background: #f97316;
   color: white;
   font-size: 10px;
   font-weight: 700;
@@ -769,7 +769,7 @@ a {
   align-items: center;
   justify-content: center;
   padding: 0 4px;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.5);
 }
 
 /* Timer Sheet Panel */
@@ -779,15 +779,15 @@ a {
   left: 0;
   right: 0;
   z-index: 11;
-  background: linear-gradient(180deg, oklch(0.12 0.04 240) 0%, oklch(0.08 0.02 240) 100%);
-  border-top: 1px solid rgba(59, 130, 246, 0.15);
+  background: linear-gradient(180deg, oklch(0.16 0.04 240) 0%, oklch(0.12 0.03 240) 100%);
+  border-top: 2px solid rgba(249, 115, 22, 0.4);
   border-radius: 1.5rem 1.5rem 0 0;
   transform: translateY(calc(100% + 6rem));
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   max-height: 65vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4), 0 -2px 12px rgba(59, 130, 246, 0.08);
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5), 0 -2px 12px rgba(249, 115, 22, 0.1);
 }
 
 .timer-sheet-panel.open {
@@ -798,7 +798,7 @@ a {
   width: 40px;
   height: 4px;
   border-radius: 2px;
-  background: rgba(59, 130, 246, 0.3);
+  background: rgba(249, 115, 22, 0.5);
   margin: 0.75rem auto 0.5rem;
   flex-shrink: 0;
   cursor: pointer;
@@ -821,7 +821,7 @@ a {
 }
 
 .timer-sheet-scroll::-webkit-scrollbar-thumb {
-  background: rgba(59, 130, 246, 0.3);
+  background: rgba(249, 115, 22, 0.3);
   border-radius: 2px;
 }
 
@@ -835,9 +835,9 @@ a {
 }
 
 .timer-card.active {
-  border-color: rgba(59, 130, 246, 0.35);
-  background: linear-gradient(135deg, oklch(0.18 0.04 240) 0%, rgba(59, 130, 246, 0.12) 100%);
-  box-shadow: 0 0 24px rgba(59, 130, 246, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border-color: rgba(249, 115, 22, 0.35);
+  background: linear-gradient(135deg, oklch(0.18 0.04 240) 0%, rgba(249, 115, 22, 0.12) 100%);
+  box-shadow: 0 0 24px rgba(249, 115, 22, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .timer-card.paused {
@@ -867,7 +867,7 @@ a {
   font-weight: 700;
   color: var(--cooking-text);
   letter-spacing: 0.05em;
-  text-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+  text-shadow: 0 0 20px rgba(249, 115, 22, 0.2);
 }
 
 /* Timer Progress Bar */
@@ -881,10 +881,10 @@ a {
 
 .timer-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  background: linear-gradient(90deg, #f97316, #fb923c);
   border-radius: 3px;
   transition: width 1s linear;
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.3);
 }
 
 /* Timer Checkpoint Marker */
