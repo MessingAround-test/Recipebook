@@ -26,6 +26,23 @@ const prepWorkSchema = new mongoose.Schema({
     optional: { type: Boolean, default: false }
 })
 
+const timerDependencySchema = new mongoose.Schema({
+    timerId: { type: String, required: true },
+    offset: { type: Number, default: 0 }
+}, { _id: false })
+
+const cookingTimerSchema = new mongoose.Schema({
+    id: { type: String },
+    type: { type: String, enum: ['timer', 'checkpoint'], default: 'timer' },
+    name: { type: String, required: true },
+    duration: { type: Number, required: true },
+    dependencies: [timerDependencySchema],
+    parentTimerId: { type: String },
+    order: { type: Number, default: 0 },
+    stepIndex: { type: Number },
+    notes: { type: String }
+}, { _id: false })
+
 const RecipeSchema = new mongoose.Schema(
     {
         creator_username: { type: String, index: true, required: false },
@@ -35,10 +52,12 @@ const RecipeSchema = new mongoose.Schema(
         instructions: [instructionsSchema],
         prepWork: [prepWorkSchema],
         prepWorkChecked: { type: Boolean, default: false },
+        cookingTimers: [cookingTimerSchema],
+        timersChecked: { type: Boolean, default: false },
         image: { type: String },
         cost: { type: Number },
-        approxCost: { type: Number, required: false }, // Store the initial calculated proportional cost
-        unitCost: { type: Number, required: false }, // Store the cost of buying full packets/units
+        approxCost: { type: Number, required: false },
+        unitCost: { type: Number, required: false },
         time: { type: String, enum: ['short', 'medium', 'long'], required: false },
         genre: { type: String, required: false },
         mealTypes: { type: [String], required: false },
@@ -48,7 +67,7 @@ const RecipeSchema = new mongoose.Schema(
         hidden: { type: Boolean, default: false },
         feedback: { type: String, required: false },
         servings: { type: Number, required: false },
-        sourceUrl: { type: String, required: false } // Original link the recipe was imported from (e.g. a Facebook reel)
+        sourceUrl: { type: String, required: false }
     },
     { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 )

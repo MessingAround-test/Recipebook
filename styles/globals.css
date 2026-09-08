@@ -721,3 +721,192 @@ a {
 .prep-item.checked .prep-item-text {
   text-decoration: line-through;
 }
+
+/* Timer Sheet Tab */
+.timer-sheet-tab {
+  position: fixed;
+  bottom: 6.6rem;
+  left: calc(50% + 3rem);
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 0.5rem 1.75rem 0.6rem;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.25) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-bottom: none;
+  border-radius: 0.75rem 0.75rem 0 0;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+  backdrop-filter: blur(12px);
+  user-select: none;
+  -webkit-user-select: none;
+  box-shadow: 0 -4px 20px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.timer-sheet-tab:hover {
+  transform: translateX(-50%) translateY(-3px);
+  box-shadow: 0 -6px 28px rgba(59, 130, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.timer-sheet-tab:active {
+  transform: translateX(-50%) translateY(0);
+}
+
+.timer-sheet-badge {
+  position: absolute;
+  top: -6px;
+  right: -20px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background: #3b82f6;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
+}
+
+/* Timer Sheet Panel */
+.timer-sheet-panel {
+  position: fixed;
+  bottom: 6.6rem;
+  left: 0;
+  right: 0;
+  z-index: 11;
+  background: linear-gradient(180deg, oklch(0.12 0.04 240) 0%, oklch(0.08 0.02 240) 100%);
+  border-top: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 1.5rem 1.5rem 0 0;
+  transform: translateY(calc(100% + 6rem));
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 65vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4), 0 -2px 12px rgba(59, 130, 246, 0.08);
+}
+
+.timer-sheet-panel.open {
+  transform: translateY(0);
+}
+
+.timer-sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(59, 130, 246, 0.3);
+  margin: 0.75rem auto 0.5rem;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.timer-sheet-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 1.5rem 1.5rem;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  min-height: 0;
+}
+
+.timer-sheet-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.timer-sheet-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.timer-sheet-scroll::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.3);
+  border-radius: 2px;
+}
+
+/* Timer Card */
+.timer-card {
+  background: oklch(0.16 0.02 240);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.875rem;
+  padding: 1rem 1.125rem;
+  transition: all 0.25s;
+}
+
+.timer-card.active {
+  border-color: rgba(59, 130, 246, 0.35);
+  background: linear-gradient(135deg, oklch(0.18 0.04 240) 0%, rgba(59, 130, 246, 0.12) 100%);
+  box-shadow: 0 0 24px rgba(59, 130, 246, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.timer-card.paused {
+  border-color: rgba(251, 191, 36, 0.3);
+  background: linear-gradient(135deg, oklch(0.16 0.03 240) 0%, rgba(251, 191, 36, 0.08) 100%);
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.08);
+}
+
+.timer-card.pending {
+  opacity: 1;
+  background: oklch(0.14 0.01 240);
+  border-color: rgba(255, 255, 255, 0.05);
+  border-style: dashed;
+}
+
+.timer-card.completed {
+  opacity: 0.5;
+  background: oklch(0.12 0.01 240);
+  border-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Timer Countdown */
+.timer-countdown {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--cooking-text);
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+/* Timer Progress Bar */
+.timer-progress {
+  position: relative;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: visible;
+}
+
+.timer-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  border-radius: 3px;
+  transition: width 1s linear;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Timer Checkpoint Marker */
+.timer-checkpoint-marker {
+  position: absolute;
+  top: -4px;
+  width: 2px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 1px;
+  transform: translateX(-50%);
+}
+
+.timer-checkpoint-marker.reached {
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+  animation: checkpointPulse 1s ease-in-out;
+}
+
+@keyframes checkpointPulse {
+  0%, 100% { transform: translateX(-50%) scaleY(1); }
+  50% { transform: translateX(-50%) scaleY(1.5); }
+}
+
+/* Prep sheet tab adjustment when timers tab is present */
+.prep-sheet-tab {
+  left: calc(50% - 3rem);
+}
