@@ -49,6 +49,26 @@ function getRecommendedIngredients(stepText: string, ingredients: any[]): { reco
     return { recommended, others }
 }
 
+function getRecommendedPrepWork(stepText: string, prepWork: any[]): { recommended: any[]; others: any[] } {
+    const stepWords = stepText
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !STOP_WORDS.has(w))
+
+    const scored = prepWork.map(item => {
+        const searchText = `${item.ingredient || ''} ${item.action}`.toLowerCase()
+        const nameWords = searchText.split(/\s+/).filter((w: string) => w.length > 2)
+        const score = nameWords.filter((nw: string) => stepWords.some(sw => nw.includes(sw) || sw.includes(nw))).length
+        return { ...item, score, recommended: score > 0 }
+    })
+
+    return {
+        recommended: scored.filter(i => i.recommended).sort((a: any, b: any) => b.score - a.score),
+        others: scored.filter(i => !i.recommended)
+    }
+}
+
 export default function RecipeDetail() {
     const router = useRouter()
     const { id } = router.query
@@ -65,6 +85,7 @@ export default function RecipeDetail() {
     const [loading, setLoading] = useState(false)
     const [isCookingMode, setIsCookingMode] = useState(false)
     const [currentStep, setCurrentStep] = useState(0)
+    const [prepSheetOpen, setPrepSheetOpen] = useState(false)
 
     // Metadata fields
     const [recipeTime, setRecipeTime] = useState<string>('')
@@ -1388,6 +1409,8 @@ export default function RecipeDetail() {
                 {isCookingMode && (() => {
                     const stepText = instructions[currentStep]?.Text || ''
                     const { recommended, others } = getRecommendedIngredients(stepText, listIngreds)
+                    const { recommended: recommendedPrep } = getRecommendedPrepWork(stepText, prepWork)
+                    const relevantPrepCount = recommendedPrep.filter((p: any) => !checkedPrep.has(prepWork.indexOf(p))).length
                     return (
                         <div className="cooking-mode-overlay">
                             <div className="cooking-mode-header">
@@ -1471,6 +1494,62 @@ export default function RecipeDetail() {
                                     {currentStep === instructions.length - 1 ? "🎉 Finish!" : "Next Step →"}
                                 </Button>
                             </div>
+
+                            {/* Prep Work Bottom Sheet */}
+                            {prepWork.length > 0 && (
+                                <>
+                                    <div className="prep-sheet-tab" onClick={() => setPrepSheetOpen(!prepSheetOpen)}>
+                                        <div className="relative flex items-center gap-2">
+                                            <ChefHat size={16} className="text-orange-400" />
+                                            <span className="text-sm font-bold text-[var(--cooking-text)]">Prep</span>
+                                            {relevantPrepCount > 0 && (
+                                                <span className="prep-sheet-badge">{relevantPrepCount}</span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className={`prep-sheet-panel ${prepSheetOpen ? 'open' : ''}`}>
+                                        <div className="prep-sheet-handle" onClick={() => setPrepSheetOpen(false)} />
+                                        <div className="flex items-center justify-between px-6 mb-3">
+                                            <h3 className="text-sm font-bold text-[var(--cooking-text)]">Prep Work</h3>
+                                            <button onClick={() => setPrepSheetOpen(false)} className="text-xs text-orange-400/60 hover:text-orange-400">Close</button>
+                                        </div>
+                                        <div className="prep-sheet-scroll">
+                                            <div className="space-y-2">
+                                                {prepWork.map((item, index) => {
+                                                    const isRecommended = recommendedPrep.some((r: any) => r.action === item.action && r.ingredient === item.ingredient)
+                                                    return (
+                                                        <div key={index} className={`prep-item ${isRecommended ? 'recommended' : ''} ${checkedPrep.has(index) ? 'checked' : ''}`}>
+                                                            <button
+                                                                onClick={() => {
+                                                                    const next = new Set(checkedPrep)
+                                                                    if (next.has(index)) next.delete(index)
+                                                                    else next.add(index)
+                                                                    setCheckedPrep(next)
+                                                                }}
+                                                                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all shrink-0 mt-0.5 ${
+                                                                    checkedPrep.has(index)
+                                                                        ? 'bg-orange-500 border-orange-500 text-white'
+                                                                        : 'border-orange-500/30 hover:border-orange-500'
+                                                                }`}
+                                                            >
+                                                                {checkedPrep.has(index) && <Check size={12} />}
+                                                            </button>
+                                                            <span className="prep-item-text text-sm text-[var(--cooking-text)] flex-1">
+                                                                {item.ingredient && <span className="font-medium">{item.ingredient}: </span>}
+                                                                {item.action}
+                                                            </span>
+                                                            {item.timeEstimate && (
+                                                                <span className="text-[10px] text-orange-400/50 shrink-0">~{item.timeEstimate}m</span>
+                                                            )}
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     )
                 })()}
