@@ -603,23 +603,25 @@ a {
 .prep-sheet-tab {
   position: fixed;
   bottom: 6.6rem;
-  left: 50%;
+  left: calc(50% - 4rem);
   transform: translateX(-50%);
   z-index: 10;
-  padding: 0.4rem 1.25rem 0.5rem;
-  background: var(--cooking-card-bg);
-  border: 1px solid var(--cooking-border);
+  padding: 0.5rem 1.75rem 0.6rem;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.25) 100%);
+  border: 1px solid rgba(249, 115, 22, 0.3);
   border-bottom: none;
   border-radius: 0.75rem 0.75rem 0 0;
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  backdrop-filter: blur(8px);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+  backdrop-filter: blur(12px);
   user-select: none;
   -webkit-user-select: none;
+  box-shadow: 0 -4px 20px rgba(249, 115, 22, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .prep-sheet-tab:hover {
-  transform: translateX(-50%) translateY(-2px);
+  transform: translateX(-50%) translateY(-3px);
+  box-shadow: 0 -6px 28px rgba(249, 115, 22, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .prep-sheet-tab:active {
@@ -629,7 +631,7 @@ a {
 .prep-sheet-badge {
   position: absolute;
   top: -6px;
-  right: -6px;
+  right: -20px;
   min-width: 18px;
   height: 18px;
   border-radius: 9px;
@@ -641,7 +643,7 @@ a {
   align-items: center;
   justify-content: center;
   padding: 0 4px;
-  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.4);
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.5);
 }
 
 .prep-sheet-panel {
@@ -650,14 +652,15 @@ a {
   left: 0;
   right: 0;
   z-index: 11;
-  background: var(--cooking-card-bg);
-  border-top: 1px solid var(--cooking-border);
+  background: linear-gradient(180deg, oklch(0.12 0.04 240) 0%, oklch(0.08 0.02 240) 100%);
+  border-top: 1px solid rgba(249, 115, 22, 0.15);
   border-radius: 1.5rem 1.5rem 0 0;
   transform: translateY(calc(100% + 6rem));
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   max-height: 50vh;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4), 0 -2px 12px rgba(249, 115, 22, 0.08);
 }
 
 .prep-sheet-panel.open {
@@ -668,7 +671,7 @@ a {
   width: 40px;
   height: 4px;
   border-radius: 2px;
-  background: var(--cooking-border);
+  background: rgba(249, 115, 22, 0.3);
   margin: 0.75rem auto 0.5rem;
   flex-shrink: 0;
   cursor: pointer;
@@ -691,7 +694,7 @@ a {
 }
 
 .prep-sheet-scroll::-webkit-scrollbar-thumb {
-  background: var(--cooking-border);
+  background: rgba(249, 115, 22, 0.3);
   border-radius: 2px;
 }
 
@@ -726,7 +729,7 @@ a {
 .timer-sheet-tab {
   position: fixed;
   bottom: 6.6rem;
-  left: calc(50% + 3rem);
+  left: calc(50% + 2rem);
   transform: translateX(-50%);
   z-index: 10;
   padding: 0.5rem 1.75rem 0.6rem;
@@ -906,7 +909,4 @@ a {
   50% { transform: translateX(-50%) scaleY(1.5); }
 }
 
-/* Prep sheet tab adjustment when timers tab is present */
-.prep-sheet-tab {
-  left: calc(50% - 3rem);
-}
+/* Prep sheet tab and timer sheet tab positioned side by side */

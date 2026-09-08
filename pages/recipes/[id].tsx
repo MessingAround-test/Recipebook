@@ -1422,6 +1422,82 @@ export default function RecipeDetail() {
                         </button>
                     </div>
 
+                    {/* Timing Section */}
+                    <div data-section="timers" className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-rose-500/[0.02]">
+                        <div className="flex items-center gap-4 mb-10">
+                            <div className="p-3 rounded-2xl bg-rose-500/10 text-rose-500 border border-rose-500/10 shadow-sm shadow-rose-500/5">
+                                <Clock className="w-6 h-6 sm:w-8 sm:h-8" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground/90">Timing</h2>
+                                <p className="text-[10px] font-bold text-rose-500/60 uppercase tracking-widest mt-1">Key Time Points</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            {recipeTime && timeLabelMap[recipeTime] && (
+                                <div className="col-span-2 sm:col-span-1 p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 flex flex-col items-center text-center">
+                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${timeLabelMap[recipeTime].color} mb-2`}>
+                                        {timeLabelMap[recipeTime].icon} {timeLabelMap[recipeTime].label}
+                                    </span>
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Category</p>
+                                </div>
+                            )}
+                            {totalTimeEstimate > 0 && (
+                                <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 flex flex-col items-center text-center">
+                                    <p className="text-2xl font-black text-foreground/90">{totalTimeEstimate}<span className="text-sm font-semibold text-muted-foreground ml-0.5">min</span></p>
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Prep Time</p>
+                                </div>
+                            )}
+                            {instructions.filter((i: any) => i.time).length > 0 && (
+                                <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 flex flex-col items-center text-center">
+                                    <p className="text-2xl font-black text-foreground/90">{instructions.reduce((sum: number, i: any) => sum + (i.time || 0), 0)}<span className="text-sm font-semibold text-muted-foreground ml-0.5">min</span></p>
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Cook Time</p>
+                                </div>
+                            )}
+                            {totalTimeEstimate > 0 && instructions.filter((i: any) => i.time).length > 0 && (
+                                <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex flex-col items-center text-center">
+                                    <p className="text-2xl font-black text-rose-500">{totalTimeEstimate + instructions.reduce((sum: number, i: any) => sum + (i.time || 0), 0)}<span className="text-sm font-semibold text-rose-500/60 ml-0.5">min</span></p>
+                                    <p className="text-[10px] text-rose-500/60 font-bold uppercase tracking-widest">Total</p>
+                                </div>
+                            )}
+                            {recipeServings > 0 && (
+                                <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 flex flex-col items-center text-center">
+                                    <p className="text-2xl font-black text-foreground/90">{recipeServings}</p>
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Servings</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {cookingTimers.length > 0 && (
+                            <div className="mt-6">
+                                <p className="text-xs font-bold text-rose-500/60 uppercase tracking-widest mb-3">Cooking Timers ({cookingTimers.filter((t: any) => t.type === 'timer').length})</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {cookingTimers.filter((t: any) => t.type === 'timer').map((timer: any) => (
+                                        <div key={timer.id} className="px-3 py-2 rounded-xl bg-rose-500/5 border border-rose-500/10 text-sm">
+                                            <span className="font-semibold text-foreground/80">{timer.name}</span>
+                                            <span className="text-rose-500/60 ml-2">{timer.duration} min</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {instructions.filter((i: any) => i.time).length > 1 && (
+                            <div className="mt-6">
+                                <p className="text-xs font-bold text-rose-500/60 uppercase tracking-widest mb-3">Step Breakdown</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {instructions.map((instruction: any, idx: number) => instruction.time ? (
+                                        <div key={idx} className="px-3 py-2 rounded-xl bg-rose-500/5 border border-rose-500/10 text-sm">
+                                            <span className="font-semibold text-foreground/80">Step {idx + 1}</span>
+                                            <span className="text-rose-500/60 ml-2">~{instruction.time} min</span>
+                                        </div>
+                                    ) : null)}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     {/* Instructions Section */}
                     {instructions.length > 0 && (
                         <div data-section="instructions" className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-indigo-500/[0.02]">
