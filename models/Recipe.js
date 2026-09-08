@@ -34,6 +34,7 @@ const RecipeSchema = new mongoose.Schema(
         ingredients: [ingredsSchema],
         instructions: [instructionsSchema],
         prepWork: [prepWorkSchema],
+        prepWorkChecked: { type: Boolean, default: false },
         image: { type: String },
         cost: { type: Number },
         approxCost: { type: Number, required: false }, // Store the initial calculated proportional cost

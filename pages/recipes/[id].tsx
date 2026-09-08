@@ -199,8 +199,8 @@ export default function RecipeDetail() {
         setRecipeServings(data.res.servings || 0)
         if (data.res.approxCost != null) setApproxCost(data.res.approxCost)
         setPrepWork(data.res.prepWork || [])
-        // If recipe already has prepWork field (even empty array), we've already extracted
-        if (data.res.prepWork !== undefined) {
+        // Use the dedicated flag to determine if we've already extracted
+        if (data.res.prepWorkChecked) {
             hasCheckedPrepRef.current = true
         }
         costSavedRef.current = false // allow re-save on each page load
@@ -532,6 +532,9 @@ export default function RecipeDetail() {
         setIsExtractingPrep(true)
         try {
             const token = localStorage.getItem('Token') || ""
+            // Preserve any manually added custom items
+            const customItems = (prepWork || []).filter((p: any) => p.isCustom)
+
             const ingredientList = listIngreds.map(i =>
                 `${i.name}${i.note ? ` (${i.note})` : ''}`
             ).join(', ')
@@ -541,12 +544,13 @@ export default function RecipeDetail() {
                 { headers: { 'edgetoken': token } }
             )
             const data = await res.json()
+            let aiItems: any[] = []
             if (data.success && data.data) {
-                let extracted = data.data.prepWork || []
+                aiItems = data.data.prepWork || []
 
                 // Deduplicate: remove any prep work that overlaps with instruction text
                 const instructionLower = instructions.map(i => i.Text.toLowerCase()).join(' ')
-                extracted = extracted.filter((item: any) => {
+                aiItems = aiItems.filter((item: any) => {
                     const actionLower = (item.action || '').toLowerCase()
                     // Check if key verbs from prep appear in instruction context
                     const verbs = actionLower.split(/\s+/).filter((w: string) => w.length > 3)
@@ -554,9 +558,6 @@ export default function RecipeDetail() {
                     // If more than half the words overlap with instructions, skip it
                     return overlapCount < Math.ceil(verbs.length / 2)
                 })
-
-                setPrepWork(extracted)
-                await savePrepWork(extracted)
 
                 // Update instruction times
                 if (data.data.instructionTimes && instructions.length > 0) {
@@ -567,14 +568,23 @@ export default function RecipeDetail() {
                         return timeData ? { ...inst, time: timeData.timeEstimate } : inst
                     })
                     setInstructions(updatedInstructions)
-                    const token2 = localStorage.getItem('Token') || ""
                     await fetch(`/api/Recipe/${String(id)}`, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json', 'edgetoken': token2 },
+                        headers: { 'Content-Type': 'application/json', 'edgetoken': token },
                         body: JSON.stringify({ instructions: updatedInstructions })
                     })
                 }
             }
+            // Merge: AI items first, then custom items
+            const merged = [...aiItems, ...customItems]
+            setPrepWork(merged)
+            await savePrepWork(merged)
+            // Mark as checked
+            await fetch(`/api/Recipe/${String(id)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': token },
+                body: JSON.stringify({ prepWorkChecked: true })
+            })
         } catch (e) {
             console.error('Prep work extraction failed:', e)
         }
@@ -1068,6 +1078,20 @@ export default function RecipeDetail() {
                                                 ~{item.timeEstimate} min
                                             </span>
                                         )}
+                                        <button
+                                            onClick={() => {
+                                                const updated = prepWork.filter((_: any, i: number) => i !== index)
+                                                setPrepWork(updated)
+                                                savePrepWork(updated)
+                                                if (editingPrepIndex === index) {
+                                                    setEditingPrepIndex(null)
+                                                }
+                                            }}
+                                            className="text-red-400/40 hover:text-red-400 transition-colors p-1"
+                                            title="Delete"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
                                     </div>
                                 ))}
                             </div>

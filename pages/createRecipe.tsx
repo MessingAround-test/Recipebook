@@ -142,7 +142,8 @@ export default function CreateRecipe() {
                         "mealTypes": recipeMealTypes,
                         "carbType": recipeCarbType || undefined,
                         "servings": recipeServings !== "" ? Number(recipeServings) : undefined,
-                        "sourceUrl": recipeSourceUrl || undefined
+                        "sourceUrl": recipeSourceUrl || undefined,
+                        "prepWorkChecked": false
                     })
                 })
                 const data = await res.json()
