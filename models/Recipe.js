@@ -23,7 +23,8 @@ const prepWorkSchema = new mongoose.Schema({
     action: { type: String, required: true },
     timeEstimate: { type: Number },
     isCustom: { type: Boolean, default: false },
-    optional: { type: Boolean, default: false }
+    optional: { type: Boolean, default: false },
+    fromNote: { type: Boolean, default: false }
 })
 
 const timerDependencySchema = new mongoose.Schema({
@@ -52,6 +53,7 @@ const RecipeSchema = new mongoose.Schema(
         instructions: [instructionsSchema],
         prepWork: [prepWorkSchema],
         prepWorkChecked: { type: Boolean, default: false },
+        prepWorkNotesHash: { type: String },
         cookingTimers: [cookingTimerSchema],
         timersChecked: { type: Boolean, default: false },
         image: { type: String },

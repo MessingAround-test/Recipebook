@@ -23,7 +23,7 @@ export default async function handler(req, res) {
 
 1. Extract ALL prep work that needs to be done BEFORE cooking starts. Look for:
    - Action verbs: slice, dice, chop, mince, grate, peel, wash, trim, halve, quarter, zest, julienne, seed, stem, core, shred, crumble, mash, crush, press, soak, drain, rinse, pat dry, separate, fold, whisk, beat, blend, combine, toss, massage, etc.
-   - Notes already on ingredients (in parentheses) - these are explicit instructions, always include them
+   - Notes already on ingredients (in parentheses) - these are explicit instructions, ALWAYS include them as prep work, even if similar words appear in the cooking instructions. Set "fromNote": true on every prep item that comes directly from an ingredient note
    - Room temperature items (e.g., "bring eggs to room temperature") - only if explicitly stated
    - Equipment prep (e.g., "preheat oven", "line baking sheet") - only if explicitly stated
 
@@ -47,14 +47,14 @@ UNITS: Always use metric/Celsius. Convert temperatures to Celsius (e.g., 400°F 
    - CRITICAL: Read ALL steps together before assigning times. If multiple frying steps use the same pan, do NOT double-count heating time. For example, "fry onions" then "fry garlic" in the same pan = only 1x heating time, plus the sequential cooking time for each. Steps that can happen in parallel (e.g., frying in one pan while boiling in another) should be estimated independently, but sequential steps sharing equipment should account for shared prep/heating time.
 
 Output MUST be a single JSON object with:
-- "prepWork": array of objects with "ingredient" (string or null for general tasks), "action" (string describing the prep), "timeEstimate" (number in minutes), and "optional" (boolean, true for pre-prepared ingredient alternatives)
+- "prepWork": array of objects with "ingredient" (string or null for general tasks), "action" (string describing the prep), "timeEstimate" (number in minutes), "optional" (boolean, true for pre-prepared ingredient alternatives), and "fromNote" (boolean, true when the action comes directly from an ingredient note)
 - "instructionTimes": array of objects with "step" (1-indexed number matching instruction order) and "timeEstimate" (number in minutes)
 
 Example:
 {
   "prepWork": [
     {"ingredient": "carrot", "action": "peel and slice into rounds", "timeEstimate": 3, "optional": false},
-    {"ingredient": "garlic", "action": "mince", "timeEstimate": 2, "optional": false},
+    {"ingredient": "garlic", "action": "mince", "timeEstimate": 2, "optional": false, "fromNote": true},
     {"ingredient": "eggplant", "action": "slice and grill eggplant", "timeEstimate": 10, "optional": true},
     {"ingredient": null, "action": "preheat oven to 200°C", "timeEstimate": 1, "optional": false}
   ],
@@ -85,7 +85,8 @@ Be thorough but practical. Only include prep work that is actually necessary and
                     action: item.action,
                     timeEstimate: typeof item.timeEstimate === 'number' ? Math.max(1, Math.round(item.timeEstimate)) : null,
                     isCustom: false,
-                    optional: item.optional === true
+                    optional: item.optional === true,
+                    fromNote: item.fromNote === true
                 }));
         }
 

@@ -89,6 +89,42 @@ export const extractRecipeFromNotes = async (notes: string): Promise<ExtractedRe
     return result.data
 }
 
+export interface RawParsedIngredient {
+    name: any
+    quantity: any
+    quantity_unit: any
+}
+
+/**
+ * Runs the site-parser output through the AI format_ingredients endpoint,
+ * which splits the core ingredient from prep work ("chopped garlic" ->
+ * garlic + note "chopped") and cleans quantities/units. Returns null on any
+ * failure so the caller can fall back to the raw parse. Creation-time only.
+ */
+export const formatImportedIngredients = async (raw: RawParsedIngredient[]): Promise<Ingredient[] | null> => {
+    if (!raw || raw.length === 0) return null
+    try {
+        const token = localStorage.getItem('Token')
+        const res = await fetch('/api/ai/format_ingredients', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'edgetoken': token || ''
+            },
+            body: JSON.stringify({
+                ingredients: raw.map(i => ({ name: i.name, quantity: i.quantity, quantity_unit: i.quantity_unit }))
+            })
+        })
+        const result = await res.json()
+        if (result.success && Array.isArray(result.data?.ingredients) && result.data.ingredients.length > 0) {
+            return result.data.ingredients
+        }
+        return null
+    } catch {
+        return null
+    }
+}
+
 export const saveRecipe = async (payload: SaveRecipePayload): Promise<any> => {
     const token = localStorage.getItem('Token')
     const res = await fetch('/api/Recipe', {

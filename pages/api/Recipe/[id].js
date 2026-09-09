@@ -91,6 +91,7 @@ export default async function handler(req, res) {
         if (req.body.instructions !== undefined) updateData.instructions = req.body.instructions;
         if (req.body.prepWork !== undefined) updateData.prepWork = req.body.prepWork;
         if (req.body.prepWorkChecked !== undefined) updateData.prepWorkChecked = req.body.prepWorkChecked;
+        if (req.body.prepWorkNotesHash !== undefined) updateData.prepWorkNotesHash = req.body.prepWorkNotesHash;
         if (req.body.cookingTimers !== undefined) updateData.cookingTimers = req.body.cookingTimers;
         if (req.body.timersChecked !== undefined) updateData.timersChecked = req.body.timersChecked;
         if (req.body.approxCost !== undefined) updateData.approxCost = req.body.approxCost;

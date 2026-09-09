@@ -2,7 +2,7 @@ import { verifyToken } from "../../../lib/auth";
 import { logAPI } from '../../../lib/logger'
 import { callGroqChat } from '../../../lib/ai';
 import { quantity_unit_conversions } from "../../../lib/conversion";
-import { normalizeExtractedIngredients, normalizeExtractedInstructions } from '../../../lib/recipeNormalize';
+import { normalizeExtractedIngredients, normalizePrepWords, normalizeExtractedInstructions } from '../../../lib/recipeNormalize';
 
 const VALID_GENRES = [
     'Italian', 'Mexican', 'Asian', 'Indian', 'Mediterranean', 'American',
@@ -46,7 +46,7 @@ Extract the following information:
    - 'Name': String (e.g., "Chicken Breast"). Do NOT include the amount or unit in this field.
    - 'Amount': String or Number (e.g., "500", "1.5", or "1/2"). This MUST be a numeric or fractional value only. Do NOT include unit strings like "g" or "cups" here.
    - 'AmountType': String. This MUST be one of the following exact keys: ${VALID_UNITS.join(', ')}.
-   - 'Note': String (Optional extra info like "diced" or "room temperature").
+   - 'Note': String. Prep work and other details about the ingredient (e.g. "chopped", "finely diced", "at room temperature", "plus extra for frying"). Keep 'Name' as just the core ingredient — e.g. "chopped garlic" -> Name: "Garlic", Note: "chopped".
 3. 'instructions': Array of objects with:
    - 'Text': The step description. Each step MUST be self-contained and include the relevant ingredient quantities inline (e.g. "Fry 500g chicken for 5 minutes" instead of "Fry the chicken"), using the amounts from the ingredient list.
    - 'Note': String (Optional tip or step number).
@@ -92,6 +92,8 @@ STRICT RULES:
         // Post-processing cleanup for ingredients
         if (data.ingredients && Array.isArray(data.ingredients)) {
             data.ingredients = normalizeExtractedIngredients(data.ingredients);
+            // Move prep words ("chopped garlic") out of Name into Note
+            data.ingredients = normalizePrepWords(data.ingredients);
         }
 
         return res.status(200).json({ success: true, data });

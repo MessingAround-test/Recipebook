@@ -40,7 +40,13 @@ function getPriceCategory(cost: number): 'cheap' | 'medium' | 'expensive' {
 const CACHE_TTL = 24 * 60 * 60 * 1000 // 24 hours
 
 function getIngredientSnapshot(ingreds: any[]) {
-    return ingreds.map(i => ({ name: i.name, quantity: i.quantity, quantity_type: i.quantity_type }))
+    return ingreds.map(i => ({ name: i.name, quantity: i.quantity, quantity_type: i.quantity_type, note: i.note }))
+}
+
+function computePrepNotesHash(ingreds: any[]) {
+    return (ingreds || [])
+        .map(i => `${String(i.name || '').trim()}::${String(i.note || '').trim()}`)
+        .join('|')
 }
 
 function getCachedIngreds(recipeId: string, currentIngreds: any[]): any[] | null {
@@ -55,7 +61,8 @@ function getCachedIngreds(recipeId: string, currentIngreds: any[]): any[] | null
         for (let i = 0; i < cachedSnapshot.length; i++) {
             if (cachedSnapshot[i].name !== currentSnapshot[i].name ||
                 cachedSnapshot[i].quantity !== currentSnapshot[i].quantity ||
-                cachedSnapshot[i].quantity_type !== currentSnapshot[i].quantity_type) {
+                cachedSnapshot[i].quantity_type !== currentSnapshot[i].quantity_type ||
+                cachedSnapshot[i].note !== currentSnapshot[i].note) {
                 return null
             }
         }
@@ -237,6 +244,7 @@ export default function RecipeDetail() {
     const [editingPrepText, setEditingPrepText] = useState("")
     const [isExtractingPrep, setIsExtractingPrep] = useState(false)
     const hasCheckedPrepRef = useRef(false)
+    const prepNotesHashRef = useRef<string | null>(null)
 
     // Add to shopping list modal
     const [shopModalOpen, setShopModalOpen] = useState(false)
@@ -495,6 +503,7 @@ export default function RecipeDetail() {
         setRecipeServings(data.res.servings || 0)
         if (data.res.approxCost != null) setApproxCost(data.res.approxCost)
         setPrepWork(data.res.prepWork || [])
+        prepNotesHashRef.current = data.res.prepWorkNotesHash || null
         // Use the dedicated flag to determine if we've already extracted
         if (data.res.prepWorkChecked) {
             hasCheckedPrepRef.current = true
@@ -813,13 +822,15 @@ export default function RecipeDetail() {
         }
     }
 
-    const savePrepWork = async (items: any[]) => {
+    const savePrepWork = async (items: any[], notesHash?: string | null) => {
         const token = localStorage.getItem('Token') || ""
         try {
+            const body: any = { prepWork: items }
+            if (notesHash !== undefined) body.prepWorkNotesHash = notesHash
             await fetch(`/api/Recipe/${String(id)}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'edgetoken': token },
-                body: JSON.stringify({ prepWork: items })
+                body: JSON.stringify(body)
             })
         } catch (e) {
             console.error("Failed to save prep work")
@@ -831,6 +842,7 @@ export default function RecipeDetail() {
         setIsExtractingPrep(true)
         try {
             const token = localStorage.getItem('Token') || ""
+            const notesHash = computePrepNotesHash(listIngreds)
             // Preserve any manually added custom items
             const customItems = (prepWork || []).filter((p: any) => p.isCustom)
 
@@ -850,6 +862,8 @@ export default function RecipeDetail() {
                 // Deduplicate: remove any prep work that overlaps with instruction text
                 const instructionLower = instructions.map(i => i.Text.toLowerCase()).join(' ')
                 aiItems = aiItems.filter((item: any) => {
+                    // Note-derived items are explicit user instructions — always keep them
+                    if (item.fromNote) return true
                     const actionLower = (item.action || '').toLowerCase()
                     // Check if key verbs from prep appear in instruction context
                     const verbs = actionLower.split(/\s+/).filter((w: string) => w.length > 3)
@@ -877,7 +891,8 @@ export default function RecipeDetail() {
             // Merge: AI items first, then custom items
             const merged = [...aiItems, ...customItems]
             setPrepWork(merged)
-            await savePrepWork(merged)
+            await savePrepWork(merged, notesHash)
+            prepNotesHashRef.current = notesHash
             // Mark as checked
             await fetch(`/api/Recipe/${String(id)}`, {
                 method: 'PUT',
@@ -1152,6 +1167,15 @@ export default function RecipeDetail() {
         if (!hasCheckedPrepRef.current && listIngreds && listIngreds.length > 0 && recipe) {
             hasCheckedPrepRef.current = true
             extractPrepWork().then(() => setPrepDone(true))
+        } else if (hasCheckedPrepRef.current && listIngreds && listIngreds.length > 0 && recipe) {
+            const currentHash = computePrepNotesHash(listIngreds)
+            if (prepNotesHashRef.current !== currentHash) {
+                // Ingredient notes changed since the last extraction — refresh prep work
+                prepNotesHashRef.current = currentHash
+                extractPrepWork().then(() => setPrepDone(true))
+            } else {
+                setPrepDone(true)
+            }
         } else if (hasCheckedPrepRef.current) {
             setPrepDone(true)
         }
@@ -2436,6 +2460,7 @@ export default function RecipeDetail() {
                                                 <span key={ci} className="cooking-chip">
                                                     <span className="cooking-chip-name">{ingred.name}</span>
                                                     <span className="cooking-chip-qty">{ingred.quantity} {ingred.quantity_type_shorthand || ingred.quantity_type}</span>
+                                                    {ingred.note && <span className="cooking-chip-note" title={ingred.note}>{ingred.note}</span>}
                                                 </span>
                                             ))}
                                         </div>
@@ -2852,6 +2877,7 @@ export default function RecipeDetail() {
                                             <div key={`rec-${idx}`} className="cooking-ingredient-card is-recommended">
                                                 <span className="cooking-ingredient-name">{ingred.name}</span>
                                                 <span className="cooking-ingredient-qty">{ingred.quantity} {ingred.quantity_type_shorthand || ingred.quantity_type}</span>
+                                                {ingred.note && <span className="cooking-ingredient-note" title={ingred.note}>{ingred.note}</span>}
                                             </div>
                                         ))}
                                     </div>
@@ -2865,6 +2891,7 @@ export default function RecipeDetail() {
                                             <div key={`other-${idx}`} className="cooking-ingredient-card">
                                                 <span className="cooking-ingredient-name">{ingred.name}</span>
                                                 <span className="cooking-ingredient-qty">{ingred.quantity} {ingred.quantity_type_shorthand || ingred.quantity_type}</span>
+                                                {ingred.note && <span className="cooking-ingredient-note" title={ingred.note}>{ingred.note}</span>}
                                             </div>
                                         ))}
                                     </div>

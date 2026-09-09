@@ -111,6 +111,11 @@ function IngredientCard({
                         }}>
                             {isMinimal && <span className="mr-3 opacity-60 text-primary">•</span>}
                             {ingredient.name}
+                            {ingredient.note && (
+                                <span className="opacity-60 font-medium" style={{ fontSize: '0.72rem', marginLeft: '0.35rem', wordBreak: 'break-word' }}>
+                                    [{ingredient.note}]
+                                </span>
+                            )}
                             <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)', marginLeft: '0.6rem', fontWeight: '600' }}>
                                 &bull; {isGroup ? (ingredient.totalString || `${ingredient.quantity} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`) : `${ingredient.quantity} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`}
                             </span>

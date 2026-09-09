@@ -544,6 +544,35 @@ a {
   transform: scale(0.94);
 }
 
+/* The single accent in the builder nav: Save. Same treatment as Start Cooking */
+.recipe-nav-save {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.recipe-nav-save:hover {
+  background: var(--accent-hover);
+}
+
+.recipe-nav-save:active {
+  transform: scale(0.94);
+}
+
+.recipe-nav-save:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* Full-bleed bands: card colour spans the viewport; text sits in a centered
    column halfway between the old 56rem reading width and the full band.
    (50% + half of 56rem = exact midpoint at any screen size.) */
@@ -587,6 +616,11 @@ a {
 
   /* Slightly larger thumb target for the primary action */
   .recipe-nav-start {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .recipe-nav-save {
     width: 2.5rem;
     height: 2.5rem;
   }
@@ -1121,6 +1155,17 @@ a {
   color: var(--cooking-text-faint);
   font-weight: 600;
   font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.cooking-chip-note {
+  color: var(--cooking-text-faint);
+  font-weight: 500;
+  font-style: italic;
+  font-size: 0.62rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -1798,6 +1843,16 @@ a {
   font-size: 0.68rem;
   font-weight: 600;
   color: var(--cooking-text-faint);
+}
+
+.cooking-ingredient-note {
+  font-size: 0.62rem;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--cooking-text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Prep checklist */
