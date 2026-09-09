@@ -73,6 +73,15 @@ function clearCachedIngreds(recipeId: string) {
 
 const STOP_WORDS = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'shall', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'its', 'our', 'their', 'over', 'until', 'all', 'into', 'each', 'both', 'than', 'then', 'also', 'just', 'about', 'from', 'up', 'down', 'out', 'off', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'any', 'every', 'some', 'few', 'more', 'most', 'other', 'only', 'very', 'now'])
 
+// Whole-word/prefix token match — avoids substring false positives like
+// "heat" matching inside "wheat" or "oil" inside "boil". A short word can
+// only match when the longer one starts with it (plural/stem forms).
+function wordMatches(a: string, b: string): boolean {
+    if (a === b) return true
+    if (a.length < 3 || b.length < 3) return false
+    return a.startsWith(b) || b.startsWith(a)
+}
+
 function getRecommendedIngredients(stepText: string, ingredients: any[]): { recommended: any[]; others: any[] } {
     const stepWords = stepText
         .toLowerCase()
@@ -82,7 +91,7 @@ function getRecommendedIngredients(stepText: string, ingredients: any[]): { reco
 
     const scored = ingredients.map(ing => {
         const nameWords = ing.name.toLowerCase().split(/\s+/)
-        const score = nameWords.filter(nw => stepWords.some(sw => nw.includes(sw) || sw.includes(nw))).length
+        const score = nameWords.filter(nw => stepWords.some(sw => wordMatches(nw, sw))).length
         return { ...ing, score, recommended: score > 0 }
     })
 
@@ -101,7 +110,7 @@ function getRecommendedPrepWork(stepText: string, prepWork: any[]): { recommende
     const scored = prepWork.map(item => {
         const searchText = `${item.ingredient || ''} ${item.action}`.toLowerCase()
         const nameWords = searchText.split(/\s+/).filter((w: string) => w.length > 2)
-        const score = nameWords.filter((nw: string) => stepWords.some(sw => nw.includes(sw) || sw.includes(nw))).length
+        const score = nameWords.filter((nw: string) => stepWords.some(sw => wordMatches(nw, sw))).length
         return { ...item, score, recommended: score > 0 }
     })
 
