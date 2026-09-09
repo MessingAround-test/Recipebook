@@ -144,6 +144,13 @@ describe('normalizePrepWords', () => {
         const result = normalizePrepWords([{ Name: 'Roasted', Amount: 1, AmountType: 'each' }]);
         expect(result[0].Name).toBe('Roasted');
     });
+
+    test('keeps variety/grade descriptors in the name', () => {
+        const names = ['extra virgin olive oil', 'white wine vinegar', 'smoked paprika', 'ground beef', 'frozen peas', 'spring onions', 'baby spinach'];
+        const result = normalizePrepWords(names.map(Name => ({ Name, Amount: 1, AmountType: 'each' })));
+        expect(result.map(r => r.Name)).toEqual(names);
+        expect(result.every(r => r.Note === undefined)).toBe(true);
+    });
 });
 
 describe('normalizeExtractedIngredients (unicode fractions)', () => {

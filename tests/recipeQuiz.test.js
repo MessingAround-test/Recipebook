@@ -4,6 +4,8 @@ const {
     getScaleNote,
     shuffleMatches,
     answerCount,
+    formatTimeRange,
+    TIME_MAX_MINUTES,
     DEFAULT_ANSWERS,
     CLASSIC_THRESHOLD
 } = require('../lib/recipeQuiz');
@@ -49,20 +51,47 @@ describe('filterRecipes', () => {
         expect(result.map(r => r._id)).toEqual(['a']);
     });
 
-    test('filters by time', () => {
+    test('filters by time range against category buckets', () => {
         const recipes = [
             baseRecipe({ _id: 'a', time: 'short' }),
-            baseRecipe({ _id: 'b', time: 'long' })
+            baseRecipe({ _id: 'b', time: 'medium' }),
+            baseRecipe({ _id: 'c', time: 'long' })
         ];
-        const result = filterRecipes(recipes, { ...DEFAULT_ANSWERS, time: 'short' });
+        const result = filterRecipes(recipes, { ...DEFAULT_ANSWERS, time: { min: 0, max: 30 } });
         expect(result.map(r => r._id)).toEqual(['a']);
+
+        const straddling = filterRecipes(recipes, { ...DEFAULT_ANSWERS, time: { min: 25, max: 35 } });
+        expect(straddling.map(r => r._id)).toEqual(['a', 'b']);
+    });
+
+    test('time range with uncapped max matches everything above the min', () => {
+        const recipes = [
+            baseRecipe({ _id: 'a', time: 'short' }),
+            baseRecipe({ _id: 'b', time: 'medium' }),
+            baseRecipe({ _id: 'c', time: 'long' })
+        ];
+        const result = filterRecipes(recipes, { ...DEFAULT_ANSWERS, time: { min: 60, max: 120 } });
+        expect(result.map(r => r._id)).toEqual(['c']);
+    });
+
+    test('filters by estimated minutes from instruction and prepWork times', () => {
+        const recipes = [
+            baseRecipe({ _id: 'a', time: null, instructions: [{ time: 20 }] }),
+            baseRecipe({ _id: 'b', time: null, instructions: [{ time: 30 }, { time: 45 }], prepWork: [{ timeEstimate: 10 }] }),
+            baseRecipe({ _id: 'c', time: null })
+        ];
+        const result = filterRecipes(recipes, { ...DEFAULT_ANSWERS, time: { min: 0, max: 30 } });
+        expect(result.map(r => r._id)).toEqual(['a', 'c']);
+
+        const oneHourPlus = filterRecipes(recipes, { ...DEFAULT_ANSWERS, time: { min: 60, max: 120 } });
+        expect(oneHourPlus.map(r => r._id)).toEqual(['b', 'c']);
     });
 
     test('treats missing time as wildcard', () => {
         const recipes = [
             baseRecipe({ _id: 'a', time: null })
         ];
-        const result = filterRecipes(recipes, { ...DEFAULT_ANSWERS, time: 'long' });
+        const result = filterRecipes(recipes, { ...DEFAULT_ANSWERS, time: { min: 60, max: 120 } });
         expect(result.map(r => r._id)).toEqual(['a']);
     });
 
@@ -104,7 +133,7 @@ describe('filterRecipes', () => {
             baseRecipe({ _id: 'b', mealTypes: ['Main'], time: 'short', priceCategory: 'cheap', timesCooked: 0 }),
             baseRecipe({ _id: 'c', mealTypes: ['Lunch'], time: 'short', priceCategory: 'cheap', timesCooked: 5 })
         ];
-        const answers = { mealType: 'Main', people: 2, time: 'short', novelty: 'classic', price: 'cheap' };
+        const answers = { mealType: 'Main', people: 2, time: { min: 0, max: 30 }, novelty: 'classic', price: 'cheap' };
         const result = filterRecipes(recipes, answers);
         expect(result.map(r => r._id)).toEqual(['a']);
     });
@@ -191,5 +220,17 @@ describe('answerCount', () => {
     test('counts only set answers', () => {
         expect(answerCount(DEFAULT_ANSWERS)).toBe(0);
         expect(answerCount({ ...DEFAULT_ANSWERS, mealType: 'Main', people: 4 })).toBe(2);
+        expect(answerCount({ ...DEFAULT_ANSWERS, time: { min: 0, max: 30 } })).toBe(1);
+    });
+});
+
+describe('formatTimeRange', () => {
+    test('formats quick-pick style labels', () => {
+        expect(formatTimeRange({ min: 0, max: 30 })).toBe('Under 30 min');
+        expect(formatTimeRange({ min: 30, max: 60 })).toBe('30\u201360 min');
+        expect(formatTimeRange({ min: 60, max: TIME_MAX_MINUTES })).toBe('1 hr +');
+        expect(formatTimeRange({ min: 45, max: TIME_MAX_MINUTES })).toBe('45+ min');
+        expect(formatTimeRange({ min: 20, max: 45 })).toBe('20\u201345 min');
+        expect(formatTimeRange({ min: 0, max: TIME_MAX_MINUTES })).toBe('Any length');
     });
 });

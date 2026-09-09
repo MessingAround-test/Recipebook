@@ -8,18 +8,21 @@ import { useAuthGuard } from '../../lib/useAuthGuard'
 import {
     QuizAnswers,
     QuizRecipe,
+    TimeRange,
     DEFAULT_ANSWERS,
     QUIZ_MEAL_OPTIONS,
-    QUIZ_TIME_OPTIONS,
     QUIZ_PRICE_OPTIONS,
+    TIME_MAX_MINUTES,
+    TIME_QUICK_OPTIONS,
+    isFullTimeRange,
     filterRecipes,
     sortMatches,
     getScaleNote,
+    formatTimeRange,
     shuffleMatches
 } from '../../lib/recipeQuiz'
 import {
     ArrowLeft,
-    CheckCircle2,
     ChefHat,
     Shuffle,
     Utensils,
@@ -45,12 +48,11 @@ interface QuizStep {
 const STEPS: QuizStep[] = [
     { id: 'mealType', question: 'What kind of meal?', sub: 'Pick what you feel like', icon: <Utensils size={16} className="text-accent" /> },
     { id: 'people', question: 'How many people?', sub: 'Matches get scaled to fit', icon: <Users size={16} className="text-accent" /> },
-    { id: 'time', question: 'How long do you want to spend?', sub: 'Total effort in the kitchen', icon: <Clock size={16} className="text-accent" /> },
+    { id: 'time', question: 'How long do you want to spend?', sub: 'Slide to a range or tap a quick pick', icon: <Clock size={16} className="text-accent" /> },
     { id: 'novelty', question: 'Something new or a classic?', sub: 'Fresh discovery or a trusted favourite', icon: <Sparkles size={16} className="text-accent" /> },
     { id: 'price', question: 'How expensive?', sub: 'Budget to premium', icon: <DollarSign size={16} className="text-accent" /> }
 ]
 
-const TIME_LABELS: Record<string, string> = { short: 'Quick (< 30 min)', medium: 'Medium (30-60 min)', long: 'Slow Cook (1h+)' }
 const PRICE_LABELS: Record<string, string> = { cheap: 'Budget', medium: 'Standard', expensive: 'Premium' }
 const NOVELTY_LABELS: Record<string, string> = { new: 'Something new', classic: 'A classic' }
 const PEOPLE_OPTIONS = [1, 2, 3, 4, 5, 6, 8]
@@ -59,10 +61,31 @@ function answerLabel(id: StepId, answers: QuizAnswers): string {
     switch (id) {
         case 'mealType': return answers.mealType || ''
         case 'people': return `${answers.people} people`
-        case 'time': return answers.time ? TIME_LABELS[answers.time] : ''
+        case 'time': return answers.time ? formatTimeRange(answers.time) : ''
         case 'novelty': return answers.novelty ? NOVELTY_LABELS[answers.novelty] : ''
         case 'price': return answers.price ? PRICE_LABELS[answers.price] : ''
     }
+}
+
+function TimeNumberInput({ value, onCommit, label }: { value: number; onCommit: (v: number) => void; label: string }) {
+    const [draft, setDraft] = useState(String(value))
+    useEffect(() => { setDraft(String(value)) }, [value])
+    return (
+        <input
+            type="number"
+            min={0}
+            max={TIME_MAX_MINUTES}
+            value={draft}
+            onChange={e => {
+                setDraft(e.target.value)
+                const v = e.target.valueAsNumber
+                if (!Number.isNaN(v)) onCommit(v)
+            }}
+            onBlur={() => setDraft(String(value))}
+            className="w-20 text-center bg-secondary/30 border border-border/10 rounded-xl py-2.5 text-sm font-bold focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50"
+            aria-label={label}
+        />
+    )
 }
 
 export default function RecipeQuiz() {
@@ -130,6 +153,11 @@ export default function RecipeQuiz() {
 
     const clearAnswer = (id: StepId) => {
         setAnswers(prev => ({ ...prev, [id]: null }) as QuizAnswers)
+    }
+
+    const setTimeRange = (range: TimeRange | null) => {
+        const next = range && !isFullTimeRange(range) ? { min: Math.max(0, Math.min(range.min, TIME_MAX_MINUTES)), max: Math.max(0, Math.min(range.max, TIME_MAX_MINUTES)) } : null
+        setAnswers(prev => ({ ...prev, time: next }) as QuizAnswers)
     }
 
     if (!isAuthed) return null
@@ -214,20 +242,88 @@ export default function RecipeQuiz() {
                             </div>
                         )}
 
-                        {step.id === 'time' && (
-                            <div className="grid grid-cols-1 gap-3">
-                                {QUIZ_TIME_OPTIONS.map(t => (
-                                    <button
-                                        key={t}
-                                        onClick={() => setAnswer('time', t)}
-                                        className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${answers.time === t ? 'bg-accent/10 border-accent ring-1 ring-accent/50' : 'bg-secondary/30 border-border/10 hover:border-accent/30'}`}
-                                    >
-                                        <span className="text-sm font-bold">{TIME_LABELS[t]}</span>
-                                        {answers.time === t && <CheckCircle2 size={16} className="text-accent" />}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
+                        {step.id === 'time' && (() => {
+                            const range = answers.time ?? { min: 0, max: TIME_MAX_MINUTES }
+                            const pct = (v: number) => (v / TIME_MAX_MINUTES) * 100
+                            return (
+                                <div className="space-y-6">
+                                    <div className="text-center">
+                                        <span className="text-3xl font-black tracking-tight">{formatTimeRange(range)}</span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {TIME_QUICK_OPTIONS.map(o => {
+                                            const active = range.min === o.range.min && range.max === o.range.max
+                                            return (
+                                                <button
+                                                    key={o.label}
+                                                    onClick={() => setTimeRange(active ? null : o.range)}
+                                                    className={`py-3 rounded-2xl border text-xs font-bold transition-all duration-300 ${active ? 'bg-accent text-accent-foreground border-accent shadow-lg shadow-accent/20' : 'bg-secondary/30 border-border/10 hover:border-accent/30'}`}
+                                                >
+                                                    {o.label}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+
+                                    <div className="dual-range">
+                                        <div className="dual-range-track" />
+                                        <div
+                                            className="dual-range-fill"
+                                            style={{ left: `${pct(range.min)}%`, width: `${pct(range.max - range.min)}%` }}
+                                        />
+                                        <input
+                                            type="range"
+                                            min={0}
+                                            max={TIME_MAX_MINUTES}
+                                            step={1}
+                                            value={range.min}
+                                            onChange={e => setTimeRange({ min: Math.min(Number(e.target.value), range.max), max: range.max })}
+                                            style={{ zIndex: range.min === range.max ? 5 : 3 }}
+                                            aria-label="Minimum minutes"
+                                        />
+                                        <input
+                                            type="range"
+                                            min={0}
+                                            max={TIME_MAX_MINUTES}
+                                            step={1}
+                                            value={range.max}
+                                            onChange={e => setTimeRange({ min: range.min, max: Math.max(Number(e.target.value), range.min) })}
+                                            style={{ zIndex: 4 }}
+                                            aria-label="Maximum minutes"
+                                        />
+                                    </div>
+                                    <div className="flex justify-between px-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                        <span>0</span>
+                                        <span>30</span>
+                                        <span>1 hr</span>
+                                        <span>90</span>
+                                        <span>2 hr+</span>
+                                    </div>
+
+                                    <div className="flex items-center justify-center gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <TimeNumberInput
+                                                value={range.min}
+                                                label="Exact minimum minutes"
+                                                onCommit={v => setTimeRange({ min: Math.min(Math.max(0, v), range.max), max: range.max })}
+                                            />
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">min</span>
+                                        </div>
+                                        <span className="text-muted-foreground font-bold">&ndash;</span>
+                                        <div className="flex items-center gap-2">
+                                            <TimeNumberInput
+                                                value={range.max}
+                                                label="Exact maximum minutes"
+                                                onCommit={v => setTimeRange({ min: range.min, max: Math.min(Math.max(range.min, v), TIME_MAX_MINUTES) })}
+                                            />
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">min</span>
+                                        </div>
+                                    </div>
+                                    <p className="text-center text-[10px] font-medium text-muted-foreground">Maxed out the top of the slider? That means no time limit.</p>
+                                </div>
+                            )
+                        })()}
 
                         {step.id === 'novelty' && (
                             <div className="grid grid-cols-2 gap-3">

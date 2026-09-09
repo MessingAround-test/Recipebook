@@ -125,6 +125,26 @@ export const formatImportedIngredients = async (raw: RawParsedIngredient[]): Pro
     }
 }
 
+/**
+ * Maps editor-shaped ingredients (capital `Note`) to the shape the Recipe
+ * model expects (lowercase `note`). Mongoose strips unknown fields, so any
+ * ingredient payload sent raw would silently drop notes — always route
+ * ingredient saves through this helper.
+ * Safety net: only standard unit keys may be saved (the Recipe model requires
+ * AmountType); park anything else in the note.
+ */
+export const normalizeIngredientsForSave = (ingreds: Ingredient[] | undefined): any[] =>
+    (ingreds || []).map(ing => {
+        const resolvedType = resolveUnitKey(ing.AmountType)
+        const isStandard = quantity_unit_conversions[resolvedType] != null
+        return {
+            Name: ing.Name,
+            Amount: normalizeAmount(ing.Amount),
+            AmountType: isStandard ? resolvedType : 'each',
+            note: isStandard ? ing.Note : [ing.Note, ing.AmountType].filter(Boolean).join(', ')
+        }
+    })
+
 export const saveRecipe = async (payload: SaveRecipePayload): Promise<any> => {
     const token = localStorage.getItem('Token')
     const res = await fetch('/api/Recipe', {
@@ -144,18 +164,7 @@ export const saveRecipe = async (payload: SaveRecipePayload): Promise<any> => {
             hidden: payload.hidden,
             sourceUrl: payload.sourceUrl || undefined,
             instructions: payload.instructions || [],
-            ingreds: (payload.ingreds || []).map(ing => {
-                // Safety net: only standard unit keys may be saved (the Recipe
-                // model requires AmountType); park anything else in the note.
-                const resolvedType = resolveUnitKey(ing.AmountType)
-                const isStandard = quantity_unit_conversions[resolvedType] != null
-                return {
-                    Name: ing.Name,
-                    Amount: normalizeAmount(ing.Amount),
-                    AmountType: isStandard ? resolvedType : 'each',
-                    note: isStandard ? ing.Note : [ing.Note, ing.AmountType].filter(Boolean).join(', ')
-                }
-            })
+            ingreds: normalizeIngredientsForSave(payload.ingreds)
         })
     })
     const data = await res.json()

@@ -2208,3 +2208,88 @@ a {
     transition: none;
   }
 }
+
+/* Dual-thumb range slider (recipe quiz time filter) */
+.dual-range {
+  position: relative;
+  height: 1.75rem;
+}
+
+.dual-range-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 6px;
+  transform: translateY(-50%);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.dual-range-fill {
+  position: absolute;
+  top: 50%;
+  height: 6px;
+  transform: translateY(-50%);
+  border-radius: 9999px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.dual-range input[type='range'] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: none;
+}
+
+.dual-range input[type='range']::-webkit-slider-runnable-track {
+  height: 1.75rem;
+  background: transparent;
+}
+
+.dual-range input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 24px;
+  width: 24px;
+  margin-top: 0;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 3px solid var(--accent);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  cursor: grab;
+  pointer-events: auto;
+}
+
+.dual-range input[type='range']:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  transform: scale(1.1);
+}
+
+.dual-range input[type='range']::-moz-range-track {
+  height: 1.75rem;
+  background: transparent;
+}
+
+.dual-range input[type='range']::-moz-range-thumb {
+  height: 24px;
+  width: 24px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 3px solid var(--accent);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  cursor: grab;
+  pointer-events: auto;
+}
+
+.dual-range input[type='range']:active::-moz-range-thumb {
+  cursor: grabbing;
+  transform: scale(1.1);
+}

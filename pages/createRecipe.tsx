@@ -3,13 +3,14 @@ import Router, { useRouter } from 'next/router'
 import { Layout } from '../components/Layout'
 import { fileToBase64 } from '../lib/recipeImage'
 import { quantity_unit_conversions, getShorthandForMeasure } from '../lib/conversion'
-import { extractRecipeFromImage, extractRecipeFromNotes, saveRecipe, formatImportedIngredients, Ingredient, getEachUnitIngredientNames, warmIngredientConversions } from '../lib/recipeExtraction'
+import { extractRecipeFromImage, extractRecipeFromNotes, saveRecipe, normalizeIngredientsForSave, formatImportedIngredients, Ingredient, getEachUnitIngredientNames, warmIngredientConversions } from '../lib/recipeExtraction'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import RecipeIngredientInput from '../components/RecipeIngredientInput'
 import {
     Camera, Globe, Share2, NotebookPen, Pencil, ChevronLeft, ChevronDown, ShoppingBasket,
-    ListOrdered, SlidersHorizontal, Check, Loader2, Trash2, Images, GripVertical
+    ListOrdered, SlidersHorizontal, Check, Loader2, Trash2, Images, GripVertical, MoreHorizontal, Wand2
 } from 'lucide-react'
+import { normalizePrepWords } from '../lib/recipeNormalize'
 
 interface Instruction {
     Text: string
@@ -469,7 +470,7 @@ export default function CreateRecipe() {
                         'edgetoken': token || ''
                     },
                     body: JSON.stringify({
-                        "ingreds": ingreds,
+                        "ingreds": normalizeIngredientsForSave(ingreds),
                         "instructions": instructions,
                         "image": localImage,
                         "name": recipeName,
@@ -756,6 +757,39 @@ export default function CreateRecipe() {
 
     const updateInstruction = (index: number, patch: Partial<Instruction>) => {
         setInstructions(prev => prev.map((inst, i) => (i === index ? { ...inst, ...patch } : inst)))
+    }
+
+    // "Sanitise ingredients": run the current list through the AI formatter so
+    // prep work moves out of the name into the note ("chopped garlic" ->
+    // garlic + note "chopped"). Creation-time helper — user can re-edit after.
+    const [ingredMenuOpen, setIngredMenuOpen] = useState(false)
+    const [sanitising, setSanitising] = useState(false)
+
+    const sanitiseIngredients = async () => {
+        if (ingreds.length === 0 || sanitising) return
+        setSanitising(true)
+        try {
+            const formatted = await formatImportedIngredients(
+                ingreds.map(i => ({ name: i.Name, quantity: i.Amount, quantity_unit: i.AmountType }))
+            )
+            if (formatted) {
+                // Keep any notes the user already added — zip by position
+                // (the endpoint returns exactly one row per input, in order)
+                setIngreds(formatted.map((row, i) => {
+                    const origNote = String(ingreds[i]?.Note || '').trim()
+                    const newNote = String(row.Note || '').trim()
+                    const combined = origNote && newNote && !newNote.toLowerCase().includes(origNote.toLowerCase())
+                        ? `${newNote}, ${origNote}`
+                        : newNote || origNote
+                    return { ...row, Note: combined || undefined }
+                }))
+            } else {
+                // AI unavailable — deterministic prep-word split, no network
+                setIngreds(normalizePrepWords(ingreds))
+            }
+        } finally {
+            setSanitising(false)
+        }
     }
 
     const removeInstruction = (index: number) => {
@@ -1143,6 +1177,39 @@ export default function CreateRecipe() {
                                 <ShoppingBasket className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
                                 <h2 className="text-lg sm:text-xl font-bold tracking-tight">Ingredients</h2>
                                 <span className="text-xs text-muted-foreground">{ingreds.length} item{ingreds.length === 1 ? '' : 's'}</span>
+                                {ingreds.length > 0 && (
+                                    <div className="ml-auto relative">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIngredMenuOpen(v => !v)}
+                                            disabled={loading || sanitising}
+                                            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                                            title="More actions"
+                                            aria-label="Ingredient actions"
+                                            aria-haspopup="menu"
+                                            aria-expanded={ingredMenuOpen}
+                                        >
+                                            {sanitising ? <Loader2 size={16} className="animate-spin" /> : <MoreHorizontal size={16} />}
+                                        </button>
+                                        {ingredMenuOpen && (
+                                            <>
+                                                <div className="fixed inset-0 z-40" onClick={() => setIngredMenuOpen(false)} aria-hidden />
+                                                <div role="menu" className="absolute right-0 top-full mt-1 z-50 w-56 rounded-xl border border-border bg-card shadow-2xl p-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                    <button
+                                                        type="button"
+                                                        role="menuitem"
+                                                        onClick={() => { setIngredMenuOpen(false); sanitiseIngredients() }}
+                                                        disabled={sanitising}
+                                                        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold text-foreground/85 hover:bg-secondary text-left transition-colors disabled:opacity-50"
+                                                    >
+                                                        {sanitising ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} className="text-muted-foreground" />}
+                                                        Sanitise ingredients
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <RecipeIngredientInput onAdd={handleIngredientAdded} disabled={loading} />

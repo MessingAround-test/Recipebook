@@ -67,7 +67,7 @@ Extract the following information:
    - 'Name': String (e.g., "Chicken Breast"). Do NOT include the amount or unit in this field.
    - 'Amount': String or Number (e.g., "500", "1.5", or "1/2"). This MUST be a numeric or fractional value only. Do NOT include unit strings like "g" or "cups" here.
    - 'AmountType': String. This MUST be one of the following exact keys: ${VALID_UNITS.join(', ')}.
-   - 'Note': String. Prep work and other details about the ingredient (e.g. "chopped", "finely diced", "at room temperature", "plus extra for frying"). Keep 'Name' as just the core ingredient — e.g. "chopped garlic" -> Name: "Garlic", Note: "chopped".
+   - 'Note': String. Prep work and other details about the ingredient (e.g. "chopped", "finely diced", "at room temperature", "plus extra for frying"). Keep 'Name' as just the core ingredient — e.g. "chopped garlic" -> Name: "Garlic", Note: "chopped". Only physical preparation actions go in 'Note'; variety/grade descriptors that are part of the ingredient itself (e.g. "extra virgin" olive oil, "white wine" vinegar, "spring" onions, "baby" spinach) must stay in 'Name'.
 3. 'instructions': Array of objects with:
    - 'Text': The step description. Each step MUST be self-contained and include the relevant ingredient quantities inline (e.g. "Fry 500g chicken for 5 minutes" instead of "Fry the chicken").
    - 'Note': String (Optional tip or step number).
