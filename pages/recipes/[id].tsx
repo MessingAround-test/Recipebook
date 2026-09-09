@@ -1,8 +1,8 @@
 import { Layout } from '../../components/Layout'
 import { PageHeader } from '../../components/PageHeader'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { Button } from '../../components/ui/button'
-import { Flame, DollarSign, Clock, Utensils, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff, RotateCcw, RefreshCw } from 'lucide-react'
+import { Flame, DollarSign, Clock, Utensils, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil } from 'lucide-react'
 import Router, { useRouter } from 'next/router'
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
 import IngredientCard from '../../components/IngredientCard'
@@ -131,6 +131,55 @@ function sortTimersByStartTime(timers: any[]) {
     return [...timers].sort((a, b) => calculateTimerStartTime(timers, a) - calculateTimerStartTime(timers, b))
 }
 
+function timersDependingOn(timers: any[], timerId: string): Set<string> {
+    const dependents = new Set<string>([timerId])
+    let changed = true
+    while (changed) {
+        changed = false
+        for (const t of timers) {
+            if (dependents.has(t.id)) continue
+            if ((t.dependencies || []).some((d: any) => dependents.has(d.timerId))) {
+                dependents.add(t.id)
+                changed = true
+            }
+        }
+    }
+    return dependents
+}
+
+type FlowItem = { kind: 'prep' | 'step'; stepIndex: number; flowIndex: number }
+
+// The cooking flow: an optional prep run-through first (only when the recipe
+// has prep work), then the instruction steps. Timers attach to their step as a
+// poke-out tab underneath the card instead of being flow items.
+function buildFlowItems(instructions: any[], prepWork: any[]): FlowItem[] {
+    const items: FlowItem[] = []
+    if ((prepWork || []).length > 0) {
+        items.push({ kind: 'prep', stepIndex: -1, flowIndex: items.length })
+    }
+    ;(instructions || []).forEach((_: any, i: number) => {
+        items.push({ kind: 'step', stepIndex: i, flowIndex: items.length })
+    })
+    return items
+}
+
+// Step index for each item of the OLD timer-interleaved flow — used only to
+// migrate sessions saved by the previous layout to step indices.
+function legacyFlowStepIndices(instructions: any[], cookingTimers: any[]): number[] {
+    const out: number[] = []
+    const timerCounts: Record<number, number> = {}
+    ;(cookingTimers || []).forEach((t: any) => {
+        if (t.type !== 'timer') return
+        const si = typeof t.stepIndex === 'number' ? Math.max(0, t.stepIndex) : 0
+        timerCounts[si] = (timerCounts[si] || 0) + 1
+    })
+    for (let i = 0; i < (instructions || []).length; i++) {
+        out.push(i)
+        for (let n = 0; n < (timerCounts[i] || 0); n++) out.push(i)
+    }
+    return out
+}
+
 export default function RecipeDetail() {
     const router = useRouter()
     const { id } = router.query
@@ -146,8 +195,7 @@ export default function RecipeDetail() {
     const [filters, setFilters] = useState<string[]>([])
     const [loading, setLoading] = useState(false)
     const [isCookingMode, setIsCookingMode] = useState(false)
-    const [currentStep, setCurrentStep] = useState(0)
-    const [prepSheetOpen, setPrepSheetOpen] = useState(false)
+    const [currentFlow, setCurrentFlow] = useState(0)
 
     // Metadata fields
     const [recipeTime, setRecipeTime] = useState<string>('')
@@ -183,11 +231,12 @@ export default function RecipeDetail() {
     // Cooking timer state
     const [cookingTimers, setCookingTimers] = useState<any[]>([])
     const [activeSession, setActiveSession] = useState<Record<string, { endTime: number | null; remaining: number; status: string; checkpointsHit: string[] }>>({})
-    const [timerSheetOpen, setTimerSheetOpen] = useState(false)
+    const [activeSheet, setActiveSheet] = useState<'none' | 'prep' | 'ingredients' | 'timers'>('none')
+    const [alarmPopupClosed, setAlarmPopupClosed] = useState<Set<string>>(new Set())
     const [customTimers, setCustomTimers] = useState<{ id: string; name: string; duration: number }[]>([])
     const [customTimerName, setCustomTimerName] = useState("")
     const [customTimerMinutes, setCustomTimerMinutes] = useState("")
-    const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set())
+    const [doneFlow, setDoneFlow] = useState<Set<number>>(new Set())
     const [finishConfirm, setFinishConfirm] = useState(false)
     const [resetConfirm, setResetConfirm] = useState(false)
     const [clearResidualPrompt, setClearResidualPrompt] = useState({ show: false, recipeName: '', recipeId: '' })
@@ -196,12 +245,73 @@ export default function RecipeDetail() {
     const [editTimerSeconds, setEditTimerSeconds] = useState("")
     const [customExtendId, setCustomExtendId] = useState<string | null>(null)
     const [customExtendMin, setCustomExtendMin] = useState("")
-    const [acknowledgedTimers, setAcknowledgedTimers] = useState<Set<string>>(new Set())
+
+    // Recipe timer editing (persisted to the recipe document)
+    const [editingRecipeTimerId, setEditingRecipeTimerId] = useState<string | null>(null)
+    const [editTimerName, setEditTimerName] = useState("")
+    const [editTimerDuration, setEditTimerDuration] = useState("")
+    const [editTimerStep, setEditTimerStep] = useState("0")
+    const [editTimerDependsOn, setEditTimerDependsOn] = useState("start")
+    const [editTimerOffset, setEditTimerOffset] = useState("0")
+    const [isExtractingTimers, setIsExtractingTimers] = useState(false)
+    const [reExtractConfirm, setReExtractConfirm] = useState(false)
+    const [addingRecipeTimer, setAddingRecipeTimer] = useState(false)
+    const [newTimerName, setNewTimerName] = useState("")
+    const [newTimerMinutes, setNewTimerMinutes] = useState("")
+
+    // Cooking flow: prep run-through (if any) then the instruction steps.
+    // Timers attach to their step as a poke-out tab underneath the card.
+    const flowItems = useMemo<FlowItem[]>(() => buildFlowItems(instructions || [], prepWork), [instructions, prepWork])
+
+    // Recipe timers grouped by the instruction step they assist
+    const timersByStep = useMemo(() => {
+        const map: Record<number, any[]> = {}
+        const lastIdx = Math.max(0, (instructions || []).length - 1)
+        cookingTimers.forEach((t: any) => {
+            if (t.type !== 'timer') return
+            const si = typeof t.stepIndex === 'number' ? Math.min(Math.max(0, t.stepIndex), lastIdx) : 0
+            ;(map[si] = map[si] || []).push(t)
+        })
+        Object.keys(map).forEach(k => {
+            map[Number(k)] = sortTimersByStartTime(map[Number(k)])
+        })
+        return map
+    }, [instructions, cookingTimers])
+
+    // Per-step ingredient/prep recommendations (computed once per step, read in cards)
+    const ingredsByStep = useMemo(() => {
+        const map: Record<number, { recommended: any[]; others: any[] }> = {}
+        ;(instructions || []).forEach((_: any, i: number) => {
+            map[i] = getRecommendedIngredients(instructions[i]?.Text || '', listIngreds || [])
+        })
+        return map
+    }, [instructions, listIngreds])
+
+    const prepByStep = useMemo(() => {
+        const map: Record<number, { recommended: any[]; others: any[] }> = {}
+        ;(instructions || []).forEach((_: any, i: number) => {
+            map[i] = getRecommendedPrepWork(instructions[i]?.Text || '', prepWork || [])
+        })
+        return map
+    }, [instructions, prepWork])
+
+    const cardRefs = useRef<Record<number, HTMLDivElement | null>>({})
+
+    // Keep the current step centered in the timeline whenever it changes
+    useEffect(() => {
+        if (!isCookingMode) return
+        const el = cardRefs.current[currentFlow]
+        if (el) {
+            const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            el.scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'center' })
+        }
+    }, [currentFlow, isCookingMode])
 
     const costSavedRef = useRef(false)
 
-    const totalTimeEstimate = (prepWork || []).filter((p: any) => !p.optional).reduce((sum: number, p: any) => sum + (p.timeEstimate || 0), 0)
-        + (instructions || []).reduce((sum: number, i: any) => sum + (i.time || 0), 0)
+    const prepTimeEstimate = (prepWork || []).filter((p: any) => !p.optional).reduce((sum: number, p: any) => sum + (p.timeEstimate || 0), 0)
+    const cookTimeEstimate = (instructions || []).reduce((sum: number, i: any) => sum + (i.time || 0), 0)
+    const totalTimeEstimate = prepTimeEstimate + cookTimeEstimate
 
     async function openModal(ingredName: string) {
         setIsOpen(true)
@@ -711,8 +821,69 @@ export default function RecipeDetail() {
         })
     }
 
-    const extractTimers = async () => {
-        if (!id || !recipeName || cookingTimers.length > 0) return
+    const updateRecipeTimers = (timers: any[], removedIds: string[] = []) => {
+        setCookingTimers(timers)
+        if (removedIds.length > 0) {
+            setActiveSession(prev => {
+                const next = { ...prev }
+                for (const rid of removedIds) delete next[rid]
+                return next
+            })
+        }
+        saveTimers(timers)
+    }
+
+    const deleteRecipeTimer = (timerId: string) => {
+        const childIds = cookingTimers.filter((t: any) => t.parentTimerId === timerId).map((t: any) => t.id)
+        const updated = cookingTimers
+            .filter((t: any) => t.id !== timerId && t.parentTimerId !== timerId)
+            .map((t: any) => {
+                if (!t.dependencies?.some((d: any) => d.timerId === timerId)) return t
+                const remainingDeps = t.dependencies.filter((d: any) => d.timerId !== timerId)
+                return { ...t, dependencies: remainingDeps.length > 0 ? remainingDeps : [{ timerId: 'start', offset: 0 }] }
+            })
+        updateRecipeTimers(updated, [timerId, ...childIds])
+    }
+
+    const saveRecipeTimerEdit = (timerId: string) => {
+        const name = editTimerName.trim()
+        const duration = parseInt(editTimerDuration)
+        if (!name || !duration || duration <= 0) return
+        const updated = cookingTimers.map((t: any) => {
+            if (t.id !== timerId) return t
+            const dependencies = editTimerDependsOn === 'start'
+                ? [{ timerId: 'start', offset: 0 }]
+                : [{ timerId: editTimerDependsOn, offset: parseInt(editTimerOffset) || 0 }]
+            const stepIndex = instructions.length > 0 ? (parseInt(editTimerStep) || 0) : t.stepIndex
+            return { ...t, name, duration, dependencies, stepIndex }
+        })
+        updateRecipeTimers(updated)
+        setEditingRecipeTimerId(null)
+    }
+
+    const addRecipeTimer = () => {
+        const name = newTimerName.trim()
+        const mins = parseInt(newTimerMinutes)
+        if (!name || !mins || mins <= 0) return
+        const newTimer = {
+            id: `timer-manual-${Date.now()}`,
+            type: 'timer',
+            name,
+            duration: mins,
+            dependencies: [{ timerId: 'start', offset: 0 }],
+            stepIndex: instructions.length > 0 ? instructions.length - 1 : 0,
+            notes: ''
+        }
+        updateRecipeTimers([...cookingTimers, newTimer])
+        setNewTimerName("")
+        setNewTimerMinutes("")
+        setAddingRecipeTimer(false)
+    }
+
+    const extractTimers = async (force = false) => {
+        if (!id || !recipeName) return
+        if (!force && cookingTimers.length > 0) return
+        setIsExtractingTimers(true)
         try {
             const token = localStorage.getItem('Token') || ""
             const ingredNames = (listIngreds || []).map((i: any) => i.name).join(', ')
@@ -722,19 +893,128 @@ export default function RecipeDetail() {
             })
             const data = await res.json()
             if (data.success && data.data?.timers && data.data.timers.length > 0) {
+                const replacedIds = cookingTimers.map((t: any) => t.id)
                 setCookingTimers(data.data.timers)
+                setActiveSession(prev => {
+                    const next = { ...prev }
+                    for (const rid of replacedIds) delete next[rid]
+                    return next
+                })
                 await saveTimers(data.data.timers)
             }
         } catch (e) {
             console.error('Timer extraction failed:', e)
         }
+        setIsExtractingTimers(false)
     }
 
-    function getRemaining(session: { endTime: number | null; remaining: number; status: string }) {
-        if (session.status === 'active' && session.endTime) {
-            return Math.max(0, Math.round((session.endTime - Date.now()) / 1000))
+    // Remaining seconds, aligned so the mm:ss display steps down exactly once
+    // per real second (ceil, never repeats or skips) instead of rounding at
+    // arbitrary render times. Signed: negative while a timer is overdue.
+    function getRemaining(session: { endTime: number | null; remaining: number; status: string }, now: number = Date.now()) {
+        if ((session.status === 'active' || session.status === 'overdue') && session.endTime) {
+            return Math.ceil((session.endTime - now) / 1000)
         }
         return session.remaining
+    }
+
+    // Progress in percent from raw milliseconds so the bar moves continuously
+    // with the tick clock instead of jumping when the displayed second flips.
+    function getTimerProgress(timer: any, session: any, now: number) {
+        const totalMs = (timer.duration || 0) * 60 * 1000
+        if (totalMs <= 0 || !session) return 0
+        let elapsedMs: number
+        if ((session.status === 'active' || session.status === 'overdue') && session.endTime) {
+            elapsedMs = totalMs - Math.max(0, session.endTime - now)
+        } else {
+            elapsedMs = totalMs - (session.remaining || 0) * 1000
+        }
+        return Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100))
+    }
+
+    // Shared timer controls (used by timeline cards, timers sheet and desktop sidebar)
+    const updateTimerSession = (timerId: string, patch: (prev: any) => any) => {
+        setActiveSession(prev => ({ ...prev, [timerId]: patch(prev[timerId]) }))
+    }
+
+    const getTimerStatus = (timerId: string) => activeSession[timerId]?.status || 'pending'
+
+    const startTimer = (timer: any) => {
+        updateTimerSession(timer.id, () => ({
+            endTime: Date.now() + timer.duration * 60 * 1000,
+            remaining: timer.duration * 60,
+            status: 'active',
+            checkpointsHit: []
+        }))
+    }
+
+    const pauseResumeTimer = (timer: any) => {
+        updateTimerSession(timer.id, (session: any) => {
+            if (!session) return session
+            if (session.status === 'active') {
+                return { endTime: null, remaining: getRemaining(session), status: 'paused', checkpointsHit: session.checkpointsHit }
+            }
+            return { endTime: Date.now() + session.remaining * 1000, remaining: session.remaining, status: 'active', checkpointsHit: session.checkpointsHit }
+        })
+    }
+
+    const extendTimer = (timer: any, minutes: number) => {
+        updateTimerSession(timer.id, (session: any) => ({
+            endTime: Date.now() + minutes * 60 * 1000,
+            remaining: minutes * 60,
+            status: 'active',
+            checkpointsHit: session?.checkpointsHit || []
+        }))
+    }
+
+    const completeTimer = (timer: any) => {
+        updateTimerSession(timer.id, (session: any) => ({
+            endTime: null,
+            remaining: 0,
+            status: 'completed',
+            checkpointsHit: session?.checkpointsHit || []
+        }))
+    }
+
+    const resetTimer = (timer: any) => {
+        updateTimerSession(timer.id, () => ({
+            endTime: null,
+            remaining: timer.duration * 60,
+            status: 'pending',
+            checkpointsHit: []
+        }))
+    }
+
+    const setTimerRemaining = (timer: any, totalSecs: number) => {
+        updateTimerSession(timer.id, (session: any) => ({
+            endTime: Date.now() + totalSecs * 1000,
+            remaining: totalSecs,
+            status: 'active',
+            checkpointsHit: session?.checkpointsHit || []
+        }))
+    }
+
+    const addTimerSeconds = (timer: any, seconds: number) => {
+        updateTimerSession(timer.id, (session: any) => {
+            if (session?.status === 'active' || session?.status === 'overdue') {
+                return { ...session, endTime: (session.endTime || Date.now()) + seconds * 1000, status: 'active' }
+            }
+            return { ...session, remaining: (session.remaining || 0) + seconds }
+        })
+    }
+
+    const closeCooking = () => {
+        setActiveSession({})
+        setCustomTimers([])
+        setAlarmPopupClosed(new Set())
+        if (id) {
+            const keys = Object.keys(localStorage).filter(k => k.startsWith('timer-session-'))
+            keys.forEach(k => localStorage.removeItem(k))
+        }
+        setIsCookingMode(false)
+        setCurrentFlow(0)
+        setDoneFlow(new Set())
+        setActiveSheet('none')
     }
 
     const playAlarm = () => {
@@ -832,9 +1112,10 @@ export default function RecipeDetail() {
         }
     }, [router.isReady])
 
-    // Auto-extract timers if none exist
+    // Auto-extract timers if none exist and extraction hasn't succeeded before
+    // (keeps deliberately deleted timers from being re-added on reload)
     useEffect(() => {
-        if (recipe && recipeName && listIngreds.length > 0 && instructions.length > 0 && cookingTimers.length === 0) {
+        if (recipe && recipeName && listIngreds.length > 0 && instructions.length > 0 && cookingTimers.length === 0 && !recipe.timersChecked) {
             extractTimers()
         }
     }, [recipe, recipeName, listIngreds, instructions])
@@ -847,7 +1128,8 @@ export default function RecipeDetail() {
             if (key !== `timer-session-${id}`) {
                 try {
                     const session = JSON.parse(localStorage.getItem(key) || '{}')
-                    const hasActive = Object.values(session).some((s: any) => s.status === 'active' || s.status === 'paused')
+                    const sessions = session.timers ? Object.values(session.timers) : Object.values(session)
+                    const hasActive = (sessions as any[]).some((s: any) => s && (s.status === 'active' || s.status === 'paused'))
                     if (hasActive) {
                         const recipeId = key.replace('timer-session-', '')
                         setClearResidualPrompt({ show: true, recipeName: 'another recipe', recipeId })
@@ -858,83 +1140,160 @@ export default function RecipeDetail() {
         }
     }, [id])
 
-    // Load session from localStorage
+    // Load session from localStorage. Migrates older formats:
+    //  - v-less "timer-interleaved flow" indices -> step indices
+    //  - oldest instruction-index based sessions
     useEffect(() => {
-        if (!id) return
+        if (!id || flowItems.length === 0) return
         try {
             const saved = localStorage.getItem(`timer-session-${id}`)
             if (saved) {
                 const parsed = JSON.parse(saved)
                 if (parsed.timers) setActiveSession(parsed.timers)
-                if (parsed.completedSteps) setCompletedSteps(new Set(parsed.completedSteps))
-                if (parsed.currentStep != null) {
-                    setCurrentStep(parsed.currentStep)
-                } else if (parsed.timers && cookingTimers?.length) {
-                    const activeTimers = Object.entries(parsed.timers)
+
+                const legacy = legacyFlowStepIndices(instructions || [], cookingTimers)
+                const prepShift = (prepWork || []).length > 0 ? 1 : 0
+                const toFlowIndices = (idxs: any[]): number[] => {
+                    const mapped: number[] = parsed.v === 4
+                        ? idxs
+                        : parsed.v === 3
+                            ? idxs.map((i: number) => i + prepShift)
+                            : idxs.map((i: number) => (typeof legacy[i] === 'number' ? legacy[i] + prepShift : i))
+                    return mapped.filter((fi: number) => fi >= 0 && fi < flowItems.length)
+                }
+
+                if (Array.isArray(parsed.doneFlow)) {
+                    setDoneFlow(new Set(toFlowIndices(parsed.doneFlow)))
+                } else if (Array.isArray(parsed.completedSteps)) {
+                    const flowSet = new Set<number>()
+                    parsed.completedSteps.forEach((si: number) => {
+                        const fi = flowItems.findIndex(f => f.stepIndex === si)
+                        if (fi >= 0) flowSet.add(fi)
+                    })
+                    setDoneFlow(flowSet)
+                }
+                if (typeof parsed.currentFlow === 'number') {
+                    const mapped = toFlowIndices([parsed.currentFlow])
+                    if (mapped.length > 0) {
+                        setCurrentFlow(Math.min(mapped[0], flowItems.length - 1))
+                    } else {
+                        setCurrentFlow(Math.min(Math.max(0, parsed.currentFlow), flowItems.length - 1))
+                    }
+                } else if (typeof parsed.currentStep === 'number') {
+                    const fi = flowItems.findIndex(f => f.stepIndex === parsed.currentStep)
+                    if (fi >= 0) setCurrentFlow(fi)
+                } else if (parsed.timers) {
+                    const activeFlows = Object.entries(parsed.timers)
                         .filter(([_, s]: [string, any]) => s.status === 'active' || s.status === 'paused')
-                        .map(([tid]) => cookingTimers.find((t: any) => t.id === tid))
-                        .filter(Boolean)
-                    if (activeTimers.length > 0) {
-                        const maxStep = Math.max(...activeTimers.map((t: any) => t.stepIndex ?? 0))
-                        setCurrentStep(maxStep)
+                        .map(([tid]) => {
+                            const t = cookingTimers.find((x: any) => x.id === tid)
+                            if (!t) return -1
+                            const si = typeof t.stepIndex === 'number' ? t.stepIndex : 0
+                            return flowItems.findIndex(f => f.stepIndex === si)
+                        })
+                        .filter((fi: number) => fi >= 0)
+                    if (activeFlows.length > 0) {
+                        const maxFlow = Math.max(...activeFlows)
+                        setCurrentFlow(maxFlow)
                         const prior = new Set<number>()
-                        for (let i = 0; i < maxStep; i++) prior.add(i)
-                        setCompletedSteps(prior)
+                        for (let i = 0; i < maxFlow; i++) prior.add(i)
+                        setDoneFlow(prior)
                     }
                 }
             }
         } catch {}
-    }, [id, cookingTimers])
+    }, [id, flowItems, cookingTimers, instructions])
 
     // Save session to localStorage
     useEffect(() => {
         if (!id) return
         try {
             localStorage.setItem(`timer-session-${id}`, JSON.stringify({
+                v: 4,
                 timers: activeSession,
-                currentStep,
-                completedSteps: Array.from(completedSteps)
+                currentFlow,
+                doneFlow: Array.from(doneFlow)
             }))
         } catch {}
-    }, [activeSession, currentStep, completedSteps, id])
+    }, [activeSession, currentFlow, doneFlow, id])
 
-    // Countdown engine
+    // Tick clock + countdown engine. A 100ms clock drives re-renders while any
+    // timer runs, so countdowns step at true second boundaries (ceiled) and
+    // progress bars glide; completion/checkpoint detection fires within ~100ms
+    // of the real end time instead of up to a second off.
+    const [nowMs, setNowMs] = useState(() => Date.now())
+    const activeSessionRef = useRef(activeSession)
+    activeSessionRef.current = activeSession
+    const lastAlarmAtRef = useRef(0)
+
     useEffect(() => {
+        if (!isCookingMode) return
         const interval = setInterval(() => {
-            setActiveSession(prev => {
-                const next = { ...prev }
-                let changed = false
-                for (const [timerId, session] of Object.entries(next)) {
-                    if (session.status !== 'active' || !session.endTime) continue
-                    const remaining = Math.max(0, Math.round((session.endTime - Date.now()) / 1000))
-                    if (remaining <= 0) {
-                        next[timerId] = { ...session, status: 'completed', remaining: 0 }
-                        changed = true
-                        playAlarm()
-                        sendNotification('Timer Complete', `${getTimerById(cookingTimers, timerId)?.name || 'Timer'} is done!`)
-                    }
-                    // Check checkpoints
-                    const timer = getTimerById(cookingTimers, timerId)
-                    if (timer) {
-                        const checkpoints = cookingTimers.filter((t: any) => t.parentTimerId === timerId && t.type === 'checkpoint')
-                        for (const ckpt of checkpoints) {
-                            if (session.checkpointsHit?.includes(ckpt.id)) continue
-                            const ckptOffset = ckpt.dependencies?.[0]?.offset || 0
-                            const elapsed = (timer.duration * 60) - remaining
-                            if (elapsed >= ckptOffset) {
-                                next[timerId] = { ...next[timerId], checkpointsHit: [...(next[timerId].checkpointsHit || []), ckpt.id] }
-                                changed = true
-                                playAlarm()
-                                sendNotification('Checkpoint', `${ckpt.name} reached!`)
-                            }
+            const now = Date.now()
+            const sessions = activeSessionRef.current
+            const isRunning = (s: any) => (s.status === 'active' || s.status === 'overdue') && s.endTime
+            const hasActive = Object.values(sessions).some(isRunning)
+            if (!hasActive) return
+
+            setNowMs(now)
+
+            // Keep ringing every 4s while a timer sits overdue and unacknowledged
+            const hasOverdue = Object.values(sessions).some((s: any) => s.status === 'overdue')
+            if (hasOverdue && now - lastAlarmAtRef.current >= 4000) {
+                playAlarm()
+                lastAlarmAtRef.current = now
+            }
+
+            const updates: Record<string, any> = {}
+            for (const [timerId, session] of Object.entries(sessions)) {
+                if (session.status !== 'active' || !session.endTime) continue
+                const remaining = Math.max(0, Math.ceil((session.endTime - now) / 1000))
+                const finished = session.endTime - now <= 0
+                if (finished) {
+                    // Go overdue rather than completing: count into the negative and
+                    // keep ringing until the user dismisses (Done ✓) or extends.
+                    updates[timerId] = { ...session, status: 'overdue' }
+                    playAlarm()
+                    lastAlarmAtRef.current = now
+                    sendNotification('Timer Complete', `${getTimerById(cookingTimers, timerId)?.name || 'Timer'} is done!`)
+                    // A fresh overdue event — make sure the alarm popup shows for it again
+                    setAlarmPopupClosed(prev => {
+                        if (!prev.has(timerId)) return prev
+                        const next = new Set(Array.from(prev))
+                        next.delete(timerId)
+                        return next
+                    })
+                    continue
+                }
+                // Check checkpoints
+                const timer = getTimerById(cookingTimers, timerId)
+                if (timer) {
+                    const checkpoints = cookingTimers.filter((t: any) => t.parentTimerId === timerId && t.type === 'checkpoint')
+                    for (const ckpt of checkpoints) {
+                        if (session.checkpointsHit?.includes(ckpt.id)) continue
+                        const ckptOffset = ckpt.dependencies?.[0]?.offset || 0
+                        const elapsed = (timer.duration * 60) - remaining
+                        if (elapsed >= ckptOffset) {
+                            const base = updates[timerId] || session
+                            updates[timerId] = { ...base, checkpointsHit: [...(base.checkpointsHit || []), ckpt.id] }
+                            playAlarm()
+                            sendNotification('Checkpoint', `${ckpt.name} reached!`)
                         }
                     }
                 }
-                return changed ? next : prev
-            })
-        }, 1000)
+            }
+            if (Object.keys(updates).length > 0) {
+                setActiveSession(prev => {
+                    const next = { ...prev }
+                    for (const [k, v] of Object.entries(updates)) {
+                        next[k] = { ...(next[k] || {}), ...v }
+                    }
+                    return next
+                })
+            }
+        }, 100)
         return () => clearInterval(interval)
-    }, [cookingTimers, id])
+    }, [isCookingMode, cookingTimers, id])
 
     const handleClick = () => {
         document.querySelector<HTMLInputElement>('input[type="file"]')?.click()
@@ -1225,7 +1584,7 @@ export default function RecipeDetail() {
                     <div className="p-6 md:p-8 border-0 sm:border-t sm:border-border/5 bg-muted/10">
                         <div className="flex flex-col sm:flex-row gap-3">
                             <Button
-                                onClick={() => { setIsCookingMode(true); setTimerSheetOpen(false); setPrepSheetOpen(false) }}
+                                onClick={() => { setIsCookingMode(true); setActiveSheet('none') }}
                                 className="flex-[2] py-7 sm:py-8 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xl shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                             >
                                 <ChefHat className="w-6 h-6" />
@@ -1547,21 +1906,21 @@ export default function RecipeDetail() {
                                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Category</p>
                                 </div>
                             )}
-                            {totalTimeEstimate > 0 && (
+                            {prepTimeEstimate > 0 && (
                                 <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 flex flex-col items-center text-center">
-                                    <p className="text-2xl font-black text-foreground/90">{totalTimeEstimate}<span className="text-sm font-semibold text-muted-foreground ml-0.5">min</span></p>
+                                    <p className="text-2xl font-black text-foreground/90">{prepTimeEstimate}<span className="text-sm font-semibold text-muted-foreground ml-0.5">min</span></p>
                                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Prep Time</p>
                                 </div>
                             )}
-                            {instructions.filter((i: any) => i.time).length > 0 && (
+                            {cookTimeEstimate > 0 && (
                                 <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 flex flex-col items-center text-center">
-                                    <p className="text-2xl font-black text-foreground/90">{instructions.reduce((sum: number, i: any) => sum + (i.time || 0), 0)}<span className="text-sm font-semibold text-muted-foreground ml-0.5">min</span></p>
+                                    <p className="text-2xl font-black text-foreground/90">{cookTimeEstimate}<span className="text-sm font-semibold text-muted-foreground ml-0.5">min</span></p>
                                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Cook Time</p>
                                 </div>
                             )}
-                            {totalTimeEstimate > 0 && instructions.filter((i: any) => i.time).length > 0 && (
+                            {prepTimeEstimate > 0 && cookTimeEstimate > 0 && (
                                 <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex flex-col items-center text-center">
-                                    <p className="text-2xl font-black text-rose-500">{totalTimeEstimate + instructions.reduce((sum: number, i: any) => sum + (i.time || 0), 0)}<span className="text-sm font-semibold text-rose-500/60 ml-0.5">min</span></p>
+                                    <p className="text-2xl font-black text-rose-500">{totalTimeEstimate}<span className="text-sm font-semibold text-rose-500/60 ml-0.5">min</span></p>
                                     <p className="text-[10px] text-rose-500/60 font-bold uppercase tracking-widest">Total</p>
                                 </div>
                             )}
@@ -1573,19 +1932,197 @@ export default function RecipeDetail() {
                             )}
                         </div>
 
-                        {cookingTimers.length > 0 && (
-                            <div className="mt-6">
-                                <p className="text-xs font-bold text-rose-500/60 uppercase tracking-widest mb-3">Cooking Timers ({cookingTimers.filter((t: any) => t.type === 'timer').length})</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {cookingTimers.filter((t: any) => t.type === 'timer').map((timer: any) => (
-                                        <div key={timer.id} className="px-3 py-2 rounded-xl bg-rose-500/5 border border-rose-500/10 text-sm">
-                                            <span className="font-semibold text-foreground/80">{timer.name}</span>
-                                            <span className="text-rose-500/60 ml-2">{timer.duration} min</span>
-                                        </div>
-                                    ))}
+                        <div className="mt-6">
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                                <p className="text-xs font-bold text-rose-500/60 uppercase tracking-widest">Cooking Timers ({cookingTimers.filter((t: any) => t.type === 'timer').length})</p>
+                                <div className="flex items-center gap-3">
+                                    {isExtractingTimers && <Loader2 className="w-4 h-4 animate-spin text-rose-500" />}
+                                    <button
+                                        onClick={() => setReExtractConfirm(true)}
+                                        disabled={isExtractingTimers}
+                                        className="text-xs text-rose-500/60 hover:text-rose-500 disabled:opacity-50 transition-colors"
+                                    >
+                                        Re-extract
+                                    </button>
                                 </div>
                             </div>
-                        )}
+
+                            {cookingTimers.filter((t: any) => t.type === 'timer').length === 0 && !isExtractingTimers && (
+                                <p className="text-foreground/40 text-sm mb-3">No cooking timers... add one manually or click Re-extract.</p>
+                            )}
+
+                            <div className="space-y-2">
+                                {cookingTimers.filter((t: any) => t.type === 'timer').map((timer: any) => {
+                                    const depRef = timer.dependencies?.[0]?.timerId
+                                    const depTimerId = depRef && depRef !== 'start' ? depRef : null
+                                    const depTimer = depTimerId ? getTimerById(cookingTimers, depTimerId) : null
+                                    const depOffset = depTimerId ? (timer.dependencies[0].offset || 0) : 0
+                                    const excludedIds = timersDependingOn(cookingTimers, timer.id)
+                                    const parentOptions = cookingTimers.filter((t: any) => t.type === 'timer' && t.id !== timer.id && !excludedIds.has(t.id))
+                                    return (
+                                        <div key={timer.id} className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/10 text-sm">
+                                            {editingRecipeTimerId === timer.id ? (
+                                                <div>
+                                                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                                                        <input
+                                                            value={editTimerName}
+                                                            onChange={(e) => setEditTimerName(e.target.value)}
+                                                            placeholder="Timer name"
+                                                            className="flex-1 min-w-[10rem] bg-transparent border-b border-rose-500/30 focus:border-rose-500 outline-none text-foreground/80"
+                                                            autoFocus
+                                                        />
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            value={editTimerDuration}
+                                                            onChange={(e) => setEditTimerDuration(e.target.value)}
+                                                            placeholder="min"
+                                                            className="w-16 bg-transparent border-b border-rose-500/30 focus:border-rose-500 outline-none text-foreground/80"
+                                                        />
+                                                        <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">min</span>
+                                                    </div>
+                                                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                                        {instructions.length > 0 && (
+                                                            <>
+                                                                <span className="text-[10px] font-bold uppercase tracking-widest">Step</span>
+                                                                <select
+                                                                    value={editTimerStep}
+                                                                    onChange={(e) => setEditTimerStep(e.target.value)}
+                                                                    className="bg-secondary text-foreground/80 rounded-lg px-2 py-1 border border-rose-500/20 focus:outline-none focus:border-rose-500/50"
+                                                                >
+                                                                    {instructions.map((_: any, i: number) => (
+                                                                        <option key={i} value={String(i)}>Step {i + 1}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </>
+                                                        )}
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest">Starts</span>
+                                                        <select
+                                                            value={editTimerDependsOn}
+                                                            onChange={(e) => setEditTimerDependsOn(e.target.value)}
+                                                            className="bg-secondary text-foreground/80 rounded-lg px-2 py-1 border border-rose-500/20 focus:outline-none focus:border-rose-500/50"
+                                                        >
+                                                            <option value="start">Immediately</option>
+                                                            {parentOptions.map((pt: any) => (
+                                                                <option key={pt.id} value={pt.id}>{pt.name}</option>
+                                                            ))}
+                                                        </select>
+                                                        {editTimerDependsOn !== 'start' && (
+                                                            <>
+                                                                <input
+                                                                    type="number"
+                                                                    value={editTimerOffset}
+                                                                    onChange={(e) => setEditTimerOffset(e.target.value)}
+                                                                    placeholder="0"
+                                                                    className="w-16 bg-transparent border-b border-rose-500/30 focus:border-rose-500 outline-none text-foreground/80"
+                                                                />
+                                                                <span className="text-[10px] text-rose-500/40">min (negative = before it finishes)</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-3 mt-2">
+                                                        <button
+                                                            onClick={() => saveRecipeTimerEdit(timer.id)}
+                                                            className="text-xs font-bold text-rose-500 hover:text-rose-400 transition-colors"
+                                                        >
+                                                            Save
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setEditingRecipeTimerId(null)}
+                                                            className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex flex-wrap items-baseline gap-x-2">
+                                                            <span className="font-semibold text-foreground/80">{timer.name}</span>
+                                                            <span className="text-rose-500/60">{timer.duration} min</span>
+                                                        </div>
+                                                        {(depTimer || (timer.stepIndex != null && instructions.length > 0)) && (
+                                                            <p className="text-[10px] text-rose-500/40 mt-0.5">
+                                                                {timer.stepIndex != null && instructions.length > 0 ? `Step ${timer.stepIndex + 1}` : ''}
+                                                                {timer.stepIndex != null && instructions.length > 0 && depTimer ? ' · ' : ''}
+                                                                {depTimer ? `starts ${depOffset < 0 ? `${-depOffset} min before ${depTimer.name} finishes` : `when ${depTimer.name} finishes`}` : ''}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingRecipeTimerId(timer.id)
+                                                            setEditTimerName(timer.name || '')
+                                                            setEditTimerDuration(String(timer.duration || ''))
+                                                            setEditTimerStep(String(Math.min(timer.stepIndex ?? 0, Math.max(0, instructions.length - 1))))
+                                                            const d = timer.dependencies?.[0]
+                                                            if (d && d.timerId !== 'start' && cookingTimers.some((t: any) => t.id === d.timerId)) {
+                                                                setEditTimerDependsOn(d.timerId)
+                                                                setEditTimerOffset(String(d.offset || 0))
+                                                            } else {
+                                                                setEditTimerDependsOn('start')
+                                                                setEditTimerOffset('0')
+                                                            }
+                                                        }}
+                                                        className="text-rose-500/40 hover:text-rose-500 transition-colors p-1"
+                                                        title="Edit timer"
+                                                    >
+                                                        <Pencil size={14} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteRecipeTimer(timer.id)}
+                                                        className="text-red-400/40 hover:text-red-400 transition-colors p-1"
+                                                        title="Delete timer"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+
+                            {addingRecipeTimer ? (
+                                <div className="flex flex-wrap items-center gap-2 mt-3 p-3 rounded-xl bg-rose-500/5 border border-rose-500/10">
+                                    <input
+                                        value={newTimerName}
+                                        onChange={(e) => setNewTimerName(e.target.value)}
+                                        placeholder="Timer name"
+                                        className="flex-1 min-w-[10rem] bg-transparent border-b border-rose-500/30 focus:border-rose-500 outline-none text-sm text-foreground/80"
+                                        autoFocus
+                                    />
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={newTimerMinutes}
+                                        onChange={(e) => setNewTimerMinutes(e.target.value)}
+                                        placeholder="min"
+                                        className="w-16 bg-transparent border-b border-rose-500/30 focus:border-rose-500 outline-none text-sm text-foreground/80"
+                                    />
+                                    <button
+                                        onClick={addRecipeTimer}
+                                        className="text-xs font-bold text-rose-500 hover:text-rose-400 transition-colors"
+                                    >
+                                        Add
+                                    </button>
+                                    <button
+                                        onClick={() => { setAddingRecipeTimer(false); setNewTimerName(""); setNewTimerMinutes("") }}
+                                        className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={() => setAddingRecipeTimer(true)}
+                                    className="mt-3 flex items-center gap-2 text-sm text-rose-500/60 hover:text-rose-500 transition-colors"
+                                >
+                                    <Plus size={16} /> Add timer
+                                </button>
+                            )}
+                        </div>
 
                         {instructions.filter((i: any) => i.time).length > 1 && (
                             <div className="mt-6">
@@ -1783,1076 +2320,899 @@ export default function RecipeDetail() {
 
                 {/* Cooking Mode Overlay */}
                 {isCookingMode && (() => {
-                    const stepText = instructions[currentStep]?.Text || ''
-                    const { recommended, others } = getRecommendedIngredients(stepText, listIngreds)
-                    const { recommended: recommendedPrep } = getRecommendedPrepWork(stepText, prepWork)
-                    const relevantPrepCount = recommendedPrep.filter((p: any) => !checkedPrep.has(prepWork.indexOf(p))).length
+                    const clampedCurrent = Math.min(currentFlow, Math.max(0, flowItems.length - 1))
+                    const current = flowItems[clampedCurrent]
+                    const currentStepIdx = current ? current.stepIndex : 0
+                    // On the prep step there's no instruction step: show all
+                    // ingredients unsplit in the ingredients sheet.
+                    const currentStepRecs = currentStepIdx >= 0 ? (ingredsByStep[currentStepIdx]?.recommended || []) : []
+                    const currentStepOthers = currentStepIdx >= 0 ? (ingredsByStep[currentStepIdx]?.others || []) : (listIngreds || [])
+                    const currentPrepRecs = prepByStep[currentStepIdx]?.recommended || []
+                    const relevantPrepCount = current && current.kind === 'prep'
+                        ? prepWork.filter((_: any, i: number) => !checkedPrep.has(i)).length
+                        : currentPrepRecs.filter((p: any) => {
+                            const realIdx = prepWork.findIndex((w: any) => w.action === p.action && w.ingredient === p.ingredient)
+                            return realIdx >= 0 && !checkedPrep.has(realIdx)
+                        }).length
+
+                    const isLast = clampedCurrent >= flowItems.length - 1
+                    const currentStepTimers = timersByStep[currentStepIdx] || []
+                    const runningCurrentTimer = currentStepTimers.find((t: any) => ['active', 'paused', 'overdue'].includes(getTimerStatus(t.id)))
+                    const runningTimerCount = cookingTimers.filter((t: any) => t.type === 'timer' && ['active', 'paused', 'overdue'].includes(getTimerStatus(t.id))).length
+                        + customTimers.filter((t: any) => ['active', 'paused', 'overdue'].includes(getTimerStatus(t.id))).length
+                    const allRecipeTimers = sortTimersByStartTime(cookingTimers.filter((t: any) => t.type === 'timer'))
+
+                    const jumpTo = (idx: number) => setCurrentFlow(Math.max(0, Math.min(idx, flowItems.length - 1)))
+                    const goBack = () => setCurrentFlow(Math.max(0, clampedCurrent - 1))
+                    const openSheet = (name: 'prep' | 'ingredients' | 'timers') => setActiveSheet(prev => (prev === name ? 'none' : name))
+
+                    const formatCountdown = (remaining: number) => {
+                        const sign = remaining < 0 ? '-' : ''
+                        const abs = Math.abs(remaining)
+                        const mins = Math.floor(abs / 60)
+                        const secs = abs % 60
+                        return `${sign}${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+                    }
+
+                    const advance = () => {
+                        if (isLast) {
+                            if (runningTimerCount > 0 || customTimers.length > 0) setFinishConfirm(true)
+                            else closeCooking()
+                            return
+                        }
+                        setDoneFlow(prev => new Set([...Array.from(prev), clampedCurrent]))
+                        // Timers the user never started are ticked off as if they
+                        // completed — skipping a step means they manage timing themselves.
+                        ;(timersByStep[flowItems[clampedCurrent].stepIndex] || []).forEach((t: any) => {
+                            if (getTimerStatus(t.id) === 'pending') completeTimer(t)
+                        })
+                        setCurrentFlow(clampedCurrent + 1)
+                    }
+
+                    const nextLabel = isLast ? 'Finish' : 'Next step'
+                    const nextHint = runningCurrentTimer
+                        ? (getTimerStatus(runningCurrentTimer.id) === 'overdue'
+                            ? `${runningCurrentTimer.name || 'Timer'} is overdue`
+                            : `${runningCurrentTimer.name || 'Timer'} keeps running`)
+                        : isLast && runningTimerCount > 0
+                            ? `${runningTimerCount} timer${runningTimerCount > 1 ? 's' : ''} still running`
+                            : ''
+
+                    const renderProgressTrack = (timer: any, progress: number, checkpointsHit: string[]) => {
+                        const checkpoints = cookingTimers.filter((t: any) => t.parentTimerId === timer.id && t.type === 'checkpoint')
+                        const totalSeconds = (timer.duration || 0) * 60
+                        return (
+                            <>
+                                <div className="cooking-progress-track">
+                                    <div className="cooking-progress-fill" style={{ width: `${progress}%` }} />
+                                    {checkpoints.map((ckpt: any) => {
+                                        const offset = ckpt.dependencies?.[0]?.offset || 0
+                                        const pct = totalSeconds > 0 ? (offset / totalSeconds) * 100 : 0
+                                        return (
+                                            <div
+                                                key={ckpt.id}
+                                                className={`cooking-progress-marker ${checkpointsHit.includes(ckpt.id) ? 'is-hit' : ''}`}
+                                                style={{ left: `${pct}%` }}
+                                                title={ckpt.name}
+                                            />
+                                        )
+                                    })}
+                                </div>
+                                {checkpoints.length > 0 && (
+                                    <div className="cooking-progress-labels">
+                                        {checkpoints.map((ckpt: any) => {
+                                            const offset = ckpt.dependencies?.[0]?.offset || 0
+                                            return (
+                                                <span key={ckpt.id} className={checkpointsHit.includes(ckpt.id) ? 'is-hit' : ''}>
+                                                    {ckpt.name} ({offset}m)
+                                                </span>
+                                            )
+                                        })}
+                                    </div>
+                                )}
+                            </>
+                        )
+                    }
+
+                    // First flow item (only when the recipe has prep work):
+                    // a quick run-through of the prep checklist. Ticks are shared
+                    // with the recipe page.
+                    const renderPrepCard = (idx: number, state: 'done' | 'current' | 'upcoming') => {
+                        const total = prepWork.length
+                        const ticked = prepWork.filter((_: any, i: number) => checkedPrep.has(i)).length
+                        return (
+                            <div
+                                key={idx}
+                                ref={(el: HTMLDivElement | null) => { cardRefs.current[idx] = el }}
+                                className="cooking-step-group"
+                            >
+                                <div
+                                    className={`cooking-card cooking-card-prep is-${state} ${state === 'done' ? 'is-clickable' : ''}`}
+                                    onClick={state === 'done' ? () => jumpTo(idx) : undefined}
+                                >
+                                    <div className="cooking-card-top">
+                                        {state === 'current' ? (
+                                            <span className="cooking-card-label is-accent"><ChefHat size={13} /> Prep work · {total - ticked} to do</span>
+                                        ) : state === 'done' ? (
+                                            <span className="cooking-card-label"><Check size={13} strokeWidth={3} /> Prep work</span>
+                                        ) : (
+                                            <span className="cooking-card-label"><ChefHat size={13} /> Prep work</span>
+                                        )}
+                                    </div>
+                                    {state === 'current' ? (
+                                        <>
+                                            <p className="cooking-card-text is-current">Quick prep run — get these ready first</p>
+                                            {renderPrepContent()}
+                                            {ticked === total && (
+                                                <div className="cooking-prep-all-done"><Check size={14} strokeWidth={3} /> All prep done — ready to cook</div>
+                                            )}
+                                            <div className="cooking-current-hint">Ready? Move on below</div>
+                                        </>
+                                    ) : (
+                                        <p className={`cooking-card-text is-${state}`}>
+                                            {ticked > 0 ? `${ticked} of ${total} ticked off` : `${total} task${total > 1 ? 's' : ''} to get ready`}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    const renderStepCard = (item: any, idx: number, state: 'done' | 'current' | 'upcoming', isNext: boolean) => {
+                        const text = instructions[item.stepIndex]?.Text || ''
+                        const recs = ingredsByStep[item.stepIndex]?.recommended || []
+                        const prepRecs = prepByStep[item.stepIndex]?.recommended || []
+                        const uncheckedPrep = prepRecs.filter((p: any) => {
+                            const realIdx = prepWork.findIndex((w: any) => w.action === p.action && w.ingredient === p.ingredient)
+                            return realIdx >= 0 && !checkedPrep.has(realIdx)
+                        })
+                        const showChips = state === 'current' || (state === 'upcoming' && isNext)
+                        const stepTimers = timersByStep[item.stepIndex] || []
+                        return (
+                            <div
+                                key={idx}
+                                ref={(el: HTMLDivElement | null) => { cardRefs.current[idx] = el }}
+                                className="cooking-step-group"
+                            >
+                                <div
+                                    className={`cooking-card cooking-card-step is-${state} ${isNext && state === 'upcoming' ? 'is-next' : ''} ${state === 'done' ? 'is-clickable' : ''}`}
+                                    onClick={state === 'done' ? () => jumpTo(idx) : undefined}
+                                >
+                                    <div className="cooking-card-top">
+                                        {state === 'done' && (
+                                            <span className="cooking-card-label"><Check size={13} strokeWidth={3} /> Step {item.stepIndex + 1}</span>
+                                        )}
+                                        {state === 'current' && (
+                                            <span className="cooking-card-label is-accent">Step {item.stepIndex + 1} of {instructions.length}</span>
+                                        )}
+                                        {state === 'upcoming' && (
+                                            <span className="cooking-card-label">{isNext ? 'Up next' : `Step ${item.stepIndex + 1}`}</span>
+                                        )}
+                                        {state !== 'current' && (item.stepIndex + 1) === instructions.length && (
+                                            <span className="cooking-card-label">Last step</span>
+                                        )}
+                                    </div>
+                                    <p className={`cooking-card-text is-${state}`}>{text}</p>
+                                    {showChips && recs.length > 0 && (
+                                        <div className="cooking-chips">
+                                            {recs.map((ingred: any, ci: number) => (
+                                                <span key={ci} className="cooking-chip">
+                                                    <span className="cooking-chip-name">{ingred.name}</span>
+                                                    <span className="cooking-chip-qty">{ingred.quantity} {ingred.quantity_type_shorthand || ingred.quantity_type}</span>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {state === 'current' && uncheckedPrep.length > 0 && (() => {
+                                        const firstPrep = uncheckedPrep[0]
+                                        const extra = uncheckedPrep.length - 1
+                                        return (
+                                            <button className="cooking-prep-hint" onClick={() => setActiveSheet('prep')}>
+                                                <span className="cooking-prep-hint-task">
+                                                    <ChefHat size={12} />
+                                                    <span className="cooking-prep-hint-text">
+                                                        {firstPrep.ingredient && <strong>{firstPrep.ingredient}: </strong>}
+                                                        {firstPrep.action}
+                                                        {extra > 0 && <span className="cooking-prep-hint-more"> +{extra} more</span>}
+                                                    </span>
+                                                </span>
+                                                <span className="cooking-prep-hint-cta">tap to view</span>
+                                            </button>
+                                        )
+                                    })()}
+                                    {state === 'current' && (
+                                        <div className="cooking-current-hint">Finished here? Move on below</div>
+                                    )}
+                                </div>
+                                {stepTimers.map((t: any) => renderTimerTab(t, state))}
+                            </div>
+                        )
+                    }
+
+                    // Timer attached to its step: pokes out underneath the step card,
+                    // suggests/controls the timer that helps complete the step.
+                    const renderTimerTab = (timer: any, state: 'done' | 'current' | 'upcoming') => {
+                        const status = getTimerStatus(timer.id)
+                        const session = activeSession[timer.id]
+                        const remaining = session ? getRemaining(session, nowMs) : timer.duration * 60
+                        const progress = getTimerProgress(timer, session, nowMs)
+                        const checkpointsHit = session?.checkpointsHit || []
+                        const endTime = session?.endTime ? new Date(session.endTime) : null
+                        const finishTimeStr = endTime ? endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null
+
+                        const hasDep = timer.dependencies?.[0]?.timerId && timer.dependencies[0].timerId !== 'start'
+                        const depTimerId = hasDep ? timer.dependencies[0].timerId : null
+                        const depDone = !depTimerId || activeSession[depTimerId]?.status === 'completed'
+                        const depName = depTimerId ? (getTimerById(cookingTimers, depTimerId)?.name || 'the previous timer') : ''
+                        const name = timer.name || 'Timer'
+                        const live = status === 'active' || status === 'paused' || status === 'overdue'
+                        const isOverdue = status === 'overdue'
+
+                        if (state === 'done') {
+                            if (live) {
+                                return (
+                                    <div key={timer.id} className={`cooking-timer-tab is-live ${isOverdue ? 'is-overdue' : ''}`}>
+                                        <div className="cooking-timer-tab-head">
+                                            <span className="cooking-timer-tab-name is-accent"><Clock size={12} /> {name}</span>
+                                            <span className={`cooking-countdown is-inline ${isOverdue ? 'is-overdue' : ''}`}>{formatCountdown(remaining)}</span>
+                                        </div>
+                                        <div className="cooking-progress-wrap">{renderProgressTrack(timer, progress, checkpointsHit)}</div>
+                                        {isOverdue && (
+                                            <div className="cooking-timer-actions">
+                                                <button className="cooking-timer-btn" onClick={() => extendTimer(timer, 2)}>+2 min</button>
+                                                <button className="cooking-timer-btn" onClick={() => extendTimer(timer, 5)}>+5 min</button>
+                                                <button className="cooking-timer-btn is-primary" onClick={() => completeTimer(timer)}>Done ✓</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            }
+                            return (
+                                <div key={timer.id} className="cooking-timer-tab is-muted">
+                                    <div className="cooking-timer-tab-head">
+                                        <span className="cooking-timer-tab-name"><Check size={12} strokeWidth={3} /> {name} · {status === 'completed' ? 'done' : 'skipped'}</span>
+                                        <button className="cooking-mgr-link" onClick={() => resetTimer(timer)}>Reset</button>
+                                    </div>
+                                </div>
+                            )
+                        }
+
+                        if (state === 'upcoming') {
+                            return (
+                                <div key={timer.id} className="cooking-timer-tab is-muted">
+                                    <div className="cooking-timer-tab-head">
+                                        <span className="cooking-timer-tab-name"><Clock size={12} /> {name} · {timer.duration} min</span>
+                                    </div>
+                                </div>
+                            )
+                        }
+
+                        if (live) {
+                            return (
+                                <div key={timer.id} className={`cooking-timer-tab is-accent ${isOverdue ? 'is-overdue' : ''}`}>
+                                    <div className="cooking-timer-tab-head">
+                                        <span className="cooking-timer-tab-name is-accent"><Clock size={12} /> {name}</span>
+                                        {isOverdue ? (
+                                            <span className="cooking-timer-tag is-overdue">Overdue</span>
+                                        ) : status === 'paused' && (
+                                            <span className="cooking-timer-tag">Paused</span>
+                                        )}
+                                    </div>
+                                    <div className={`cooking-countdown ${isOverdue ? 'is-overdue' : ''}`}>{formatCountdown(remaining)}</div>
+                                    {!isOverdue && finishTimeStr && <div className="cooking-countdown-sub">Done at {finishTimeStr}</div>}
+                                    <div className="cooking-progress-wrap">{renderProgressTrack(timer, progress, checkpointsHit)}</div>
+                                    {isOverdue ? (
+                                        <>
+                                            <div className="cooking-extend-row">
+                                                <button className="cooking-timer-btn" onClick={() => extendTimer(timer, 2)}>+2 min</button>
+                                                <button className="cooking-timer-btn" onClick={() => extendTimer(timer, 5)}>+5 min</button>
+                                                {customExtendId === timer.id ? (
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        max="999"
+                                                        value={customExtendMin}
+                                                        onChange={(e) => setCustomExtendMin(e.target.value)}
+                                                        placeholder="min"
+                                                        autoFocus
+                                                        className="cooking-extend-input"
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' && customExtendMin) { extendTimer(timer, parseInt(customExtendMin)); setCustomExtendId(null); setCustomExtendMin("") }
+                                                            if (e.key === 'Escape') { setCustomExtendId(null); setCustomExtendMin("") }
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <button className="cooking-timer-btn" onClick={() => setCustomExtendId(timer.id)}>+X</button>
+                                                )}
+                                            </div>
+                                            <button
+                                                className="cooking-start-timer"
+                                                onClick={() => completeTimer(timer)}
+                                            >
+                                                <Check size={16} strokeWidth={3} />
+                                                Done — dismiss
+                                            </button>
+                                            <p className="cooking-timer-note">Rings every 4s until you dismiss or extend it</p>
+                                        </>
+                                    ) : (
+                                        <div className="cooking-timer-actions">
+                                            <button className="cooking-timer-btn" onClick={() => pauseResumeTimer(timer)}>{status === 'active' ? 'Pause' : 'Resume'}</button>
+                                            <button className="cooking-timer-btn" onClick={() => extendTimer(timer, 5)}>+5 min</button>
+                                            <button className="cooking-timer-btn is-primary" onClick={() => completeTimer(timer)}>Done ✓</button>
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        }
+
+                        if (status === 'completed') {
+                            return (
+                                <div key={timer.id} className="cooking-timer-tab is-muted">
+                                    <div className="cooking-timer-tab-head">
+                                        <span className="cooking-timer-tab-name"><Check size={12} strokeWidth={3} /> {name} · done</span>
+                                        <div className="cooking-mgr-head-actions">
+                                            <button className="cooking-mgr-link" onClick={() => extendTimer(timer, 2)}>+2 min</button>
+                                            <button className="cooking-mgr-link" onClick={() => resetTimer(timer)}>Reset</button>
+                                        </div>
+                                    </div>
+                                    <div className="cooking-timer-tab-note">Skipped by accident? Reset to run it with this step.</div>
+                                </div>
+                            )
+                        }
+
+                        return (
+                            <div key={timer.id} className={`cooking-timer-tab ${depDone ? 'is-accent' : 'is-muted'}`}>
+                                <div className="cooking-timer-tab-head">
+                                    <span className={`cooking-timer-tab-name ${depDone ? 'is-accent' : ''}`}>
+                                        <Clock size={12} /> {name} · {timer.duration} min
+                                    </span>
+                                </div>
+                                {!depDone ? (
+                                    <div className="cooking-timer-tab-note">Waiting for “{depName}” to finish</div>
+                                ) : (
+                                    <div className="cooking-timer-tab-note">Run a timer to help with this step</div>
+                                )}
+                                <button
+                                    className="cooking-start-timer"
+                                    disabled={!depDone}
+                                    onClick={() => startTimer(timer)}
+                                >
+                                    <Clock size={16} />
+                                    Start {timer.duration} min timer
+                                </button>
+                            </div>
+                        )
+                    }
+
+                    const renderManagerTimerCard = (timer: any) => {
+                        const status = getTimerStatus(timer.id)
+                        const session = activeSession[timer.id]
+                        const remaining = session ? getRemaining(session, nowMs) : timer.duration * 60
+                        const minutes = Math.floor(remaining / 60)
+                        const seconds = remaining % 60
+                        const progress = getTimerProgress(timer, session, nowMs)
+                        const checkpointsHit = session?.checkpointsHit || []
+
+                        const hasDep = timer.dependencies?.[0]?.timerId && timer.dependencies[0].timerId !== 'start'
+                        const depTimerId = hasDep ? timer.dependencies[0].timerId : null
+                        const depDone = !depTimerId || activeSession[depTimerId]?.status === 'completed'
+                        const depName = depTimerId ? (getTimerById(cookingTimers, depTimerId)?.name || 'previous timer') : ''
+                        const isPastStep = timer.stepIndex != null && timer.stepIndex < currentStepIdx
+
+                        if (status === 'active' || status === 'paused' || status === 'overdue') {
+                            const isOverdue = status === 'overdue'
+                            return (
+                                <div key={timer.id} className={`cooking-mgr-card is-${status}`}>
+                                    <div className="cooking-mgr-head">
+                                        <span className="cooking-mgr-name">{timer.name}</span>
+                                        <div className="cooking-mgr-head-actions">
+                                            {isOverdue && <span className="cooking-timer-tag is-overdue">Overdue</span>}
+                                            <button className="cooking-mgr-link" onClick={() => resetTimer(timer)}>Reset</button>
+                                        </div>
+                                    </div>
+                                    {editingTimerId === timer.id ? (
+                                        <div className="cooking-mgr-edit">
+                                            <div className="cooking-mgr-edit-inputs">
+                                                <input type="number" min="0" max="999" value={editTimerMinutes} onChange={(e) => setEditTimerMinutes(e.target.value)} placeholder="00" />
+                                                <span className="cooking-mgr-edit-sep">:</span>
+                                                <input type="number" min="0" max="59" value={editTimerSeconds} onChange={(e) => setEditTimerSeconds(e.target.value)} placeholder="00" />
+                                            </div>
+                                            <div className="cooking-timer-actions">
+                                                <button className="cooking-timer-btn" onClick={() => setEditingTimerId(null)}>Cancel</button>
+                                                <button className="cooking-timer-btn is-primary" onClick={() => {
+                                                    const mins = parseInt(editTimerMinutes) || 0
+                                                    const secs = parseInt(editTimerSeconds) || 0
+                                                    const totalSecs = mins * 60 + secs
+                                                    if (totalSecs <= 0) return
+                                                    setTimerRemaining(timer, totalSecs)
+                                                    setEditingTimerId(null)
+                                                }}>Save</button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className={`cooking-mgr-countdown ${isOverdue ? 'is-overdue' : ''}`}
+                                            onClick={() => { setEditingTimerId(timer.id); setEditTimerMinutes(String(Math.max(0, minutes))); setEditTimerSeconds(String(Math.max(0, seconds))) }}
+                                        >
+                                            {formatCountdown(remaining)}
+                                            <span className="cooking-mgr-countdown-hint">tap to adjust</span>
+                                        </div>
+                                    )}
+                                    <div className="cooking-progress-wrap">
+                                        {renderProgressTrack(timer, progress, checkpointsHit)}
+                                    </div>
+                                    {isOverdue ? (
+                                        <div className="cooking-timer-actions">
+                                            <button className="cooking-timer-btn" onClick={() => extendTimer(timer, 2)}>+2 min</button>
+                                            <button className="cooking-timer-btn" onClick={() => extendTimer(timer, 5)}>+5 min</button>
+                                            <button className="cooking-timer-btn is-primary" onClick={() => completeTimer(timer)}>Done ✓</button>
+                                        </div>
+                                    ) : (
+                                        <div className="cooking-timer-actions">
+                                            <button className="cooking-timer-btn" onClick={() => pauseResumeTimer(timer)}>{status === 'active' ? 'Pause' : 'Resume'}</button>
+                                            <button className="cooking-timer-btn" onClick={() => addTimerSeconds(timer, 300)}>+5 min</button>
+                                            <button className="cooking-timer-btn is-primary" onClick={() => completeTimer(timer)}>Done ✓</button>
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        }
+
+                        if (status === 'pending') {
+                            return (
+                                <div key={timer.id} className="cooking-mgr-card is-pending">
+                                    <div className="cooking-mgr-head">
+                                        <span className="cooking-mgr-name">{timer.name}</span>
+                                        {timer.stepIndex != null && <span className="cooking-mgr-tag">Step {timer.stepIndex + 1}</span>}
+                                    </div>
+                                    {isPastStep ? (
+                                        <button className="cooking-timer-btn is-full" onClick={() => completeTimer(timer)}>✓ Mark complete</button>
+                                    ) : !depDone ? (
+                                        <div className="cooking-mgr-waiting">Waiting for {depName}</div>
+                                    ) : (
+                                        <button className="cooking-timer-btn is-full is-accent" onClick={() => startTimer(timer)}>Start {timer.duration} min</button>
+                                    )}
+                                </div>
+                            )
+                        }
+
+                        return (
+                            <div key={timer.id} className="cooking-mgr-card is-completed">
+                                <div className="cooking-mgr-head">
+                                    <span className="cooking-mgr-name is-done">{timer.name}</span>
+                                    <button className="cooking-mgr-link" onClick={() => resetTimer(timer)}>Restart</button>
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    const removeCustomTimer = (timerId: string) => {
+                        setCustomTimers(prev => prev.filter(t => t.id !== timerId))
+                        setActiveSession(prev => { const n = { ...prev }; delete n[timerId]; return n })
+                    }
+
+                    const renderTimersContent = () => {
+                        const running = allRecipeTimers.filter((t: any) => ['active', 'paused'].includes(getTimerStatus(t.id)))
+                        const pending = allRecipeTimers.filter((t: any) => getTimerStatus(t.id) === 'pending')
+                        const completed = allRecipeTimers.filter((t: any) => getTimerStatus(t.id) === 'completed')
+                        return (
+                            <div className="cooking-section-list">
+                                {running.map(renderManagerTimerCard)}
+                                {pending.length > 0 && <div className="cooking-mgr-group-label">Upcoming</div>}
+                                {pending.map(renderManagerTimerCard)}
+                                {completed.length > 0 && <div className="cooking-mgr-group-label">Completed ({completed.length})</div>}
+                                {completed.map(renderManagerTimerCard)}
+                                {customTimers.length > 0 && <div className="cooking-mgr-group-label">Custom timers</div>}
+                                {customTimers.map((timer) => {
+                                    const status = getTimerStatus(timer.id)
+                                    const session = activeSession[timer.id]
+                                    const remaining = session ? getRemaining(session, nowMs) : timer.duration * 60
+                                    const minutes = Math.floor(remaining / 60)
+                                    const seconds = remaining % 60
+                                    const progress = getTimerProgress(timer, session, nowMs)
+                                    const isOverdue = status === 'overdue'
+                                    if (status === 'active' || status === 'paused' || status === 'overdue') {
+                                        return (
+                                            <div key={timer.id} className={`cooking-mgr-card is-${status}`}>
+                                                <div className="cooking-mgr-head">
+                                                    <span className="cooking-mgr-name">{timer.name}</span>
+                                                    <div className="cooking-mgr-head-actions">
+                                                        {isOverdue && <span className="cooking-timer-tag is-overdue">Overdue</span>}
+                                                        <button className="cooking-mgr-link" onClick={() => resetTimer(timer)}>Reset</button>
+                                                        <button className="cooking-mgr-link is-danger" onClick={() => removeCustomTimer(timer.id)}>✕</button>
+                                                    </div>
+                                                </div>
+                                                <div className={`cooking-mgr-countdown ${isOverdue ? 'is-overdue' : ''}`}>{formatCountdown(remaining)}</div>
+                                                <div className="cooking-progress-wrap">
+                                                    <div className="cooking-progress-track">
+                                                        <div className="cooking-progress-fill" style={{ width: `${progress}%` }} />
+                                                    </div>
+                                                </div>
+                                                {isOverdue ? (
+                                                    <div className="cooking-timer-actions">
+                                                        <button className="cooking-timer-btn" onClick={() => extendTimer(timer, 2)}>+2 min</button>
+                                                        <button className="cooking-timer-btn" onClick={() => extendTimer(timer, 5)}>+5 min</button>
+                                                        <button className="cooking-timer-btn is-primary" onClick={() => completeTimer(timer)}>Done ✓</button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="cooking-timer-actions">
+                                                        <button className="cooking-timer-btn" onClick={() => pauseResumeTimer(timer)}>{status === 'active' ? 'Pause' : 'Resume'}</button>
+                                                        <button className="cooking-timer-btn" onClick={() => addTimerSeconds(timer, 300)}>+5 min</button>
+                                                        <button className="cooking-timer-btn is-primary" onClick={() => completeTimer(timer)}>Done ✓</button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )
+                                    }
+                                    if (status === 'completed') {
+                                        return (
+                                            <div key={timer.id} className="cooking-mgr-card is-completed">
+                                                <div className="cooking-mgr-head">
+                                                    <span className="cooking-mgr-name is-done">{timer.name}</span>
+                                                    <div className="cooking-mgr-head-actions">
+                                                        <button className="cooking-mgr-link" onClick={() => resetTimer(timer)}>Restart</button>
+                                                        <button className="cooking-mgr-link is-danger" onClick={() => removeCustomTimer(timer.id)}>✕</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    }
+                                    return (
+                                        <div key={timer.id} className="cooking-mgr-card is-pending">
+                                            <div className="cooking-mgr-head">
+                                                <span className="cooking-mgr-name">{timer.name}</span>
+                                                <button className="cooking-mgr-link is-danger" onClick={() => removeCustomTimer(timer.id)}>✕</button>
+                                            </div>
+                                            <button className="cooking-timer-btn is-full is-accent" onClick={() => startTimer(timer)}>Start {timer.duration} min</button>
+                                        </div>
+                                    )
+                                })}
+                                <div className="cooking-add-timer">
+                                    <input
+                                        value={customTimerName}
+                                        onChange={(e) => setCustomTimerName(e.target.value)}
+                                        placeholder="Custom timer name"
+                                        className="cooking-add-timer-name"
+                                    />
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="999"
+                                        value={customTimerMinutes}
+                                        onChange={(e) => setCustomTimerMinutes(e.target.value)}
+                                        placeholder="min"
+                                        className="cooking-add-timer-mins"
+                                    />
+                                    <button
+                                        className="cooking-timer-btn is-accent"
+                                        onClick={() => {
+                                            const mins = parseInt(customTimerMinutes)
+                                            if (!customTimerName.trim() || !mins || mins <= 0) return
+                                            const newId = `custom-${Date.now()}`
+                                            setCustomTimers(prev => [...prev, { id: newId, name: customTimerName.trim(), duration: mins }])
+                                            setActiveSession(prev => ({
+                                                ...prev,
+                                                [newId]: { endTime: Date.now() + mins * 60 * 1000, remaining: mins * 60, status: 'active', checkpointsHit: [] }
+                                            }))
+                                            setCustomTimerName("")
+                                            setCustomTimerMinutes("")
+                                        }}
+                                    >
+                                        <Plus size={14} /> Add
+                                    </button>
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    const renderIngredientsContent = () => (
+                        <div className="cooking-section-list">
+                            {currentStepRecs.length > 0 && (
+                                <>
+                                    <div className="cooking-mgr-group-label">For this step</div>
+                                    <div className="cooking-ingredients-grid">
+                                        {currentStepRecs.map((ingred: any, idx: number) => (
+                                            <div key={`rec-${idx}`} className="cooking-ingredient-card is-recommended">
+                                                <span className="cooking-ingredient-name">{ingred.name}</span>
+                                                <span className="cooking-ingredient-qty">{ingred.quantity} {ingred.quantity_type_shorthand || ingred.quantity_type}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                            {currentStepOthers.length > 0 && (
+                                <>
+                                    <div className="cooking-mgr-group-label">All ingredients</div>
+                                    <div className="cooking-ingredients-grid">
+                                        {currentStepOthers.map((ingred: any, idx: number) => (
+                                            <div key={`other-${idx}`} className="cooking-ingredient-card">
+                                                <span className="cooking-ingredient-name">{ingred.name}</span>
+                                                <span className="cooking-ingredient-qty">{ingred.quantity} {ingred.quantity_type_shorthand || ingred.quantity_type}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )
+
+                    const renderPrepContent = () => (
+                        <div className="cooking-section-list">
+                            {prepWork.map((item: any, index: number) => {
+                                const isRecommended = currentPrepRecs.some((r: any) => r.action === item.action && r.ingredient === item.ingredient)
+                                return (
+                                    <div key={index} className={`cooking-prep-item ${isRecommended ? 'is-recommended' : ''} ${checkedPrep.has(index) ? 'is-checked' : ''}`}>
+                                        <button
+                                            onClick={() => {
+                                                const next = new Set(checkedPrep)
+                                                if (next.has(index)) next.delete(index)
+                                                else next.add(index)
+                                                setCheckedPrep(next)
+                                            }}
+                                            className="cooking-prep-checkbox"
+                                            aria-label="Toggle prep task"
+                                        >
+                                            {checkedPrep.has(index) && <Check size={12} strokeWidth={3} />}
+                                        </button>
+                                        <span className="cooking-prep-text">
+                                            {item.ingredient && <strong>{item.ingredient}: </strong>}
+                                            {item.action}
+                                        </span>
+                                        {item.timeEstimate && <span className="cooking-prep-time">~{item.timeEstimate}m</span>}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )
+
                     return (
                         <div className="cooking-mode-overlay">
-                            <div className="cooking-mode-header">
-                                <div className="flex items-center gap-2 flex-1 justify-center">
-                                    {(() => {
-                                        const lastStepHasTimer = cookingTimers.some((t: any) => t.type === 'timer' && t.stepIndex === instructions.length - 1)
-                                        const totalSteps = lastStepHasTimer ? instructions.length + 1 : instructions.length
-                                        const isOnTimerStep = lastStepHasTimer && currentStep === instructions.length
-                                        return Array.from({ length: totalSteps }, (_, idx) => {
-                                            const isTimerStep = idx === instructions.length
-                                            const isDone = isTimerStep ? false : completedSteps.has(idx)
-                                            const isCurrent = idx === currentStep
+                            <header className="cooking-mode-header">
+                                <button className="cooking-icon-btn" onClick={() => { setIsCookingMode(false); setDoneFlow(new Set()) }} aria-label="Exit cooking mode">
+                                    <img src="/cross.png" className="w-4 h-4 invert-[.25] dark:invert" alt="close" />
+                                </button>
+                                <div className="cooking-header-center">
+                                    <div className="cooking-header-title">
+                                        {current ? (
+                                            current.kind === 'prep'
+                                                ? <>Prep work</>
+                                                : <>Step {current.stepIndex + 1} of {instructions.length}</>
+                                        ) : 'Cooking'}
+                                    </div>
+                                    <div className="cooking-progress">
+                                        {flowItems.map((item, idx) => {
+                                            const segDone = idx < clampedCurrent || doneFlow.has(idx)
+                                            const segCurrent = idx === clampedCurrent
+                                            const label = item.kind === 'prep' ? 'Prep work' : `Step ${item.stepIndex + 1}`
                                             return (
                                                 <button
                                                     key={idx}
-                                                    onClick={() => setCurrentStep(idx)}
-                                                    className={`w-8 h-8 rounded-full text-xs font-bold transition-all flex items-center justify-center ${
-                                                        isCurrent
-                                                            ? 'bg-white text-black'
-                                                            : isDone
-                                                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                                                : 'bg-white/5 text-white/30 border border-white/10 hover:bg-white/10'
-                                                    }`}
-                                                >
-                                                    {isDone ? '✓' : isTimerStep ? '⏱' : idx + 1}
-                                                </button>
+                                                    onClick={() => jumpTo(idx)}
+                                                    className={`cooking-progress-seg ${segDone ? 'is-done' : ''} ${segCurrent ? 'is-current' : ''}`}
+                                                    title={label}
+                                                    aria-label={label}
+                                                />
                                             )
-                                        })
-                                    })()}
-                                </div>
-                                <Button variant="ghost" size="sm" onClick={() => setResetConfirm(true)} className="rounded-full h-10 px-3 text-xs font-bold text-white/40 hover:text-white/70 hover:bg-white/5 gap-1.5">
-                                    <RotateCcw size={14} />
-                                    Reset
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => { setIsCookingMode(false); setCompletedSteps(new Set()); setAcknowledgedTimers(new Set()) }} className="rounded-full w-10 h-10 p-0">
-                                    <img src="/cross.png" className="w-4 h-4 invert-[.25] dark:invert" alt="close" />
-                                </Button>
-                            </div>
-
-                            <div className="cooking-mode-layout">
-                                {/* Step - central and prominent */}
-                                <div className="cooking-mode-step-panel">
-
-                                    {(() => {
-                                        const prevStepTimers = cookingTimers.filter((t: any) => t.type === 'timer' && t.stepIndex != null && t.stepIndex < currentStep)
-                                        const activePrevTimers = prevStepTimers.filter((t: any) => {
-                                            const s = activeSession[t.id]
-                                            return s && (s.status === 'active' || s.status === 'paused')
-                                        })
-                                        const pendingPrevTimers = prevStepTimers.filter((t: any) => {
-                                            const s = activeSession[t.id]
-                                            return !s || s.status === 'pending'
-                                        })
-                                        const completedPrevTimers = prevStepTimers.filter((t: any) => {
-                                            const s = activeSession[t.id]
-                                            return s && s.status === 'completed' && !acknowledgedTimers.has(t.id)
-                                        })
-                                        if (activePrevTimers.length === 0 && pendingPrevTimers.length === 0 && completedPrevTimers.length === 0) return null
-
-                                        const extendTimer = (timer: any, minutes: number) => {
-                                            const newSession = { ...activeSession }
-                                            newSession[timer.id] = { endTime: Date.now() + minutes * 60 * 1000, remaining: minutes * 60, status: 'active', checkpointsHit: newSession[timer.id]?.checkpointsHit || [] }
-                                            setActiveSession(newSession)
-                                        }
-                                        const doneTimer = (timer: any) => {
-                                            const newSession = { ...activeSession }
-                                            newSession[timer.id] = { ...newSession[timer.id], status: 'completed', remaining: 0 }
-                                            setActiveSession(newSession)
-                                            setAcknowledgedTimers(prev => new Set([...Array.from(prev), timer.id]))
-                                        }
-                                        const completeTimer = (timer: any) => {
-                                            const newSession = { ...activeSession }
-                                            newSession[timer.id] = { ...newSession[timer.id], status: 'completed', remaining: 0 }
-                                            setActiveSession(newSession)
-                                            setAcknowledgedTimers(prev => new Set([...Array.from(prev), timer.id]))
-                                        }
-
-                                        return (
-                                            <div className="mb-4 px-2 space-y-2">
-                                                {activePrevTimers.map((timer: any) => {
-                                                    const session = activeSession[timer.id]
-                                                    const remaining = getRemaining(session)
-                                                    const total = timer.duration * 60
-                                                    const progress = total > 0 ? ((total - remaining) / total) * 100 : 0
-                                                    const mins = Math.floor(remaining / 60)
-                                                    const secs = remaining % 60
-                                                    const endTime = session.endTime ? new Date(session.endTime) : null
-                                                    const finishTimeStr = endTime ? endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null
-                                                    return (
-                                                        <div key={timer.id} className="p-3 rounded-2xl bg-orange-500/[0.07] border border-orange-500/15 shadow-sm shadow-orange-500/5">
-                                                            <div className="flex items-center justify-between mb-1.5">
-                                                                <span className="text-[10px] font-bold text-orange-400/80 uppercase tracking-wider">
-                                                                    Timer for — {timer.name || 'current step'}
-                                                                </span>
-                                                                <span className="text-base font-bold font-mono text-orange-400 tabular-nums">
-                                                                    {remaining > 300 ? `${mins}m` : `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`}
-                                                                </span>
-                                                            </div>
-                                                            {finishTimeStr && (
-                                                                <div className="text-[10px] text-white/20 mb-1.5 text-right">Done at {finishTimeStr}</div>
-                                                            )}
-                                                            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden mb-2">
-                                                                <div
-                                                                    className="h-full bg-gradient-to-r from-orange-600 to-orange-400 rounded-full transition-all duration-1000 shadow-sm shadow-orange-500/30"
-                                                                    style={{ width: `${progress}%` }}
-                                                                />
-                                                            </div>
-                                                            <button
-                                                                onClick={() => completeTimer(timer)}
-                                                                className="w-full py-1.5 rounded-xl text-[10px] font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/15 hover:border-emerald-500/25 transition-all"
-                                                            >
-                                                                Complete ✓
-                                                            </button>
-                                                        </div>
-                                                    )
-                                                })}
-                                                {completedPrevTimers.map((timer: any) => (
-                                                    <div key={timer.id} className="p-3 rounded-2xl bg-emerald-500/[0.07] border border-emerald-500/15 shadow-sm shadow-emerald-500/5">
-                                                        <div className="text-[10px] font-bold text-emerald-400/80 uppercase tracking-wider mb-2">
-                                                            Timer done — {timer.name || 'current step'}
-                                                        </div>
-                                                        <div className="flex gap-1.5">
-                                                            <button onClick={() => extendTimer(timer, 2)} className="flex-1 py-2 rounded-xl text-[10px] font-bold bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/15 hover:border-orange-500/25 transition-all">+2 min</button>
-                                                            <button onClick={() => extendTimer(timer, 5)} className="flex-1 py-2 rounded-xl text-[10px] font-bold bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/15 hover:border-orange-500/25 transition-all">+5 min</button>
-                                                            {customExtendId === timer.id ? (
-                                                                <div className="flex items-center gap-1 flex-1">
-                                                                    <input
-                                                                        type="number"
-                                                                        min="1"
-                                                                        max="999"
-                                                                        value={customExtendMin}
-                                                                        onChange={(e) => setCustomExtendMin(e.target.value)}
-                                                                        placeholder="X"
-                                                                        autoFocus
-                                                                        className="w-full bg-white/5 rounded-xl px-2 py-1.5 text-[10px] text-[var(--cooking-text)] placeholder:text-white/20 outline-none border border-white/10 focus:border-orange-500/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                        onKeyDown={(e) => {
-                                                                            if (e.key === 'Enter' && customExtendMin) {
-                                                                                extendTimer(timer, parseInt(customExtendMin))
-                                                                                setCustomExtendId(null)
-                                                                                setCustomExtendMin("")
-                                                                            }
-                                                                            if (e.key === 'Escape') {
-                                                                                setCustomExtendId(null)
-                                                                                setCustomExtendMin("")
-                                                                            }
-                                                                        }}
-                                                                    />
-                                                                    <button
-                                                                        onClick={() => { if (customExtendMin) { extendTimer(timer, parseInt(customExtendMin)); setCustomExtendId(null); setCustomExtendMin("") } }}
-                                                                        disabled={!customExtendMin}
-                                                                        className="py-1.5 px-2 rounded-xl text-[10px] font-bold bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/15 transition-all disabled:opacity-30"
-                                                                    >
-                                                                        min
-                                                                    </button>
-                                                                </div>
-                                                            ) : (
-                                                                <button onClick={() => setCustomExtendId(timer.id)} className="flex-1 py-2 rounded-xl text-[10px] font-bold bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/15 hover:border-orange-500/25 transition-all">+X min</button>
-                                                            )}
-                                                            <button onClick={() => doneTimer(timer)} className="flex-1 py-2 rounded-xl text-[10px] font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/15 hover:border-emerald-500/25 transition-all">Done ✓</button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                                {pendingPrevTimers.map((timer: any) => (
-                                                    <div key={timer.id} className="p-3 rounded-2xl bg-orange-500/[0.04] border border-orange-500/10 border-dashed animate-pulse">
-                                                        <div className="flex items-center justify-between mb-1.5">
-                                                            <span className="text-[10px] font-bold text-orange-400/50 uppercase tracking-wider">
-                                                                Timer for — {timer.name || 'current step'}
-                                                            </span>
-                                                            <span className="text-base font-bold font-mono text-orange-400/50">
-                                                                {timer.duration}m
-                                                            </span>
-                                                        </div>
-                                                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                                            <div className="h-full bg-gradient-to-r from-orange-600/20 to-orange-400/20 rounded-full" style={{ width: '0%' }} />
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )
-                                    })()}
-
-                                    {(() => {
-                                        const isDone = completedSteps.has(currentStep)
-                                        const anyActiveTimer = cookingTimers.some((t: any) => {
-                                            if (t.type !== 'timer') return false
-                                            const s = activeSession[t.id]
-                                            return s && (s.status === 'active' || s.status === 'paused')
-                                        })
-                                        const currentStepTimersAll = cookingTimers.filter((t: any) => t.type === 'timer' && t.stepIndex === currentStep)
-                                        const hasTimers = currentStepTimersAll.length > 0
-                                        if (isDone) {
-                                            return <div className="mb-3 px-4 py-2.5 rounded-2xl bg-emerald-500/[0.07] border border-emerald-500/15 text-[10px] font-bold text-emerald-400/80 uppercase tracking-wider text-center shadow-sm shadow-emerald-500/5">This step is done</div>
-                                        }
-                                        if (anyActiveTimer) {
-                                            return <div className="mb-3 px-4 py-2.5 rounded-2xl bg-amber-500/[0.07] border border-amber-500/15 text-[10px] font-bold text-amber-400/80 uppercase tracking-wider text-center shadow-sm shadow-amber-500/5">Prepare for this step</div>
-                                        }
-                                        if (hasTimers) {
-                                            return <div className="mb-3 px-4 py-2.5 rounded-2xl bg-orange-500/[0.07] border border-orange-500/15 text-[10px] font-bold text-orange-400/80 uppercase tracking-wider text-center shadow-sm shadow-orange-500/5">Do this step</div>
-                                        }
-                                        return null
-                                    })()}
-
-                                    {currentStep < instructions.length ? (
-                                        <div className="cooking-mode-step bg-[var(--cooking-card-bg)] border border-[var(--cooking-border)] rounded-2xl p-6 md:p-10 shadow-xl flex-1 flex flex-col justify-center">
-                                            <p className="text-2xl md:text-4xl font-bold leading-relaxed text-center text-[var(--cooking-text)]">
-                                                {stepText}
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <div className="cooking-mode-step bg-[var(--cooking-card-bg)] border border-orange-500/20 rounded-2xl p-6 md:p-10 shadow-xl flex-1 flex flex-col justify-center">
-                                            <p className="text-xl md:text-2xl font-bold leading-relaxed text-center text-orange-400/80">
-                                                Waiting for timer to finish
-                                            </p>
-                                            <p className="text-sm text-white/30 text-center mt-2">All steps complete — just waiting on the timer</p>
-                                        </div>
-                                    )}
-
-                                    {(() => {
-                                        const isOnTimerStep = currentStep === instructions.length
-                                        const lastStepIdx = instructions.length - 1
-                                        const currentStepTimers = cookingTimers.filter((t: any) => {
-                                            if (t.type !== 'timer') return false
-                                            if (isOnTimerStep) return t.stepIndex === lastStepIdx
-                                            return t.stepIndex === currentStep
-                                        })
-                                        const pendingCurrentTimers = currentStepTimers.filter((t: any) => {
-                                            const s = activeSession[t.id]
-                                            if (s && s.status !== 'pending') return false
-                                            const depId = t.dependencies?.[0]?.timerId
-                                            if (!depId || depId === 'start') return true
-                                            const depSession = activeSession[depId]
-                                            return depSession?.status === 'completed'
-                                        })
-                                        if (pendingCurrentTimers.length === 0) return null
-
-                                        const startTimer = (timer: any) => {
-                                            const newSession = { ...activeSession }
-                                            newSession[timer.id] = {
-                                                endTime: Date.now() + timer.duration * 60 * 1000,
-                                                remaining: timer.duration * 60,
-                                                status: 'active',
-                                                checkpointsHit: []
-                                            }
-                                            setActiveSession(newSession)
-
-                                            const allStepTimers = cookingTimers.filter((t: any) => {
-                                                if (t.type !== 'timer') return false
-                                                return t.stepIndex === currentStep
-                                            })
-                                            const allNowStarted = allStepTimers.every((t: any) => {
-                                                if (t.id === timer.id) return true
-                                                const s = newSession[t.id]
-                                                return s && (s.status === 'active' || s.status === 'paused' || s.status === 'completed')
-                                            })
-                                            if (allNowStarted && currentStep < instructions.length) {
-                                                setTimeout(() => {
-                                                    setCompletedSteps(prev => new Set([...Array.from(prev), currentStep]))
-                                                    setTimerSheetOpen(false)
-                                                    setCurrentStep(prev => prev + 1)
-                                                }, 800)
-                                            }
-                                        }
-
-                                        return (
-                                            <div className="mt-3 px-2 space-y-2">
-                                                {pendingCurrentTimers.map((timer: any) => {
-                                                    const isDepMet = !timer.dependencies?.[0]?.timerId || timer.dependencies[0].timerId === 'start' || activeSession[timer.dependencies[0].timerId]?.status === 'completed'
-                                                    return (
-                                                        <div key={timer.id} className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.03] border border-white/5">
-                                                            <span className="text-xs font-bold text-[var(--cooking-text)]">{timer.name || `Timer ${timer.duration}m`}</span>
-                                                            <button
-                                                                onClick={() => startTimer(timer)}
-                                                                disabled={!isDepMet}
-                                                                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                                                                    isDepMet
-                                                                        ? 'bg-orange-500/15 hover:bg-orange-500/25 text-orange-400 border border-orange-500/20 hover:border-orange-500/30 shadow-sm shadow-orange-500/10'
-                                                                        : 'bg-white/[0.02] text-white/15 border border-white/[0.04] cursor-not-allowed'
-                                                                }`}
-                                                            >
-                                                                Start {timer.duration}m
-                                                            </button>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        )
-                                    })()}
-                                </div>
-
-                                {/* Ingredients - scrollable below the step */}
-                                <div className="cooking-mode-ingredients-panel">
-                                    <h3 className="text-sm font-bold mb-2 flex items-center gap-2 text-[var(--cooking-text)] opacity-70">
-                                        <span className="w-1.5 h-4 bg-emerald-500 rounded-full"></span>
-                                        Ingredients
-                                    </h3>
-                                    <div className="cooking-mode-ingredients-scroll">
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                            {recommended.length > 0 && recommended.map((ingred, idx) => (
-                                                <div key={`rec-${idx}`} className="cooking-ingredient-card cooking-ingredient-recommended">
-                                                    <span className="font-bold text-xs sm:text-sm text-[var(--cooking-text)]">{ingred.name}</span>
-                                                    <span className="text-[10px] sm:text-xs font-semibold text-emerald-400 bg-emerald-500/15 px-1.5 sm:px-2 py-0.5 rounded-full border border-emerald-500/25">
-                                                        {ingred.quantity} {ingred.quantity_type_shorthand || ingred.quantity_type}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                            {others.map((ingred, idx) => (
-                                                <div key={`other-${idx}`} className="cooking-ingredient-card">
-                                                    <span className="font-bold text-xs sm:text-sm text-[var(--cooking-text)]">{ingred.name}</span>
-                                                    <span className="text-[10px] sm:text-xs font-semibold text-emerald-600 bg-emerald-500/10 px-1.5 sm:px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                                        {ingred.quantity} {ingred.quantity_type_shorthand || ingred.quantity_type}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        })}
                                     </div>
                                 </div>
+                                <button className="cooking-icon-btn" onClick={() => setResetConfirm(true)} aria-label="Reset cooking session">
+                                    <RotateCcw size={15} />
+                                </button>
+                            </header>
+
+                            <div className="cooking-mode-body">
+                                <div className="cooking-timeline">
+                                    {flowItems.map((item, idx) => {
+                                        const state = idx < clampedCurrent ? 'done' : idx === clampedCurrent ? 'current' : 'upcoming'
+                                        const isNext = idx === clampedCurrent + 1
+                                        return item.kind === 'prep'
+                                            ? renderPrepCard(idx, state)
+                                            : renderStepCard(item, idx, state, isNext)
+                                    })}
+                                    {flowItems.length === 0 && (
+                                        <div className="cooking-empty">This recipe has no steps yet.</div>
+                                    )}
+                                </div>
+
+                                <aside className="cooking-sidebar">
+                                    <section className="cooking-sidebar-section">
+                                        <h3 className="cooking-sidebar-title">Ingredients</h3>
+                                        {renderIngredientsContent()}
+                                    </section>
+                                    {prepWork.length > 0 && (
+                                        <section className="cooking-sidebar-section">
+                                            <h3 className="cooking-sidebar-title">Prep work</h3>
+                                            {renderPrepContent()}
+                                        </section>
+                                    )}
+                                    {(allRecipeTimers.length > 0 || customTimers.length > 0) && (
+                                        <section className="cooking-sidebar-section">
+                                            <h3 className="cooking-sidebar-title">Timers</h3>
+                                            {renderTimersContent()}
+                                        </section>
+                                    )}
+                                </aside>
+                            </div>
+
+                            <div className={`cooking-sheet ${activeSheet !== 'none' ? 'open' : ''}`}>
+                                <div className="cooking-sheet-handle" onClick={() => setActiveSheet('none')} />
+                                <div className="cooking-sheet-head">
+                                    <h3 className="cooking-sheet-title">
+                                        {activeSheet === 'prep' ? 'Prep work' : activeSheet === 'ingredients' ? 'Ingredients' : 'Timers'}
+                                    </h3>
+                                    <button onClick={() => setActiveSheet('none')} className="cooking-sheet-close">Close</button>
+                                </div>
+                                <div className="cooking-sheet-scroll">
+                                    {activeSheet === 'prep' && renderPrepContent()}
+                                    {activeSheet === 'ingredients' && renderIngredientsContent()}
+                                    {activeSheet === 'timers' && renderTimersContent()}
+                                </div>
+                            </div>
+
+                            <div className="cooking-tabs">
+                                {prepWork.length > 0 && (
+                                    <button className={`cooking-tab ${activeSheet === 'prep' ? 'is-open' : ''}`} onClick={() => openSheet('prep')}>
+                                        <ChefHat size={15} /> Prep
+                                        {relevantPrepCount > 0 && <span className="cooking-tab-badge">{relevantPrepCount}</span>}
+                                    </button>
+                                )}
+                                <button className={`cooking-tab ${activeSheet === 'ingredients' ? 'is-open' : ''}`} onClick={() => openSheet('ingredients')}>
+                                    <ShoppingBasket size={15} /> Ingredients
+                                </button>
+                                {(allRecipeTimers.length > 0 || customTimers.length > 0) && (
+                                    <button className={`cooking-tab ${activeSheet === 'timers' ? 'is-open' : ''}`} onClick={() => openSheet('timers')}>
+                                        <Clock size={15} /> Timers
+                                        {runningTimerCount > 0 && <span className="cooking-tab-badge is-accent">{runningTimerCount}</span>}
+                                    </button>
+                                )}
                             </div>
 
                             <div className="cooking-mode-controls">
+                                {nextHint && (
+                                    <div className="cooking-next-hint">
+                                        <Clock size={12} /> {nextHint}
+                                    </div>
+                                )}
                                 <Button
                                     variant="outline"
-                                    className="flex-1 py-7 sm:py-8 text-base sm:text-lg font-bold rounded-2xl"
-                                    onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
-                                    disabled={currentStep === 0}
+                                    className="cooking-back-btn"
+                                    onClick={goBack}
+                                    disabled={clampedCurrent === 0}
                                 >
-                                    Previous
+                                    <ChevronLeft size={18} /> Back
                                 </Button>
                                 <Button
-                                    className="flex-[2] py-7 sm:py-8 text-base sm:text-lg font-bold rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white"
-                                    onClick={() => {
-                                        const isOnTimerStep = currentStep === instructions.length
-                                        const lastStepIdx = instructions.length - 1
-                                        const stepTimers = cookingTimers.filter((t: any) => {
-                                            if (t.type !== 'timer') return false
-                                            return t.stepIndex === (isOnTimerStep ? lastStepIdx : currentStep)
-                                        })
-                                        const hasActiveStepTimer = stepTimers.some((t: any) => {
-                                            const s = activeSession[t.id]
-                                            return s && (s.status === 'active' || s.status === 'paused')
-                                        })
-                                        if (currentStep < instructions.length - 1) {
-                                            if (!hasActiveStepTimer) {
-                                                setCompletedSteps(prev => new Set([...Array.from(prev), currentStep]))
-                                            }
-                                            setCurrentStep(currentStep + 1)
-                                        } else if (isOnTimerStep) {
-                                            const hasActive = Object.values(activeSession).some((s: any) => s.status === 'active' || s.status === 'paused')
-                                            if (hasActive || customTimers.length > 0) {
-                                                setFinishConfirm(true)
-                                            } else {
-                                                setActiveSession({})
-                                                setCustomTimers([])
-                                                if (id) {
-                                                    const keys = Object.keys(localStorage).filter(k => k.startsWith('timer-session-'))
-                                                    keys.forEach(k => localStorage.removeItem(k))
-                                                }
-                                                setIsCookingMode(false)
-                                                setCurrentStep(0)
-                                                setCompletedSteps(new Set()); setAcknowledgedTimers(new Set())
-                                            }
-                                        } else {
-                                            const lastStepHasTimer = cookingTimers.some((t: any) => t.type === 'timer' && t.stepIndex === lastStepIdx)
-                                            if (lastStepHasTimer) {
-                                                setCurrentStep(instructions.length)
-                                            } else {
-                                                if (!hasActiveStepTimer) {
-                                                    setCompletedSteps(prev => new Set([...Array.from(prev), currentStep]))
-                                                }
-                                                const hasActive = Object.values(activeSession).some((s: any) => s.status === 'active' || s.status === 'paused')
-                                                if (hasActive || customTimers.length > 0) {
-                                                    setFinishConfirm(true)
-                                                } else {
-                                                    setActiveSession({})
-                                                    setCustomTimers([])
-                                                    if (id) {
-                                                        const keys = Object.keys(localStorage).filter(k => k.startsWith('timer-session-'))
-                                                        keys.forEach(k => localStorage.removeItem(k))
-                                                    }
-                                                    setIsCookingMode(false)
-                                                    setCurrentStep(0)
-                                                    setCompletedSteps(new Set()); setAcknowledgedTimers(new Set())
-                                                }
-                                            }
-                                        }
-                                    }}
+                                    className="cooking-next-btn is-primary"
+                                    onClick={advance}
                                 >
-                                    {currentStep >= instructions.length ? "🎉 Finish!" : "Next Step →"}
+                                    {nextLabel}
+                                    {nextLabel !== 'Finish' && <ChevronRight size={18} />}
                                 </Button>
                             </div>
+                            {/* Overdue alarm — alarm-clock takeover over the whole cooking
+                                screen (steps, sheets and Back/Next included). The going-off
+                                timer sits centered; other running timers stay muted below.
+                                Never auto-navigates. */}
+                            {(() => {
+                                const visibleOverdue: any[] = [
+                                    ...cookingTimers.filter((t: any) => t.type === 'timer' && getTimerStatus(t.id) === 'overdue'),
+                                    ...customTimers.filter((t: any) => getTimerStatus(t.id) === 'overdue'),
+                                ].filter((t: any) => !alarmPopupClosed.has(t.id))
+                                if (visibleOverdue.length === 0) return null
 
-                            {/* Prep Work Bottom Sheet */}
-                            {prepWork.length > 0 && (
-                                <>
-                                    <div className="prep-sheet-tab" onClick={() => setPrepSheetOpen(!prepSheetOpen)}>
-                                        <div className="relative flex items-center gap-2">
-                                            <ChefHat size={16} className="text-purple-400" />
-                                            <span className="text-sm font-bold text-[var(--cooking-text)]">Prep</span>
-                                            {relevantPrepCount > 0 && (
-                                                <span className="prep-sheet-badge">{relevantPrepCount}</span>
-                                            )}
-                                        </div>
-                                    </div>
+                                // Everything else that is running (never pending — not started means not shown)
+                                const runningTimers: any[] = [
+                                    ...cookingTimers.filter((t: any) => t.type === 'timer' && ['active', 'paused'].includes(getTimerStatus(t.id))),
+                                    ...customTimers.filter((t: any) => ['active', 'paused'].includes(getTimerStatus(t.id))),
+                                ].sort((a: any, b: any) => {
+                                    const sa = activeSession[a.id]
+                                    const sb = activeSession[b.id]
+                                    const pa = sa?.status === 'paused' ? 1 : 0
+                                    const pb = sb?.status === 'paused' ? 1 : 0
+                                    if (pa !== pb) return pa - pb
+                                    return getRemaining(sa, nowMs) - getRemaining(sb, nowMs)
+                                })
 
-                                    <div className={`prep-sheet-panel ${prepSheetOpen ? 'open' : ''}`}>
-                                        <div className="prep-sheet-handle" onClick={() => setPrepSheetOpen(false)} />
-                                        <div className="flex items-center justify-between px-6 mb-3">
-                                            <h3 className="text-sm font-bold text-[var(--cooking-text)]">Prep Work</h3>
-                                            <button onClick={() => setPrepSheetOpen(false)} className="text-xs text-orange-400/60 hover:text-orange-400">Close</button>
+                                return (
+                                    <div className="cooking-alarm-wrap" role="alert">
+                                        <div className="cooking-alarm-note">
+                                            <Clock size={12} />
+                                            {visibleOverdue.length > 1 ? `${visibleOverdue.length} timers overdue` : 'Timer overdue'} · rings every 4s
                                         </div>
-                                        <div className="prep-sheet-scroll">
-                                            <div className="space-y-2">
-                                                {prepWork.map((item, index) => {
-                                                    const isRecommended = recommendedPrep.some((r: any) => r.action === item.action && r.ingredient === item.ingredient)
-                                                    return (
-                                                        <div key={index} className={`prep-item ${isRecommended ? 'recommended' : ''} ${checkedPrep.has(index) ? 'checked' : ''}`}>
-                                                            <button
-                                                                onClick={() => {
-                                                                    const next = new Set(checkedPrep)
-                                                                    if (next.has(index)) next.delete(index)
-                                                                    else next.add(index)
-                                                                    setCheckedPrep(next)
-                                                                }}
-                                                                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all shrink-0 mt-0.5 ${
-                                                                    checkedPrep.has(index)
-                                                                        ? 'bg-orange-500 border-orange-500 text-white'
-                                                                        : 'border-orange-500/30 hover:border-orange-500'
-                                                                }`}
-                                                            >
-                                                                {checkedPrep.has(index) && <Check size={12} />}
-                                                            </button>
-                                                            <span className="prep-item-text text-sm text-[var(--cooking-text)] flex-1">
-                                                                {item.ingredient && <span className="font-medium">{item.ingredient}: </span>}
-                                                                {item.action}
-                                                            </span>
-                                                            {item.timeEstimate && (
-                                                                <span className="text-[10px] text-orange-400/50 shrink-0">~{item.timeEstimate}m</span>
+                                        <div className="cooking-alarm-items">
+                                            {visibleOverdue.map((timer: any) => {
+                                                const session = activeSession[timer.id]
+                                                const remaining = session ? getRemaining(session, nowMs) : 0
+                                                const stepFlowIdx = typeof timer.stepIndex === 'number'
+                                                    ? flowItems.findIndex(f => f.kind === 'step' && f.stepIndex === timer.stepIndex)
+                                                    : -1
+                                                return (
+                                                    <div key={timer.id} className="cooking-alarm-item">
+                                                        <span className="cooking-alarm-item-icon"><Clock size={22} /></span>
+                                                        <span className="cooking-alarm-item-name">
+                                                            {timer.name || 'Timer'}
+                                                            <span className="cooking-timer-tag is-overdue">Overdue</span>
+                                                        </span>
+                                                        <span className="cooking-alarm-item-count">{formatCountdown(remaining)}</span>
+                                                        <div className="cooking-extend-row">
+                                                            <button className="cooking-timer-btn" onClick={() => extendTimer(timer, 2)}>+2 min</button>
+                                                            <button className="cooking-timer-btn" onClick={() => extendTimer(timer, 5)}>+5 min</button>
+                                                            {customExtendId === timer.id ? (
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    max="999"
+                                                                    value={customExtendMin}
+                                                                    onChange={(e) => setCustomExtendMin(e.target.value)}
+                                                                    placeholder="min"
+                                                                    autoFocus
+                                                                    className="cooking-extend-input"
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter' && customExtendMin) { extendTimer(timer, parseInt(customExtendMin)); setCustomExtendId(null); setCustomExtendMin("") }
+                                                                        if (e.key === 'Escape') { setCustomExtendId(null); setCustomExtendMin("") }
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <button className="cooking-timer-btn" onClick={() => setCustomExtendId(timer.id)}>+X</button>
                                                             )}
+                                                        </div>
+                                                        <button
+                                                            className="cooking-start-timer"
+                                                            onClick={() => completeTimer(timer)}
+                                                        >
+                                                            <Check size={16} strokeWidth={3} />
+                                                            Done — dismiss
+                                                        </button>
+                                                        {stepFlowIdx >= 0 && (
+                                                            <button
+                                                                className="cooking-alarm-popup-view"
+                                                                onClick={() => {
+                                                                    jumpTo(stepFlowIdx)
+                                                                    setAlarmPopupClosed(prev => new Set([...Array.from(prev), timer.id]))
+                                                                }}
+                                                            >
+                                                                View step
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                        {runningTimers.length > 0 && (
+                                            <div className="cooking-alarm-running">
+                                                <div className="cooking-alarm-running-label">
+                                                    <span>Still running · {runningTimers.length}</span>
+                                                </div>
+                                                {runningTimers.map((timer: any) => {
+                                                    const session = activeSession[timer.id]
+                                                    const status = getTimerStatus(timer.id)
+                                                    const remaining = session ? getRemaining(session, nowMs) : timer.duration * 60
+                                                    const progress = getTimerProgress(timer, session, nowMs)
+                                                    return (
+                                                        <div key={timer.id} className="cooking-alarm-running-row">
+                                                            <div className="cooking-alarm-running-info">
+                                                                <span className="cooking-alarm-running-name">
+                                                                    {timer.name || 'Timer'}
+                                                                    {status === 'paused' && <span className="cooking-timer-tag">Paused</span>}
+                                                                </span>
+                                                                <div className="cooking-progress-track">
+                                                                    <div className="cooking-progress-fill" style={{ width: `${progress}%` }} />
+                                                                </div>
+                                                            </div>
+                                                            <span className="cooking-countdown is-inline">{formatCountdown(remaining)}</span>
+                                                            <div className="cooking-alarm-running-actions">
+                                                                <button className="cooking-timer-btn" onClick={() => addTimerSeconds(timer, 300)}>+5</button>
+                                                                <button className="cooking-timer-btn is-primary" onClick={() => completeTimer(timer)}>✓</button>
+                                                            </div>
                                                         </div>
                                                     )
                                                 })}
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
-                                </>
-                            )}
-
-                            {/* Timers Bottom Sheet */}
-                            {(cookingTimers.filter((t: any) => t.type === 'timer').length > 0 || customTimers.length > 0) && (
-                                <>
-                                    <div
-                                        className="timer-sheet-tab"
-                                        onClick={() => {
-                                            setTimerSheetOpen(!timerSheetOpen)
-                                            setPrepSheetOpen(false)
-                                        }}
-                                    >
-                                        <div className="relative flex items-center gap-2">
-                                            <Clock size={16} className="text-orange-400" />
-                                            <span className="text-sm font-bold text-[var(--cooking-text)]">Timers</span>
-                                            {Object.values(activeSession).filter((t: any) => t.status === 'active').length > 0 && (
-                                                <span className="timer-sheet-badge">{Object.values(activeSession).filter((t: any) => t.status === 'active').length}</span>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className={`timer-sheet-panel ${timerSheetOpen ? 'open' : ''}`}>
-                                        <div className="timer-sheet-handle" onClick={() => setTimerSheetOpen(false)} />
-                                        <div className="flex items-center justify-between px-6 mb-4">
-                                            <div className="flex items-center gap-2.5">
-                                                <div className="w-8 h-8 rounded-lg bg-orange-500/15 flex items-center justify-center">
-                                            <Clock size={16} className="text-orange-400" />
-                                                </div>
-                                                <h3 className="text-sm font-bold text-[var(--cooking-text)]">Cooking Timers</h3>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <button
-                                                    onClick={() => {
-                                                        const newSession: Record<string, { endTime: number | null; remaining: number; status: string; checkpointsHit: string[] }> = {}
-                                                        cookingTimers.filter((t: any) => t.type === 'timer').forEach((t: any) => {
-                                                            newSession[t.id] = { endTime: null, remaining: t.duration * 60, status: 'pending', checkpointsHit: [] }
-                                                        })
-                                                        customTimers.forEach((t) => {
-                                                            newSession[t.id] = { endTime: null, remaining: t.duration * 60, status: 'pending', checkpointsHit: [] }
-                                                        })
-                                                        setActiveSession(newSession)
-                                                    }}
-                                                    className="text-xs text-orange-400/50 hover:text-orange-400 transition-colors"
-                                                >
-                                                    Reset All
-                                                </button>
-                                                <button onClick={() => setTimerSheetOpen(false)} className="text-xs text-white/30 hover:text-white/60 transition-colors">Close</button>
-                                            </div>
-                                        </div>
-                                        <div className="timer-sheet-scroll">
-                                            <div className="space-y-3">
-                                                {(() => {
-                                                    const allTimers = sortTimersByStartTime(cookingTimers.filter((t: any) => t.type === 'timer'))
-                                                    const relevant = allTimers.filter((t: any) => {
-                                                        const session = activeSession[t.id]
-                                                        const status = session?.status || 'pending'
-                                                        if (status === 'completed') return false
-                                                        if (status === 'active' || status === 'paused') return true
-                                                        if (t.stepIndex != null && t.stepIndex <= currentStep) return true
-                                                        if (t.stepIndex == null) return true
-                                                        return false
-                                                    })
-                                                    const completed = allTimers.filter((t: any) => {
-                                                        const session = activeSession[t.id]
-                                                        return session?.status === 'completed'
-                                                    })
-                                                    return (
-                                                        <>
-                                                            {relevant.map((timer) => {
-                                                                const session = activeSession[timer.id]
-                                                                const status = session?.status || 'pending'
-                                                                const remaining = session ? getRemaining(session) : timer.duration * 60
-                                                                const minutes = Math.floor(remaining / 60)
-                                                                const seconds = remaining % 60
-                                                                const totalSeconds = timer.duration * 60
-                                                                const progress = totalSeconds > 0 ? ((totalSeconds - remaining) / totalSeconds) * 100 : 0
-                                                                const checkpoints = cookingTimers.filter((t: any) => t.parentTimerId === timer.id && t.type === 'checkpoint')
-                                                                const startTime = calculateTimerStartTime(cookingTimers, timer)
-                                                                const checkpointsHit = session?.checkpointsHit || []
-
-                                                                return (
-                                                                    <div key={timer.id} className={`timer-card ${status}`}>
-                                                                        <div className="flex items-center justify-between mb-2">
-                                                                            <span className="font-bold text-sm text-[var(--cooking-text)]">{timer.name}</span>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                                                                                    status === 'active' ? 'bg-orange-500/20 text-orange-400' :
-                                                                                    status === 'paused' ? 'bg-amber-500/20 text-amber-400' :
-                                                                                    'bg-white/5 text-white/30'
-                                                                                }`}>
-                                                                                    {status === 'active' ? 'RUNNING' : status === 'paused' ? 'PAUSED' : 'PENDING'}
-                                                                                </span>
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        const newSession = { ...activeSession }
-                                                                                        newSession[timer.id] = { endTime: null, remaining: timer.duration * 60, status: 'pending', checkpointsHit: [] }
-                                                                                        setActiveSession(newSession)
-                                                                                    }}
-                                                                                    className="text-[10px] text-white/30 hover:text-orange-400 transition-colors px-1"
-                                                                                    title="Reset timer"
-                                                                                >
-                                                                                    Reset
-                                                                                </button>
-                                                                            </div>
-                                                                        </div>
-
-                                                                        {(status === 'active' || status === 'paused') && (
-                                                                            <>
-                                                                                {editingTimerId === timer.id ? (
-                                                                                    <div className="my-4 p-3 rounded-xl bg-white/5 border border-white/10">
-                                                                                        <p className="text-[10px] text-white/30 uppercase tracking-wider font-bold mb-2 text-center">Adjust Timer</p>
-                                                                                        <div className="flex items-center justify-center gap-2">
-                                                                                            <input
-                                                                                                type="number"
-                                                                                                min="0"
-                                                                                                max="999"
-                                                                                                value={editTimerMinutes}
-                                                                                                onChange={(e) => setEditTimerMinutes(e.target.value)}
-                                                                                                className="w-16 bg-white/10 rounded-lg px-2 py-2 text-center text-lg font-bold text-[var(--cooking-text)] outline-none border border-white/10 focus:border-orange-500/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                                                placeholder="00"
-                                                                                            />
-                                                                                            <span className="text-lg font-bold text-white/30">:</span>
-                                                                                            <input
-                                                                                                type="number"
-                                                                                                min="0"
-                                                                                                max="59"
-                                                                                                value={editTimerSeconds}
-                                                                                                onChange={(e) => setEditTimerSeconds(e.target.value)}
-                                                                                                className="w-16 bg-white/10 rounded-lg px-2 py-2 text-center text-lg font-bold text-[var(--cooking-text)] outline-none border border-white/10 focus:border-orange-500/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                                                placeholder="00"
-                                                                                            />
-                                                                                        </div>
-                                                                                        <div className="flex gap-2 mt-3">
-                                                                                            <button
-                                                                                                onClick={() => setEditingTimerId(null)}
-                                                                                                className="flex-1 py-1.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-white/40 transition-all"
-                                                                                            >
-                                                                                                Cancel
-                                                                                            </button>
-                                                                                            <button
-                                                                                                onClick={() => {
-                                                                                                    const mins = parseInt(editTimerMinutes) || 0
-                                                                                                    const secs = parseInt(editTimerSeconds) || 0
-                                                                                                    const totalSecs = mins * 60 + secs
-                                                                                                    if (totalSecs <= 0) return
-                                                                                                    const newSession = { ...activeSession }
-                                                                                                    newSession[timer.id] = {
-                                                                                                        endTime: Date.now() + totalSecs * 1000,
-                                                                                                        remaining: totalSecs,
-                                                                                                        status: 'active',
-                                                                                                        checkpointsHit: session.checkpointsHit || []
-                                                                                                    }
-                                                                                                    setActiveSession(newSession)
-                                                                                                    setEditingTimerId(null)
-                                                                                                }}
-                                                                                                className="flex-1 py-1.5 rounded-lg text-xs font-bold bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 transition-all"
-                                                                                            >
-                                                                                                Save
-                                                                                            </button>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                ) : (
-                                                                                    <div
-                                                                                        className="timer-countdown text-center my-4 cursor-pointer hover:opacity-70 transition-opacity"
-                                                                                        title="Tap to edit time"
-                                                                                        onClick={() => {
-                                                                                            setEditingTimerId(timer.id)
-                                                                                            setEditTimerMinutes(String(minutes))
-                                                                                            setEditTimerSeconds(String(seconds))
-                                                                                        }}
-                                                                                    >
-                                                                                        {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-                                                                                        <div className="text-[9px] text-white/20 mt-0.5 uppercase tracking-wider">tap to edit</div>
-                                                                                    </div>
-                                                                                )}
-                                                                                <div className="timer-progress mb-1">
-                                                                                    <div className="timer-progress-fill" style={{ width: `${progress}%` }} />
-                                                                                    {checkpoints.map((ckpt: any) => {
-                                                                                        const ckptOffset = ckpt.dependencies?.[0]?.offset || 0
-                                                                                        const ckptPercent = totalSeconds > 0 ? (ckptOffset / timer.duration / 60 * 100) : 0
-                                                                                        const isHit = checkpointsHit.includes(ckpt.id)
-                                                                                        return (
-                                                                                            <div
-                                                                                                key={ckpt.id}
-                                                                                                className={`timer-checkpoint-marker ${isHit ? 'reached' : ''}`}
-                                                                                                style={{ left: `${ckptPercent}%` }}
-                                                                                                title={ckpt.name}
-                                                                                            />
-                                                                                        )
-                                                                                    })}
-                                                                                </div>
-                                                                                {checkpoints.length > 0 && (
-                                                                                    <div className="flex justify-between mt-1 mb-2 px-1">
-                                                                                        {checkpoints.map((ckpt: any) => {
-                                                                                            const ckptOffset = ckpt.dependencies?.[0]?.offset || 0
-                                                                                            const isHit = checkpointsHit.includes(ckpt.id)
-                                                                                            return (
-                                                                                                <span key={ckpt.id} className={`text-[10px] ${isHit ? 'text-emerald-400 font-bold' : 'text-white/35'}`}>
-                                                                                                    {ckpt.name} ({ckptOffset}m)
-                                                                                                </span>
-                                                                                            )
-                                                                                        })}
-                                                                                    </div>
-                                                                                )}
-                                                                                <div className="flex gap-2 mt-3">
-                                                                                    <button
-                                                                                        onClick={() => {
-                                                                                            const newSession = { ...activeSession }
-                                                                                            if (session.status === 'active') {
-                                                                                                const rem = getRemaining(session)
-                                                                                                newSession[timer.id] = { endTime: null, remaining: rem, status: 'paused', checkpointsHit: session.checkpointsHit }
-                                                                                            } else {
-                                                                                                newSession[timer.id] = { endTime: Date.now() + session.remaining * 1000, remaining: session.remaining, status: 'active', checkpointsHit: session.checkpointsHit }
-                                                                                            }
-                                                                                            setActiveSession(newSession)
-                                                                                        }}
-                                                                                        className="flex-1 py-2.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-[var(--cooking-text)] border border-white/5 hover:border-white/10 transition-all"
-                                                                                    >
-                                                                                        {session.status === 'active' ? 'Pause' : 'Resume'}
-                                                                                    </button>
-                                                                                    <button
-                                                                                        onClick={() => {
-                                                                                            const newSession = { ...activeSession }
-                                                                                            if (session.status === 'active') {
-                                                                                                newSession[timer.id] = { ...session, endTime: (session.endTime || Date.now()) + 300000 }
-                                                                                            } else {
-                                                                                                newSession[timer.id] = { ...session, remaining: session.remaining + 300 }
-                                                                                            }
-                                                                                            setActiveSession(newSession)
-                                                                                        }}
-                                                                                        className="flex-1 py-2.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-[var(--cooking-text)] border border-white/5 hover:border-white/10 transition-all"
-                                                                                    >
-                                                                                        +5 min
-                                                                                    </button>
-                                                                                    <button
-                                                                                        onClick={() => {
-                                                                                            const newSession = { ...activeSession }
-                                                                                            newSession[timer.id] = { endTime: null, remaining: 0, status: 'completed', checkpointsHit: session.checkpointsHit }
-                                                                                            setActiveSession(newSession)
-                                                                                        }}
-                                                                                        className="flex-1 py-2.5 rounded-lg text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/30 transition-all"
-                                                                                    >
-                                                                                        Done
-                                                                                    </button>
-                                                                                </div>
-                                                                            </>
-                                                                        )}
-
-                                                                        {status === 'pending' && (() => {
-                                                                            const hasDep = timer.dependencies?.[0]?.timerId && timer.dependencies[0].timerId !== 'start'
-                                                                            const depTimerId = hasDep ? timer.dependencies[0].timerId : null
-                                                                            const depSession = depTimerId ? activeSession[depTimerId] : null
-                                                                            const depDone = depSession?.status === 'completed'
-                                                                            const isPastStep = timer.stepIndex != null && timer.stepIndex < currentStep
-                                                                            const isLocked = hasDep && !depDone
-
-                                                                            return (
-                                                                                <div className="mt-1">
-                                                                                    <div className="flex items-center gap-2 mb-2">
-                                                                                        {isLocked ? (
-                                                                                            <span className="text-[10px] text-amber-400/70 bg-amber-500/10 px-1.5 py-0.5 rounded font-medium">
-                                                                                                Waiting for {getTimerById(cookingTimers, depTimerId)?.name || 'previous'}
-                                                                                            </span>
-                                                                                        ) : (
-                                                                                            <span className="text-white/40 text-xs">
-                                                                                                Starts at +{startTime} min
-                                                                                            </span>
-                                                                                        )}
-                                                                                        {hasDep && !isLocked && (
-                                                                                            <span className="text-[10px] text-emerald-400/40 bg-emerald-500/5 px-1.5 py-0.5 rounded">
-                                                                                                ready
-                                                                                            </span>
-                                                                                        )}
-                                                                                        {timer.stepIndex != null && (
-                                                                                            <span className="text-[10px] text-orange-400/40 bg-orange-500/5 px-1.5 py-0.5 rounded">
-                                                                                                Step {(timer.stepIndex ?? 0) + 1}
-                                                                                            </span>
-                                                                                        )}
-                                                                                    </div>
-                                                                                    {isPastStep ? (
-                                                                                        <button
-                                                                                            onClick={() => {
-                                                                                                const newSession = { ...activeSession }
-                                                                                                newSession[timer.id] = { endTime: null, remaining: 0, status: 'completed', checkpointsHit: [] }
-                                                                                                setActiveSession(newSession)
-                                                                                            }}
-                                                                                            className="w-full py-2 rounded-lg text-xs font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400/70 border border-emerald-500/15 hover:border-emerald-500/25 transition-all"
-                                                                                        >
-                                                                                            ✓ Mark Complete
-                                                                                        </button>
-                                                                                    ) : isLocked ? (
-                                                                                        <button
-                                                                                            disabled
-                                                                                            className="w-full py-2 rounded-lg text-xs font-bold bg-white/[0.02] text-white/15 border border-white/[0.04] cursor-not-allowed"
-                                                                                        >
-                                                                                            Start {timer.duration}m Timer
-                                                                                        </button>
-                                                                                    ) : (
-                                                                                        <button
-                                                                                            onClick={() => {
-                                                                                                const newSession = { ...activeSession }
-                                                                                                newSession[timer.id] = {
-                                                                                                    endTime: Date.now() + timer.duration * 60 * 1000,
-                                                                                                    remaining: timer.duration * 60,
-                                                                                                    status: 'active',
-                                                                                                    checkpointsHit: []
-                                                                                                }
-                                                                                                setActiveSession(newSession)
-                                                                                            }}
-                                                                                            className="w-full py-2 rounded-lg text-xs font-bold bg-orange-500/15 hover:bg-orange-500/25 text-orange-400 border border-orange-500/20 hover:border-orange-500/30 transition-all"
-                                                                                        >
-                                                                                            Start {timer.duration}m Timer
-                                                                                        </button>
-                                                                                    )}
-                                                                                </div>
-                                                                            )
-                                                                        })()}
-                                                                    </div>
-                                                                )
-                                                            })}
-
-                                                            {/* Completed timers - collapsed */}
-                                                            {completed.length > 0 && (
-                                                                <div className="mt-3">
-                                                                    <div className="flex items-center gap-2 px-1 mb-2">
-                                                                        <div className="flex-1 h-px bg-white/5"></div>
-                                                                        <span className="text-[10px] text-white/25 uppercase tracking-wider font-medium">Completed ({completed.length})</span>
-                                                                        <div className="flex-1 h-px bg-white/5"></div>
-                                                                    </div>
-                                                                    {completed.map((timer) => (
-                                                                        <div key={timer.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/[0.02] border border-white/[0.03]">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50"></div>
-                                                                                <span className="text-xs text-white/40 line-through">{timer.name}</span>
-                                                                            </div>
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    const newSession = { ...activeSession }
-                                                                                    newSession[timer.id] = { endTime: null, remaining: timer.duration * 60, status: 'pending', checkpointsHit: [] }
-                                                                                    setActiveSession(newSession)
-                                                                                }}
-                                                                                className="text-[10px] text-orange-400/40 hover:text-orange-400 transition-colors"
-                                                                            >
-                                                                                Restart
-                                                                            </button>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </>
-                                                    )
-                                                })()}
-
-                                                {/* Custom timers (session-only) */}
-                                                {customTimers.length > 0 && (
-                                                    <div className="mt-4">
-                                                        <div className="flex items-center gap-2 px-1 mb-3">
-                                                            <div className="flex-1 h-px bg-white/5"></div>
-                                                            <span className="text-[10px] text-white/25 uppercase tracking-wider font-medium">Custom Timers</span>
-                                                            <div className="flex-1 h-px bg-white/5"></div>
-                                                        </div>
-                                                        {customTimers.map((timer) => {
-                                                            const session = activeSession[timer.id]
-                                                            const status = session?.status || 'pending'
-                                                            const remaining = session ? getRemaining(session) : timer.duration * 60
-                                                            const minutes = Math.floor(remaining / 60)
-                                                            const seconds = remaining % 60
-                                                            const totalSeconds = timer.duration * 60
-                                                            const progress = totalSeconds > 0 ? ((totalSeconds - remaining) / totalSeconds) * 100 : 0
-
-                                                            return (
-                                                                <div key={timer.id} className={`timer-card ${status} mb-3`}>
-                                                                    <div className="flex items-center justify-between mb-2">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="font-bold text-sm text-[var(--cooking-text)]">{timer.name}</span>
-                                                                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/5 text-white/25 uppercase tracking-wider">
-                                                                                Custom
-                                                                            </span>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                                                                status === 'active' ? 'bg-orange-500/20 text-orange-400' :
-                                                                                status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
-                                                                                status === 'paused' ? 'bg-amber-500/20 text-amber-400' :
-                                                                                'bg-white/5 text-white/30'
-                                                                            }`}>
-                                                                                {status === 'active' ? 'RUNNING' : status === 'completed' ? 'DONE' : status === 'paused' ? 'PAUSED' : 'PENDING'}
-                                                                            </span>
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    const newSession = { ...activeSession }
-                                                                                    newSession[timer.id] = { endTime: null, remaining: timer.duration * 60, status: 'pending', checkpointsHit: [] }
-                                                                                    setActiveSession(newSession)
-                                                                                }}
-                                                                                className="text-[10px] text-white/30 hover:text-orange-400 transition-colors px-1"
-                                                                                title="Reset timer"
-                                                                            >
-                                                                                Reset
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    setCustomTimers(prev => prev.filter(t => t.id !== timer.id))
-                                                                                    const newSession = { ...activeSession }
-                                                                                    delete newSession[timer.id]
-                                                                                    setActiveSession(newSession)
-                                                                                }}
-                                                                                className="text-[10px] text-white/30 hover:text-red-400 transition-colors px-1"
-                                                                                title="Remove custom timer"
-                                                                            >
-                                                                                ✕
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {(status === 'active' || status === 'paused') && (
-                                                                        <>
-                                                                            <div className="timer-countdown text-center my-3">
-                                                                                {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-                                                                            </div>
-                                                                            <div className="timer-progress">
-                                                                                <div className="timer-progress-fill" style={{ width: `${progress}%` }} />
-                                                                            </div>
-                                                                            <div className="flex gap-2 mt-3">
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        const newSession = { ...activeSession }
-                                                                                        if (session.status === 'active') {
-                                                                                            const rem = getRemaining(session)
-                                                                                            newSession[timer.id] = { endTime: null, remaining: rem, status: 'paused', checkpointsHit: session.checkpointsHit }
-                                                                                        } else {
-                                                                                            newSession[timer.id] = { endTime: Date.now() + session.remaining * 1000, remaining: session.remaining, status: 'active', checkpointsHit: session.checkpointsHit }
-                                                                                        }
-                                                                                        setActiveSession(newSession)
-                                                                                    }}
-                                                                                    className="flex-1 py-2.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-[var(--cooking-text)] border border-white/5 hover:border-white/10 transition-all"
-                                                                                >
-                                                                                    {session.status === 'active' ? 'Pause' : 'Resume'}
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        const newSession = { ...activeSession }
-                                                                                        if (session.status === 'active') {
-                                                                                            newSession[timer.id] = { ...session, endTime: (session.endTime || Date.now()) + 300000 }
-                                                                                        } else {
-                                                                                            newSession[timer.id] = { ...session, remaining: session.remaining + 300 }
-                                                                                        }
-                                                                                        setActiveSession(newSession)
-                                                                                    }}
-                                                                                    className="flex-1 py-2.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-[var(--cooking-text)] border border-white/5 hover:border-white/10 transition-all"
-                                                                                >
-                                                                                    +5 min
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        const newSession = { ...activeSession }
-                                                                                        newSession[timer.id] = { endTime: null, remaining: 0, status: 'completed', checkpointsHit: session.checkpointsHit }
-                                                                                        setActiveSession(newSession)
-                                                                                    }}
-                                                                                    className="flex-1 py-2.5 rounded-lg text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/30 transition-all"
-                                                                                >
-                                                                                    Done
-                                                                                </button>
-                                                                            </div>
-                                                                        </>
-                                                                    )}
-
-                                                                    {status === 'completed' && (
-                                                                        <div className="py-2 space-y-2">
-                                                                            <div className="flex items-center justify-center gap-2">
-                                                                                <span className="text-emerald-400 text-xs font-bold">Timer done</span>
-                                                                            </div>
-                                                                            <div className="flex gap-2">
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        const newSession = { ...activeSession }
-                                                                                        newSession[timer.id] = { endTime: Date.now() + 2 * 60 * 1000, remaining: 2 * 60, status: 'active', checkpointsHit: session?.checkpointsHit || [] }
-                                                                                        setActiveSession(newSession)
-                                                                                    }}
-                                                                                    className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/20 transition-all"
-                                                                                >
-                                                                                    +2 min
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        const newSession = { ...activeSession }
-                                                                                        newSession[timer.id] = { endTime: Date.now() + 5 * 60 * 1000, remaining: 5 * 60, status: 'active', checkpointsHit: session?.checkpointsHit || [] }
-                                                                                        setActiveSession(newSession)
-                                                                                    }}
-                                                                                    className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/20 transition-all"
-                                                                                >
-                                                                                    +5 min
-                                                                                </button>
-                                                                                {customExtendId === timer.id ? (
-                                                                                    <div className="flex items-center gap-1 flex-1">
-                                                                                        <input
-                                                                                            type="number"
-                                                                                            min="1"
-                                                                                            max="999"
-                                                                                            value={customExtendMin}
-                                                                                            onChange={(e) => setCustomExtendMin(e.target.value)}
-                                                                                            placeholder="X"
-                                                                                            autoFocus
-                                                                                            className="w-full bg-white/5 rounded-lg px-2 py-1.5 text-[10px] text-[var(--cooking-text)] placeholder:text-white/20 outline-none border border-white/10 focus:border-amber-500/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                                            onKeyDown={(e) => {
-                                                                                                if (e.key === 'Enter' && customExtendMin) {
-                                                                                                    const newSession = { ...activeSession }
-                                                                                                    newSession[timer.id] = { endTime: Date.now() + parseInt(customExtendMin) * 60 * 1000, remaining: parseInt(customExtendMin) * 60, status: 'active', checkpointsHit: session?.checkpointsHit || [] }
-                                                                                                    setActiveSession(newSession)
-                                                                                                    setCustomExtendId(null)
-                                                                                                    setCustomExtendMin("")
-                                                                                                }
-                                                                                                if (e.key === 'Escape') {
-                                                                                                    setCustomExtendId(null)
-                                                                                                    setCustomExtendMin("")
-                                                                                                }
-                                                                                            }}
-                                                                                        />
-                                                                                        <button
-                                                                                            onClick={() => {
-                                                                                                if (customExtendMin) {
-                                                                                                    const newSession = { ...activeSession }
-                                                                                                    newSession[timer.id] = { endTime: Date.now() + parseInt(customExtendMin) * 60 * 1000, remaining: parseInt(customExtendMin) * 60, status: 'active', checkpointsHit: session?.checkpointsHit || [] }
-                                                                                                    setActiveSession(newSession)
-                                                                                                    setCustomExtendId(null)
-                                                                                                    setCustomExtendMin("")
-                                                                                                }
-                                                                                            }}
-                                                                                            disabled={!customExtendMin}
-                                                                                            className="py-1.5 px-2 rounded-lg text-[10px] font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/20 transition-all disabled:opacity-30"
-                                                                                        >
-                                                                                            min
-                                                                                        </button>
-                                                                                    </div>
-                                                                                ) : (
-                                                                                    <button
-                                                                                        onClick={() => setCustomExtendId(timer.id)}
-                                                                                        className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/20 transition-all"
-                                                                                    >
-                                                                                        +X min
-                                                                                    </button>
-                                                                                )}
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        const newSession = { ...activeSession }
-                                                                                        newSession[timer.id] = { ...newSession[timer.id], status: 'completed', remaining: 0 }
-                                                                                        setActiveSession(newSession)
-                                                                                    }}
-                                                                                    className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 transition-all"
-                                                                                >
-                                                                                    Done ✓
-                                                                                </button>
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-
-                                                                    {status === 'pending' && (
-                                                                        <div className="text-center py-2">
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    const newSession = { ...activeSession }
-                                                                                    newSession[timer.id] = {
-                                                                                        endTime: Date.now() + timer.duration * 60 * 1000,
-                                                                                        remaining: timer.duration * 60,
-                                                                                        status: 'active',
-                                                                                        checkpointsHit: []
-                                                                                    }
-                                                                                    setActiveSession(newSession)
-                                                                                }}
-                                                                                className="w-full py-2 rounded-lg text-xs font-bold bg-orange-500/15 hover:bg-orange-500/25 text-orange-400 border border-orange-500/20 hover:border-orange-500/30 transition-all"
-                                                                            >
-                                                                                Start {timer.duration}m Timer
-                                                                            </button>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            )
-                                                        })}
-                                                    </div>
-                                                )}
-
-                                                {/* Add custom timer */}
-                                                <div className="mt-5 p-4 rounded-xl border border-dashed border-white/10 bg-white/[0.02]">
-                                                    <p className="text-[10px] text-white/30 uppercase tracking-wider font-bold mb-3">Add Custom Timer</p>
-                                                    <div className="flex gap-2">
-                                                        <input
-                                                            value={customTimerName}
-                                                            onChange={(e) => setCustomTimerName(e.target.value)}
-                                                            placeholder="Name"
-                                                            className="flex-1 bg-white/5 rounded-lg px-3 py-2 text-xs text-[var(--cooking-text)] placeholder:text-white/20 outline-none border border-white/10 focus:border-orange-500/40 transition-colors"
-                                                        />
-                                                        <input
-                                                            type="number"
-                                                            value={customTimerMinutes}
-                                                            onChange={(e) => setCustomTimerMinutes(e.target.value)}
-                                                            placeholder="Min"
-                                                            className="w-16 bg-white/5 rounded-lg px-3 py-2 text-xs text-[var(--cooking-text)] placeholder:text-white/20 outline-none border border-white/10 focus:border-orange-500/40 text-center transition-colors"
-                                                        />
-                                                        <button
-                                                            onClick={() => {
-                                                                const mins = parseInt(customTimerMinutes)
-                                                                if (!customTimerName.trim() || !mins || mins <= 0) return
-                                                                const newId = `custom-${Date.now()}`
-                                                                const newTimer = { id: newId, name: customTimerName.trim(), duration: mins }
-                                                                setCustomTimers(prev => [...prev, newTimer])
-                                                                setActiveSession(prev => ({
-                                                                    ...prev,
-                                                                    [newId]: { endTime: Date.now() + mins * 60 * 1000, remaining: mins * 60, status: 'active', checkpointsHit: [] }
-                                                                }))
-                                                                setCustomTimerName("")
-                                                                setCustomTimerMinutes("")
-                                                            }}
-                                                            className="px-4 py-2 rounded-lg text-xs font-bold bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border border-orange-500/20 hover:border-orange-500/30 transition-all"
-                                                        >
-                                                            Add
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
+                                )
+                            })()}
                         </div>
                     )
                 })()}
@@ -2877,15 +3237,7 @@ export default function RecipeDetail() {
                                 className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white"
                                 onClick={() => {
                                     setFinishConfirm(false)
-                                    setActiveSession({})
-                                    setCustomTimers([])
-                                    if (id) {
-                                        const keys = Object.keys(localStorage).filter(k => k.startsWith('timer-session-'))
-                                        keys.forEach(k => localStorage.removeItem(k))
-                                    }
-                                    setIsCookingMode(false)
-                                    setCurrentStep(0)
-                                    setCompletedSteps(new Set()); setAcknowledgedTimers(new Set())
+                                    closeCooking()
                                 }}
                             >
                                 Finish & Reset
@@ -2916,15 +3268,44 @@ export default function RecipeDetail() {
                                     setResetConfirm(false)
                                     setActiveSession({})
                                     setCustomTimers([])
+                                    setAlarmPopupClosed(new Set())
                                     if (id) {
                                         const keys = Object.keys(localStorage).filter(k => k.startsWith('timer-session-'))
                                         keys.forEach(k => localStorage.removeItem(k))
                                     }
-                                    setCurrentStep(0)
-                                    setCompletedSteps(new Set()); setAcknowledgedTimers(new Set())
+                                    setCurrentFlow(0)
+                                    setDoneFlow(new Set())
+                                    setActiveSheet('none')
                                 }}
                             >
                                 Reset All
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {reExtractConfirm && (
+                <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-card border border-border/20 rounded-2xl p-6 max-w-sm mx-4 shadow-xl">
+                        <h3 className="text-lg font-bold mb-2">Re-extract Timers?</h3>
+                        <p className="text-sm text-foreground/60 mb-4">
+                            This replaces all current cooking timers with a fresh AI-generated plan. Manual timer edits will be lost.
+                        </p>
+                        <div className="flex gap-3">
+                            <Button
+                                variant="outline"
+                                className="flex-1"
+                                onClick={() => setReExtractConfirm(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                className="flex-1 bg-rose-500 hover:bg-rose-600 text-white"
+                                disabled={isExtractingTimers}
+                                onClick={() => { setReExtractConfirm(false); extractTimers(true) }}
+                            >
+                                Re-extract
                             </Button>
                         </div>
                     </div>

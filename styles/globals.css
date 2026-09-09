@@ -351,8 +351,17 @@ a {
     /* Cooking Mode Variables - Dark */
     --cooking-bg: oklch(0.1 0.02 240);
     --cooking-text: oklch(0.98 0.01 240);
+    --cooking-text-muted: oklch(0.98 0.01 240 / 62%);
+    --cooking-text-faint: oklch(0.98 0.01 240 / 38%);
     --cooking-border: oklch(1 0 0 / 10%);
     --cooking-card-bg: oklch(0.14 0.03 240);
+    --cooking-faint: oklch(1 0 0 / 6%);
+    --cooking-hover: oklch(1 0 0 / 10%);
+    --cooking-accent: #fbbf24;
+    --cooking-accent-contrast: #1c1917;
+    --cooking-accent-soft: rgba(251, 191, 36, 0.12);
+    --cooking-accent-border: rgba(251, 191, 36, 0.4);
+    --cooking-accent-glow: rgba(251, 191, 36, 0.25);
   }
 
   .light {
@@ -379,8 +388,17 @@ a {
     /* Cooking Mode Variables - Light */
     --cooking-bg: oklch(0.95 0.01 240);
     --cooking-text: oklch(0.1 0.03 240);
+    --cooking-text-muted: oklch(0.1 0.03 240 / 65%);
+    --cooking-text-faint: oklch(0.1 0.03 240 / 45%);
     --cooking-border: oklch(0 0 0 / 10%);
     --cooking-card-bg: oklch(1 0 0);
+    --cooking-faint: oklch(0 0 0 / 5%);
+    --cooking-hover: oklch(0 0 0 / 8%);
+    --cooking-accent: #b45309;
+    --cooking-accent-contrast: #ffffff;
+    --cooking-accent-soft: rgba(180, 83, 9, 0.08);
+    --cooking-accent-border: rgba(180, 83, 9, 0.35);
+    --cooking-accent-glow: rgba(180, 83, 9, 0.18);
   }
 
   .theme {
@@ -488,425 +506,1509 @@ a {
   }
 }
 
-/* Cooking Mode Styles */
+/* ===================================================================
+   Cooking Mode — step-flow layout
+   Monochrome + single accent (--cooking-accent) that marks the one
+   thing to act on right now: current step card, primary CTA, timers.
+   =================================================================== */
 .cooking-mode-overlay {
   position: fixed;
   inset: 0;
-  background-color: var(--cooking-bg);
-  color: var(--cooking-text);
   z-index: 2000;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-}
-
-.cooking-mode-header {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--cooking-border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   background-color: var(--cooking-bg);
-  backdrop-filter: blur(8px);
+  color: var(--cooking-text);
+  overflow: hidden;
+}
+
+/* ---------- Header ---------- */
+.cooking-mode-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  padding-top: calc(0.75rem + env(safe-area-inset-top));
+  border-bottom: 1px solid var(--cooking-border);
   z-index: 10;
-  flex-shrink: 0;
 }
 
-.cooking-mode-layout {
+.cooking-icon-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cooking-text-faint);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.cooking-icon-btn:hover {
+  color: var(--cooking-text);
+  background: var(--cooking-hover);
+}
+
+.cooking-header-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.cooking-header-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cooking-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.cooking-progress {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  max-width: 340px;
+  height: 6px;
+  align-items: center;
+}
+
+.cooking-progress-seg {
+  flex: 1 1 0;
+  min-width: 3px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--cooking-faint);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background-color 0.25s;
+}
+
+.cooking-progress-seg.is-done {
+  background: var(--cooking-text-faint);
+}
+
+.cooking-progress-seg.is-current {
+  background: var(--cooking-accent);
+  height: 6px;
+  box-shadow: 0 0 6px var(--cooking-accent-glow);
+}
+
+/* ---------- Body: timeline + (desktop) sidebar ---------- */
+.cooking-mode-body {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   min-height: 0;
 }
 
-.cooking-mode-step-panel {
-  flex-shrink: 0;
-  padding: 1.5rem 1.5rem 1rem;
-}
-
-.cooking-mode-step {
-  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.cooking-mode-ingredients-panel {
-  flex: 1;
+/* Overdue alarm overlay: alarm-clock takeover over the whole cooking screen
+   (steps, sheets and Back/Next included). The going-off timer sits centered
+   and amber; other running timers stay muted below. Never auto-navigates. */
+.cooking-alarm-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  padding: 0 1.5rem 1.5rem;
-  overflow: hidden;
-}
-
-.cooking-mode-ingredients-scroll {
-  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.25rem 1rem;
   overflow-y: auto;
-  min-height: 0;
+  overscroll-behavior: contain;
 }
 
-/* Custom scrollbar */
-.cooking-mode-ingredients-scroll::-webkit-scrollbar {
-  width: 6px;
+.cooking-alarm-note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cooking-text-faint);
+  flex-shrink: 0;
 }
 
-.cooking-mode-ingredients-scroll::-webkit-scrollbar-track {
-  background: var(--cooking-border);
-  border-radius: 3px;
+.cooking-alarm-items {
+  width: 100%;
+  max-width: 24rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  flex-shrink: 0;
 }
 
-.cooking-mode-ingredients-scroll::-webkit-scrollbar-thumb {
-  background: var(--cooking-text);
-  border-radius: 3px;
-  opacity: 0.4;
-}
-
-.cooking-mode-ingredients-scroll::-webkit-scrollbar-thumb:hover {
-  opacity: 0.6;
-}
-
-.cooking-ingredient-card {
+.cooking-alarm-item {
   background: var(--cooking-card-bg);
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
+  border: 1px solid var(--cooking-accent-border);
+  border-radius: 1.5rem;
+  padding: 1.35rem 1.15rem 1.15rem;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 28px var(--cooking-accent-glow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  text-align: center;
+  animation: cooking-alarm-breathe 2s ease-in-out infinite;
+}
+
+@keyframes cooking-alarm-breathe {
+  0%, 100% { box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 20px var(--cooking-accent-glow); }
+  50% { box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 52px var(--cooking-accent-glow); }
+}
+
+.cooking-alarm-item-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  background: var(--cooking-accent-soft);
+  border: 1px solid var(--cooking-accent-border);
+  color: var(--cooking-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cooking-alarm-item-name {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--cooking-text);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cooking-alarm-item-count {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, 'SF Mono', 'Fira Code', Menlo, monospace;
+  font-size: 3.4rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: var(--cooking-accent);
+  animation: cooking-overdue-pulse 1s ease-in-out infinite;
+}
+
+.cooking-alarm-item .cooking-extend-row {
+  width: 100%;
+  margin-top: 0.35rem;
+}
+
+.cooking-alarm-item .cooking-start-timer {
+  margin-top: 0.45rem;
+  padding: 0.7rem 1rem;
+  font-size: 0.9rem;
+  box-shadow: none;
+}
+
+.cooking-alarm-popup-view {
+  width: 100%;
+  margin-top: 0.4rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--cooking-text-faint);
+  text-align: center;
+}
+
+.cooking-alarm-popup-view:hover {
+  color: var(--cooking-text-muted);
+}
+
+.cooking-alarm-running {
+  width: 100%;
+  max-width: 24rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.cooking-alarm-running-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cooking-text-faint);
+  flex-shrink: 0;
+}
+
+.cooking-alarm-running-label::before,
+.cooking-alarm-running-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--cooking-border);
+}
+
+.cooking-alarm-running-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--cooking-faint);
+  border-radius: 0.7rem;
+  padding: 0.5rem 0.6rem;
+  flex-shrink: 0;
+}
+
+.cooking-alarm-running-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.cooking-alarm-running-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--cooking-text-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cooking-alarm-running-row .cooking-countdown.is-inline {
+  font-size: 1.05rem;
+  color: var(--cooking-text-muted);
+  flex-shrink: 0;
+}
+
+/* Muted by design: amber is reserved for the timer that is going off */
+.cooking-alarm-running-row .cooking-progress-fill {
+  background: var(--cooking-text-faint);
+  box-shadow: none;
+}
+
+.cooking-alarm-running-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.cooking-alarm-running-actions .cooking-timer-btn {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.7rem;
+  border-radius: 0.55rem;
+}
+
+.cooking-alarm-running-actions .cooking-timer-btn.is-primary {
+  background: var(--cooking-hover);
+  color: var(--cooking-text);
+}
+
+.cooking-alarm-running-actions .cooking-timer-btn.is-primary:hover {
+  filter: none;
+  background: var(--cooking-border);
+}
+
+.cooking-timeline {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem 1rem 2.5rem;
+  scrollbar-width: thin;
+}
+
+.cooking-empty {
+  text-align: center;
+  color: var(--cooking-text-faint);
+  padding: 3rem 1rem;
+  font-size: 0.9rem;
+}
+
+/* ---------- Cards ---------- */
+.cooking-card {
+  flex-shrink: 0;
+  background: var(--cooking-card-bg);
+  border: 1px solid var(--cooking-border);
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  transition: opacity 0.3s, border-color 0.3s, box-shadow 0.3s, padding 0.3s;
+}
+
+.cooking-card.is-done {
+  opacity: 0.38;
+  padding-block: 0.65rem;
+}
+
+.cooking-card.is-clickable {
+  cursor: pointer;
+}
+
+.cooking-card.is-clickable:hover {
+  opacity: 0.55;
+}
+
+.cooking-card.is-upcoming {
+  opacity: 0.55;
+}
+
+.cooking-card.is-upcoming.is-next {
+  opacity: 0.78;
+}
+
+.cooking-card.is-current {
+  border-color: var(--cooking-accent-border);
+  box-shadow: 0 0 0 1px var(--cooking-accent-border), 0 6px 24px var(--cooking-accent-glow);
+  animation: cooking-card-in 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes cooking-card-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+.cooking-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.cooking-card-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cooking-text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cooking-card-label.is-accent {
+  color: var(--cooking-accent);
+}
+
+.cooking-card-text {
+  line-height: 1.6;
+  font-weight: 600;
+  color: var(--cooking-text);
+  overflow-wrap: break-word;
+}
+
+.cooking-card-text.is-current {
+  font-size: 1.375rem;
+  line-height: 1.55;
+  font-weight: 700;
+  text-align: center;
+  padding-block: 0.75rem;
+}
+
+.cooking-card-text.is-upcoming {
+  font-size: 0.9rem;
+  color: var(--cooking-text-muted);
+  font-weight: 500;
+}
+
+.cooking-card-text.is-done {
+  font-size: 0.8rem;
+  color: var(--cooking-text-muted);
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Ingredient chips inside step cards */
+.cooking-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  justify-content: center;
+}
+
+.cooking-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  background: var(--cooking-faint);
+  border: 1px solid var(--cooking-border);
+  font-size: 0.72rem;
+  max-width: 100%;
+}
+
+.cooking-chip-name {
+  font-weight: 700;
+  color: var(--cooking-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cooking-chip-qty {
+  color: var(--cooking-text-faint);
+  font-weight: 600;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.cooking-prep-hint {
+  margin-top: 0.75rem;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--cooking-text-muted);
+  background: var(--cooking-faint);
+  border: 1px solid var(--cooking-border);
+  border-radius: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.cooking-prep-hint:hover {
+  color: var(--cooking-text);
+  background: var(--cooking-hover);
+}
+
+.cooking-prep-hint-task {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.cooking-prep-hint-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.cooking-prep-hint-text strong {
+  color: var(--cooking-text);
+  font-weight: 700;
+}
+
+.cooking-prep-hint-more {
+  color: var(--cooking-text-faint);
+}
+
+.cooking-prep-hint-cta {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  color: var(--cooking-text-faint);
+}
+
+.cooking-prep-all-done {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--cooking-accent);
+}
+
+.cooking-current-hint {
+  margin-top: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--cooking-text-faint);
+}
+
+/* ---------- Timers ---------- */
+.cooking-countdown {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, 'SF Mono', 'Fira Code', Menlo, monospace;
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.04em;
+  color: var(--cooking-accent);
+  margin: 0.5rem 0 0.25rem;
+}
+
+.cooking-countdown.is-pending {
+  color: var(--cooking-text-faint);
+  font-size: 2rem;
+}
+
+.cooking-countdown.is-inline {
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.cooking-countdown-sub {
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--cooking-text-faint);
+  margin-bottom: 0.5rem;
+}
+
+/* Overdue: timer has gone off and nobody dismissed it yet — negative countdown
+   and pulsing accents until Done ✓ / extend. */
+@keyframes cooking-overdue-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@keyframes cooking-overdue-glow {
+  0%, 100% { box-shadow: 0 0 0 1px var(--cooking-accent-border), 0 4px 16px var(--cooking-accent-glow); }
+  50% { box-shadow: 0 0 0 2px var(--cooking-accent-border), 0 4px 26px var(--cooking-accent-glow); }
+}
+
+.cooking-countdown.is-overdue,
+.cooking-mgr-countdown.is-overdue {
+  animation: cooking-overdue-pulse 1s ease-in-out infinite;
+}
+
+.cooking-timer-tag.is-overdue {
+  background: var(--cooking-accent-soft);
+  color: var(--cooking-accent);
+}
+
+.cooking-mgr-card.is-overdue {
+  border-color: var(--cooking-accent-border);
+}
+
+.cooking-progress-wrap {
+  margin-block: 0.5rem;
+}
+
+.cooking-progress-track {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--cooking-faint);
+}
+
+.cooking-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--cooking-accent);
+  /* Retargeted every 100ms by the tick clock; linear interpolation between
+     updates makes the bar move continuously instead of jumping. */
+  transition: width 100ms linear;
+  box-shadow: 0 0 8px var(--cooking-accent-glow);
+}
+
+.cooking-progress-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--cooking-card-bg);
+  border: 2px solid var(--cooking-text-faint);
+}
+
+.cooking-progress-marker.is-hit {
+  border-color: var(--cooking-accent);
+  background: var(--cooking-accent);
+}
+
+.cooking-progress-labels {
   display: flex;
   justify-content: space-between;
+  margin-top: 0.35rem;
+  font-size: 0.65rem;
+  color: var(--cooking-text-faint);
+}
+
+.cooking-progress-labels .is-hit {
+  color: var(--cooking-accent);
+  font-weight: 700;
+}
+
+.cooking-timer-tag {
+  display: inline-flex;
   align-items: center;
+  gap: 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: var(--cooking-faint);
+  color: var(--cooking-text-faint);
+  flex-shrink: 0;
+}
+
+.cooking-timer-tag.is-running {
+  background: var(--cooking-accent-soft);
+  color: var(--cooking-accent);
+}
+
+.cooking-timer-tag.is-done {
+  color: var(--cooking-text-muted);
+}
+
+.cooking-timer-note {
+  margin-top: 0.6rem;
+  font-size: 0.75rem;
+  color: var(--cooking-text-faint);
+  text-align: center;
+}
+
+.cooking-start-timer {
+  margin-top: 0.9rem;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.95rem 1rem;
+  border-radius: 0.8rem;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 800;
+  background: var(--cooking-accent);
+  color: var(--cooking-accent-contrast);
+  box-shadow: 0 4px 20px var(--cooking-accent-glow);
+  transition: transform 0.15s, filter 0.15s;
+}
+
+.cooking-start-timer:hover {
+  filter: brightness(1.06);
+}
+
+.cooking-start-timer:active {
+  transform: scale(0.98);
+}
+
+.cooking-start-timer:disabled {
+  background: var(--cooking-faint);
+  color: var(--cooking-text-faint);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.cooking-timer-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.cooking-timer-btn {
+  flex: 1;
+  padding: 0.65rem 0.5rem;
+  border-radius: 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--cooking-faint);
+  color: var(--cooking-text-muted);
   border: 1px solid var(--cooking-border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  animation: fadeIn 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, filter 0.15s;
+}
+
+.cooking-timer-btn:hover {
+  background: var(--cooking-hover);
+  color: var(--cooking-text);
+}
+
+.cooking-timer-btn.is-primary {
+  background: var(--cooking-accent);
+  border-color: transparent;
+  color: var(--cooking-accent-contrast);
+}
+
+.cooking-timer-btn.is-primary:hover {
+  filter: brightness(1.06);
+}
+
+.cooking-timer-btn.is-full {
+  width: 100%;
+  margin-top: 0.6rem;
+}
+
+.cooking-timer-btn.is-accent {
+  background: var(--cooking-accent-soft);
+  border-color: var(--cooking-accent-border);
+  color: var(--cooking-accent);
+}
+
+.cooking-timer-done-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: var(--cooking-text);
+}
+
+.cooking-extend-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  align-items: center;
+}
+
+.cooking-extend-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--cooking-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.cooking-extend-input {
+  width: 4rem;
+  padding: 0.5rem;
+  border-radius: 0.7rem;
+  background: var(--cooking-faint);
+  border: 1px solid var(--cooking-border);
+  color: var(--cooking-text);
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  outline: none;
+}
+
+/* ---------- Attached timer tab (pokes out under its step card) ---------- */
+.cooking-step-group {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* A pull-tab that hangs from the card's bottom edge: opaque background covers
+   the card border it overlaps, no top border/rounding so the two read as one. */
+.cooking-timer-tab {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  align-self: center;
+  width: calc(100% - 2rem);
+  margin-top: -1px;
+  background: var(--cooking-card-bg);
+  border: 1px solid var(--cooking-border);
+  border-top: none;
+  border-radius: 0 0 0.75rem 0.75rem;
+  padding: 0.55rem 0.85rem 0.65rem;
+  transition: border-color 0.3s, background-color 0.3s;
+}
+
+/* Additional timers on the same step stack as separate rounded cards */
+.cooking-timer-tab + .cooking-timer-tab {
+  margin-top: 0.45rem;
+  border-top: 1px solid var(--cooking-border);
+  border-radius: 0.75rem;
+}
+
+.cooking-timer-tab.is-accent {
+  /* opaque accent-tinted card colour (accent-soft composited over card-bg) */
+  background: linear-gradient(var(--cooking-accent-soft), var(--cooking-accent-soft)), var(--cooking-card-bg);
+  border-color: var(--cooking-accent-border);
+}
+
+.cooking-timer-tab.is-muted {
+  opacity: 0.55;
+}
+
+.cooking-timer-tab.is-live {
+  border-color: var(--cooking-accent-border);
+}
+
+.cooking-timer-tab.is-overdue {
+  animation: cooking-overdue-glow 1s ease-in-out infinite;
+}
+
+.cooking-timer-tab .cooking-start-timer {
+  margin-top: 0.55rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.88rem;
+  border-radius: 0.7rem;
+  box-shadow: none;
+}
+
+.cooking-timer-tab .cooking-countdown {
+  font-size: 1.6rem;
+  margin: 0.3rem 0 0.1rem;
+}
+
+.cooking-timer-tab .cooking-timer-actions {
+  margin-top: 0.55rem;
+}
+
+.cooking-timer-tab .cooking-progress-wrap {
+  margin-block: 0.3rem;
+}
+
+.cooking-timer-tab .cooking-countdown-sub {
+  margin-bottom: 0.2rem;
+}
+
+.cooking-timer-tab-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
 }
 
-.cooking-ingredient-recommended {
-  border-color: rgba(16, 185, 129, 0.3);
-  background: linear-gradient(135deg, var(--cooking-card-bg) 0%, rgba(16, 185, 129, 0.08) 100%);
-}
-
-.cooking-mode-controls {
-  position: relative;
-  padding: 1.5rem;
-  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--cooking-border);
-  display: flex;
-  gap: 1rem;
-  background-color: var(--cooking-bg);
-  z-index: 12;
-  flex-shrink: 0;
-}
-
-/* Prep Work Bottom Sheet */
-.prep-sheet-tab {
-  position: fixed;
-  bottom: 6.6rem;
-  left: calc(50% - 5rem);
-  transform: translateX(-50%);
-  z-index: 10;
-  padding: 0.5rem 1.75rem 0.6rem;
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(168, 85, 247, 0.25) 100%);
-  border: 1px solid rgba(168, 85, 247, 0.3);
-  border-bottom: none;
-  border-radius: 0.75rem 0.75rem 0 0;
-  cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
-  backdrop-filter: blur(12px);
-  user-select: none;
-  -webkit-user-select: none;
-  box-shadow: 0 -4px 20px rgba(168, 85, 247, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-.prep-sheet-tab:hover {
-  transform: translateX(-50%) translateY(-3px);
-  box-shadow: 0 -6px 28px rgba(168, 85, 247, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-.prep-sheet-tab:active {
-  transform: translateX(-50%) translateY(0);
-}
-
-.prep-sheet-badge {
-  position: absolute;
-  top: -6px;
-  right: -24px;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
-  background: #a855f7;
-  color: white;
-  font-size: 10px;
-  font-weight: 700;
-  display: flex;
+.cooking-timer-tab-name {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.5);
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--cooking-text-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.prep-sheet-panel {
-  position: fixed;
-  bottom: 6.6rem;
-  left: 0;
-  right: 0;
-  z-index: 11;
-  background: linear-gradient(180deg, oklch(0.16 0.04 240) 0%, oklch(0.12 0.03 240) 100%);
-  border-top: 2px solid rgba(168, 85, 247, 0.4);
-  border-radius: 1.5rem 1.5rem 0 0;
-  transform: translateY(calc(100% + 6rem));
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  max-height: 50vh;
+.cooking-timer-tab-name.is-accent {
+  color: var(--cooking-accent);
+}
+
+.cooking-timer-tab-note {
+  font-size: 0.68rem;
+  color: var(--cooking-text-faint);
+  margin-top: 0.1rem;
+}
+
+.cooking-live-note {
+  margin-top: 0.35rem;
+  font-size: 0.68rem;
+  color: var(--cooking-text-faint);
+}
+
+/* ---------- Sheet content (shared with sidebar) ---------- */
+.cooking-section-list {
   display: flex;
   flex-direction: column;
-  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5), 0 -2px 12px rgba(168, 85, 247, 0.1);
+  gap: 0.5rem;
 }
 
-.prep-sheet-panel.open {
-  transform: translateY(0);
+.cooking-mgr-group-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cooking-text-faint);
+  margin: 0.5rem 0 0.1rem;
 }
 
-.prep-sheet-handle {
-  width: 40px;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(168, 85, 247, 0.5);
-  margin: 0.75rem auto 0.5rem;
-  flex-shrink: 0;
-  cursor: pointer;
+.cooking-mgr-card {
+  background: var(--cooking-card-bg);
+  border: 1px solid var(--cooking-border);
+  border-radius: 0.9rem;
+  padding: 0.8rem 0.9rem;
 }
 
-.prep-sheet-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 1.5rem 1.5rem;
-  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
-  min-height: 0;
+.cooking-mgr-card.is-active {
+  border-color: var(--cooking-accent-border);
 }
 
-.prep-sheet-scroll::-webkit-scrollbar {
-  width: 4px;
+.cooking-mgr-card.is-paused {
+  opacity: 0.85;
 }
 
-.prep-sheet-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.prep-sheet-scroll::-webkit-scrollbar-thumb {
-  background: rgba(168, 85, 247, 0.3);
-  border-radius: 2px;
-}
-
-.prep-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  transition: background-color 0.2s;
-}
-
-.prep-item.recommended {
-  background: rgba(249, 115, 22, 0.1);
-  border: 1px solid rgba(249, 115, 22, 0.2);
-}
-
-.prep-item:not(.recommended) {
-  background: rgba(249, 115, 22, 0.02);
-  border: 1px solid transparent;
-}
-
-.prep-item.checked {
-  opacity: 0.4;
-}
-
-.prep-item.checked .prep-item-text {
-  text-decoration: line-through;
-}
-
-/* Timer Sheet Tab */
-.timer-sheet-tab {
-  position: fixed;
-  bottom: 6.6rem;
-  left: calc(50% + 3rem);
-  transform: translateX(-50%);
-  z-index: 10;
-  padding: 0.5rem 1.75rem 0.6rem;
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.25) 100%);
-  border: 1px solid rgba(249, 115, 22, 0.3);
-  border-bottom: none;
-  border-radius: 0.75rem 0.75rem 0 0;
-  cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
-  backdrop-filter: blur(12px);
-  user-select: none;
-  -webkit-user-select: none;
-  box-shadow: 0 -4px 20px rgba(249, 115, 22, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-.timer-sheet-tab:hover {
-  transform: translateX(-50%) translateY(-3px);
-  box-shadow: 0 -6px 28px rgba(249, 115, 22, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-.timer-sheet-tab:active {
-  transform: translateX(-50%) translateY(0);
-}
-
-.timer-sheet-badge {
-  position: absolute;
-  top: -6px;
-  right: -24px;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
-  background: #f97316;
-  color: white;
-  font-size: 10px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.5);
-}
-
-/* Timer Sheet Panel */
-.timer-sheet-panel {
-  position: fixed;
-  bottom: 6.6rem;
-  left: 0;
-  right: 0;
-  z-index: 11;
-  background: linear-gradient(180deg, oklch(0.16 0.04 240) 0%, oklch(0.12 0.03 240) 100%);
-  border-top: 2px solid rgba(249, 115, 22, 0.4);
-  border-radius: 1.5rem 1.5rem 0 0;
-  transform: translateY(calc(100% + 6rem));
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  max-height: 65vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5), 0 -2px 12px rgba(249, 115, 22, 0.1);
-}
-
-.timer-sheet-panel.open {
-  transform: translateY(0);
-}
-
-.timer-sheet-handle {
-  width: 40px;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(249, 115, 22, 0.5);
-  margin: 0.75rem auto 0.5rem;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.timer-sheet-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 1.5rem 1.5rem;
-  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
-  min-height: 0;
-}
-
-.timer-sheet-scroll::-webkit-scrollbar {
-  width: 4px;
-}
-
-.timer-sheet-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.timer-sheet-scroll::-webkit-scrollbar-thumb {
-  background: rgba(249, 115, 22, 0.3);
-  border-radius: 2px;
-}
-
-/* Timer Card */
-.timer-card {
-  background: oklch(0.16 0.02 240);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0.875rem;
-  padding: 1rem 1.125rem;
-  transition: all 0.25s;
-}
-
-.timer-card.active {
-  border-color: rgba(249, 115, 22, 0.35);
-  background: linear-gradient(135deg, oklch(0.18 0.04 240) 0%, rgba(249, 115, 22, 0.12) 100%);
-  box-shadow: 0 0 24px rgba(249, 115, 22, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.timer-card.paused {
-  border-color: rgba(251, 191, 36, 0.3);
-  background: linear-gradient(135deg, oklch(0.16 0.03 240) 0%, rgba(251, 191, 36, 0.08) 100%);
-  box-shadow: 0 0 20px rgba(251, 191, 36, 0.08);
-}
-
-.timer-card.pending {
-  opacity: 1;
-  background: oklch(0.14 0.01 240);
-  border-color: rgba(255, 255, 255, 0.05);
+.cooking-mgr-card.is-pending {
   border-style: dashed;
 }
 
-.timer-card.completed {
-  opacity: 0.5;
-  background: oklch(0.12 0.01 240);
-  border-color: rgba(255, 255, 255, 0.04);
+.cooking-mgr-card.is-completed {
+  opacity: 0.55;
 }
 
-/* Timer Countdown */
-.timer-countdown {
-  font-family: 'SF Mono', 'Fira Code', monospace;
+.cooking-mgr-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.cooking-mgr-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cooking-mgr-name.is-done {
+  text-decoration: line-through;
+  color: var(--cooking-text-faint);
+}
+
+.cooking-mgr-head-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.cooking-mgr-link {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--cooking-text-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.cooking-mgr-link:hover {
+  color: var(--cooking-text);
+}
+
+.cooking-mgr-link.is-danger:hover {
+  color: #f87171;
+}
+
+.cooking-mgr-tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--cooking-text-faint);
+  background: var(--cooking-faint);
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.cooking-mgr-waiting {
+  font-size: 0.75rem;
+  color: var(--cooking-text-faint);
+  padding: 0.5rem 0;
+}
+
+.cooking-mgr-countdown {
   font-variant-numeric: tabular-nums;
-  font-size: 2.25rem;
+  font-family: ui-monospace, 'SF Mono', 'Fira Code', Menlo, monospace;
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--cooking-accent);
+  margin: 0.4rem 0;
+  cursor: pointer;
+}
+
+.cooking-mgr-countdown-hint {
+  display: block;
+  font-size: 0.58rem;
+  color: var(--cooking-text-faint);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: var(--font-sans, inherit);
+}
+
+.cooking-mgr-edit {
+  padding: 0.5rem 0;
+}
+
+.cooking-mgr-edit-inputs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.cooking-mgr-edit-sep {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--cooking-text-faint);
+}
+
+.cooking-mgr-edit-inputs input {
+  width: 4rem;
+  padding: 0.5rem;
+  text-align: center;
+  border-radius: 0.6rem;
+  background: var(--cooking-faint);
+  border: 1px solid var(--cooking-border);
+  color: var(--cooking-text);
+  font-size: 1.1rem;
+  font-weight: 700;
+  outline: none;
+}
+
+.cooking-add-timer {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.8rem;
+  border: 1px dashed var(--cooking-border);
+  border-radius: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.cooking-add-timer-name {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.6rem;
+  background: var(--cooking-faint);
+  border: 1px solid var(--cooking-border);
+  color: var(--cooking-text);
+  font-size: 0.78rem;
+  outline: none;
+}
+
+.cooking-add-timer-name:focus,
+.cooking-add-timer-mins:focus,
+.cooking-extend-input:focus,
+.cooking-mgr-edit-inputs input:focus {
+  border-color: var(--cooking-accent-border);
+}
+
+.cooking-add-timer-mins {
+  width: 4rem;
+  padding: 0.5rem;
+  text-align: center;
+  border-radius: 0.6rem;
+  background: var(--cooking-faint);
+  border: 1px solid var(--cooking-border);
+  color: var(--cooking-text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  outline: none;
+}
+
+/* Ingredients grid */
+.cooking-ingredients-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.cooking-ingredient-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.6rem;
+  background: var(--cooking-faint);
+  border: 1px solid transparent;
+  min-width: 0;
+}
+
+.cooking-ingredient-card.is-recommended {
+  border-color: var(--cooking-accent-border);
+  background: var(--cooking-accent-soft);
+}
+
+.cooking-ingredient-name {
+  font-size: 0.78rem;
   font-weight: 700;
   color: var(--cooking-text);
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 20px rgba(249, 115, 22, 0.2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Timer Progress Bar */
-.timer-progress {
-  position: relative;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 3px;
-  overflow: visible;
+.cooking-ingredient-qty {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--cooking-text-faint);
 }
 
-.timer-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #f97316, #fb923c);
-  border-radius: 3px;
-  transition: width 1s linear;
-  box-shadow: 0 0 8px rgba(249, 115, 22, 0.3);
+/* Prep checklist */
+.cooking-prep-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.6rem;
 }
 
-/* Timer Checkpoint Marker */
-.timer-checkpoint-marker {
+.cooking-prep-item.is-recommended {
+  background: var(--cooking-hover);
+}
+
+.cooking-prep-item.is-checked {
+  opacity: 0.4;
+}
+
+.cooking-prep-item.is-checked .cooking-prep-text {
+  text-decoration: line-through;
+}
+
+.cooking-prep-checkbox {
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 0.35rem;
+  border: 2px solid var(--cooking-text-faint);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cooking-accent-contrast);
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.cooking-prep-checkbox:hover {
+  border-color: var(--cooking-accent);
+}
+
+.cooking-prep-item.is-checked .cooking-prep-checkbox {
+  background: var(--cooking-accent);
+  border-color: var(--cooking-accent);
+}
+
+.cooking-prep-text {
+  flex: 1;
+  font-size: 0.8rem;
+  color: var(--cooking-text);
+  line-height: 1.45;
+}
+
+.cooking-prep-time {
+  font-size: 0.65rem;
+  color: var(--cooking-text-faint);
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+}
+
+/* ---------- Mobile sheet (tab panel) — opening takes over the full screen,
+   covering the timeline, tab bar and controls ---------- */
+.cooking-sheet {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  height: 0;
+  overflow: hidden;
+  border-top: 1px solid transparent;
+}
+
+.cooking-sheet.open {
   position: absolute;
-  top: -4px;
-  width: 2px;
-  height: 14px;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 1px;
-  transform: translateX(-50%);
+  inset: 0;
+  z-index: 20;
+  height: 100%;
+  background: var(--cooking-bg);
+  animation: cooking-sheet-in 0.22s ease;
 }
 
-.timer-checkpoint-marker.reached {
-  background: #10b981;
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
-  animation: checkpointPulse 1s ease-in-out;
+@keyframes cooking-sheet-in {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
 }
 
-@keyframes checkpointPulse {
-  0%, 100% { transform: translateX(-50%) scaleY(1); }
-  50% { transform: translateX(-50%) scaleY(1.5); }
+.cooking-sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--cooking-text-faint);
+  margin: 0.5rem auto 0.25rem;
+  flex-shrink: 0;
+  cursor: pointer;
 }
 
-/* Prep sheet tab and timer sheet tab positioned side by side */
+.cooking-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.25rem 0.5rem;
+}
+
+.cooking-sheet-title {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cooking-text-muted);
+}
+
+.cooking-sheet-close {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--cooking-text-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.cooking-sheet-close:hover {
+  color: var(--cooking-text);
+}
+
+.cooking-sheet-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  padding: 0 1.25rem 1rem;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  scrollbar-width: thin;
+}
+
+/* ---------- Mobile tab bar ---------- */
+.cooking-tabs {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  border-top: 1px solid var(--cooking-border);
+}
+
+.cooking-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--cooking-text-faint);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.cooking-tab:hover {
+  color: var(--cooking-text-muted);
+}
+
+.cooking-tab.is-open {
+  color: var(--cooking-text);
+  background: var(--cooking-hover);
+  border-color: var(--cooking-border);
+}
+
+.cooking-tab-badge {
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--cooking-faint);
+  color: var(--cooking-text-muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cooking-tab-badge.is-accent {
+  background: var(--cooking-accent);
+  color: var(--cooking-accent-contrast);
+}
+
+/* ---------- Controls ---------- */
+.cooking-mode-controls {
+  position: relative;
+  z-index: 12;
+  flex-shrink: 0;
+  display: flex;
+  gap: 0.75rem;
+  padding: 2rem 1rem 1rem;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--cooking-border);
+  background-color: var(--cooking-bg);
+}
+
+.cooking-back-btn {
+  flex: 1;
+  height: 3.4rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: 1rem;
+}
+
+/* Higher specificity to override the Button's `dark:` utility variants */
+.cooking-mode-controls .cooking-back-btn,
+.cooking-mode-controls .cooking-back-btn:hover {
+  background: var(--cooking-faint);
+  border: 1px solid var(--cooking-border);
+  color: var(--cooking-text-muted);
+}
+
+.cooking-mode-controls .cooking-back-btn:hover {
+  background: var(--cooking-hover);
+  color: var(--cooking-text);
+}
+
+.cooking-mode-controls .cooking-back-btn:disabled {
+  opacity: 0.4;
+}
+
+.cooking-next-btn {
+  flex: 2;
+  height: 3.4rem;
+  font-size: 1rem;
+  font-weight: 800;
+  border-radius: 1rem;
+}
+
+.cooking-next-btn.is-primary {
+  background: var(--cooking-accent);
+  color: var(--cooking-accent-contrast);
+  box-shadow: 0 4px 20px var(--cooking-accent-glow);
+}
+
+.cooking-next-btn.is-primary:hover {
+  filter: brightness(1.06);
+}
+
+.cooking-next-btn.is-secondary {
+  background: var(--cooking-hover);
+  border: 1px solid var(--cooking-border);
+  color: var(--cooking-text-muted);
+}
+
+.cooking-next-btn.is-secondary:hover {
+  color: var(--cooking-text);
+}
+
+.cooking-next-btn.is-pulse {
+  animation: cooking-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes cooking-pulse {
+  0%, 100% { box-shadow: 0 4px 20px var(--cooking-accent-glow); }
+  50% { box-shadow: 0 4px 20px var(--cooking-accent-glow), 0 0 0 8px var(--cooking-accent-soft); }
+}
+
+.cooking-next-hint {
+  position: absolute;
+  top: 0.45rem;
+  left: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--cooking-text-faint);
+  pointer-events: none;
+}
+
+/* ---------- Desktop: timeline + sidebar grid ---------- */
+.cooking-sidebar {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .cooking-mode-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+
+  .cooking-timeline {
+    border-right: 1px solid var(--cooking-border);
+    padding: 1.75rem max(2rem, calc((100% - 44rem) / 2)) 3rem;
+  }
+
+  .cooking-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-y: auto;
+    min-height: 0;
+    padding: 1.5rem;
+    scrollbar-width: thin;
+  }
+
+  .cooking-sidebar-title {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cooking-text-muted);
+    margin-bottom: 0.65rem;
+  }
+
+  .cooking-tabs,
+  .cooking-sheet {
+    display: none;
+  }
+
+  .cooking-card-text.is-current {
+    font-size: 1.625rem;
+  }
+
+  .cooking-ingredients-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cooking-card.is-current,
+  .cooking-next-btn.is-pulse,
+  .cooking-timer-tab.is-overdue,
+  .cooking-countdown.is-overdue,
+  .cooking-mgr-countdown.is-overdue,
+  .cooking-alarm-item,
+  .cooking-alarm-item-count,
+  .cooking-sheet.open {
+    animation: none;
+  }
+
+  .cooking-sheet,
+  .cooking-card,
+  .cooking-progress-seg {
+    transition: none;
+  }
+}
