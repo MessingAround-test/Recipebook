@@ -1,8 +1,7 @@
 import { Layout } from '../../components/Layout'
-import { PageHeader } from '../../components/PageHeader'
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
 import { Button } from '../../components/ui/button'
-import { Flame, DollarSign, Clock, Utensils, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil } from 'lucide-react'
+import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Slice, Users } from 'lucide-react'
 import Router, { useRouter } from 'next/router'
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
 import IngredientCard from '../../components/IngredientCard'
@@ -11,17 +10,26 @@ import Modal from 'react-modal'
 
 const PRICE_THRESHOLDS = { cheap: 15, expensive: 35 }
 
-const timeLabelMap: Record<string, { label: string; icon: string; color: string }> = {
-    short: { label: 'Quick', icon: '⚡', color: 'bg-orange-500/15 text-orange-400 border-orange-500/30' },
-    medium: { label: 'Medium', icon: '⏱️', color: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
-    long: { label: 'Slow Cook', icon: '🍲', color: 'bg-orange-500/15 text-orange-400 border-orange-500/30' }
+const timeLabelMap: Record<string, { label: string }> = {
+    short: { label: 'Quick' },
+    medium: { label: 'Medium' },
+    long: { label: 'Slow Cook' }
 }
 
-const priceLabelMap: Record<string, { label: string; color: string }> = {
-    cheap: { label: '$ Cheap', color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
-    medium: { label: '$$ Mid-range', color: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
-    expensive: { label: '$$$ Pricey', color: 'bg-red-500/15 text-red-400 border-red-500/30' }
+const priceLabelMap: Record<string, { label: string }> = {
+    cheap: { label: '$ Cheap' },
+    medium: { label: '$$ Mid-range' },
+    expensive: { label: '$$$ Pricey' }
 }
+
+// Metadata chips are deliberately neutral — colour is reserved for state
+// (active nav, primary CTA, live timers). One accent, everything else calm.
+const CHIP_META = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-secondary text-foreground/80 border border-border/40'
+// Grey scrim + white text: sits over the hero image on phones, same treatment
+// as the "Change Image" badge so both read as one overlay system
+const CHIP_OVERLAY = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-black/60 text-white backdrop-blur-sm'
+// Category chips are a desktop-only nicety — mobile skips them entirely.
+const CHIP_META_DESKTOP = `${CHIP_META} hidden sm:inline-flex`
 
 function getPriceCategory(cost: number): 'cheap' | 'medium' | 'expensive' {
     if (cost < PRICE_THRESHOLDS.cheap) return 'cheap'
@@ -305,6 +313,68 @@ export default function RecipeDetail() {
     }, [instructions, prepWork])
 
     const cardRefs = useRef<Record<number, HTMLDivElement | null>>({})
+
+    // Sticky section nav: icon tabs with a scroll-spy active state.
+    // Prep uses the knife icon — the chef hat is reserved for Start Cooking.
+    const [activeSection, setActiveSection] = useState('top')
+    const pillRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+    const navSections = useMemo(() => [
+        { id: 'ingredients', label: 'Ingredients', icon: ShoppingBasket },
+        { id: 'prep', label: 'Prep', icon: Slice },
+        ...(instructions.length > 0 ? [{ id: 'instructions', label: 'Steps', icon: ListOrdered }] : []),
+        { id: 'timers', label: 'Timers', icon: Clock },
+        { id: 'feedback', label: 'Notes', icon: MessageSquare },
+        { id: 'nutrients', label: 'Nutrition', icon: Sparkles }
+    ], [instructions.length])
+
+    useEffect(() => {
+        if (recipe === undefined || isCookingMode) return
+        let raf = 0
+        const update = () => {
+            raf = 0
+            // A section counts as "current" once its top passes the nav line
+            const marker = 120
+            let current = 'top'
+            for (const s of navSections) {
+                const el = document.querySelector(`[data-section="${s.id}"]`)
+                if (!el) continue
+                if (el.getBoundingClientRect().top <= marker) current = s.id
+            }
+            const doc = document.documentElement
+            if (window.innerHeight + window.scrollY >= doc.scrollHeight - 4) {
+                current = navSections[navSections.length - 1]?.id || 'top'
+            }
+            setActiveSection(prev => (prev === current ? prev : current))
+        }
+        const onScroll = () => {
+            if (!raf) raf = requestAnimationFrame(update)
+        }
+        window.addEventListener('scroll', onScroll, { passive: true })
+        update()
+        return () => {
+            window.removeEventListener('scroll', onScroll)
+            if (raf) cancelAnimationFrame(raf)
+        }
+    }, [recipe, isCookingMode, navSections])
+
+    // Keep the active pill visible in the scrollable row
+    useEffect(() => {
+        pillRefs.current[activeSection]?.scrollIntoView({ block: 'nearest', inline: 'center' })
+    }, [activeSection])
+
+    // Phone layout flag: ingredient research modal becomes a bottom sheet
+    const [isPhoneLayout, setIsPhoneLayout] = useState(false)
+    useEffect(() => {
+        const mq = window.matchMedia('(max-width: 639px)')
+        const update = () => setIsPhoneLayout(mq.matches)
+        update()
+        if (typeof mq.addEventListener === 'function') {
+            mq.addEventListener('change', update)
+            return () => mq.removeEventListener('change', update)
+        }
+        mq.addListener(update)
+        return () => mq.removeListener(update)
+    }, [])
 
     // Keep the current step centered in the timeline whenever it changes
     useEffect(() => {
@@ -1309,13 +1379,17 @@ export default function RecipeDetail() {
     }
 
     const scrollToSection = (section: string) => {
+        if (section === 'top') {
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+            return
+        }
         const el = document.querySelector(`[data-section="${section}"]`) as HTMLElement | null;
         if (!el) return;
         el.classList.remove('group-flash');
         void el.offsetWidth;
         el.classList.add('group-flash');
-        const y = el.getBoundingClientRect().top + window.scrollY - 120;
-        window.scrollTo({ top: y, behavior: 'smooth' });
+        // Offset handled by scroll-margin-top on [data-section]
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     if (recipe === undefined) {
@@ -1332,321 +1406,211 @@ export default function RecipeDetail() {
     const displayPriceCategory = recipePriceCategory || (displayCost > 0 ? getPriceCategory(displayCost) : null)
     const sourceUrl: string | null = recipe.sourceUrl || null
     const isVideoSource = !!sourceUrl && (sourceUrl.includes('facebook.com') || sourceUrl.includes('fb.watch'))
+    const showPerPerson = recipeServings > 1
+
+    // One compact cost card — every value lives in a single wrapping row
+    const costEntries: { label: string; value: string }[] = [
+        { label: 'Total', value: `$${displayCost.toFixed(2)}` },
+        { label: 'Unit', value: `$${getAproxTotalRecipeCostUnit()}` },
+        ...(showPerPerson ? [{ label: 'Per person', value: `$${(displayCost / recipeServings).toFixed(2)}` }] : [])
+    ]
+
+    const infoCard = (
+        <div className="recipe-band">
+            <div className="mx-4 sm:mx-8 rounded-xl bg-secondary/50 px-4 sm:px-6 py-3">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                    {isCalculatingCost ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/40" />
+                    ) : (
+                        <>
+                            {costEntries.map((entry, i) => (
+                                <Fragment key={entry.label}>
+                                    {i > 0 && <span className="text-muted-foreground/30 select-none" aria-hidden>·</span>}
+                                    <span className="inline-flex items-baseline gap-1.5">
+                                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{entry.label}</span>
+                                        <span className="text-sm sm:text-base font-bold tabular-nums">{entry.value}</span>
+                                    </span>
+                                </Fragment>
+                            ))}
+                            <button onClick={refreshCost} title="Refresh cost" className="ml-auto text-muted-foreground/40 hover:text-accent transition-colors">
+                                <RefreshCw className="w-3.5 h-3.5" />
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    )
+
+    // Category chips (Quick / $ Cheap / genre / meal / carb / Hidden / Source)
+    // render twice: quiet style in the title block, and black-on-white style
+    // overlaid on the hero image on phones.
+    const renderCategoryChips = (chipClass: string) => (
+        <>
+            {recipeTime && timeLabelMap[recipeTime] && (
+                <span className={chipClass}>{timeLabelMap[recipeTime].label}</span>
+            )}
+            {displayPriceCategory && priceLabelMap[displayPriceCategory] && (
+                <span className={chipClass}>{priceLabelMap[displayPriceCategory].label}</span>
+            )}
+            {recipeGenre && <span className={chipClass}>{recipeGenre}</span>}
+            {recipeMealTypes && recipeMealTypes.map(type => <span key={type} className={chipClass}>{type}</span>)}
+            {recipeCarbType && <span className={chipClass}>{recipeCarbType}</span>}
+            {isHidden && (
+                <span className={chipClass}>
+                    <EyeOff size={11} /> Hidden
+                </span>
+            )}
+            {sourceUrl && (
+                <a
+                    href={sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={sourceUrl}
+                    className={`${chipClass} hover:opacity-80 transition-opacity`}
+                >
+                    {isVideoSource ? '▶ Watch Original' : 'View Source'}
+                </a>
+            )}
+        </>
+    )
 
     return (
         <Layout title={recipeName || "Recipe"}>
-            {/* Quick Jump Bar */}
-            <div className="fixed bottom-[4.5rem] sm:bottom-0 left-0 right-0 z-[50] bg-card border-t border-border/10 shadow-sm">
-                <div className="flex justify-center gap-3 py-3">
+            {/* Section navigation — sticky icon tabs + always-available Start Cooking */}
+            <nav className="recipe-nav" aria-label="Recipe sections">
+                <button
+                    onClick={() => scrollToSection('top')}
+                    className={`recipe-nav-pill is-top ${activeSection === 'top' ? 'is-active' : ''}`}
+                    ref={(el) => { pillRefs.current['top'] = el }}
+                    title="Back to top"
+                    aria-label="Back to top"
+                >
+                    <ChevronUp size={17} />
+                </button>
+                {navSections.map(s => (
                     <button
-                        onClick={() => scrollToSection('ingredients')}
-                        className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-all active:scale-90"
-                        style={{ background: '#10b981', boxShadow: '0 2px 8px #10b98160' }}
-                        title="Ingredients"
+                        key={s.id}
+                        onClick={() => scrollToSection(s.id)}
+                        className={`recipe-nav-pill ${activeSection === s.id ? 'is-active' : ''}`}
+                        ref={(el) => { pillRefs.current[s.id] = el }}
+                        title={s.label}
+                        aria-label={s.label}
                     >
-                        <ShoppingBasket size={16} strokeWidth={2.5} className="text-white" />
+                        <s.icon size={17} />
                     </button>
-                    <button
-                        onClick={() => scrollToSection('prep')}
-                        className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-all active:scale-90"
-                        style={{ background: '#f97316', boxShadow: '0 2px 8px #f9731660' }}
-                        title="Prep Work"
-                    >
-                        <ChefHat size={16} strokeWidth={2.5} className="text-white" />
-                    </button>
-                    <button
-                        onClick={() => scrollToSection('instructions')}
-                        className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-all active:scale-90"
-                        style={{ background: '#6366f1', boxShadow: '0 2px 8px #6366f160' }}
-                        title="Instructions"
-                    >
-                        <ListOrdered size={16} strokeWidth={2.5} className="text-white" />
-                    </button>
-                    <button
-                        onClick={() => scrollToSection('timers')}
-                        className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-all active:scale-90"
-                        style={{ background: '#f43f5e', boxShadow: '0 2px 8px #f43f5e60' }}
-                        title="Cooking Timers"
-                    >
-                        <Clock size={16} strokeWidth={2.5} className="text-white" />
-                    </button>
-                    <button
-                        onClick={() => scrollToSection('feedback')}
-                        className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-all active:scale-90"
-                        style={{ background: '#f59e0b', boxShadow: '0 2px 8px #f59e0b60' }}
-                        title="Cooking Reflection"
-                    >
-                        <MessageSquare size={16} strokeWidth={2.5} className="text-white" />
-                    </button>
-                    <button
-                        onClick={() => scrollToSection('nutrients')}
-                        className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-all active:scale-90"
-                        style={{ background: '#a855f7', boxShadow: '0 2px 8px #a855f760' }}
-                        title="Nutritional Density"
-                    >
-                        <Sparkles size={16} strokeWidth={2.5} className="text-white" />
-                    </button>
-                    <button
-                        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                        className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-all active:scale-90"
-                        style={{ background: '#64748b', boxShadow: '0 2px 8px #64748b60' }}
-                        title="Back to Top"
-                    >
-                        <ChevronUp size={16} strokeWidth={2.5} className="text-white" />
-                    </button>
-                </div>
-            </div>
-            <div className="max-w-4xl mx-auto pb-12">
-                {/* Hero Header */}
-                <div className="relative bg-card text-card-foreground rounded-2xl border-0 sm:border sm:border-border/20 shadow-xl overflow-hidden mb-8">
+                ))}
+                <button
+                    onClick={() => { setIsCookingMode(true); setActiveSheet('none') }}
+                    className="recipe-nav-start"
+                    title="Start Cooking"
+                    aria-label="Start Cooking"
+                >
+                    <ChefHat size={17} />
+                </button>
+            </nav>
+            {/* Full-bleed wrapper: breaks out of the .container side padding on
+                desktop so the card colour reaches the viewport edges */}
+            <div className="pb-4 min-[769px]:-mx-6">
+                {/* Hero Header — one reading layout with or without an image:
+                    the image is a full-bleed banner and never changes text insets */}
+                <div className="bg-card text-card-foreground overflow-hidden mb-0">
                     {imageData && (
-                        <div className="relative min-h-[20rem] sm:h-80 md:h-96 w-full cursor-pointer group" onClick={handleClick}>
-                            <img src={imageData} alt={recipeName} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6 md:p-8">
-                                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-2 drop-shadow-lg leading-tight">{recipeName}</h1>
-                                <div className="flex flex-wrap gap-2">
-                                    {recipeTime && timeLabelMap[recipeTime] && (
-                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg ${timeLabelMap[recipeTime].color} border-white/5`}>
-                                            {timeLabelMap[recipeTime].icon} {timeLabelMap[recipeTime].label}
-                                        </span>
-                                    )}
-                                    {recipeGenre && (
-                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-purple-500/20 text-purple-200 border-white/5`}>
-                                            🍳 {recipeGenre}
-                                        </span>
-                                    )}
-                                    {recipeMealTypes && recipeMealTypes.map(type => (
-                                        <span key={type} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-indigo-500/20 text-indigo-200 border-white/5`}>
-                                            🍽️ {type}
-                                        </span>
-                                    ))}
-                                    {recipeCarbType && (
-                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-orange-500/20 text-orange-200 border-white/5`}>
-                                            🌾 {recipeCarbType}
-                                        </span>
-                                    )}
-                                    {displayPriceCategory && priceLabelMap[displayPriceCategory] && (
-                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg ${priceLabelMap[displayPriceCategory].color} border-white/5`}>
-                                            💰 {priceLabelMap[displayPriceCategory].label}
-                                        </span>
-                                    )}
-                                    {isHidden && (
-                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-amber-500/25 text-amber-200 border-white/5`}>
-                                            <EyeOff size={12} /> Hidden
-                                        </span>
-                                    )}
-                                    {sourceUrl && (
-                                        <a
-                                            href={sourceUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            onClick={(e) => e.stopPropagation()}
-                                            title={sourceUrl}
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border backdrop-blur-md shadow-lg bg-white/10 text-white border-white/5 hover:bg-white/25 transition-colors"
-                                        >
-                                            {isVideoSource ? '▶ Watch Original Video' : '🔗 View Source'}
-                                        </a>
-                                    )}
+                        <div className="relative h-44 sm:h-64 md:h-80 w-full cursor-pointer group" onClick={handleClick} title="Change image">
+                            <img src={imageData} alt={recipeName} className="w-full h-full object-cover" />
+                            <div className="absolute bottom-3 left-3 sm:hidden" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {renderCategoryChips(CHIP_OVERLAY)}
                                 </div>
-
-                                {/* Inline Cost Display */}
-                                <div className="mt-4 flex flex-col sm:flex-row gap-4 sm:gap-6 text-white border-t border-white/[0.03] pt-4">
-                                    <div className="flex sm:block items-center justify-between gap-4">
-                                        <div className="flex items-center gap-1.5">
-                                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60 mb-0.5">Approx. Cost</p>
-                                            {!isCalculatingCost && (
-                                                <button onClick={refreshCost} title="Refresh cost" className="opacity-40 hover:opacity-100 transition-opacity mb-0.5">
-                                                    <RefreshCw className="w-3 h-3" />
-                                                </button>
-                                            )}
-                                        </div>
-                                        {isCalculatingCost ? (
-                                            <Loader2 className="w-4 h-4 animate-spin opacity-40" />
-                                        ) : (
-                                            <p className="text-xl font-black">${displayCost.toFixed(2)}</p>
-                                        )}
-                                    </div>
-                                    <div className="border-t sm:border-t-0 sm:border-l border-white/[0.03] pt-4 sm:pt-0 sm:pl-6 flex sm:block items-center justify-between gap-4">
-                                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60 mb-0.5">Unit Cost</p>
-                                        {isCalculatingCost ? (
-                                            <Loader2 className="w-4 h-4 animate-spin opacity-40" />
-                                        ) : (
-                                            <p className="text-xl font-black">${getAproxTotalRecipeCostUnit()}</p>
-                                        )}
-                                    </div>
-                                    {recipeServings > 0 && (
-                                        <div className="border-t sm:border-t-0 sm:border-l border-white/[0.03] pt-4 sm:pt-0 sm:pl-6 flex sm:block items-center justify-between gap-4">
-                                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60 mb-0.5">Per Person</p>
-                                            {isCalculatingCost ? (
-                                                <Loader2 className="w-4 h-4 animate-spin opacity-40" />
-                                            ) : (
-                                                <p className="text-xl font-black text-emerald-400">${(displayCost / recipeServings).toFixed(2)}</p>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                                {(totalTimeEstimate > 0 || recipeServings > 0) && (
-                                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/70">
-                                        {totalTimeEstimate > 0 && (
-                                            <span className="flex items-center gap-1.5">
-                                                <Clock size={12} /> {totalTimeEstimate} min
-                                            </span>
-                                        )}
-                                        {recipeServings > 0 && (
-                                            <span className="flex items-center gap-1.5">
-                                                👥 {recipeServings} servings
-                                            </span>
-                                        )}
-                                    </div>
-                                )}
                             </div>
-                            <div className="absolute top-4 right-4 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                                <span className="bg-black/60 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm font-semibold text-center">Change<br />Image</span>
+                            <div className="absolute top-3 right-3 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="bg-black/60 text-white text-[11px] px-2.5 py-1 rounded-full backdrop-blur-sm font-semibold">Change Image</span>
                             </div>
                         </div>
                     )}
 
-                    {!imageData && (
-                        <div className="p-8 pb-4">
-                            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-4 leading-tight">{recipeName}</h1>
-                            <div className="flex flex-wrap gap-2 mb-6">
-                                {recipeTime && timeLabelMap[recipeTime] && (
-                                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${timeLabelMap[recipeTime].color}`}>
-                                        {timeLabelMap[recipeTime].icon} {timeLabelMap[recipeTime].label}
-                                    </span>
-                                )}
-                                {recipeGenre && (
-                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border bg-purple-500/15 text-purple-400 border-purple-500/30">
-                                        🍳 {recipeGenre}
-                                    </span>
-                                )}
-                                {isHidden && (
-                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border bg-amber-500/15 text-amber-400 border-amber-500/30">
-                                        <EyeOff size={12} /> Hidden
-                                    </span>
-                                )}
-                                {sourceUrl && (
-                                    <a
-                                        href={sourceUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        title={sourceUrl}
-                                        className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border bg-sky-500/15 text-sky-400 border-sky-500/30 hover:bg-sky-500/25 transition-colors"
-                                    >
-                                        {isVideoSource ? '▶ Watch Original Video' : '🔗 View Source'}
-                                    </a>
-                                )}
-                            </div>
-
-                            <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 border-0 sm:border-t sm:border-border/10 pt-4">
-                                <div className="flex sm:block items-center justify-between gap-4">
-                                    <div className="flex items-center gap-1.5">
-                                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mb-1">Total Approx. Cost</p>
-                                        {!isCalculatingCost && (
-                                            <button onClick={refreshCost} title="Refresh cost" className="opacity-40 hover:opacity-100 transition-opacity mb-1">
-                                                <RefreshCw className="w-3 h-3 text-muted-foreground" />
-                                            </button>
-                                        )}
-                                    </div>
-                                    {isCalculatingCost ? (
-                                        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/30" />
-                                    ) : (
-                                        <p className="text-2xl font-black">${displayCost.toFixed(2)}</p>
-                                    )}
-                                </div>
-                                <div className="border-t sm:border-t-0 sm:border-l border-border/10 pt-4 sm:pt-0 sm:pl-8 flex sm:block items-center justify-between gap-4">
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mb-1">Estimated Unit Cost</p>
-                                    {isCalculatingCost ? (
-                                        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/30" />
-                                    ) : (
-                                        <p className="text-2xl font-black text-primary border-primary/20">${getAproxTotalRecipeCostUnit()}</p>
-                                    )}
-                                </div>
-                                {recipeServings > 0 && (
-                                    <div className="border-t sm:border-t-0 sm:border-l border-border/10 pt-4 sm:pt-0 sm:pl-8 flex sm:block items-center justify-between gap-4">
-                                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mb-1">Per Person</p>
-                                        {isCalculatingCost ? (
-                                            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/30" />
-                                        ) : (
-                                            <p className="text-2xl font-black text-emerald-500">${(displayCost / recipeServings).toFixed(2)}</p>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                    <div className="recipe-band px-4 sm:px-8 pt-4 pb-3">
+                        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight">{recipeName}</h1>
                             {(totalTimeEstimate > 0 || recipeServings > 0) && (
-                                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                                <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm sm:text-base font-semibold text-foreground/90">
                                     {totalTimeEstimate > 0 && (
-                                        <span className="flex items-center gap-1.5">
-                                            <Clock size={12} /> {totalTimeEstimate} min
+                                        <span className="inline-flex items-center gap-1.5">
+                                            <Clock className="w-4 h-4 text-muted-foreground" />
+                                            <span className="tabular-nums">{totalTimeEstimate} min</span>
                                         </span>
                                     )}
                                     {recipeServings > 0 && (
-                                        <span className="flex items-center gap-1.5">
-                                            👥 {recipeServings} servings
+                                        <span className="inline-flex items-center gap-1.5">
+                                            <Users className="w-4 h-4 text-muted-foreground" />
+                                            <span className="tabular-nums">{recipeServings} serving{recipeServings === 1 ? '' : 's'}</span>
                                         </span>
                                     )}
                                 </div>
                             )}
                         </div>
-                    )}
+                        {/* With an image these chips move onto the photo on phones
+                            (black pills, bottom-left); the row below serves sm+ */}
+                        <div className={`flex flex-wrap gap-1.5 mt-3 ${imageData ? 'hidden sm:flex' : ''}`}>
+                            {renderCategoryChips(CHIP_META)}
+                        </div>
+                    </div>
 
-                    <div className="p-6 md:p-8 border-0 sm:border-t sm:border-border/5 bg-muted/10">
-                        <div className="flex flex-col sm:flex-row gap-3">
+                    {infoCard}
+
+                    <div className="recipe-band py-3 px-4 sm:px-8 sm:py-4">
+                        <div className="flex gap-1.5">
+                            <Button
+                                onClick={toggleHidden}
+                                variant="outline"
+                                    className={`h-12 sm:h-14 px-3 sm:px-6 rounded-md bg-secondary/70 hover:bg-secondary text-foreground/85 font-semibold text-sm flex items-center justify-center gap-1.5 transition-all shrink-0 !border-0 ${isHidden ? 'bg-secondary text-foreground' : ''}`}
+                                title={isHidden ? 'Hidden from /recipes grid' : 'Show on /recipes grid'}
+                                aria-label={isHidden ? 'Recipe is hidden' : 'Hide recipe'}
+                            >
+                                {isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                <span className="hidden sm:inline">{isHidden ? 'Hidden' : 'Hide'}</span>
+                            </Button>
+                            <Button
+                                onClick={() => router.push(`/createRecipe?id=${id}`)}
+                                variant="outline"
+                                className="h-12 sm:h-14 px-3 sm:px-6 rounded-md bg-secondary/70 hover:bg-secondary text-foreground/85 font-semibold text-sm flex items-center justify-center gap-1.5 transition-all shrink-0 !border-0"
+                                title="Edit recipe"
+                                aria-label="Edit recipe"
+                            >
+                                <Pencil className="w-4 h-4" />
+                                <span className="hidden sm:inline">Edit</span>
+                            </Button>
                             <Button
                                 onClick={() => { setIsCookingMode(true); setActiveSheet('none') }}
-                                className="flex-[2] py-7 sm:py-8 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xl shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                                className="flex-1 h-12 sm:h-14 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base sm:text-lg rounded-md shadow-sm transition-all active:scale-[0.99] flex items-center justify-center gap-2"
                             >
-                                <ChefHat className="w-6 h-6" />
+                                <ChefHat className="w-5 h-5" />
                                 Start Cooking
                             </Button>
-                            <div className="flex flex-1 gap-2">
-                                <Button
-                                    onClick={openShopModal}
-                                    variant="outline"
-                                    className="flex-1 py-7 sm:py-8 font-bold border-emerald-500/40 hover:bg-emerald-500/10 hover:border-emerald-500 text-emerald-500 transition-all flex flex-col sm:flex-row items-center justify-center gap-2"
-                                >
-                                    <Plus className="w-5 h-5 hidden sm:block" />
-                                    <span>List</span>
-                                </Button>
-                                <Button
-                                    onClick={toggleHidden}
-                                    variant="outline"
-                                    className={`flex-1 py-7 sm:py-8 font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-2 ${
-                                        isHidden
-                                            ? 'bg-amber-500/10 border-amber-500/40 hover:bg-amber-500/20 text-amber-500'
-                                            : 'hover:bg-accent/10'
-                                    }`}
-                                    title={isHidden ? 'Hidden from /recipes grid' : 'Show on /recipes grid'}
-                                >
-                                    {isHidden ? <EyeOff className="w-5 h-5 hidden sm:block" /> : <Eye className="w-5 h-5 hidden sm:block" />}
-                                    <span>{isHidden ? 'Hidden' : 'Hide'}</span>
-                                </Button>
-                                <Button
-                                    onClick={() => router.push(`/createRecipe?id=${id}`)}
-                                    variant="outline"
-                                    className="flex-1 py-7 sm:py-8 font-bold hover:bg-accent/10 transition-all flex flex-col sm:flex-row items-center justify-center gap-2"
-                                >
-                                    ✏️ <span className="hidden sm:inline">Edit</span>
-                                </Button>
-                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-card text-card-foreground border-0 sm:border sm:border-border/10 shadow-sm p-2 sm:p-4 md:p-6 mb-8 transition-shadow duration-500 hover:shadow-md overflow-hidden">
+                <div className="bg-card text-card-foreground mb-0">
                     {/* Ingredients Section */}
-                    <div data-section="ingredients" className="pt-10 pb-14 px-6 sm:px-10 bg-emerald-500/[0.02]">
-                        <div className="flex items-center gap-4 mb-10">
-                            <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/10 shadow-sm shadow-emerald-500/5">
-                                <ShoppingBasket className="w-6 h-6 sm:w-8 sm:h-8" />
-                            </div>
-                            <div>
-                                <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground/90">Ingredients</h2>
-                                <p className="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest mt-1">Fresh & Pantry Staples</p>
-                            </div>
+                    <div data-section="ingredients" className="recipe-band recipe-section px-4 py-6 sm:px-8 sm:py-10">
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 mb-5">
+                            <ShoppingBasket className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
+                            <h2 className="text-lg sm:text-xl font-bold tracking-tight">Ingredients</h2>
+                            <span className="text-xs text-muted-foreground">{matchedListIngreds.length} items</span>
+                            <Button
+                                onClick={openShopModal}
+                                variant="outline"
+                                className="ml-auto h-9 px-3 rounded-md bg-secondary/70 hover:bg-secondary text-foreground/85 text-sm font-semibold flex items-center gap-1.5 transition-all shrink-0 !border-0"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Add to Shopping List
+                            </Button>
                         </div>
 
-                        <div className="space-y-10">
+                        {/* Ingredients are ordered by category but stacked as one
+                            continuous list — category names are not displayed. */}
+                        <div className="flex flex-col">
                             {Object.entries(
                                 matchedListIngreds.reduce((acc: any, ingred) => {
                                     const cat = ingred.category_simple || ingred.category || 'Other';
@@ -1663,47 +1627,30 @@ export default function RecipeDetail() {
                                 if (aIdx !== -1) return -1;
                                 if (bIdx !== -1) return 1;
                                 return a.localeCompare(b);
-                            }).map(([category, ingredients]: [string, any[]]) => (
-                                <div key={category} className="animate-in fade-in slide-in-from-left-4 duration-500">
-                                    <h3 className="text-xs font-black tracking-widest text-emerald-500/90 mb-6 flex items-center gap-4">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/60"></span>
-                                        {category}
-                                        <span className="flex-1 h-px bg-emerald-500/20"></span>
-                                        <span className="opacity-60">{ingredients.length} items</span>
-                                    </h3>
-                                    <div className="flex flex-col ml-1">
-                                        {ingredients.map((ingred, idx) => (
-                                            <IngredientCard
-                                                key={idx}
-                                                ingredient={ingred}
-                                                variant="minimal"
-                                                filters={filters}
-                                                openModal={openModal}
-                                                hideDelete={true}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
+                            }).flatMap(([, ingredients]: [string, any[]]) => ingredients).map((ingred, idx) => (
+                                <IngredientCard
+                                    key={idx}
+                                    ingredient={ingred}
+                                    variant="minimal"
+                                    filters={filters}
+                                    openModal={openModal}
+                                    hideDelete={true}
+                                />
                             ))}
                         </div>
                     </div>
 
                     {/* Prep Work Section */}
-                    <div data-section="prep" className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-orange-500/[0.02]">
-                        <div className="flex items-center gap-4 mb-10">
-                            <div className="p-3 rounded-2xl bg-orange-500/10 text-orange-500 border border-orange-500/10 shadow-sm shadow-orange-500/5">
-                                <ChefHat className="w-6 h-6 sm:w-8 sm:h-8" />
-                            </div>
-                            <div>
-                                <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground/90">Prep Work</h2>
-                                <p className="text-[10px] font-bold text-orange-500/60 uppercase tracking-widest mt-1">Before You Start</p>
-                            </div>
+                    <div data-section="prep" className="recipe-band recipe-section px-4 py-6 sm:px-8 sm:py-10">
+                        <div className="flex items-center gap-2.5 mb-5">
+                            <ChefHat className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
+                            <h2 className="text-lg sm:text-xl font-bold tracking-tight">Prep Work</h2>
                             <div className="ml-auto flex items-center gap-2">
-                                {isExtractingPrep && <Loader2 className="w-4 h-4 animate-spin text-orange-500" />}
+                                {isExtractingPrep && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                                 <button
                                     onClick={extractPrepWork}
                                     disabled={isExtractingPrep}
-                                    className="text-xs text-orange-500/60 hover:text-orange-500 disabled:opacity-50"
+                                    className="text-xs text-muted-foreground hover:text-accent disabled:opacity-50 transition-colors"
                                 >
                                     Re-extract
                                 </button>
@@ -1711,13 +1658,13 @@ export default function RecipeDetail() {
                         </div>
 
                         {isExtractingPrep ? (
-                            <p className="text-foreground/40 text-sm">Analyzing recipe...</p>
+                            <p className="text-muted-foreground text-sm">Analyzing recipe...</p>
                         ) : prepWork.length === 0 ? (
-                            <p className="text-foreground/40 text-sm">Nothing to do... add items manually or click Re-extract.</p>
+                            <p className="text-muted-foreground text-sm">Nothing to do... add items manually or click Re-extract.</p>
                         ) : (
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {prepWork.map((item, index) => (
-                                    <div key={index} className={`flex items-center gap-4 p-3 rounded-xl border ${item.optional ? 'bg-orange-500/[0.02] border-orange-500/5 border-dashed' : 'bg-orange-500/5 border-orange-500/10'}`}>
+                                    <div key={index} className={`flex items-center gap-3 p-3 rounded-xl ${item.optional ? 'bg-secondary/25' : 'bg-secondary/50'}`}>
                                         <button
                                             onClick={() => setCheckedPrep(prev => {
                                                 const next = new Set(prev)
@@ -1725,10 +1672,10 @@ export default function RecipeDetail() {
                                                 else next.add(index)
                                                 return next
                                             })}
-                                            className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                                            className={`w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
                                                 checkedPrep.has(index)
-                                                    ? 'bg-orange-500 border-orange-500 text-white'
-                                                    : item.optional ? 'border-orange-500/20 hover:border-orange-500/50' : 'border-orange-500/30 hover:border-orange-500'
+                                                    ? 'bg-emerald-500 border-emerald-500 text-white'
+                                                    : item.optional ? 'border-border/60 hover:border-accent/50' : 'border-border hover:border-accent/70'
                                             }`}
                                         >
                                             {checkedPrep.has(index) && <Check size={14} />}
@@ -1749,21 +1696,21 @@ export default function RecipeDetail() {
                                                         (e.target as HTMLInputElement).blur()
                                                     }
                                                 }}
-                                                className="flex-1 bg-transparent border-b border-orange-500/30 focus:border-orange-500 outline-none text-foreground/80"
+                                                className="flex-1 min-w-0 bg-transparent border-b border-border focus:border-accent outline-none text-foreground/85"
                                                 autoFocus
                                             />
                                         ) : (
                                             <span
                                                 onClick={() => { setEditingPrepIndex(index); setEditingPrepText(item.action) }}
-                                                className={`flex-1 cursor-pointer ${checkedPrep.has(index) ? 'line-through opacity-50' : item.optional ? 'text-foreground/50' : 'text-foreground/80'}`}
+                                                className={`flex-1 min-w-0 cursor-pointer ${checkedPrep.has(index) ? 'line-through opacity-50' : item.optional ? 'text-muted-foreground' : 'text-foreground/85'}`}
                                             >
-                                                {item.ingredient && <span className="font-medium">{item.ingredient}: </span>}
+                                                {item.ingredient && <span className="font-semibold">{item.ingredient}: </span>}
                                                 {item.action}
-                                                {item.optional && <span className="ml-2 text-[10px] text-orange-500/50 font-semibold uppercase">(optional)</span>}
+                                                {item.optional && <span className="ml-2 text-[10px] text-muted-foreground/60 font-semibold uppercase">(optional)</span>}
                                             </span>
                                         )}
                                         {item.timeEstimate && (
-                                            <span className="text-xs text-orange-500/60 whitespace-nowrap">
+                                            <span className="text-xs text-muted-foreground whitespace-nowrap">
                                                 ~{item.timeEstimate} min
                                             </span>
                                         )}
@@ -1776,7 +1723,7 @@ export default function RecipeDetail() {
                                                     setEditingPrepIndex(null)
                                                 }
                                             }}
-                                            className="text-red-400/40 hover:text-red-400 transition-colors p-1"
+                                            className="text-muted-foreground/30 hover:text-destructive transition-colors p-1 shrink-0"
                                             title="Delete"
                                         >
                                             <Trash2 size={14} />
@@ -1793,39 +1740,31 @@ export default function RecipeDetail() {
                                 setEditingPrepIndex(prepWork.length)
                                 setEditingPrepText('')
                             }}
-                            className="mt-4 flex items-center gap-2 text-sm text-orange-500/60 hover:text-orange-500"
+                            className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-accent transition-colors"
                         >
-                            <Plus size={16} /> Add custom prep work
+                            <Plus size={15} /> Add custom prep work
                         </button>
                     </div>
 
                     {/* Instructions Section */}
                     {instructions.length > 0 && (
-                        <div data-section="instructions" className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-indigo-500/[0.02]">
-                            <div className="flex items-center gap-4 mb-10">
-                                <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/10 shadow-sm shadow-indigo-500/5">
-                                    <ListOrdered className="w-6 h-6 sm:w-8 sm:h-8" />
-                                </div>
-                                <div>
-                                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground/90">Instructions</h2>
-                                    <p className="text-[10px] font-bold text-indigo-500/60 uppercase tracking-widest mt-1">Step-by-step Process</p>
-                                </div>
+                        <div data-section="instructions" className="recipe-band recipe-section px-4 py-6 sm:px-8 sm:py-10">
+                            <div className="flex items-center gap-2.5 mb-5">
+                                <ListOrdered className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
+                                <h2 className="text-lg sm:text-xl font-bold tracking-tight">Instructions</h2>
+                                <span className="ml-auto text-xs text-muted-foreground">{instructions.length} steps</span>
                             </div>
-                            <div className="flex flex-col gap-8">
+                            <div className="space-y-5 sm:space-y-6">
                                 {instructions.map((instruction, index) => (
-                                    <div key={index} className="flex gap-4 sm:gap-8 group">
-                                        <div className="flex-shrink-0 w-11 h-11 rounded-2xl bg-indigo-500/5 border border-indigo-500/5 flex items-center justify-center font-black text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300 shadow-sm">
+                                    <div key={index} className="flex gap-3 sm:gap-4">
+                                        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-sm font-bold text-foreground/70">
                                             {index + 1}
                                         </div>
-                                        <div className="flex-1 pt-1.5 border-0 sm:border-b sm:border-border/10 pb-8 group-last:border-0">
-                                            <div className="flex items-start gap-2">
-                                                <p className="flex-1 text-foreground/80 leading-relaxed text-base sm:text-xl font-medium">{instruction.Text}</p>
-                                                {instruction.time && (
-                                                    <span className="text-xs text-indigo-500/60 whitespace-nowrap mt-1">
-                                                        ~{instruction.time} min
-                                                    </span>
-                                                )}
-                                            </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-foreground/85 leading-relaxed text-[15px] sm:text-base font-medium">{instruction.Text}</p>
+                                            {instruction.time && (
+                                                <div className="mt-1 text-xs text-muted-foreground">~{instruction.time} min</div>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -1835,25 +1774,250 @@ export default function RecipeDetail() {
 
 
 
-                    {/* Feedback & Reflection Section */}
-                        <div data-section="feedback" className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-amber-500/[0.02]">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/10 shadow-sm shadow-amber-500/5">
-                                    <MessageSquare className="w-6 h-6 sm:w-8 sm:h-8" />
-                                </div>
-                                <div>
-                                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground/90">Cooking Reflection</h2>
-                                    <p className="text-[10px] font-bold text-amber-500/60 uppercase tracking-widest mt-1">Results & Notes</p>
+                    {/* Timing Section */}
+                    <div data-section="timers" className="recipe-band recipe-section px-4 py-6 sm:px-8 sm:py-10">
+                        <div className="flex items-center gap-2.5 mb-5">
+                            <Clock className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
+                            <h2 className="text-lg sm:text-xl font-bold tracking-tight">Timing</h2>
+                        </div>
+
+                        {/* Prep + cook only — category/servings/total live elsewhere */}
+                        {(prepTimeEstimate > 0 || cookTimeEstimate > 0) && (
+                            <div className="grid grid-cols-2 gap-2 mb-6">
+                                {prepTimeEstimate > 0 && (
+                                    <div className="p-3 rounded-xl bg-secondary/60 flex flex-col items-center justify-center text-center">
+                                        <p className="text-lg font-bold leading-tight">{prepTimeEstimate}<span className="text-xs font-semibold text-muted-foreground ml-0.5">min</span></p>
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Prep Time</p>
+                                    </div>
+                                )}
+                                {cookTimeEstimate > 0 && (
+                                    <div className="p-3 rounded-xl bg-secondary/60 flex flex-col items-center justify-center text-center">
+                                        <p className="text-lg font-bold leading-tight">{cookTimeEstimate}<span className="text-xs font-semibold text-muted-foreground ml-0.5">min</span></p>
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Cook Time</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Cooking Timers ({cookingTimers.filter((t: any) => t.type === 'timer').length})</p>
+                            <div className="flex items-center gap-3">
+                                {isExtractingTimers && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                                <button
+                                    onClick={() => setReExtractConfirm(true)}
+                                    disabled={isExtractingTimers}
+                                    className="text-xs text-muted-foreground hover:text-accent disabled:opacity-50 transition-colors"
+                                >
+                                    Re-extract
+                                </button>
+                            </div>
+                        </div>
+
+                        {cookingTimers.filter((t: any) => t.type === 'timer').length === 0 && !isExtractingTimers && (
+                            <p className="text-muted-foreground text-sm mb-3">No cooking timers... add one manually or click Re-extract.</p>
+                        )}
+
+                        <div className="space-y-2">
+                            {cookingTimers.filter((t: any) => t.type === 'timer').map((timer: any) => {
+                                const depRef = timer.dependencies?.[0]?.timerId
+                                const depTimerId = depRef && depRef !== 'start' ? depRef : null
+                                const depTimer = depTimerId ? getTimerById(cookingTimers, depTimerId) : null
+                                const depOffset = depTimerId ? (timer.dependencies[0].offset || 0) : 0
+                                const excludedIds = timersDependingOn(cookingTimers, timer.id)
+                                const parentOptions = cookingTimers.filter((t: any) => t.type === 'timer' && t.id !== timer.id && !excludedIds.has(t.id))
+                                return (
+                                    <div key={timer.id} className="p-3 rounded-xl bg-secondary/50 text-sm">
+                                        {editingRecipeTimerId === timer.id ? (
+                                            <div>
+                                                <div className="flex flex-wrap items-center gap-2 mb-2">
+                                                    <input
+                                                        value={editTimerName}
+                                                        onChange={(e) => setEditTimerName(e.target.value)}
+                                                        placeholder="Timer name"
+                                                        className="flex-1 min-w-[10rem] bg-transparent border-b border-border focus:border-accent outline-none text-foreground/85"
+                                                        autoFocus
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        value={editTimerDuration}
+                                                        onChange={(e) => setEditTimerDuration(e.target.value)}
+                                                        placeholder="min"
+                                                        className="w-16 bg-transparent border-b border-border focus:border-accent outline-none text-foreground/85"
+                                                    />
+                                                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">min</span>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                                    {instructions.length > 0 && (
+                                                        <>
+                                                            <span className="text-[10px] font-semibold uppercase tracking-wider">Step</span>
+                                                            <select
+                                                                value={editTimerStep}
+                                                                onChange={(e) => setEditTimerStep(e.target.value)}
+                                                                className="bg-secondary text-foreground/85 rounded-lg px-2 py-1 focus:outline-none"
+                                                            >
+                                                                {instructions.map((_: any, i: number) => (
+                                                                    <option key={i} value={String(i)}>Step {i + 1}</option>
+                                                                ))}
+                                                            </select>
+                                                        </>
+                                                    )}
+                                                    <span className="text-[10px] font-semibold uppercase tracking-wider">Starts</span>
+                                                    <select
+                                                        value={editTimerDependsOn}
+                                                        onChange={(e) => setEditTimerDependsOn(e.target.value)}
+                                                        className="bg-secondary text-foreground/85 rounded-lg px-2 py-1 focus:outline-none"
+                                                    >
+                                                        <option value="start">Immediately</option>
+                                                        {parentOptions.map((pt: any) => (
+                                                            <option key={pt.id} value={pt.id}>{pt.name}</option>
+                                                        ))}
+                                                    </select>
+                                                    {editTimerDependsOn !== 'start' && (
+                                                        <>
+                                                            <input
+                                                                type="number"
+                                                                value={editTimerOffset}
+                                                                onChange={(e) => setEditTimerOffset(e.target.value)}
+                                                                placeholder="0"
+                                                                className="w-16 bg-transparent border-b border-border focus:border-accent outline-none text-foreground/85"
+                                                            />
+                                                            <span className="text-[10px] text-muted-foreground/60">min (negative = before it finishes)</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-3 mt-2">
+                                                    <button
+                                                        onClick={() => saveRecipeTimerEdit(timer.id)}
+                                                        className="text-xs font-bold text-accent hover:text-emerald-400 transition-colors"
+                                                    >
+                                                        Save
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setEditingRecipeTimerId(null)}
+                                                        className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex flex-wrap items-baseline gap-x-2">
+                                                        <span className="font-semibold text-foreground/85">{timer.name}</span>
+                                                        <span className="text-muted-foreground">{timer.duration} min</span>
+                                                    </div>
+                                                    {(depTimer || (timer.stepIndex != null && instructions.length > 0)) && (
+                                                        <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+                                                            {timer.stepIndex != null && instructions.length > 0 ? `Step ${timer.stepIndex + 1}` : ''}
+                                                            {timer.stepIndex != null && instructions.length > 0 && depTimer ? ' · ' : ''}
+                                                            {depTimer ? `starts ${depOffset < 0 ? `${-depOffset} min before ${depTimer.name} finishes` : `when ${depTimer.name} finishes`}` : ''}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingRecipeTimerId(timer.id)
+                                                        setEditTimerName(timer.name || '')
+                                                        setEditTimerDuration(String(timer.duration || ''))
+                                                        setEditTimerStep(String(Math.min(timer.stepIndex ?? 0, Math.max(0, instructions.length - 1))))
+                                                        const d = timer.dependencies?.[0]
+                                                        if (d && d.timerId !== 'start' && cookingTimers.some((t: any) => t.id === d.timerId)) {
+                                                            setEditTimerDependsOn(d.timerId)
+                                                            setEditTimerOffset(String(d.offset || 0))
+                                                        } else {
+                                                            setEditTimerDependsOn('start')
+                                                            setEditTimerOffset('0')
+                                                        }
+                                                    }}
+                                                    className="text-muted-foreground/40 hover:text-foreground transition-colors p-1 shrink-0"
+                                                    title="Edit timer"
+                                                >
+                                                    <Pencil size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteRecipeTimer(timer.id)}
+                                                    className="text-muted-foreground/30 hover:text-destructive transition-colors p-1 shrink-0"
+                                                    title="Delete timer"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+
+                        {addingRecipeTimer ? (
+                            <div className="flex flex-wrap items-center gap-2 mt-3 p-3 rounded-xl bg-secondary/50">
+                                <input
+                                    value={newTimerName}
+                                    onChange={(e) => setNewTimerName(e.target.value)}
+                                    placeholder="Timer name"
+                                    className="flex-1 min-w-[10rem] bg-transparent border-b border-border focus:border-accent outline-none text-sm text-foreground/85"
+                                    autoFocus
+                                />
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={newTimerMinutes}
+                                    onChange={(e) => setNewTimerMinutes(e.target.value)}
+                                    placeholder="min"
+                                    className="w-16 bg-transparent border-b border-border focus:border-accent outline-none text-sm text-foreground/85"
+                                />
+                                <button
+                                    onClick={addRecipeTimer}
+                                    className="text-xs font-bold text-accent hover:text-emerald-400 transition-colors"
+                                >
+                                    Add
+                                </button>
+                                <button
+                                    onClick={() => { setAddingRecipeTimer(false); setNewTimerName(""); setNewTimerMinutes("") }}
+                                    className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setAddingRecipeTimer(true)}
+                                className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-accent transition-colors"
+                            >
+                                <Plus size={15} /> Add timer
+                            </button>
+                        )}
+
+                        {instructions.filter((i: any) => i.time).length > 1 && (
+                            <div className="mt-6">
+                                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Step Breakdown</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {instructions.map((instruction: any, idx: number) => instruction.time ? (
+                                        <div key={idx} className="px-3 py-1.5 rounded-lg bg-secondary/60 text-sm">
+                                            <span className="font-semibold text-foreground/85">Step {idx + 1}</span>
+                                            <span className="text-muted-foreground ml-2">~{instruction.time} min</span>
+                                        </div>
+                                    ) : null)}
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-1 group">
+                        )}
+                    </div>
+
+                    {/* Feedback & Reflection Section */}
+                    <div data-section="feedback" className="recipe-band recipe-section px-4 py-6 sm:px-8 sm:py-10">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
+                            <div className="flex items-center gap-2.5">
+                                <MessageSquare className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
+                                <h2 className="text-lg sm:text-xl font-bold tracking-tight">Cooking Reflection</h2>
+                            </div>
+                            <div className="flex items-center gap-2 sm:ml-auto">
+                                <div className="flex items-center gap-0.5">
                                     <Button
                                         onClick={() => updateTimesCooked(timesCooked - 1)}
                                         variant="ghost"
                                         size="sm"
-                                        className="h-9 w-9 p-0 rounded-full hover:bg-orange-500/10 hover:text-orange-500 transition-colors"
+                                        className="h-9 w-9 p-0 rounded-full hover:bg-secondary hover:text-foreground transition-colors"
                                         disabled={timesCooked <= 0}
                                     >
                                         -
@@ -1862,300 +2026,46 @@ export default function RecipeDetail() {
                                         type="number"
                                         value={timesCooked}
                                         onChange={(e) => updateTimesCooked(parseInt(e.target.value) || 0)}
-                                        className="w-10 text-center bg-transparent font-black text-lg focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        className="w-10 text-center bg-transparent font-bold text-base focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                     />
                                     <Button
                                         onClick={() => updateTimesCooked(timesCooked + 1)}
                                         variant="ghost"
                                         size="sm"
-                                        className="h-9 w-9 p-0 rounded-full hover:bg-emerald-500/10 hover:text-emerald-500 transition-colors"
+                                        className="h-9 w-9 p-0 rounded-full hover:bg-secondary hover:text-foreground transition-colors"
                                     >
                                         +
                                     </Button>
                                 </div>
                                 <Button
                                     onClick={() => updateTimesCooked(timesCooked + 1)}
-                                    className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold h-11 px-5 rounded-xl flex items-center gap-2.5 transition-all active:scale-95 shadow-md shadow-emerald-500/10"
+                                    className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold h-10 px-4 rounded-xl flex items-center gap-2 transition-all active:scale-95 text-sm"
                                 >
-                                    <ChefHat size={18} /> <span className="hidden sm:inline">Mark as Cooked</span>
+                                    <ChefHat size={16} /> <span className="sm:hidden">Cooked</span><span className="hidden sm:inline">Mark as Cooked</span>
                                 </Button>
                             </div>
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="space-y-2">
                             <textarea
                                 value={feedback}
                                 onChange={(e) => setFeedback(e.target.value)}
                                 onBlur={(e) => saveFeedback(e.target.value)}
                                 placeholder="How did it turn out? Any tweaks for next time? (Auto-saves on blur)"
-                                className="w-full min-h-[140px] rounded-2xl border border-border/10 bg-secondary px-5 py-4 text-sm focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/10 focus:bg-emerald-500/[0.04] transition-all duration-300 resize-none placeholder:text-muted-foreground/30 shadow-inner"
+                                className="w-full min-h-[120px] rounded-xl bg-secondary px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-accent/40 transition-shadow resize-none placeholder:text-muted-foreground/50"
                             />
-                            {isSavingFeedback && <div className="text-[10px] font-bold text-emerald-500 animate-pulse text-right pr-2 uppercase tracking-widest">Saving changes...</div>}
+                            {isSavingFeedback && <div className="text-[10px] font-semibold text-accent animate-pulse text-right pr-2 uppercase tracking-wider">Saving changes...</div>}
                         </div>
                     </div>
 
-                    {/* Timing Section */}
-                    <div data-section="timers" className="py-14 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-rose-500/[0.02]">
-                        <div className="flex items-center gap-4 mb-10">
-                            <div className="p-3 rounded-2xl bg-rose-500/10 text-rose-500 border border-rose-500/10 shadow-sm shadow-rose-500/5">
-                                <Clock className="w-6 h-6 sm:w-8 sm:h-8" />
-                            </div>
-                            <div>
-                                <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground/90">Timing</h2>
-                                <p className="text-[10px] font-bold text-rose-500/60 uppercase tracking-widest mt-1">Key Time Points</p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            {recipeTime && timeLabelMap[recipeTime] && (
-                                <div className="col-span-2 sm:col-span-1 p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 flex flex-col items-center text-center">
-                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${timeLabelMap[recipeTime].color} mb-2`}>
-                                        {timeLabelMap[recipeTime].icon} {timeLabelMap[recipeTime].label}
-                                    </span>
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Category</p>
-                                </div>
-                            )}
-                            {prepTimeEstimate > 0 && (
-                                <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 flex flex-col items-center text-center">
-                                    <p className="text-2xl font-black text-foreground/90">{prepTimeEstimate}<span className="text-sm font-semibold text-muted-foreground ml-0.5">min</span></p>
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Prep Time</p>
-                                </div>
-                            )}
-                            {cookTimeEstimate > 0 && (
-                                <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 flex flex-col items-center text-center">
-                                    <p className="text-2xl font-black text-foreground/90">{cookTimeEstimate}<span className="text-sm font-semibold text-muted-foreground ml-0.5">min</span></p>
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Cook Time</p>
-                                </div>
-                            )}
-                            {prepTimeEstimate > 0 && cookTimeEstimate > 0 && (
-                                <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex flex-col items-center text-center">
-                                    <p className="text-2xl font-black text-rose-500">{totalTimeEstimate}<span className="text-sm font-semibold text-rose-500/60 ml-0.5">min</span></p>
-                                    <p className="text-[10px] text-rose-500/60 font-bold uppercase tracking-widest">Total</p>
-                                </div>
-                            )}
-                            {recipeServings > 0 && (
-                                <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 flex flex-col items-center text-center">
-                                    <p className="text-2xl font-black text-foreground/90">{recipeServings}</p>
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Servings</p>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="mt-6">
-                            <div className="flex items-center justify-between gap-2 mb-3">
-                                <p className="text-xs font-bold text-rose-500/60 uppercase tracking-widest">Cooking Timers ({cookingTimers.filter((t: any) => t.type === 'timer').length})</p>
-                                <div className="flex items-center gap-3">
-                                    {isExtractingTimers && <Loader2 className="w-4 h-4 animate-spin text-rose-500" />}
-                                    <button
-                                        onClick={() => setReExtractConfirm(true)}
-                                        disabled={isExtractingTimers}
-                                        className="text-xs text-rose-500/60 hover:text-rose-500 disabled:opacity-50 transition-colors"
-                                    >
-                                        Re-extract
-                                    </button>
-                                </div>
-                            </div>
-
-                            {cookingTimers.filter((t: any) => t.type === 'timer').length === 0 && !isExtractingTimers && (
-                                <p className="text-foreground/40 text-sm mb-3">No cooking timers... add one manually or click Re-extract.</p>
-                            )}
-
-                            <div className="space-y-2">
-                                {cookingTimers.filter((t: any) => t.type === 'timer').map((timer: any) => {
-                                    const depRef = timer.dependencies?.[0]?.timerId
-                                    const depTimerId = depRef && depRef !== 'start' ? depRef : null
-                                    const depTimer = depTimerId ? getTimerById(cookingTimers, depTimerId) : null
-                                    const depOffset = depTimerId ? (timer.dependencies[0].offset || 0) : 0
-                                    const excludedIds = timersDependingOn(cookingTimers, timer.id)
-                                    const parentOptions = cookingTimers.filter((t: any) => t.type === 'timer' && t.id !== timer.id && !excludedIds.has(t.id))
-                                    return (
-                                        <div key={timer.id} className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/10 text-sm">
-                                            {editingRecipeTimerId === timer.id ? (
-                                                <div>
-                                                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                                                        <input
-                                                            value={editTimerName}
-                                                            onChange={(e) => setEditTimerName(e.target.value)}
-                                                            placeholder="Timer name"
-                                                            className="flex-1 min-w-[10rem] bg-transparent border-b border-rose-500/30 focus:border-rose-500 outline-none text-foreground/80"
-                                                            autoFocus
-                                                        />
-                                                        <input
-                                                            type="number"
-                                                            min="1"
-                                                            value={editTimerDuration}
-                                                            onChange={(e) => setEditTimerDuration(e.target.value)}
-                                                            placeholder="min"
-                                                            className="w-16 bg-transparent border-b border-rose-500/30 focus:border-rose-500 outline-none text-foreground/80"
-                                                        />
-                                                        <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">min</span>
-                                                    </div>
-                                                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                                        {instructions.length > 0 && (
-                                                            <>
-                                                                <span className="text-[10px] font-bold uppercase tracking-widest">Step</span>
-                                                                <select
-                                                                    value={editTimerStep}
-                                                                    onChange={(e) => setEditTimerStep(e.target.value)}
-                                                                    className="bg-secondary text-foreground/80 rounded-lg px-2 py-1 border border-rose-500/20 focus:outline-none focus:border-rose-500/50"
-                                                                >
-                                                                    {instructions.map((_: any, i: number) => (
-                                                                        <option key={i} value={String(i)}>Step {i + 1}</option>
-                                                                    ))}
-                                                                </select>
-                                                            </>
-                                                        )}
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest">Starts</span>
-                                                        <select
-                                                            value={editTimerDependsOn}
-                                                            onChange={(e) => setEditTimerDependsOn(e.target.value)}
-                                                            className="bg-secondary text-foreground/80 rounded-lg px-2 py-1 border border-rose-500/20 focus:outline-none focus:border-rose-500/50"
-                                                        >
-                                                            <option value="start">Immediately</option>
-                                                            {parentOptions.map((pt: any) => (
-                                                                <option key={pt.id} value={pt.id}>{pt.name}</option>
-                                                            ))}
-                                                        </select>
-                                                        {editTimerDependsOn !== 'start' && (
-                                                            <>
-                                                                <input
-                                                                    type="number"
-                                                                    value={editTimerOffset}
-                                                                    onChange={(e) => setEditTimerOffset(e.target.value)}
-                                                                    placeholder="0"
-                                                                    className="w-16 bg-transparent border-b border-rose-500/30 focus:border-rose-500 outline-none text-foreground/80"
-                                                                />
-                                                                <span className="text-[10px] text-rose-500/40">min (negative = before it finishes)</span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center gap-3 mt-2">
-                                                        <button
-                                                            onClick={() => saveRecipeTimerEdit(timer.id)}
-                                                            className="text-xs font-bold text-rose-500 hover:text-rose-400 transition-colors"
-                                                        >
-                                                            Save
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setEditingRecipeTimerId(null)}
-                                                            className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors"
-                                                        >
-                                                            Cancel
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center gap-2">
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex flex-wrap items-baseline gap-x-2">
-                                                            <span className="font-semibold text-foreground/80">{timer.name}</span>
-                                                            <span className="text-rose-500/60">{timer.duration} min</span>
-                                                        </div>
-                                                        {(depTimer || (timer.stepIndex != null && instructions.length > 0)) && (
-                                                            <p className="text-[10px] text-rose-500/40 mt-0.5">
-                                                                {timer.stepIndex != null && instructions.length > 0 ? `Step ${timer.stepIndex + 1}` : ''}
-                                                                {timer.stepIndex != null && instructions.length > 0 && depTimer ? ' · ' : ''}
-                                                                {depTimer ? `starts ${depOffset < 0 ? `${-depOffset} min before ${depTimer.name} finishes` : `when ${depTimer.name} finishes`}` : ''}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                    <button
-                                                        onClick={() => {
-                                                            setEditingRecipeTimerId(timer.id)
-                                                            setEditTimerName(timer.name || '')
-                                                            setEditTimerDuration(String(timer.duration || ''))
-                                                            setEditTimerStep(String(Math.min(timer.stepIndex ?? 0, Math.max(0, instructions.length - 1))))
-                                                            const d = timer.dependencies?.[0]
-                                                            if (d && d.timerId !== 'start' && cookingTimers.some((t: any) => t.id === d.timerId)) {
-                                                                setEditTimerDependsOn(d.timerId)
-                                                                setEditTimerOffset(String(d.offset || 0))
-                                                            } else {
-                                                                setEditTimerDependsOn('start')
-                                                                setEditTimerOffset('0')
-                                                            }
-                                                        }}
-                                                        className="text-rose-500/40 hover:text-rose-500 transition-colors p-1"
-                                                        title="Edit timer"
-                                                    >
-                                                        <Pencil size={14} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => deleteRecipeTimer(timer.id)}
-                                                        className="text-red-400/40 hover:text-red-400 transition-colors p-1"
-                                                        title="Delete timer"
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )
-                                })}
-                            </div>
-
-                            {addingRecipeTimer ? (
-                                <div className="flex flex-wrap items-center gap-2 mt-3 p-3 rounded-xl bg-rose-500/5 border border-rose-500/10">
-                                    <input
-                                        value={newTimerName}
-                                        onChange={(e) => setNewTimerName(e.target.value)}
-                                        placeholder="Timer name"
-                                        className="flex-1 min-w-[10rem] bg-transparent border-b border-rose-500/30 focus:border-rose-500 outline-none text-sm text-foreground/80"
-                                        autoFocus
-                                    />
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        value={newTimerMinutes}
-                                        onChange={(e) => setNewTimerMinutes(e.target.value)}
-                                        placeholder="min"
-                                        className="w-16 bg-transparent border-b border-rose-500/30 focus:border-rose-500 outline-none text-sm text-foreground/80"
-                                    />
-                                    <button
-                                        onClick={addRecipeTimer}
-                                        className="text-xs font-bold text-rose-500 hover:text-rose-400 transition-colors"
-                                    >
-                                        Add
-                                    </button>
-                                    <button
-                                        onClick={() => { setAddingRecipeTimer(false); setNewTimerName(""); setNewTimerMinutes("") }}
-                                        className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            ) : (
-                                <button
-                                    onClick={() => setAddingRecipeTimer(true)}
-                                    className="mt-3 flex items-center gap-2 text-sm text-rose-500/60 hover:text-rose-500 transition-colors"
-                                >
-                                    <Plus size={16} /> Add timer
-                                </button>
-                            )}
-                        </div>
-
-                        {instructions.filter((i: any) => i.time).length > 1 && (
-                            <div className="mt-6">
-                                <p className="text-xs font-bold text-rose-500/60 uppercase tracking-widest mb-3">Step Breakdown</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {instructions.map((instruction: any, idx: number) => instruction.time ? (
-                                        <div key={idx} className="px-3 py-2 rounded-xl bg-rose-500/5 border border-rose-500/10 text-sm">
-                                            <span className="font-semibold text-foreground/80">Step {idx + 1}</span>
-                                            <span className="text-rose-500/60 ml-2">~{instruction.time} min</span>
-                                        </div>
-                                    ) : null)}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Nutrients density — TOGGLEABLE & SUBTLE */}
-                    <div data-section="nutrients" className="py-10 px-6 sm:px-10 border-0 sm:border-t sm:border-border/10 bg-muted/[0.01]">
+                    {/* Nutrients density — collapsible, off by default */}
+                    <div data-section="nutrients" className="recipe-band recipe-section px-4 py-6 sm:px-8 sm:py-10">
                         <button
                             onClick={() => setShowNutrients(!showNutrients)}
-                            className="flex items-center gap-2 group text-muted-foreground/60 hover:text-orange-400 transition-all duration-300"
+                            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                         >
-                            <Sparkles className={`w-4 h-4 transition-transform duration-500 ${showNutrients ? 'rotate-180 scale-110' : ''}`} />
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] group-hover:opacity-100 transition-opacity">
+                            <Sparkles className={`w-4 h-4 transition-transform duration-300 ${showNutrients ? 'text-accent' : ''}`} />
+                            <h2 className="text-sm font-bold uppercase tracking-wider">
                                 Nutritional Density
                             </h2>
                             <span className={`text-[10px] transition-transform duration-300 ${showNutrients ? 'rotate-180' : ''}`}>
@@ -2164,10 +2074,10 @@ export default function RecipeDetail() {
                         </button>
 
                         {showNutrients && (
-                            <div className="mt-6 bg-muted/10 backdrop-blur-sm rounded-3xl p-6 border-0 sm:border sm:border-border/20 animate-in fade-in slide-in-from-top-4 duration-500">
-                                <IngredientNutrientGraph 
-                                    ingredients={matchedListIngreds} 
-                                    onLogServe={logRecipeServe} 
+                            <div className="mt-4 rounded-2xl bg-secondary/50 p-4 sm:p-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <IngredientNutrientGraph
+                                    ingredients={matchedListIngreds}
+                                    onLogServe={logRecipeServe}
                                     logLabel="Log 1 Serve"
                                 />
                             </div>
@@ -2182,42 +2092,59 @@ export default function RecipeDetail() {
                         accept="image/*"
                     />
 
-                    <div className="flex justify-between items-center mt-8 pt-6 border-0 sm:border-t sm:border-border/10">
-                        <span className="text-xs text-muted-foreground font-mono">ID: {id}</span>
-                        <Button variant="destructive" onClick={deleteRecipe} size="sm">
+                    <div className="recipe-band flex justify-between items-center gap-3 px-4 sm:px-8 py-4">
+                        <span className="text-xs text-muted-foreground/50 font-mono truncate">ID: {id}</span>
+                        <Button variant="destructive" onClick={deleteRecipe} size="sm" className="shrink-0">
                             Delete Recipe
                         </Button>
                     </div>
                 </div>
 
-                {/* Ingredient Research Modal */}
+                {/* Ingredient Research Modal — bottom sheet on phones, centered card on desktop */}
                 <Modal
                     isOpen={modalIsOpen}
                     onRequestClose={closeModal}
                     style={{
-                        content: {
+                        content: isPhoneLayout ? {
                             backgroundColor: 'var(--background)',
-                            borderColor: 'var(--border)',
                             color: 'var(--foreground)',
-                            maxWidth: '1000px',
+                            border: '1px solid var(--border)',
+                            borderBottom: 'none',
+                            borderRadius: '1.25rem 1.25rem 0 0',
+                            padding: '1.25rem',
+                            inset: 'auto 0 0 0',
+                            maxHeight: '85vh',
+                            overflowY: 'auto',
+                            marginBottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))',
+                            boxShadow: '0 -20px 40px rgba(0,0,0,0.4)'
+                        } : {
+                            backgroundColor: 'var(--background)',
+                            color: 'var(--foreground)',
+                            border: '1px solid var(--border)',
+                            maxWidth: '900px',
                             margin: '0 auto',
                             padding: '1.5rem',
-                            borderRadius: '0.75rem',
-                            inset: '1rem',
+                            borderRadius: '1rem',
+                            inset: '1.5rem',
+                            maxHeight: 'calc(100vh - 3rem)',
+                            overflowY: 'auto'
                         },
                         overlay: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                            backdropFilter: 'blur(4px)',
-                            zIndex: 50
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            backdropFilter: 'blur(8px)',
+                            zIndex: 100,
+                            display: 'flex',
+                            alignItems: isPhoneLayout ? 'flex-end' : 'center',
+                            justifyContent: 'center'
                         }
                     }}
                     contentLabel="Ingredient Research Modal"
                 >
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold">Ingredient Research</h2>
+                        <h2 className="text-lg font-bold">Ingredient Research</h2>
                         <button
                             onClick={closeModal}
-                            className="bg-muted hover:bg-muted/80 w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+                            className="bg-secondary hover:bg-secondary/80 w-9 h-9 rounded-full flex items-center justify-center transition-colors"
                         >
                             <img src="/cross.png" className="w-4 h-4 invert-[.25] dark:invert" alt="close" />
                         </button>
@@ -2259,10 +2186,10 @@ export default function RecipeDetail() {
                     contentLabel="Add to Shopping List"
                 >
                     <div className="flex justify-between items-center mb-5">
-                        <h2 className="text-xl font-bold">🛒 Add to Shopping List</h2>
+                        <h2 className="text-lg font-bold">Add to Shopping List</h2>
                         <button
                             onClick={() => { setShopModalOpen(false); setAddSuccess(null) }}
-                            className="bg-muted hover:bg-muted/80 w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+                            className="bg-secondary hover:bg-secondary/80 w-9 h-9 rounded-full flex items-center justify-center transition-colors"
                         >
                             <img src="/cross.png" className="w-4 h-4 invert-[.25] dark:invert" alt="close" />
                         </button>
@@ -2289,7 +2216,7 @@ export default function RecipeDetail() {
                                 <Button
                                     onClick={createListAndAdd}
                                     disabled={addingToList}
-                                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-5"
+                                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl"
                                 >
                                     {addingToList ? 'Creating...' : '+ Create New List & Add'}
                                 </Button>
@@ -3198,7 +3125,7 @@ export default function RecipeDetail() {
                                                     const status = getTimerStatus(timer.id)
                                                     const remaining = session ? getRemaining(session, nowMs) : timer.duration * 60
                                                     const progress = getTimerProgress(timer, session, nowMs)
-                                                    return (
+    return (
                                                         <div key={timer.id} className="cooking-alarm-running-row">
                                                             <div className="cooking-alarm-running-info">
                                                                 <span className="cooking-alarm-running-name">
@@ -3229,7 +3156,7 @@ export default function RecipeDetail() {
             {/* Finish Cooking Confirmation */}
             {finishConfirm && (
                 <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-card border border-border/20 rounded-2xl p-6 max-w-sm mx-4 shadow-xl">
+                    <div className="bg-card border border-border/40 rounded-2xl p-5 max-w-sm mx-4 shadow-xl">
                         <h3 className="text-lg font-bold mb-2">Finish Cooking?</h3>
                         <p className="text-sm text-foreground/60 mb-4">
                             This will clear all timers, completed steps, and reset everything.
@@ -3237,13 +3164,13 @@ export default function RecipeDetail() {
                         <div className="flex gap-3">
                             <Button
                                 variant="outline"
-                                className="flex-1"
+                                className="flex-1 h-11"
                                 onClick={() => setFinishConfirm(false)}
                             >
                                 Keep Cooking
                             </Button>
                             <Button
-                                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white"
+                                className="flex-1 h-11 bg-emerald-500 hover:bg-emerald-600 text-white"
                                 onClick={() => {
                                     setFinishConfirm(false)
                                     closeCooking()
@@ -3258,7 +3185,7 @@ export default function RecipeDetail() {
 
             {resetConfirm && (
                 <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-card border border-border/20 rounded-2xl p-6 max-w-sm mx-4 shadow-xl">
+                    <div className="bg-card border border-border/40 rounded-2xl p-5 max-w-sm mx-4 shadow-xl">
                         <h3 className="text-lg font-bold mb-2">Reset All?</h3>
                         <p className="text-sm text-foreground/60 mb-4">
                             This will clear all timers, completed steps, and go back to step 1.
@@ -3266,13 +3193,14 @@ export default function RecipeDetail() {
                         <div className="flex gap-3">
                             <Button
                                 variant="outline"
-                                className="flex-1"
+                                className="flex-1 h-11"
                                 onClick={() => setResetConfirm(false)}
                             >
                                 Cancel
                             </Button>
                             <Button
-                                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+                                variant="destructive"
+                                className="flex-1 h-11"
                                 onClick={() => {
                                     setResetConfirm(false)
                                     setActiveSession({})
@@ -3296,7 +3224,7 @@ export default function RecipeDetail() {
 
             {reExtractConfirm && (
                 <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-card border border-border/20 rounded-2xl p-6 max-w-sm mx-4 shadow-xl">
+                    <div className="bg-card border border-border/40 rounded-2xl p-5 max-w-sm mx-4 shadow-xl">
                         <h3 className="text-lg font-bold mb-2">Re-extract Timers?</h3>
                         <p className="text-sm text-foreground/60 mb-4">
                             This replaces all current cooking timers with a fresh AI-generated plan. Manual timer edits will be lost.
@@ -3304,13 +3232,13 @@ export default function RecipeDetail() {
                         <div className="flex gap-3">
                             <Button
                                 variant="outline"
-                                className="flex-1"
+                                className="flex-1 h-11"
                                 onClick={() => setReExtractConfirm(false)}
                             >
                                 Cancel
                             </Button>
                             <Button
-                                className="flex-1 bg-rose-500 hover:bg-rose-600 text-white"
+                                className="flex-1 h-11"
                                 disabled={isExtractingTimers}
                                 onClick={() => { setReExtractConfirm(false); extractTimers(true) }}
                             >
@@ -3324,7 +3252,7 @@ export default function RecipeDetail() {
             {/* Clear Residual Timers Prompt */}
             {clearResidualPrompt.show && (
                 <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-card border border-border/20 rounded-2xl p-6 max-w-sm mx-4 shadow-xl">
+                    <div className="bg-card border border-border/40 rounded-2xl p-5 max-w-sm mx-4 shadow-xl">
                         <h3 className="text-lg font-bold mb-2">Active Timers Found</h3>
                         <p className="text-sm text-foreground/60 mb-4">
                             You have active timers from another session. Would you like to clear them and start fresh?
@@ -3332,13 +3260,14 @@ export default function RecipeDetail() {
                         <div className="flex gap-3">
                             <Button
                                 variant="outline"
-                                className="flex-1"
+                                className="flex-1 h-11"
                                 onClick={() => setClearResidualPrompt({ show: false, recipeName: '', recipeId: '' })}
                             >
                                 Keep Them
                             </Button>
                             <Button
-                                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+                                variant="destructive"
+                                className="flex-1 h-11"
                                 onClick={() => {
                                     const keys = Object.keys(localStorage).filter(k => k.startsWith('timer-session-'))
                                     keys.forEach(k => localStorage.removeItem(k))
