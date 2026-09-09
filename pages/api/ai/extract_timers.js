@@ -21,19 +21,21 @@ export default async function handler(req, res) {
                 role: "system",
                 content: `You are a culinary timer assistant. Given a recipe name, its ingredients, and the cooking instructions (with time estimates), analyze and create a cooking timer plan.
 
-Your job is to identify ALL steps that need timers and create a structured dependency-based timer plan.
+Your job is to create a minimal, high-signal timer plan: only steps where a timer genuinely helps the cook stay on track. Timers that restate what the cook is already watching are noise.
 
 RULES:
-1. Create a timer (type: "timer") for each instruction step that involves cooking, baking, boiling, roasting, simmering, resting, grilling, or any time-bound process.
-2. Steps that are purely active (e.g., "stir everything together") do NOT need timers unless they have an explicit time mentioned.
-3. Use "start" as the timerId for timers that begin at the start of cooking.
-4. For sequential steps (e.g., "then roast cauliflower"), the later timer depends on the previous timer with offset 0.
-5. For overlapping steps (e.g., "when potatoes have 15 min remaining, start rice"), the later timer depends on the earlier timer with a NEGATIVE offset (e.g., -15).
-6. For multi-stage steps (e.g., "bake for 40 min, check at 20 min"), create a checkpoint (type: "checkpoint") that depends on the parent timer with offset equal to the checkpoint minute. The checkpoint has duration: 0 and parentTimerId set to the parent timer's ID.
-7. For steps that depend on multiple conditions being met (e.g., "when both X and Y are done"), create a sync timer (duration: 0) with multiple dependencies.
-8. Each timer/checkpoint gets a unique ID: "timer-1", "timer-2", etc. for timers, "ckpt-1", "ckpt-2", etc. for checkpoints.
-9. Link each timer to its instruction step via stepIndex (1-indexed matching instruction order).
-10. Calculate dependencies based on the CUMULATIVE time of preceding steps. If step 1 takes 10 min and step 2 takes 15 min, step 3 starts at offset 25 from start.
+1. Create a timer (type: "timer") ONLY for steps with a passive, unattended waiting period (baking, roasting, boiling, simmering, resting, marinating, proofing, chilling, steeping) whose duration is explicitly stated in the instruction text (e.g., "bake for 40 min", "simmer 20 minutes") AND is about 5 minutes or longer. Stated durations under about 5 minutes never get timers (e.g., "steam milk for 3 min", "sizzle for 30 seconds").
+2. Exception to requiring a stated duration: if a passive wait has NO stated duration but is clearly long (about 15 minutes or more, e.g., "chill until set", "proof until doubled", "marinate overnight"), create a timer using your best estimate. Otherwise, never invent a duration to justify a timer.
+3. Hands-on/attended steps NEVER get timers, even when a time is stated (e.g., "stir-fry for 2 minutes", "sauté for 5 min, stirring") - the cook is already watching them.
+4. Steps with no meaningful duration (e.g., "heat the oil", "season to taste", "garnish") and steps driven by equipment that signals its own completion (espresso machine, steam wand, kettle, rice cooker, blender) never get timers.
+5. Use "start" as the timerId for timers that begin at the start of cooking.
+6. For sequential steps (e.g., "then roast cauliflower"), the later timer depends on the previous timer with offset 0.
+7. For overlapping steps (e.g., "when potatoes have 15 min remaining, start rice"), the later timer depends on the earlier timer with a NEGATIVE offset (e.g., -15).
+8. For multi-stage steps (e.g., "bake for 40 min, check at 20 min"), create a checkpoint (type: "checkpoint") that depends on the parent timer with offset equal to the checkpoint minute. The checkpoint has duration: 0 and parentTimerId set to the parent timer's ID.
+9. For steps that depend on multiple conditions being met (e.g., "when both X and Y are done"), create a sync timer (duration: 0) with multiple dependencies.
+10. Each timer/checkpoint gets a unique ID: "timer-1", "timer-2", etc. for timers, "ckpt-1", "ckpt-2", etc. for checkpoints.
+11. Link each timer to its instruction step via stepIndex (1-indexed matching instruction order).
+12. Calculate dependencies based on the CUMULATIVE time of preceding steps. If step 1 takes 10 min and step 2 takes 15 min, step 3 starts at offset 25 from start.
 
 OUTPUT FORMAT:
 Return a JSON object with:
@@ -92,7 +94,15 @@ Instructions: "1. Bake potatoes for 40 min, checking at 20 min. 2. When you chec
 → ckpt-1: check potatoes, type checkpoint, duration 0, deps: [{timerId: "timer-1", offset: 20}], parentTimerId: "timer-1"
 → timer-2: cook rice, duration 15, deps: [{timerId: "ckpt-1", offset: 0}]
 
-Be thorough. Only create timers for steps that genuinely need timing. Use negative offsets for "start X min before Y completes". Use offset 0 for "start when Y completes".`
+Example 6 - When NOT to create timers:
+Instructions: "1. Heat oil in a skillet. 2. Season the steak. 3. Rest the steak for 5 min."
+→ timer-1: rest steak, duration 5, deps: [{timerId: "start", offset: 0}] (step 3 qualifies: passive, stated duration at the 5-min floor; steps 1-2 have no meaningful duration - no timers)
+
+Example 7 - Short/hands-on/equipment-driven steps:
+Instructions: "1. Pull espresso (2 min). 2. Steam oat milk (3 min). 3. Combine and serve."
+→ (no timers - steps 1-2 are short, hands-on, equipment-driven; step 3 has no duration)
+
+Be selective. A short plan of timers that matter is better than a noisy one. When in doubt, omit the timer. Never invent durations for timer purposes. A recipe with zero timers is a valid result. Use negative offsets for "start X min before Y completes". Use offset 0 for "start when Y completes".`
             },
             {
                 role: "user",

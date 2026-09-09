@@ -1417,22 +1417,23 @@ export default function RecipeDetail() {
 
     const infoCard = (
         <div className="recipe-band">
-            <div className="mx-4 sm:mx-8 rounded-xl bg-secondary/50 px-4 sm:px-6 py-3">
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <div className="mx-4 sm:mx-8 rounded-xl bg-secondary/50 px-4 sm:px-6 py-2.5">
+                {/* Single line, never wraps — scrolls horizontally only as a last resort */}
+                <div className="flex items-center gap-x-4 overflow-x-auto hide-scrollbar whitespace-nowrap">
                     {isCalculatingCost ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/40" />
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/40 shrink-0" />
                     ) : (
                         <>
                             {costEntries.map((entry, i) => (
                                 <Fragment key={entry.label}>
-                                    {i > 0 && <span className="text-muted-foreground/30 select-none" aria-hidden>·</span>}
-                                    <span className="inline-flex items-baseline gap-1.5">
-                                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{entry.label}</span>
-                                        <span className="text-sm sm:text-base font-bold tabular-nums">{entry.value}</span>
+                                    {i > 0 && <span className="text-muted-foreground/30 select-none shrink-0" aria-hidden>·</span>}
+                                    <span className="inline-flex items-baseline gap-1.5 shrink-0">
+                                        <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{entry.label}</span>
+                                        <span className="text-xs sm:text-sm font-semibold tabular-nums text-foreground/70">{entry.value}</span>
                                     </span>
                                 </Fragment>
                             ))}
-                            <button onClick={refreshCost} title="Refresh cost" className="ml-auto text-muted-foreground/40 hover:text-accent transition-colors">
+                            <button onClick={refreshCost} title="Refresh cost" className="ml-auto shrink-0 text-muted-foreground/40 hover:text-accent transition-colors">
                                 <RefreshCw className="w-3.5 h-3.5" />
                             </button>
                         </>
