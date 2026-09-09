@@ -1,5 +1,6 @@
 import dbConnect from '../../../lib/dbConnect';
 import Recipe from '../../../models/Recipe';
+import { recipeImageUrl } from '../../../lib/recipeImageServer';
 import DailyLog from '../../../models/DailyLog';
 import IngredientConversion from '../../../models/IngredientConversion';
 import User from '../../../models/User';
@@ -168,7 +169,7 @@ export default async function handler(req, res) {
         //    default (any ingredient name that reads as meat/seafood/fish).
         const recipeQuery = decoded.role === 'admin' ? {} : { creator_email: user.email };
         const catalogAll = await Recipe.find({ ...recipeQuery, hidden: { $ne: true } })
-            .select('name image genre mealTypes carbType time servings ingredients')
+            .select('name genre mealTypes carbType time servings ingredients hasImage _id')
             .lean();
         const catalog = noMeat
             ? catalogAll.filter(r => !(r.ingredients || []).some(ing => isMeatName(ing.Name)))
@@ -379,7 +380,7 @@ ${JSON.stringify(pantryCandidates)}`;
                 recipe: {
                     _id: String(candidate._id),
                     name: candidate.name,
-                    image: candidate.image,
+                    image: candidate.hasImage ? recipeImageUrl(candidate._id, 'thumb') : undefined,
                     time: candidate.time,
                     mealTypes: candidate.mealTypes,
                     carbType: candidate.carbType,

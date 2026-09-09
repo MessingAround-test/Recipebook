@@ -23,6 +23,9 @@ export default function Login() {
             alert(data.message)
         } else if (data.success === true) {
             localStorage.setItem('Token', data.data.token)
+            // Cookie lets <img>/<link> navigations authenticate (proxy.js maps
+            // it onto the edgetoken header for API routes).
+            document.cookie = `edgetoken=${encodeURIComponent(data.data.token)}; path=/; max-age=31536000; SameSite=Lax`
             Router.push('/')
         } else {
             alert(String(data))

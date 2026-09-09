@@ -7,6 +7,7 @@ export interface Recipe {
     _id: string
     name: string
     image?: string
+    hasImage?: boolean
     cost?: number
     time?: 'short' | 'medium' | 'long'
     genre?: string
@@ -57,7 +58,8 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
         return `hsl(${h}, ${s}%, ${l}%)`;
     }
 
-    const dynamicBgColor = recipe.image ? 'transparent' : stringToHslColor(recipe.name, 40, 30);
+    const imageUrl = recipe.image ?? (recipe.hasImage ? `/api/Recipe/${recipe._id}/image?q=thumb` : undefined)
+    const dynamicBgColor = imageUrl ? 'transparent' : stringToHslColor(recipe.name, 40, 30);
     const isRecipesPage = currentPath.includes('recipes');
 
     return (
@@ -68,11 +70,11 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
         >
             {/* Background Image / Placeholder */}
             <div className="absolute inset-0 w-full h-full overflow-hidden">
-                {recipe.image ? (
+                {imageUrl ? (
                     <>
                         <img
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 brightness-[0.7] group-hover:brightness-[0.6]"
-                            src={recipe.image}
+                            src={imageUrl}
                             alt={recipe.name}
                         />
                         {/* Dark Gradient Overlay for text readability */}

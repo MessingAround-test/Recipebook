@@ -2,7 +2,9 @@
 import { verifyToken } from "../../../lib/auth.ts";
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
+import mongoose from 'mongoose'
 import Recipe from '../../../models/Recipe'
+import { saveRecipeImages, deleteRecipeImages, recipeImageUrl } from '../../../lib/recipeImageServer'
 import ShoppingListItem from '../../../models/ShoppingListItem'
 import IngredientConversion from '../../../models/IngredientConversion'
 import { getShorthandForMeasure, addCalculatedFields } from '../../../lib/conversion'
@@ -59,6 +61,7 @@ export default async function handler(req, res) {
 
       const responseData = {
         ...safeToObject(RecipeData),
+        image: RecipeData.hasImage || RecipeData.image ? recipeImageUrl(recipe_id, 'full') : undefined,
         ingredients: await convertIngredients(RecipeData.ingredients)
       }
       return res.status(200).json({ res: responseData })
@@ -85,7 +88,6 @@ export default async function handler(req, res) {
         }
 
         let updateData = {};
-        if (req.body.image !== undefined) updateData.image = req.body.image;
         if (req.body.name !== undefined) updateData.name = req.body.name;
         if (req.body.ingreds !== undefined) updateData.ingredients = req.body.ingreds;
         if (req.body.instructions !== undefined) updateData.instructions = req.body.instructions;
@@ -112,6 +114,17 @@ export default async function handler(req, res) {
         }
 
         await Recipe.findOneAndUpdate({ _id: recipe_id }, { $set: updateData });
+
+        if (req.body.image !== undefined) {
+          if (req.body.image === null || req.body.image === '') {
+            await deleteRecipeImages(recipe_id);
+            await Recipe.updateOne({ _id: recipe_id }, { $set: { hasImage: false } });
+            // Raw collection: mongoose ignores $unset on schema-less fields
+            await Recipe.collection.updateOne({ _id: new mongoose.Types.ObjectId(recipe_id) }, { $unset: { image: '' } });
+          } else {
+            await saveRecipeImages(recipe_id, req.body.image);
+          }
+        }
         return res.status(200).json({ success: true, message: "Recipe updated successfully" })
       }
     } catch (e) {
@@ -130,6 +143,7 @@ export default async function handler(req, res) {
     } else {
 
       let RecipeData = await Recipe.deleteOne({ _id: recipe_id })
+      await deleteRecipeImages(recipe_id)
       return res.status(200).json({ success: true, data: RecipeData, message: "Success" })
     }
   } else {

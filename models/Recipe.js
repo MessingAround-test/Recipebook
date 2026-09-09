@@ -56,7 +56,7 @@ const RecipeSchema = new mongoose.Schema(
         prepWorkNotesHash: { type: String },
         cookingTimers: [cookingTimerSchema],
         timersChecked: { type: Boolean, default: false },
-        image: { type: String },
+        hasImage: { type: Boolean, default: false },
         cost: { type: Number },
         approxCost: { type: Number, required: false },
         unitCost: { type: Number, required: false },

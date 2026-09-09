@@ -23,6 +23,7 @@ export default function Register() {
             alert(data.message)
         } else if (data.success === true) {
             localStorage.setItem('Token', data.data.token)
+            document.cookie = `edgetoken=${encodeURIComponent(data.data.token)}; path=/; max-age=31536000; SameSite=Lax`
             Router.push('/login')
         }
     }

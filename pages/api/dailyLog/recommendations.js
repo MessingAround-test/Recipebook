@@ -1,5 +1,6 @@
 import dbConnect from '../../../lib/dbConnect';
 import Recipe from '../../../models/Recipe';
+import { recipeImageUrl } from '../../../lib/recipeImageServer';
 import DailyLog from '../../../models/DailyLog';
 import IngredientConversion from '../../../models/IngredientConversion';
 import User from '../../../models/User';
@@ -164,7 +165,7 @@ export default async function handler(req, res) {
             recipeQuery.creator_email = user.email;
         }
 
-        let recipes = await Recipe.find(recipeQuery).limit(10);
+        let recipes = await Recipe.find(recipeQuery).limit(10).select('name genre mealTypes carbType time servings ingredients hasImage');
 
         recipes.sort((a, b) => {
             const isASnack = (a.mealTypes || []).some(m => /snack/i.test(m)) || /snack/i.test(a.genre || '');
@@ -202,7 +203,7 @@ export default async function handler(req, res) {
             return {
                 id: rec._id,
                 name: rec.name,
-                image: rec.image,
+                image: rec.hasImage ? recipeImageUrl(rec._id, 'thumb') : undefined,
                 ingredients: rec.ingredients.map(i => i.Name),
                 isSnack: (rec.mealTypes || []).some(m => /snack/i.test(m)) || /snack/i.test(rec.genre || ''),
                 nutrients: recipeNutrients

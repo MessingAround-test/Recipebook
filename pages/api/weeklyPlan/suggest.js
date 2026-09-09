@@ -1,5 +1,6 @@
 import dbConnect from '../../../lib/dbConnect';
 import Recipe from '../../../models/Recipe';
+import { recipeImageUrl } from '../../../lib/recipeImageServer';
 import User from '../../../models/User';
 import IngredientConversion from '../../../models/IngredientConversion';
 import { verifyToken } from '../../../lib/auth';
@@ -103,7 +104,7 @@ export default async function handler(req, res) {
         // pantry, so nothing on hand gets re-suggested.
         const recipeQuery = decoded.role === 'admin' ? {} : { creator_email: user.email };
         const candidates = await Recipe.find({ ...recipeQuery, hidden: { $ne: true } })
-            .select('name image genre mealTypes carbType ingredients')
+            .select('name genre mealTypes carbType ingredients hasImage _id')
             .lean();
 
         const planRecipeIds = new Set(
@@ -299,7 +300,7 @@ ${JSON.stringify(pantryCandidates)}`;
                 recipe: {
                     _id: String(candidate._id),
                     name: candidate.name,
-                    image: candidate.image,
+                    image: candidate.hasImage ? recipeImageUrl(candidate._id, 'thumb') : undefined,
                     mealTypes: candidate.mealTypes,
                     carbType: candidate.carbType,
                     genre: candidate.genre

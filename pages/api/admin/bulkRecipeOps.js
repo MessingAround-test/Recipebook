@@ -4,6 +4,7 @@ import User from '../../../models/User';
 import { verifyToken } from '../../../lib/auth';
 import { logAPI } from '../../../lib/logger';
 import { callGroqChat, generatePollinationsImage, generateGeminiImage } from '../../../lib/ai';
+import { saveRecipeImages } from '../../../lib/recipeImageServer';
 import { normalizeExtractedIngredients, normalizePrepWords } from '../../../lib/recipeNormalize';
 import { quantity_unit_conversions } from '../../../lib/conversion';
 import {
@@ -129,8 +130,7 @@ Rules:
             console.error(`Pollinations image failed for ${recipe.name}, trying Gemini:`, pollinationsError);
             image = await generateGeminiImage(prompt);
         }
-        recipe.image = image;
-        await recipe.save();
+        await saveRecipeImages(recipe._id, image);
         return { message: 'Generated recipe image' };
     }
 
@@ -159,7 +159,7 @@ export default async function handler(req, res) {
                     prepChecked: '$prepWorkChecked',
                     timerCount: { $size: { $ifNull: ['$cookingTimers', []] } },
                     timersChecked: '$timersChecked',
-                    image: { $cond: [{ $gt: ['$image', null] }, true, false] }
+                    image: '$hasImage'
                 } },
                 { $sort: { name: 1 } }
             ]);
@@ -181,13 +181,13 @@ export default async function handler(req, res) {
             }
 
             const result = await runOp(recipe, op);
-            const fresh = await Recipe.findOne({ _id: recipeId }).select('prepWorkChecked cookingTimers ingredients prepWork image').lean();
+            const fresh = await Recipe.findOne({ _id: recipeId }).select('prepWorkChecked cookingTimers ingredients prepWork hasImage').lean();
             return res.status(200).json({
                 success: true,
                 message: result.message,
                 hasPrep: (fresh.prepWork || []).length > 0 || fresh.prepWorkChecked === true,
                 hasTimers: (fresh.cookingTimers || []).length > 0 || fresh.timersChecked === true,
-                hasImage: Boolean(fresh.image)
+                hasImage: Boolean(fresh.hasImage)
             });
         }
 

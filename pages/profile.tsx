@@ -290,6 +290,7 @@ export default function Profile() {
                             onClick={() => {
                                 if (confirm('Are you sure you want to logout?')) {
                                     localStorage.removeItem('Token')
+                                    document.cookie = 'edgetoken=; path=/; max-age=0; SameSite=Lax'
                                     router.push('/login')
                                 }
                             }}

@@ -1,6 +1,7 @@
 import dbConnect from '../../lib/dbConnect'
 import User from '../../models/User'
 import Recipe from '../../models/Recipe'
+import { saveRecipeImages, recipeImageUrl } from '../../lib/recipeImageServer'
 import { verifyToken } from "../../lib/auth.ts";
 import { logAPI } from '../../lib/logger.ts';
 
@@ -23,6 +24,10 @@ export default async function handler(req, res) {
         query.creator_email = userData.email
       }
       let RecipeData = await Recipe.find(query)
+        .lean()
+      RecipeData.forEach(r => {
+        r.image = r.hasImage ? recipeImageUrl(r._id, 'thumb') : undefined
+      })
       return res.status(200).json({ res: RecipeData })
     } else if (req.method === "POST") {
       try {
@@ -31,7 +36,6 @@ export default async function handler(req, res) {
           creator_email: userData.email,
           ingredients: req.body.ingreds,
           instructions: req.body.instructions,
-          image: req.body.image,
           name: req.body.name,
           time: req.body.time,
           genre: req.body.genre,
@@ -41,6 +45,9 @@ export default async function handler(req, res) {
           hidden: req.body.hidden,
           sourceUrl: req.body.sourceUrl
         });
+        if (req.body.image) {
+          await saveRecipeImages(response._id, req.body.image)
+        }
         return res.status(200).json({ success: true, data: response, message: "Success" })
       } catch (error) {
         return res.status(400).json({ success: false, message: String(error) })
