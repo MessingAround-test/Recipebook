@@ -1,6 +1,6 @@
 import { verifyToken } from "../../../lib/auth";
 import { logAPI } from '../../../lib/logger'
-import { callGroqChat, generateGeminiImage } from '../../../lib/ai';
+import { callGroqChat, generateGeminiImage, generatePollinationsImage } from '../../../lib/ai';
 
 export default async function handler(req, res) {
   logAPI(req)
@@ -17,33 +17,37 @@ export default async function handler(req, res) {
     const messages = [
       {
         role: "system",
-        content: `You are an expert at crafting descriptive prompts for AI image generation. 
-Your goal is to describe a recipe dish in a "paper-like" style. 
-Think: watercolor illustration, hand-drawn sketch, vintage cookbook art, or charcoal drawing on textured paper.
+        content: `You are an expert at crafting prompts for AI image generation.
+Your goal: a CLEAN, REALISTIC food photo of the dish: '${recipeName}'.
 
-Instructions:
-1. Create a detailed visual description of the dish: '${recipeName}'.
-2. Specify a "paper-like" artistic style (e.g., watercolor, pen and ink, lithograph, etc.).
-3. Mention textured paper, muted colors, or hand-drawn qualities.
-4. Avoid photorealistic terms.
-5. KEEP IT CONCISE: Output only the prompt string. 
-Example: "A watercolor illustration of a steaming bowl of Lemon Butter Chicken, soft brushstrokes, on textured cream paper, vintage cookbook style."`
+Rules:
+1. Output ONE short sentence (15 words or fewer) describing the finished dish, plated simply.
+2. Style must be photorealistic food photography. NEVER describe illustrations, watercolour, sketches or paper textures.
+3. Keep the composition simple: plain background, natural light. No props, no people, no text.
+4. Only mention ingredients that would actually be visible in the finished dish.
+5. Output ONLY the prompt string.
+Example: "A steaming bowl of lemon butter chicken on a plain grey table, natural light, photorealistic."`
       },
       {
         role: "user",
-        content: `Create a paper-style image prompt for: ${recipeName}`
+        content: `Create a realistic food photo prompt for: ${recipeName}`
       }
     ];
 
     const prompt = await callGroqChat(messages, false);
     const cleanedPrompt = prompt.trim().replace(/^"|"$/g, '');
 
-    // Now generate the image using Gemini
+    // Generate the image using Pollinations (anonymous tier), Gemini as fallback
     let imageData = null;
     try {
-        imageData = await generateGeminiImage(cleanedPrompt);
+        imageData = await generatePollinationsImage(cleanedPrompt);
     } catch (imageError) {
-        console.error("Gemini image generation failed:", imageError);
+        console.error("Pollinations image generation failed, trying Gemini fallback:", imageError);
+        try {
+            imageData = await generateGeminiImage(cleanedPrompt);
+        } catch (fallbackError) {
+            console.error("Gemini image generation failed:", fallbackError);
+        }
     }
 
     return res.status(200).json({ 

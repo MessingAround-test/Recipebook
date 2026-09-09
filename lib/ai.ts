@@ -16,6 +16,49 @@ export const IMAGEN_MODELS = {
     FALLBACK_ULTRA: 'imagen-4.0-ultra-generate-001'
 };
 
+export const POLLINATIONS_IMAGE_URL = 'https://image.pollinations.ai/prompt';
+
+/**
+ * Generates an image via the Pollinations anonymous tier (no API key).
+ * Anonymous tier allows ~1 request every 15s, so callers must space
+ * requests out and rely on the retry/backoff below on 429.
+ */
+export async function generatePollinationsImage(prompt: string): Promise<string> {
+    const seed = Math.floor(Math.random() * 1_000_000_000);
+    const styleSuffix = 'simple composition, plain background, natural light, photorealistic food photo';
+    const url = `${POLLINATIONS_IMAGE_URL}/${encodeURIComponent(`${prompt}, ${styleSuffix}`)}?width=1024&height=1024&nologo=true&seed=${seed}`;
+    console.log(`[Pollinations] Generated image URL: ${url}`);
+
+    const delays = [0, 2000, 4000, 8000, 15000];
+    let lastError: any = null;
+
+    for (const delay of delays) {
+        if (delay > 0) await new Promise(r => setTimeout(r, delay));
+        try {
+            const res = await fetch(url, { signal: AbortSignal.timeout(125000) });
+            if (res.status === 429) {
+                lastError = new Error('Pollinations rate limited (anonymous tier)');
+                continue;
+            }
+            if (!res.ok) {
+                lastError = new Error(`Pollinations request failed with status ${res.status}`);
+                continue;
+            }
+            const contentType = res.headers.get('content-type') || 'image/jpeg';
+            if (!contentType.startsWith('image/')) {
+                lastError = new Error(`Pollinations returned non-image response: ${contentType}`);
+                continue;
+            }
+            const buffer = Buffer.from(await res.arrayBuffer());
+            return `data:${contentType};base64,${buffer.toString('base64')}`;
+        } catch (err: any) {
+            lastError = err;
+        }
+    }
+
+    throw lastError || new Error('Pollinations image generation failed');
+}
+
 export async function generateGeminiImage(prompt: string): Promise<string> {
     const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {

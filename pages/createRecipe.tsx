@@ -452,14 +452,10 @@ export default function CreateRecipe() {
             return
         }
         setLoading(true)
-        let localImage: string | undefined;
 
-        if (imageData === undefined) {
-            localImage = await generateImage(recipeName)
-        } else {
-            localImage = imageData
-        }
-
+        // Image generation no longer blocks the save — the recipe is saved
+        // first (without an image), then art is generated in the background
+        // via Pollinations and patched onto the recipe when it completes.
         try {
             if (isEditMode) {
                 const token = localStorage.getItem('Token')
@@ -472,7 +468,7 @@ export default function CreateRecipe() {
                     body: JSON.stringify({
                         "ingreds": normalizeIngredientsForSave(ingreds),
                         "instructions": instructions,
-                        "image": localImage,
+                        "image": imageData,
                         "name": recipeName,
                         "time": recipeTime || undefined,
                         "genre": recipeGenre || undefined,
@@ -487,14 +483,15 @@ export default function CreateRecipe() {
                 if (data.success === false || data.success === undefined) {
                     alert(data.message || "failed, unexpected error")
                 } else {
+                    if (!imageData) generateImageInBackground(recipeName, Array.isArray(id) ? id[0] : (id as string))
                     Router.push("/recipes")
                 }
             } else {
-                await saveRecipe({
+                const created = await saveRecipe({
                     name: recipeName,
                     ingreds,
                     instructions,
-                    image: localImage,
+                    image: imageData,
                     time: recipeTime || undefined,
                     genre: recipeGenre || undefined,
                     mealTypes: recipeMealTypes,
@@ -502,6 +499,7 @@ export default function CreateRecipe() {
                     servings: recipeServings !== "" ? Number(recipeServings) : undefined,
                     sourceUrl: recipeSourceUrl || undefined
                 })
+                if (!imageData && created?._id) generateImageInBackground(recipeName, created._id)
                 Router.push("/recipes")
             }
         } catch (error: any) {
@@ -510,6 +508,25 @@ export default function CreateRecipe() {
         } finally {
             setLoading(false)
         }
+    }
+
+    // Fire-and-forget: generate recipe art after the recipe is saved (only
+    // when the saved recipe has no image yet) and patch it onto the record.
+    const generateImageInBackground = (name: string, recipeId: string) => {
+        generateImage(name)
+            .then(img => {
+                if (!img) return
+                return fetch(`/api/Recipe/${recipeId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'edgetoken': localStorage.getItem('Token') || ''
+                    },
+                    body: JSON.stringify({ image: img })
+                })
+            })
+            .then(res => res && console.log('Background recipe image saved:', res.ok))
+            .catch(e => console.error('Background image generation failed:', e))
     }
 
     const onSubmitRecipeSiteImport = async (e: FormEvent<HTMLFormElement>) => {
