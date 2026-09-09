@@ -409,6 +409,22 @@ export default function RecipeDetail() {
         setIsOpen(false)
     }
 
+    // Resolve the quantity of the recipe ingredient a prep-work item refers to
+    const getPrepIngredientQty = (name?: string | null) => {
+        if (!name || !listIngreds || listIngreds.length === 0) return null
+        const n = String(name).toLowerCase().trim()
+        if (!n) return null
+        const match = listIngreds.find((i: any) => {
+            const ing = String(i.name || '').toLowerCase().trim()
+            if (!ing) return false
+            if (ing.includes(n)) return true
+            const escaped = ing.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            return new RegExp(`\\b${escaped}\\b`).test(n)
+        })
+        if (!match) return null
+        return `${match.quantity} ${match.quantity_type_shorthand || match.quantity_type || 'each'}`
+    }
+
     const reloadAllIngredients = async () => {
         setIsCalculatingCost(true)
         let updatedListIngreds = listIngreds.map((ingred) => ({
@@ -2475,6 +2491,7 @@ export default function RecipeDetail() {
                                                     <span className="cooking-prep-hint-text">
                                                         {firstPrep.ingredient && <strong>{firstPrep.ingredient}: </strong>}
                                                         {firstPrep.action}
+                                                        {getPrepIngredientQty(firstPrep.ingredient) && <span className="cooking-prep-qty"> [ {getPrepIngredientQty(firstPrep.ingredient)} ]</span>}
                                                         {extra > 0 && <span className="cooking-prep-hint-more"> +{extra} more</span>}
                                                     </span>
                                                 </span>
@@ -2904,6 +2921,7 @@ export default function RecipeDetail() {
                         <div className="cooking-section-list">
                             {prepWork.map((item: any, index: number) => {
                                 const isRecommended = currentPrepRecs.some((r: any) => r.action === item.action && r.ingredient === item.ingredient)
+                                const qty = getPrepIngredientQty(item.ingredient)
                                 return (
                                     <div key={index} className={`cooking-prep-item ${isRecommended ? 'is-recommended' : ''} ${checkedPrep.has(index) ? 'is-checked' : ''}`}>
                                         <button
@@ -2921,6 +2939,7 @@ export default function RecipeDetail() {
                                         <span className="cooking-prep-text">
                                             {item.ingredient && <strong>{item.ingredient}: </strong>}
                                             {item.action}
+                                            {qty && <span className="cooking-prep-qty"> [ {qty} ]</span>}
                                         </span>
                                         {item.timeEstimate && <span className="cooking-prep-time">~{item.timeEstimate}m</span>}
                                     </div>

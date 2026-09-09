@@ -1917,6 +1917,13 @@ a {
   margin-top: 0.2rem;
 }
 
+.cooking-prep-qty {
+  color: var(--cooking-text-faint);
+  font-weight: 500;
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
 /* ---------- Mobile sheet (tab panel) — opening takes over the full screen,
    covering the timeline, tab bar and controls ---------- */
 .cooking-sheet {
