@@ -6,7 +6,10 @@ import { PageHeader } from '../components/PageHeader'
 import { FormField } from '../components/FormField'
 import { Button } from '../components/ui/button'
 import { quantity_unit_conversions } from "../lib/conversion"
-import { RiDeleteBin7Line, RiArrowDownSLine, RiArrowUpSLine } from 'react-icons/ri'
+import { RiDeleteBin7Line, RiArrowDownSLine, RiArrowUpSLine, RiDragMove2Line, RiPencilLine, RiCheckLine } from 'react-icons/ri'
+import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import IngredientEditor from '../components/IngredientEditor'
 import { fileToBase64 } from '../lib/recipeImage'
 import { extractRecipeFromImage, extractRecipeFromNotes, saveRecipe, Ingredient, getEachUnitIngredientNames, warmIngredientConversions } from '../lib/recipeExtraction'
@@ -18,10 +21,105 @@ interface Instruction {
     Note?: string
 }
 
+interface SortableStepProps {
+    id: string
+    index: number
+    isLast: boolean
+    instruction: Instruction
+    isEditing: boolean
+    onEditToggle: () => void
+    onEditClose: () => void
+    onDelete: () => void
+    onUpdate: (patch: Partial<Instruction>) => void
+}
+
+function SortableStep({ id, index, isLast, instruction, isEditing, onEditToggle, onEditClose, onDelete, onUpdate }: SortableStepProps) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={{ transform: CSS.Transform.toString(transform), transition }}
+            className={`flex gap-2.5 group relative ${isDragging ? 'opacity-50 z-10' : ''}`}
+        >
+            <button
+                type="button"
+                {...attributes}
+                {...listeners}
+                aria-label={`Drag step ${index + 1} to reorder`}
+                className="shrink-0 w-5 pt-2.5 text-muted-foreground/40 hover:text-accent cursor-grab active:cursor-grabbing touch-none focus-visible:text-accent focus-visible:outline-none"
+            >
+                <RiDragMove2Line size={16} />
+            </button>
+            <div className="flex flex-col items-center relative">
+                <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/30 text-accent flex items-center justify-center text-xs font-black shrink-0 z-10">
+                    {index + 1}
+                </div>
+                {!isLast && (
+                    <div className="w-0.5 bg-gradient-to-b from-accent/20 to-transparent absolute top-8 bottom-0 left-1/2 -translate-x-1/2"></div>
+                )}
+            </div>
+            <div className="flex-1 pb-4 border-b border-border/5 group-last:border-0 min-w-0">
+                {isEditing ? (
+                    <div className="flex flex-col gap-2 pb-2">
+                        <textarea
+                            value={instruction.Text}
+                            onChange={(e) => onUpdate({ Text: e.target.value })}
+                            placeholder="Step text"
+                            className="input-modern min-h-[80px] text-sm resize-none"
+                        />
+                        <input
+                            value={instruction.Note || ''}
+                            onChange={(e) => onUpdate({ Note: e.target.value })}
+                            placeholder="Step note (optional) e.g. medium heat, 5 mins"
+                            className="input-modern py-2 text-xs bg-background/30"
+                        />
+                        <div className="flex justify-end">
+                            <Button type="button" size="sm" onClick={onEditClose} className="bg-accent/10 text-accent hover:bg-accent/20 font-bold">
+                                <RiCheckLine size={16} className="mr-1" /> Done
+                            </Button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex justify-between items-start gap-1">
+                        <div className="min-w-0 flex-1">
+                            <p className="text-sm leading-relaxed font-medium pt-1.5">{instruction.Text}</p>
+                            {instruction.Note && (
+                                <p className="text-xs text-muted-foreground/70 pt-1 pb-1">{instruction.Note}</p>
+                            )}
+                        </div>
+                        <div className="flex items-center shrink-0 opacity-40 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-all">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                aria-label={`Edit step ${index + 1}`}
+                                className="text-muted-foreground hover:text-accent"
+                                onClick={onEditToggle}
+                            >
+                                <RiPencilLine size={16} />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                aria-label={`Delete step ${index + 1}`}
+                                className="text-muted-foreground hover:text-destructive"
+                                onClick={onDelete}
+                            >
+                                <RiDeleteBin7Line size={16} />
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
 export default function CreateRecipe() {
     const isAuthed = useAuthGuard()
     const [ingreds, setIngreds] = useState<Ingredient[]>([])
     const [instructions, setInstructions] = useState<Instruction[]>([])
+    const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null)
     const [loading, setLoading] = useState(false)
     const [imageData, setImageData] = useState<string | undefined>()
     const [recipeName, setRecipeName] = useState("")
@@ -228,7 +326,7 @@ export default function CreateRecipe() {
                 data.data.instructions.forEach(function (instruction: any) {
                     let InstructObj = {
                         "Text": instruction.instruction,
-                        "Note": instruction.stepNumber
+                        "Note": ""
                     }
                     tasteInstructionList.push(InstructObj)
                 })
@@ -407,6 +505,25 @@ export default function CreateRecipe() {
 
         setInstructions([...instructions, InstructObj])
         target.reset()
+    }
+
+    const dndSensors = useSensors(
+        useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    )
+
+    const handleDragStart = (_event: DragStartEvent) => {
+        setEditingStepIndex(null)
+    }
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event
+        if (over && active.id !== over.id) {
+            const from = Number(active.id)
+            const to = Number(over.id)
+            setInstructions(items => arrayMove(items, from, to))
+        }
     }
 
     useEffect(() => {
@@ -762,33 +879,34 @@ export default function CreateRecipe() {
                                                 <p className="text-sm italic">The story starts here...</p>
                                             </div>
                                         ) : (
-                                            <div className="flex flex-col gap-6">
-                                                {instructions.map((instruction, i) => (
-                                                    <div key={i} className="flex gap-5 group relative">
-                                                        <div className="flex flex-col items-center">
-                                                            <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/30 text-accent flex items-center justify-center text-xs font-black shrink-0 z-10">
-                                                                {i + 1}
-                                                            </div>
-                                                            {i !== instructions.length - 1 && (
-                                                                <div className="w-0.5 h-full bg-gradient-to-b from-accent/20 to-transparent absolute top-8 left-4 -ml-[1px]"></div>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex-1 pb-4 border-b border-border/5 group-last:border-0">
-                                                            <div className="flex justify-between items-start">
-                                                                <p className="text-sm leading-relaxed font-medium pt-1.5">{instruction.Text}</p>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all shrink-0"
-                                                                    onClick={() => setInstructions(instructions.filter((item) => item.Text !== instruction.Text))}
-                                                                >
-                                                                    <RiDeleteBin7Line size={16} />
-                                                                </Button>
-                                                            </div>
-                                                        </div>
+                                            <DndContext
+                                                sensors={dndSensors}
+                                                collisionDetection={closestCenter}
+                                                onDragStart={handleDragStart}
+                                                onDragEnd={handleDragEnd}
+                                            >
+                                                <SortableContext items={instructions.map((_, i) => String(i))} strategy={verticalListSortingStrategy}>
+                                                    <div className="flex flex-col gap-6">
+                                                        {instructions.map((instruction, i) => (
+                                                            <SortableStep
+                                                                key={i}
+                                                                id={String(i)}
+                                                                index={i}
+                                                                isLast={i === instructions.length - 1}
+                                                                instruction={instruction}
+                                                                isEditing={editingStepIndex === i}
+                                                                onEditToggle={() => setEditingStepIndex(i)}
+                                                                onEditClose={() => setEditingStepIndex(null)}
+                                                                onDelete={() => {
+                                                                    setEditingStepIndex(null)
+                                                                    setInstructions(instructions.filter((_, idx) => idx !== i))
+                                                                }}
+                                                                onUpdate={(patch) => setInstructions(instructions.map((item, idx) => (idx === i ? { ...item, ...patch } : item)))}
+                                                            />
+                                                        ))}
                                                     </div>
-                                                ))}
-                                            </div>
+                                                </SortableContext>
+                                            </DndContext>
                                         )}
                                     </div>
                                 </div>

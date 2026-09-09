@@ -14,18 +14,36 @@
     "transform": {
       "^.+\\.(ts|tsx)$": [
         "babel-jest",
-        { "presets": ["@babel/preset-env", "@babel/preset-typescript"] }
+        {
+          "presets": [
+            "@babel/preset-env",
+            "@babel/preset-typescript"
+          ]
+        }
       ],
       "^.+\\.(js|jsx)$": [
         "babel-jest",
-        { "presets": ["@babel/preset-env"] }
+        {
+          "presets": [
+            "@babel/preset-env"
+          ]
+        }
       ]
     },
     "testEnvironment": "node",
-    "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json"]
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json"
+    ]
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
