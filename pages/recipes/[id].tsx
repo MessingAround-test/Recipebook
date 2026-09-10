@@ -311,6 +311,9 @@ export default function RecipeDetail() {
     const [carbModalOpen, setCarbModalOpen] = useState(false)
     const [carbModalType, setCarbModalType] = useState<any>(null)
     const [carbModalVariant, setCarbModalVariant] = useState<string | null>(null)
+    // Straight "no carb side" pick — lives in the list as a card so the
+    // bottom bar stays a single Start button.
+    const [carbModalNone, setCarbModalNone] = useState(false)
     const [carbChoice, setCarbChoice] = useState<any>(null)
     const [carbCatalogLoading, setCarbCatalogLoading] = useState(false)
     const flowItems = useMemo<FlowItem[]>(() => buildFlowItems(instructions || [], prepWork, carbChoice), [instructions, prepWork, carbChoice])
@@ -1234,6 +1237,7 @@ export default function RecipeDetail() {
         if (needsCarbChoice()) {
             const hasCatalog = await loadCarbData()
             if (hasCatalog) {
+                setCarbModalNone(false)
                 setCarbModalOpen(true)
                 return
             }
@@ -2594,38 +2598,61 @@ export default function RecipeDetail() {
                 </Modal>
 
                 {/* Carb side choice — asked at Start Cooking when the recipe
-                    is marked as needing one. Session-scoped decision. */}
+                    needs one. Session-scoped decision. Bottom sheet on phones
+                    (thumb reach) / centred panel on larger screens. "No carb
+                    side" is the first list option, so the footer is a single
+                    Start button. */}
                 {carbModalOpen && (
-                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setCarbModalOpen(false)}>
-                        <div className="w-full max-w-md rounded-2xl border border-border bg-background p-5 shadow-2xl space-y-4" onClick={(e) => e.stopPropagation()}>
-                            <div>
+                    <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center sm:p-4 bg-black/70 backdrop-blur-sm" onClick={() => setCarbModalOpen(false)}>
+                        <div
+                            className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-border bg-background shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh]"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="shrink-0 px-5 pt-4 pb-3 border-b border-border">
                                 <h3 className="text-lg font-bold flex items-center gap-2"><ChefHat size={18} className="text-emerald-500" /> Serve with a carb side?</h3>
                                 {recipe?.carbSide?.analysis?.note && (
                                     <p className="text-xs text-muted-foreground mt-1">{recipe.carbSide.analysis.note}</p>
                                 )}
                             </div>
-                            <div className="grid grid-cols-1 gap-2 max-h-72 overflow-y-auto">
+                            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-3 space-y-2">
+                                {/* No carb side — first option, same card style */}
+                                <button
+                                    className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-left transition-all touch-manipulation ${carbModalNone
+                                        ? 'bg-emerald-500/10 border-emerald-500/40'
+                                        : 'bg-secondary border-border hover:border-accent'}`}
+                                    onClick={() => { setCarbModalNone(true); setCarbModalType(null) }}
+                                >
+                                    <span className="min-w-0">
+                                        <span className={`block text-sm font-semibold ${carbModalNone ? 'text-emerald-400' : 'text-foreground'}`}>Nothing — no carb side</span>
+                                        <span className="block text-[11px] text-muted-foreground">Cook the dish as written, no extra steps for carbs</span>
+                                    </span>
+                                    {carbModalNone && <Check size={16} className="text-emerald-400 shrink-0" />}
+                                </button>
                                 {carbCatalog.map((entry: any) => {
-                                    const variants = entry.variants || []
-                                    const isSel = carbModalType?._id === entry._id
+                                    const isSel = !carbModalNone && carbModalType?._id === entry._id
                                     const isRec = recommendCarbOption(carbCatalog, carbHistory, recipe?.carbSide?.type)?._id === entry._id
                                     return (
-                                        <div key={entry._id} className="space-y-1">
+                                        <div key={entry._id} className="space-y-1.5">
                                             <button
-                                                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-left text-sm font-semibold transition-all ${isSel
-                                                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
-                                                    : 'bg-secondary border-border text-muted-foreground hover:border-accent'}`}
-                                                onClick={() => { setCarbModalType(entry); setCarbModalVariant(resolveVariant(entry, carbModalVariant)) }}
+                                                className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-left transition-all touch-manipulation ${isSel
+                                                    ? 'bg-emerald-500/10 border-emerald-500/40'
+                                                    : 'bg-secondary border-border hover:border-accent'}`}
+                                                onClick={() => { setCarbModalNone(false); setCarbModalType(entry); setCarbModalVariant(resolveVariant(entry, carbModalVariant)) }}
                                             >
-                                                <span>{entry.name}{isRec && <span className="ml-2 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">recommended</span>}</span>
-                                                {variants.length > 0 && <span className="text-[11px] text-muted-foreground">{variants.map((v: any) => v.name).join(' / ')}</span>}
+                                                <span className="min-w-0 truncate">
+                                                    <span className={`text-sm font-semibold ${isSel ? 'text-emerald-400' : 'text-muted-foreground'}`}>{entry.name}</span>
+                                                    {isRec && <span className="ml-2 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">recommended</span>}
+                                                </span>
+                                                <span className="text-[11px] text-muted-foreground shrink-0 truncate max-w-[45%] text-right">
+                                                    {(entry.variants || []).map((v: any) => v.name).join(' / ')}
+                                                </span>
                                             </button>
-                                            {isSel && variants.length > 0 && (
-                                                <div className="flex gap-1.5 pl-2">
-                                                    {variants.map((v: any) => (
+                                            {isSel && (entry.variants || []).length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5 pl-2">
+                                                    {(entry.variants || []).map((v: any) => (
                                                         <button
                                                             key={v.name}
-                                                            className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${carbModalVariant === v.name
+                                                            className={`px-3 py-2 rounded-full border text-xs font-semibold transition-all touch-manipulation ${!carbModalNone && carbModalVariant === v.name
                                                                 ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
                                                                 : 'bg-secondary border-border text-muted-foreground hover:border-accent'}`}
                                                             onClick={() => setCarbModalVariant(v.name)}
@@ -2639,9 +2666,12 @@ export default function RecipeDetail() {
                                     )
                                 })}
                             </div>
-                            <div className="flex gap-2 pt-1">
-                                <Button variant="outline" className="flex-1" onClick={() => confirmCarbPick(null, null)}>Nothing</Button>
-                                <Button className="flex-1 cooking-next-btn is-primary" onClick={() => confirmCarbPick(carbModalType, carbModalVariant)} disabled={!carbModalType}>
+                            <div className="shrink-0 px-5 pt-3 pb-5 sm:pb-4 border-t border-border" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+                                <Button
+                                    className="w-full cooking-next-btn is-primary touch-manipulation"
+                                    onClick={() => confirmCarbPick(carbModalNone ? null : carbModalType, carbModalNone ? null : carbModalVariant)}
+                                    disabled={!carbModalNone && !carbModalType}
+                                >
                                     <ChefHat size={16} /> Start cooking
                                 </Button>
                             </div>
