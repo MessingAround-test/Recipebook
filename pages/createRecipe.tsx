@@ -257,6 +257,7 @@ export default function CreateRecipe() {
     const [recipeCarbType, setRecipeCarbType] = useState<string>("")
     const [recipeServings, setRecipeServings] = useState<number | string>("")
     const [recipeSourceUrl, setRecipeSourceUrl] = useState("")
+    const [sourceNotes, setSourceNotes] = useState("")
     const [recipeNotes, setRecipeNotes] = useState("")
     const [isExtracting, setIsExtracting] = useState(false)
     const [creationMethod, setCreationMethod] = useState<CreationMethod | null>(null)
@@ -619,6 +620,7 @@ export default function CreateRecipe() {
                         "carbType": recipeCarbType || undefined,
                         "servings": recipeServings !== "" ? Number(recipeServings) : undefined,
                         "sourceUrl": recipeSourceUrl || undefined,
+                        "sourceNotes": sourceNotes || undefined,
                         "carbSide": carbSideSaveBody(),
                         "prepWorkChecked": false
                     })
@@ -642,7 +644,8 @@ export default function CreateRecipe() {
                      carbType: recipeCarbType || undefined,
                      carbSide: carbSideSaveBody(),
                     servings: recipeServings !== "" ? Number(recipeServings) : undefined,
-                    sourceUrl: recipeSourceUrl || undefined
+                    sourceUrl: recipeSourceUrl || undefined,
+                    sourceNotes: sourceNotes || undefined
                 })
                 if (!imageData && created?._id) generateImageInBackground(recipeName, created._id)
                 // Auto-populate the carb side decision for the new recipe
@@ -689,25 +692,13 @@ export default function CreateRecipe() {
             tasteURL: { value: string }
         }
         const tasteURL = target.tasteURL.value
-        let siteProvider = ""
-
-        if (tasteURL.includes("taste")) {
-            siteProvider = "taste";
-        } else if (tasteURL.includes("recipetineats")) {
-            siteProvider = "recipetineats";
-        } else if (tasteURL.includes("vegkit")) {
-            siteProvider = "vegKit";
-        } else {
-            alert("Site provider not implemented")
-            return
-        }
 
         if (!confirmOverwrite()) return;
 
         setRecipeSourceUrl(tasteURL)
         setLoading(true)
         try {
-            const res = await fetch(`/api/recipeSiteExtract/${siteProvider}?url=${tasteURL}`, {
+            const res = await fetch(`/api/recipeSiteExtract/auto?url=${encodeURIComponent(tasteURL)}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -749,6 +740,10 @@ export default function CreateRecipe() {
                 const importedName = data.data.name
                 if (importedName) {
                     setRecipeName(importedName)
+                }
+                // Recipe notes/tips scraped from the bottom of the source page
+                if (data.data.sourceNotes) {
+                    setSourceNotes(data.data.sourceNotes)
                 }
                 // No name in the source? Ask for it before the editor
                 setFormPhase(importedName ? 'builder' : 'name')

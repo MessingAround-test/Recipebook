@@ -36,6 +36,7 @@ export interface SaveRecipePayload {
     servings?: number
     hidden?: boolean
     sourceUrl?: string
+    sourceNotes?: string
 }
 
 export const normalizeAmount = (value: string | number): number => {
@@ -146,6 +147,19 @@ export const normalizeIngredientsForSave = (ingreds: Ingredient[] | undefined): 
         }
     })
 
+/**
+ * Maps editor-shaped instructions (capital `Note`) to the shape the Recipe
+ * model expects (lowercase `note`). Mongoose strips unknown fields, so any
+ * instruction payload sent raw would silently drop notes — always route
+ * instruction saves through this helper.
+ */
+export const normalizeInstructionsForSave = (instructions: Instruction[] | undefined): any[] =>
+    (instructions || []).map(inst => ({
+        Text: inst.Text,
+        time: undefined,
+        note: inst.Note
+    }))
+
 export const saveRecipe = async (payload: SaveRecipePayload): Promise<any> => {
     const token = localStorage.getItem('Token')
     const res = await fetch('/api/Recipe', {
@@ -165,7 +179,8 @@ export const saveRecipe = async (payload: SaveRecipePayload): Promise<any> => {
             servings: payload.servings,
             hidden: payload.hidden,
             sourceUrl: payload.sourceUrl || undefined,
-            instructions: payload.instructions || [],
+            sourceNotes: payload.sourceNotes || undefined,
+            instructions: normalizeInstructionsForSave(payload.instructions),
             ingreds: normalizeIngredientsForSave(payload.ingreds)
         })
     })

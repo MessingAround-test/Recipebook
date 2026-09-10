@@ -1,7 +1,7 @@
 import { Layout } from '../../components/Layout'
 import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
 import { Button } from '../../components/ui/button'
-import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Slice, Users, Download } from 'lucide-react'
+import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Slice, Users, Download, Info } from 'lucide-react'
 import { buildRecipeExport, downloadRecipeFile, fetchImageAsDataUrl } from '../../lib/recipeFile'
 import { computeCarbInsertPoint, computePhaseInsertPoints, fillCarbPhaseText, recommendCarbOption, resolveCarbTiming, resolveVariant } from '../../lib/carbSideOps'
 import Router, { useRouter } from 'next/router'
@@ -2314,6 +2314,21 @@ export default function RecipeDetail() {
                             </div>
                         )}
                     </div>
+
+                    {/* Source notes — recipe tips/notes scraped from the original site */}
+                    {recipe?.sourceNotes && (
+                        <div data-section="source-notes" className="recipe-band recipe-section px-4 py-6 sm:px-8 sm:py-10">
+                            <div className="flex items-center gap-2.5 mb-4">
+                                <Info className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
+                                <h2 className="text-lg sm:text-xl font-bold tracking-tight">From the source</h2>
+                            </div>
+                            <div className="rounded-xl bg-secondary/40 border border-border/50 px-4 py-3 space-y-2">
+                                {recipe.sourceNotes.split(/\n{2,}/).map((note: string, idx: number) => (
+                                    <p key={idx} className="text-sm text-foreground/80 whitespace-pre-wrap">{note}</p>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Feedback & Reflection Section */}
                     <div data-section="feedback" className="recipe-band recipe-section px-4 py-6 sm:px-8 sm:py-10">

@@ -37,7 +37,7 @@ export default function Recipes() {
     const [bulkMenuOpen, setBulkMenuOpen] = useState(false)
     const [filterTime, setFilterTime] = useState<string[]>([])
     const [filterPrice, setFilterPrice] = useState<string[]>([])
-    const [filterGenre, setFilterGenre] = useState<string>('')
+    const [filterGenre, setFilterGenre] = useState<string[]>([])
     const [filterCooked, setFilterCooked] = useState<string>('')
     const [filterMealTypes, setFilterMealTypes] = useState<string[]>([])
     const [showHidden, setShowHidden] = useState(false)
@@ -87,12 +87,12 @@ export default function Recipes() {
         redirect(`/recipes/${randomRecipe._id}`);
     }
 
-    const hasActiveFilters = filterTime.length > 0 || filterPrice.length > 0 || filterGenre !== '' || filterCooked !== '' || filterMealTypes.length > 0 || showHidden
+    const hasActiveFilters = filterTime.length > 0 || filterPrice.length > 0 || filterGenre.length > 0 || filterCooked !== '' || filterMealTypes.length > 0 || showHidden
 
     const clearFilters = () => {
         setFilterTime([])
         setFilterPrice([])
-        setFilterGenre('')
+        setFilterGenre([])
         setFilterCooked('')
         setFilterMealTypes([])
         setShowHidden(false)
@@ -110,7 +110,7 @@ export default function Recipes() {
             }
             if (filterTime.length > 0 && !filterTime.includes(recipe.time)) return false
             if (filterPrice.length > 0 && !filterPrice.includes(recipe.priceCategory)) return false
-            if (filterGenre && recipe.genre !== filterGenre) return false
+            if (filterGenre.length > 0 && !filterGenre.includes(recipe.genre)) return false
             if (filterCooked === 'cooked' && (recipe.timesCooked || 0) === 0) return false
             if (filterCooked === 'uncooked' && (recipe.timesCooked || 0) > 0) return false
             if (filterMealTypes.length > 0) {
@@ -227,7 +227,7 @@ export default function Recipes() {
                                 <SlidersHorizontal size={18} />
                                 {hasActiveFilters && (
                                     <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-background shadow-lg">
-                                        {filterTime.length + filterPrice.length + (filterGenre ? 1 : 0) + (filterCooked ? 1 : 0) + filterMealTypes.length + (showHidden ? 1 : 0)}
+                                        {filterTime.length + filterPrice.length + filterGenre.length + (filterCooked ? 1 : 0) + filterMealTypes.length + (showHidden ? 1 : 0)}
                                     </span>
                                 )}
                             </Button>
@@ -267,11 +267,11 @@ export default function Recipes() {
                                 {p === 'cheap' ? '$' : p === 'medium' ? '$$' : '$$$'} <Plus size={12} className="rotate-45" />
                             </button>
                         ))}
-                        {filterGenre && (
-                            <button onClick={() => setFilterGenre('')} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-1 shadow-sm">
-                                {filterGenre} <Plus size={12} className="rotate-45" />
+                        {filterGenre.map(g => (
+                            <button key={g} onClick={() => setFilterGenre(prev => prev.filter(i => i !== g))} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-1 shadow-sm">
+                                {g} <Plus size={12} className="rotate-45" />
                             </button>
-                        )}
+                        ))}
                          {filterCooked && (
                             <button onClick={() => setFilterCooked('')} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-1 shadow-sm">
                                 {filterCooked === 'cooked' ? '👨‍🍳 Already Cooked' : '📝 Never Cooked'} <Plus size={12} className="rotate-45" />
@@ -323,18 +323,35 @@ export default function Recipes() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
-                        {filteredRecipes.map((recipe, index) => (
-                            <div key={recipe._id} className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${index * 50}ms` }}>
-                                <ImageCard
-                                    recipe={recipe}
-                                    bulkAction={bulkAction}
-                                    allowDelete={bulkAction === 'delete'}
-                                    onDelete={deleteRecipe}
-                                    onToggleHidden={toggleHiddenRecipe}
-                                    onRedirect={redirect}
-                                />
-                            </div>
-                        ))}
+                        {filteredRecipes.map((recipe, index) => {
+                            const extraTags = []
+                            if (filterPrice.length > 1 && recipe.priceCategory) {
+                                extraTags.push({ type: 'price' as const, value: recipe.priceCategory })
+                            }
+                            if (filterGenre.length > 1 && recipe.genre) {
+                                extraTags.push({ type: 'genre' as const, value: recipe.genre })
+                            }
+                            if (filterMealTypes.length > 1) {
+                                (recipe.mealTypes || []).forEach(m => {
+                                    if (filterMealTypes.includes(m)) {
+                                        extraTags.push({ type: 'mealType' as const, value: m })
+                                    }
+                                })
+                            }
+                            return (
+                                <div key={recipe._id} className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${index * 50}ms` }}>
+                                    <ImageCard
+                                        recipe={recipe}
+                                        bulkAction={bulkAction}
+                                        allowDelete={bulkAction === 'delete'}
+                                        onDelete={deleteRecipe}
+                                        onToggleHidden={toggleHiddenRecipe}
+                                        onRedirect={redirect}
+                                        extraTags={extraTags}
+                                    />
+                                </div>
+                            )
+                        })}
                     </div>
                 )}
 

@@ -44,6 +44,7 @@ export default async function handler(req, res) {
           servings: req.body.servings,
           hidden: req.body.hidden,
           sourceUrl: req.body.sourceUrl,
+          sourceNotes: req.body.sourceNotes,
           carbSide: sanitizeCarbSideInput(req.body.carbSide)
         });
         if (req.body.image) {

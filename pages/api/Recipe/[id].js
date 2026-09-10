@@ -108,6 +108,7 @@ export default async function handler(req, res) {
         if (req.body.carbType !== undefined) updateData.carbType = req.body.carbType;
         if (req.body.servings !== undefined) updateData.servings = req.body.servings;
         if (req.body.sourceUrl !== undefined) updateData.sourceUrl = req.body.sourceUrl;
+        if (req.body.sourceNotes !== undefined) updateData.sourceNotes = req.body.sourceNotes;
         // carbSide comes from the editor as the user-facing subset; the
         // analysis portion is server-owned and only written by the
         // analyze endpoint / bulk op. Handled after the main update since

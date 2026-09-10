@@ -54,6 +54,7 @@
     "axios": "^0.26.1",
     "bcryptjs": "^3.0.3",
     "chart.js": "^4.4.1",
+    "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clipboard": "^2.0.11",
     "clsx": "^2.1.1",

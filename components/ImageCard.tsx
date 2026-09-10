@@ -16,6 +16,8 @@ export interface Recipe {
     approxCost?: number
     timesCooked?: number
     hidden?: boolean
+    instructions?: Array<{ time?: number }>
+    prepWork?: Array<{ timeEstimate?: number; optional?: boolean }>
 }
 
 interface ImageCardProps {
@@ -26,6 +28,7 @@ interface ImageCardProps {
     cardHeight?: string
     bulkAction?: 'delete' | 'hide' | null
     onToggleHidden?: (recipe: Recipe) => void
+    extraTags?: Array<{ type: 'price' | 'genre' | 'mealType', value: string }>
 }
 
 const timeConfig: Record<'short' | 'medium' | 'long', { label: string; icon: React.ReactNode; color: string }> = {
@@ -40,9 +43,19 @@ const priceConfig: Record<'cheap' | 'medium' | 'expensive', { label: string; col
     expensive: { label: '$$$', color: 'text-rose-400 bg-rose-400/10' }
 }
 
-export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, cardHeight = '11rem', bulkAction, onToggleHidden }: ImageCardProps) {
+export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, cardHeight = '11rem', bulkAction, onToggleHidden, extraTags = [] }: ImageCardProps) {
     const router = useRouter()
     const currentPath = router.pathname
+
+    const extraTagLabels = extraTags.map(t => {
+        if (t.type === 'price' && recipe.priceCategory && priceConfig[recipe.priceCategory]) {
+            return { key: `${t.type}-${t.value}`, label: priceConfig[recipe.priceCategory].label, color: priceConfig[recipe.priceCategory].color }
+        }
+        const color = t.type === 'genre' ? 'text-emerald-400 bg-emerald-400/10'
+            : t.type === 'mealType' ? 'text-violet-400 bg-violet-400/10'
+            : 'text-white bg-white/10'
+        return { key: `${t.type}-${t.value}`, label: t.value, color }
+    })
 
     const handleRedirect = (path: string) => {
         if (onRedirect) onRedirect(path)
@@ -62,6 +75,21 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
     const dynamicBgColor = imageUrl ? 'transparent' : stringToHslColor(recipe.name, 40, 30);
     const isRecipesPage = currentPath.includes('recipes');
 
+    const totalMinutes = (recipe.instructions || []).reduce((sum, i) => sum + (i.time || 0), 0)
+        + (recipe.prepWork || []).filter(p => !p.optional).reduce((sum, p) => sum + (p.timeEstimate || 0), 0)
+    const formatTime = (mins: number) => {
+        const h = Math.floor(mins / 60)
+        const m = mins % 60
+        if (h > 0) return `${h}h${m > 0 ? ` ${m}min` : ''}`
+        return `${m} min`
+    }
+    const timeTag = totalMinutes > 0
+        ? formatTime(totalMinutes)
+        : (recipe.time && timeConfig[recipe.time] ? timeConfig[recipe.time].label : null)
+    const timeTagColor = totalMinutes > 0 && recipe.time && timeConfig[recipe.time]
+        ? timeConfig[recipe.time].color
+        : totalMinutes > 0 ? 'text-white bg-white/10' : ''
+
     return (
         <div 
             className="group relative flex flex-col bg-secondary/30 backdrop-blur-md rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:bg-secondary/40 hover:shadow-2xl hover:shadow-accent/5 cursor-pointer"
@@ -73,12 +101,10 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
                 {imageUrl ? (
                     <>
                         <img
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 brightness-[0.7] group-hover:brightness-[0.6]"
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             src={imageUrl}
                             alt={recipe.name}
                         />
-                        {/* Dark Gradient Overlay for text readability */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                     </>
                 ) : (
                     <div
@@ -86,8 +112,7 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
                         style={{ background: `linear-gradient(135deg, ${dynamicBgColor}, ${stringToHslColor(recipe.name, 40, 20)})` }}
                     >
                         <Utensils size={40} className="text-white/10" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                        
+
                         {currentPath.includes('shoppingList') && (
                             <div className="absolute bottom-2 right-2 bg-black/40 backdrop-blur-md px-2 py-1 rounded-lg text-[10px] font-bold text-white uppercase border border-white/10">
                                 {recipe.cost !== undefined ? `$${recipe.cost.toFixed(2)}` : '?'}
@@ -100,11 +125,6 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
             {/* Top Actions/Badges */}
             <div className="absolute top-2 left-2 right-2 flex justify-between items-start z-20">
                 <div className="flex flex-col gap-1 items-start">
-                    {recipe.genre && (
-                        <div className="px-2 py-1 rounded-lg bg-black/40 backdrop-blur-md text-[9px] font-bold text-white uppercase tracking-wider border border-white/10">
-                            {recipe.genre}
-                        </div>
-                    )}
                     {recipe.hidden && (
                         <div className="px-2 py-1 rounded-lg bg-amber-500/80 backdrop-blur-md text-[9px] font-bold text-white uppercase tracking-wider border border-white/10 flex items-center gap-1">
                             <EyeOff size={9} /> Hidden
@@ -134,27 +154,29 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
                 )}
             </div>
 
-            {/* Info Section (Absolute bottom) */}
-            <div className="absolute bottom-0 left-0 right-0 p-3 z-20 flex flex-col gap-1.5">
-                <h3 className="text-sm font-bold leading-tight line-clamp-2 tracking-tight text-white drop-shadow-md">
-                    {recipe.name}
-                </h3>
+            {/* Bottom Info Strip */}
+            <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/95 via-black/85 to-black/70 backdrop-blur-md">
+                <div className="p-3 flex flex-col gap-1.5">
+                    <h3 className="text-sm font-bold leading-tight line-clamp-2 tracking-tight text-white">
+                        {recipe.name}
+                    </h3>
 
-                {isRecipesPage && (recipe.time || recipe.priceCategory) && (
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                        {recipe.time && timeConfig[recipe.time] && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter bg-white/10 backdrop-blur-md text-white border border-white/10">
-                                {React.cloneElement(timeConfig[recipe.time].icon as React.ReactElement<{ size: number }>, { size: 10 })}
-                                {timeConfig[recipe.time].label}
-                            </span>
-                        )}
-                        {recipe.priceCategory && priceConfig[recipe.priceCategory] && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-white/10 backdrop-blur-md text-white border border-white/10">
-                                {priceConfig[recipe.priceCategory].label}
-                            </span>
-                        )}
-                    </div>
-                )}
+                    {isRecipesPage && (timeTag || extraTagLabels.length > 0) && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            {timeTag && (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-tighter ${timeTagColor}`}>
+                                    <Clock size={10} />
+                                    {timeTag}
+                                </span>
+                            )}
+                            {extraTagLabels.map(tag => (
+                                <span key={tag.key} className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter ${tag.color}`}>
+                                    {tag.label}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     )

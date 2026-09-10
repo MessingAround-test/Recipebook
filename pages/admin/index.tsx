@@ -17,6 +17,7 @@ export default function AdminDashboard() {
         { name: "Download Database Backup", _id: "BACKUP", image: "/avo.ico" },
         { name: "Symptom Categories", _id: "/admin/symptomCategories", image: "/avo.ico" },
         { name: "Bulk Recipe Tools", _id: "/admin/bulkRecipeTools", image: "/avo.ico" },
+        { name: "Scrape Logs", _id: "/admin/scrapeLogs", image: "/avo.ico" },
         { name: "Carb Types", _id: "/admin/carbTypes", image: "/avo.ico" },
         { name: "Migrate Recipe Images", _id: "/admin/migrateImages", image: "/avo.ico" },
         { name: "Settings", _id: "/admin/settings", image: "/avo.ico" },

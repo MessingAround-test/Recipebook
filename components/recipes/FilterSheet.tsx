@@ -9,8 +9,8 @@ interface FilterSheetProps {
     setFilterTime: (v: string[]) => void
     filterPrice: string[]
     setFilterPrice: (v: string[]) => void
-    filterGenre: string
-    setFilterGenre: (v: string) => void
+    filterGenre: string[]
+    setFilterGenre: (v: string[]) => void
     filterCooked: string
     setFilterCooked: (v: string) => void
     filterMealTypes: string[]
@@ -150,9 +150,9 @@ export function FilterSheet({
                             {GENRE_OPTIONS.map(g => (
                                 <button
                                     key={g}
-                                    onClick={() => setFilterGenre(filterGenre === g ? '' : g)}
+                                    onClick={() => toggleMulti(g, filterGenre, setFilterGenre)}
                                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 ${
-                                        filterGenre === g
+                                        filterGenre.includes(g)
                                             ? 'bg-accent text-accent-foreground shadow-md'
                                             : 'bg-secondary/30 border border-border/10 text-muted-foreground hover:text-foreground hover:border-accent/30'
                                     }`}
