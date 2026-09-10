@@ -1,0 +1,16 @@
+{
+  "baseRecipe": {
+    "name": "Spaghetti Aglio e Olio",
+    "ingredients": [
+      { "Name": "Spaghetti", "Amount": 200, "AmountType": "grams", "note": "dried" },
+      { "Name": "Garlic", "Amount": 4, "AmountType": "cloves", "note": "thinly sliced" },
+      { "Name": "Olive oil", "Amount": 3, "AmountType": "tablespoons" }
+    ],
+    "instructions": [
+      { "Text": "Boil the pasta", "note": "salt the water" },
+      { "Text": "Fry the garlic in oil until golden", "time": 3 }
+    ],
+    "image": "data:image/jpeg;base64,AAAA",
+    "mealTypes": ["Dinner"]
+  }
+}

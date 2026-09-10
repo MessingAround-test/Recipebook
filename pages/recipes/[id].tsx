@@ -1,7 +1,8 @@
 import { Layout } from '../../components/Layout'
 import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
 import { Button } from '../../components/ui/button'
-import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Slice, Users } from 'lucide-react'
+import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Slice, Users, Download } from 'lucide-react'
+import { buildRecipeExport, downloadRecipeFile, fetchImageAsDataUrl } from '../../lib/recipeFile'
 import Router, { useRouter } from 'next/router'
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
 import IngredientCard from '../../components/IngredientCard'
@@ -236,6 +237,7 @@ export default function RecipeDetail() {
     const [isCalculatingCost, setIsCalculatingCost] = useState(false)
     const [showNutrients, setShowNutrients] = useState(false)
     const [recipeServings, setRecipeServings] = useState<number>(0)
+    const [isExporting, setIsExporting] = useState(false)
 
     // Prep work state
     const [prepWork, setPrepWork] = useState<any[]>([])
@@ -494,6 +496,30 @@ export default function RecipeDetail() {
             alert(data.message || "failed, unexpected error")
         } else {
             Router.push("/recipes")
+        }
+    }
+
+    const handleExportRecipe = async () => {
+        setIsExporting(true)
+        try {
+            // listIngreds are in API shape ({name, quantity, quantity_type});
+            // buildRecipeExport normalizes them to the canonical file shape.
+            const image = await fetchImageAsDataUrl(imageData)
+            downloadRecipeFile(buildRecipeExport({
+                name: recipeName,
+                ingredients: listIngreds,
+                instructions,
+                time: recipeTime,
+                genre: recipeGenre,
+                mealTypes: recipeMealTypes,
+                carbType: recipeCarbType,
+                servings: recipeServings,
+                sourceUrl: recipe?.sourceUrl,
+                prepWork,
+                image
+            }))
+        } finally {
+            setIsExporting(false)
         }
     }
 
@@ -1620,6 +1646,17 @@ export default function RecipeDetail() {
                             >
                                 <Pencil className="w-4 h-4" />
                                 <span className="hidden sm:inline">Edit</span>
+                            </Button>
+                            <Button
+                                onClick={handleExportRecipe}
+                                variant="outline"
+                                disabled={isExporting}
+                                className="h-12 sm:h-14 px-3 sm:px-6 rounded-md bg-secondary/70 hover:bg-secondary text-foreground/85 font-semibold text-sm flex items-center justify-center gap-1.5 transition-all shrink-0 !border-0 disabled:opacity-60"
+                                title="Export recipe to a JSON file"
+                                aria-label="Export recipe"
+                            >
+                                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                <span className="hidden sm:inline">Export</span>
                             </Button>
                             <Button
                                 onClick={() => { setIsCookingMode(true); setActiveSheet('none') }}

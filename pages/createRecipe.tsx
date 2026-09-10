@@ -1,14 +1,15 @@
-﻿import { useEffect, useState, useMemo, useRef, FormEvent } from 'react'
+﻿import { useEffect, useState, useMemo, useRef, FormEvent, ChangeEvent } from 'react'
 import Router, { useRouter } from 'next/router'
 import { Layout } from '../components/Layout'
 import { fileToBase64 } from '../lib/recipeImage'
+import { parseRecipeImport, mapRecipeFileToEditor } from '../lib/recipeFile'
 import { quantity_unit_conversions, getShorthandForMeasure } from '../lib/conversion'
 import { extractRecipeFromImage, extractRecipeFromNotes, saveRecipe, normalizeIngredientsForSave, formatImportedIngredients, Ingredient, getEachUnitIngredientNames, warmIngredientConversions } from '../lib/recipeExtraction'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import RecipeIngredientInput from '../components/RecipeIngredientInput'
 import {
     Camera, Globe, Share2, NotebookPen, Pencil, ChevronLeft, ChevronDown, ShoppingBasket,
-    ListOrdered, SlidersHorizontal, Check, Loader2, Trash2, Images, GripVertical, MoreHorizontal, Wand2
+    ListOrdered, SlidersHorizontal, Check, Loader2, Trash2, Images, GripVertical, MoreHorizontal, Wand2, FileJson
 } from 'lucide-react'
 import { normalizePrepWords } from '../lib/recipeNormalize'
 
@@ -17,7 +18,7 @@ interface Instruction {
     Note?: string
 }
 
-type CreationMethod = 'url' | 'notes' | 'manual' | 'image' | 'social'
+type CreationMethod = 'url' | 'notes' | 'manual' | 'image' | 'social' | 'file'
 
 const PACKAGE_UNITS = ["can", "bottle", "package", "stick", "bunch", "head", "stalk", "stem", "bag", "box", "tray", "tub"]
 const UNIT_OPTIONS = Object.keys(quantity_unit_conversions).filter(item => !PACKAGE_UNITS.includes(item))
@@ -38,6 +39,7 @@ const SOURCE_OPTIONS: { key: CreationMethod; label: string; hint: string; icon: 
     { key: 'url', label: 'Web', hint: 'Taste, RecipeTin Eats, VegKit', icon: Globe },
     { key: 'social', label: 'Social', hint: 'Facebook posts and shares', icon: Share2 },
     { key: 'notes', label: 'AI Notes', hint: 'Paste text, AI sorts it out', icon: NotebookPen },
+    { key: 'file', label: 'Import file', hint: 'Load an exported recipe .json', icon: FileJson },
     { key: 'manual', label: 'Manual', hint: 'Build it from scratch', icon: Pencil },
 ]
 
@@ -444,6 +446,37 @@ export default function CreateRecipe() {
 
     const handleBack = () => {
         setFormPhase('setup');
+    }
+
+    const handleRecipeFileSelected = async (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        // Reset so re-selecting the same file re-triggers the change event
+        e.target.value = ""
+        if (!file) return
+        if (!confirmOverwrite()) return
+        try {
+            const parsed = parseRecipeImport(await file.text())
+            if (parsed.ok === false) {
+                alert(parsed.error)
+                return
+            }
+            const mapped = mapRecipeFileToEditor(parsed.recipe)
+            setRecipeName(mapped.name)
+            setIngreds(mapped.ingredients)
+            setInstructions(mapped.instructions)
+            setRecipeTime(mapped.time)
+            setRecipeGenre(mapped.genre)
+            setRecipeMealTypes(mapped.mealTypes)
+            setRecipeCarbType(mapped.carbType)
+            setRecipeServings(mapped.servings)
+            setRecipeSourceUrl(mapped.sourceUrl)
+            if (parsed.recipe.image) setImageData(parsed.recipe.image)
+            startConversionWarmup(mapped.ingredients)
+            setFormPhase('builder')
+        } catch (importError: any) {
+            console.error("Import error:", importError)
+            alert("An error occurred while importing the recipe file.")
+        }
     }
 
     const onSubmitRecipe = async () => {
@@ -915,7 +948,7 @@ export default function CreateRecipe() {
                             <>
                                 <div className="recipe-band px-4 sm:px-8 py-4">
                                     <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">How are you starting?</p>
-                                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                                         {SOURCE_OPTIONS.map(({ key, label, hint, icon: Icon }) => {
                                             const isActive = creationMethod === key
                                             return (
@@ -1035,6 +1068,19 @@ export default function CreateRecipe() {
                                                             </span>
                                                         )}
                                                     </button>
+                                                </div>
+                                            )}
+
+                                            {creationMethod === 'file' && (
+                                                <div className="space-y-3">
+                                                    <label className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border bg-background py-7 cursor-pointer hover:border-accent hover:bg-border transition-all">
+                                                        <input accept=".json,application/json" type="file" className="hidden" onChange={handleRecipeFileSelected} />
+                                                        <FileJson size={20} className="text-muted-foreground" />
+                                                        <span className="text-xs font-bold text-foreground">Choose an exported recipe file (.json)</span>
+                                                    </label>
+                                                    <p className="text-[11px] leading-snug text-muted-foreground text-center px-2">
+                                                        The recipe fills the builder below — including its photo. Review it and save as usual.
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>
