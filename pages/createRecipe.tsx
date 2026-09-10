@@ -9,7 +9,7 @@ import { useAuthGuard } from '../lib/useAuthGuard'
 import RecipeIngredientInput from '../components/RecipeIngredientInput'
 import {
     Camera, Globe, Share2, NotebookPen, Pencil, ChevronLeft, ChevronDown, ShoppingBasket,
-    ListOrdered, SlidersHorizontal, Check, Loader2, Trash2, Images, GripVertical, MoreHorizontal, Wand2, FileJson
+     ListOrdered, SlidersHorizontal, Check, Loader2, Trash2, Images, GripVertical, MoreHorizontal, Wand2, FileJson, RefreshCw
 } from 'lucide-react'
 import { normalizePrepWords } from '../lib/recipeNormalize'
 
@@ -273,6 +273,16 @@ export default function CreateRecipe() {
     // Details section starts collapsed for new recipes; edit mode opens it
     const [showDetails, setShowDetails] = useState(false)
 
+    // Carb side (dish) state
+    const [carbSideNeeds, setCarbSideNeeds] = useState(false)
+    const [carbSideType, setCarbSideType] = useState('')
+    const [carbSideCustomName, setCarbSideCustomName] = useState('')
+    const [carbCatalog, setCarbCatalog] = useState<any[]>([])
+    const [carbAnalysis, setCarbAnalysis] = useState<any>(null)
+    const [carbAnalysisLoading, setCarbAnalysisLoading] = useState(false)
+    const carbSideTouchedRef = useRef(false)   // explicit user marks beat AI decisions
+    const recipeLoadedRef = useRef(false)
+
     const router = useRouter();
     const { id } = router.query || {};
     const isEditMode = id !== undefined;
@@ -325,6 +335,106 @@ export default function CreateRecipe() {
     useEffect(() => {
         if (formPhase !== 'setup') window.scrollTo({ top: 0 })
     }, [formPhase])
+
+    // Load the global carb catalog for the "serve with" side dish selector
+    useEffect(() => {
+        if (formPhase !== 'builder') return
+        const run = async () => {
+            try {
+                const res = await fetch('/api/carbTypes', {
+                    headers: { 'edgetoken': localStorage.getItem('Token') || '' }
+                })
+                const data = await res.json()
+                if (data.success && Array.isArray(data.data)) setCarbCatalog(data.data)
+            } catch (e) {
+                console.error('Failed to load carb catalog:', e)
+            }
+        }
+        run()
+    }, [formPhase])
+
+    // Re-run the carb-side analysis for the saved recipe and show the fresh
+    // result. Only persists the detection outcome; phases are computed at
+    // Start Cooking.
+    const reanalyzeCarbSide = async () => {
+        const recipeId = Array.isArray(id) ? id[0] : id
+        if (!recipeId) return
+        setCarbAnalysisLoading(true)
+        try {
+            // Save marks first — analysis reads the persisted recipe
+            await fetch(`/api/Recipe/${recipeId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': localStorage.getItem('Token') || '' },
+                body: JSON.stringify({ carbSide: carbSideSaveBody() })
+            })
+            const res = await fetch('/api/ai/analyze_carb_side', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': localStorage.getItem('Token') || '' },
+                body: JSON.stringify({ recipeId, force: true })
+            })
+            const data = await res.json()
+            if (data.success && data.data?.state === 'analyzed') applyCarbAnalysis(data.data)
+            else alert(data.message || 'Carb side analysis failed')
+        } catch (e: any) {
+            alert(e?.message || 'Carb side analysis failed')
+        } finally {
+            setCarbAnalysisLoading(false)
+        }
+    }
+
+    // Applies an analysis result to the editor form (auto-populates the
+    // "Serve with a carb side" flag from the AI decision + detected type).
+    // Explicit user marks are never overridden by the AI.
+    const applyCarbAnalysis = (cs: any) => {
+        if (!cs || cs.state !== 'analyzed') return
+        setCarbAnalysis(cs)
+        if (carbSideTouchedRef.current) return
+        setCarbSideNeeds(cs.needs === true)
+        setCarbSideType(cs.type || (cs.needs === true && cs.customName ? 'Other/Custom' : ''))
+        setCarbSideCustomName(cs.type ? '' : (cs.customName || ''))
+    }
+
+    // The carb-side marks sent with every save. AI-derived "not needed" is
+    // sent too so a saved recipe keeps its analyzed state even when the
+    // checkbox is off.
+    const carbSideSaveBody = () => {
+        const autoNotNeeded = !carbSideNeeds && carbAnalysis?.state === 'analyzed' && carbAnalysis.needs !== true
+        if (carbSideNeeds) {
+            return { needs: true, type: carbSideType || undefined, customName: carbSideCustomName || undefined }
+        }
+        return autoNotNeeded
+            ? { needs: false }
+            : null
+    }
+
+    // Auto-analysis in edit mode: when the saved recipe hasn't been analyzed
+    // yet, run it as soon as the recipe loads — the editor flag fills itself
+    const autoAnalyzedRef = useRef(false)
+    useEffect(() => {
+        const recipeId = Array.isArray(id) ? id[0] : id
+        if (!isEditMode || !recipeId || recipeLoadedRef.current !== true) return
+        if (recipeLoadedRef.current && carbAnalysis?.state !== 'analyzed' && !autoAnalyzedRef.current) {
+            autoAnalyzedRef.current = true
+            const run = async () => {
+                setCarbAnalysisLoading(true)
+                try {
+                    const res = await fetch('/api/ai/analyze_carb_side', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'edgetoken': localStorage.getItem('Token') || '' },
+                        body: JSON.stringify({ recipeId })
+                    })
+                    const data = await res.json()
+                    if (data.success && data.data) applyCarbAnalysis(data.data)
+                } catch (e) {
+                    console.error('Carb side auto-analysis failed:', e)
+                    autoAnalyzedRef.current = false
+                } finally {
+                    setCarbAnalysisLoading(false)
+                }
+            }
+            run()
+        }
+    }, [recipeLoadedRef.current])
 
     const scrollToSection = (section: string) => {
         if (section === 'details') setShowDetails(true)
@@ -509,6 +619,7 @@ export default function CreateRecipe() {
                         "carbType": recipeCarbType || undefined,
                         "servings": recipeServings !== "" ? Number(recipeServings) : undefined,
                         "sourceUrl": recipeSourceUrl || undefined,
+                        "carbSide": carbSideSaveBody(),
                         "prepWorkChecked": false
                     })
                 })
@@ -528,11 +639,20 @@ export default function CreateRecipe() {
                     time: recipeTime || undefined,
                     genre: recipeGenre || undefined,
                     mealTypes: recipeMealTypes,
-                    carbType: recipeCarbType || undefined,
+                     carbType: recipeCarbType || undefined,
+                     carbSide: carbSideSaveBody(),
                     servings: recipeServings !== "" ? Number(recipeServings) : undefined,
                     sourceUrl: recipeSourceUrl || undefined
                 })
                 if (!imageData && created?._id) generateImageInBackground(recipeName, created._id)
+                // Auto-populate the carb side decision for the new recipe
+                if (created?._id) {
+                    fetch('/api/ai/analyze_carb_side', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'edgetoken': localStorage.getItem('Token') || '' },
+                        body: JSON.stringify({ recipeId: created._id })
+                    }).catch(() => {})
+                }
                 Router.push("/recipes")
             }
         } catch (error: any) {
@@ -879,6 +999,11 @@ export default function CreateRecipe() {
                         setRecipeGenre(data.res.genre || "")
                         setRecipeMealTypes(data.res.mealTypes || [])
                         setRecipeCarbType(data.res.carbType || "")
+                        setCarbSideNeeds(data.res.carbSide?.needs === true)
+                        setCarbSideType(data.res.carbSide?.type || "")
+                        setCarbSideCustomName(data.res.carbSide?.customName || "")
+                        if (data.res.carbSide?.state === 'analyzed') setCarbAnalysis(data.res.carbSide)
+                        recipeLoadedRef.current = true
                         setRecipeServings(data.res.servings || "")
                         setRecipeSourceUrl(data.res.sourceUrl || "")
                         setInstructions(data.res.instructions.map((i: any) => ({
@@ -1423,6 +1548,78 @@ export default function CreateRecipe() {
                                             <option key={c} value={c}>{c}</option>
                                         ))}
                                     </select>
+                                </div>
+                                <div className="space-y-2 sm:col-span-2 lg:col-span-3">
+                                    <div className="flex items-center justify-between ml-1">
+                                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Serve with a carb side</label>
+                                        {isEditMode && carbSideNeeds && (
+                                            <button
+                                                type="button"
+                                                onClick={reanalyzeCarbSide}
+                                                disabled={carbAnalysisLoading}
+                                                className="flex items-center gap-1.5 text-[10px] font-bold text-accent hover:underline disabled:opacity-50"
+                                            >
+                                                {carbAnalysisLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                                                Recalculate
+                                            </button>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => { carbSideTouchedRef.current = true; setCarbSideNeeds(v => !v) }}
+                                        className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${carbSideNeeds
+                                            ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
+                                            : 'bg-secondary border-border text-muted-foreground hover:border-accent'}`}
+                                    >
+                                        <span className={`w-4 h-4 rounded border-2 flex items-center justify-center ${carbSideNeeds ? 'bg-emerald-500 border-emerald-500' : 'border-border'}`}>
+                                            {carbSideNeeds && <Check size={10} className="text-white" strokeWidth={4} />}
+                                        </span>
+                                        This dish is served with a carb side (rice, bread, noodles…)
+                                    </button>
+                                    {carbSideNeeds && (
+                                        <div className="space-y-2">
+                                            <div className="flex gap-2">
+                                                <select value={carbSideType} onChange={(e) => { carbSideTouchedRef.current = true; setCarbSideType(e.target.value) }} className="input-modern flex-1">
+                                                    <option value="">Auto — AI decides which carb when cooking</option>
+                                                    {carbCatalog.map(c => <option key={c._id} value={c.name}>{c.name}</option>)}
+                                                    <option value="Other/Custom">Other / custom…</option>
+                                                </select>
+                                                {carbSideType === 'Other/Custom' && (
+                                                    <input
+                                                        type="text"
+                                                        value={carbSideCustomName}
+                                                        onChange={(e) => { carbSideTouchedRef.current = true; setCarbSideCustomName(e.target.value) }}
+                                                        placeholder="e.g. egg fried noodles"
+                                                        className="input-modern flex-1"
+                                                    />
+                                                )}
+                                            </div>
+                                            {carbAnalysis?.state === 'analyzed' ? (
+                                                <div className="px-3 py-2 rounded-lg bg-secondary border border-border text-xs text-muted-foreground space-y-1.5">
+                                                    {carbAnalysis.analysis?.alreadyInInstructions ? (
+                                                        <p className="text-foreground/80">
+                                                            {carbAnalysis.type || 'The carb'} is already cooked in step{' '}
+                                                            <strong>{typeof carbAnalysis.analysis.matchedStepIndex === 'number' ? carbAnalysis.analysis.matchedStepIndex + 1 : '?'} · main dish</strong>{' '}
+                                                            — no side phases injected; the recipe's own timing is kept.
+                                                        </p>
+                                                    ) : (
+                                                        <p className="text-foreground/80">
+                                                            No existing {carbAnalysis.type || 'carb'} step — side phases are decided when you Start Cooking
+                                                            (pick the carb there and each phase gets slotted backwards from the finish time,
+                                                            using each step's estimated time).
+                                                        </p>
+                                                    )}
+                                                    {carbAnalysis.analysis?.note && <p className="text-[11px]">{carbAnalysis.analysis.note}</p>}
+                                                </div>
+                                            ) : (
+                                                <p className="ml-1 text-[11px] text-muted-foreground">
+                                                    {isEditMode
+                                                        ? 'Run “Recalculate” to slot the side phases against the recipe’s step times.'
+                                                        : 'Saved recipes get analyzed automatically on next open (or via Bulk Recipe Tools).'}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="space-y-2 sm:col-span-2">
                                     <div className="flex items-center justify-between ml-1">

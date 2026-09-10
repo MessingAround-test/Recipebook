@@ -774,6 +774,44 @@ a {
   box-shadow: 0 0 6px var(--cooking-accent-glow);
 }
 
+/* Side-dish lane: visually distinct (dashed/muted) segments that stand apart
+   from the recipe's own steps */
+.cooking-progress-seg.is-side:not(.is-current):not(.is-done) {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--cooking-text-faint) 0 3px,
+    transparent 3px 6px
+  );
+}
+
+/* Sticky header pill tracking the side-dish lane */
+.cooking-side-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  color: var(--cooking-accent);
+  background: var(--cooking-accent-soft, rgba(16, 185, 129, 0.12));
+  border: 1px dashed var(--cooking-accent);
+  cursor: pointer;
+}
+
+.cooking-side-pill strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.cooking-side-pill.is-pending {
+  color: var(--cooking-text-faint);
+  background: transparent;
+  border-color: var(--cooking-text-faint);
+}
+
 /* ---------- Body: timeline + (desktop) sidebar ---------- */
 .cooking-mode-body {
   position: relative;

@@ -3,6 +3,7 @@ import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
 import { Button } from '../../components/ui/button'
 import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Slice, Users, Download } from 'lucide-react'
 import { buildRecipeExport, downloadRecipeFile, fetchImageAsDataUrl } from '../../lib/recipeFile'
+import { computeCarbInsertPoint, computePhaseInsertPoints, fillCarbPhaseText, recommendCarbOption, resolveCarbTiming, resolveVariant } from '../../lib/carbSideOps'
 import Router, { useRouter } from 'next/router'
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
 import IngredientCard from '../../components/IngredientCard'
@@ -172,17 +173,30 @@ function timersDependingOn(timers: any[], timerId: string): Set<string> {
     return dependents
 }
 
-type FlowItem = { kind: 'prep' | 'step'; stepIndex: number; flowIndex: number }
+type FlowItem = { kind: 'prep' | 'step' | 'carb'; stepIndex: number; flowIndex: number; phaseIndex?: number }
 
 // The cooking flow: an optional prep run-through first (only when the recipe
 // has prep work), then the instruction steps. Timers attach to their step as a
 // poke-out tab underneath the card instead of being flow items.
-function buildFlowItems(instructions: any[], prepWork: any[]): FlowItem[] {
+// Carb side: each phase of the chosen side (boil water, cook, fluff…) is
+// injected just before the instruction step where its timer should start, so
+// every phase lines up to finish with the recipe's last step.
+function buildFlowItems(instructions: any[], prepWork: any[], carbChoice: any): FlowItem[] {
     const items: FlowItem[] = []
     if ((prepWork || []).length > 0) {
         items.push({ kind: 'prep', stepIndex: -1, flowIndex: items.length })
     }
+    const carbPhases = Array.isArray(carbChoice?.phases)
+        ? carbChoice.phases
+        : (carbChoice && typeof carbChoice.insertAfter === 'number'
+            ? [{ insertAfter: carbChoice.insertAfter }]
+            : [])
     ;(instructions || []).forEach((_: any, i: number) => {
+        carbPhases.forEach((p: any, pi: number) => {
+            if (typeof p?.insertAfter === 'number' && p.insertAfter === i) {
+                items.push({ kind: 'carb', stepIndex: i, phaseIndex: pi, flowIndex: items.length })
+            }
+        })
         items.push({ kind: 'step', stepIndex: i, flowIndex: items.length })
     })
     return items
@@ -288,7 +302,18 @@ export default function RecipeDetail() {
 
     // Cooking flow: prep run-through (if any) then the instruction steps.
     // Timers attach to their step as a poke-out tab underneath the card.
-    const flowItems = useMemo<FlowItem[]>(() => buildFlowItems(instructions || [], prepWork), [instructions, prepWork])
+    // Cooking flow: prep run-through (if any) then the instruction steps.
+    // Timers attach to their step as a poke-out tab underneath the card.
+    // carbChoice: the per-cook carb side decision made in the Start Cooking
+    // modal (session-scoped, never written back to the recipe).
+    const [carbCatalog, setCarbCatalog] = useState<any[]>([])
+    const [carbHistory, setCarbHistory] = useState<any[]>([])
+    const [carbModalOpen, setCarbModalOpen] = useState(false)
+    const [carbModalType, setCarbModalType] = useState<any>(null)
+    const [carbModalVariant, setCarbModalVariant] = useState<string | null>(null)
+    const [carbChoice, setCarbChoice] = useState<any>(null)
+    const [carbCatalogLoading, setCarbCatalogLoading] = useState(false)
+    const flowItems = useMemo<FlowItem[]>(() => buildFlowItems(instructions || [], prepWork, carbChoice), [instructions, prepWork, carbChoice])
 
     // Recipe timers grouped by the instruction step they assist
     const timersByStep = useMemo(() => {
@@ -1151,7 +1176,182 @@ export default function RecipeDetail() {
         setCurrentFlow(0)
         setDoneFlow(new Set())
         setActiveSheet('none')
+        setCarbChoice(null)
+        setCarbModalOpen(false)
     }
+
+    // ---------- Carb side (Start Cooking) ----------
+
+    // Recipe is marked as needing a carb side and our injector (not the
+    // recipe's own steps) should provide it.
+    const needsCarbChoice = () => recipe?.carbSide?.needs === true
+        && recipe?.carbSide?.state === 'analyzed'
+        && recipe?.carbSide?.analysis?.alreadyInInstructions !== true
+
+    const loadCarbData = async () => {
+        if (carbCatalog.length > 0) return true
+        setCarbCatalogLoading(true)
+        try {
+            const token = { 'edgetoken': localStorage.getItem('Token') || '' }
+            const [catRes, histRes] = await Promise.all([
+                fetch('/api/carbTypes', { headers: token }),
+                fetch('/api/carbChoice', { headers: token })
+            ])
+            const catData = await catRes.json()
+            const histData = await histRes.json()
+            const catalog = catData.success && Array.isArray(catData.data) ? catData.data : []
+            const history = histData.success && Array.isArray(histData.data) ? histData.data : []
+            setCarbCatalog(catalog)
+            setCarbHistory(history)
+            if (catalog.length > 0) {
+                const rec = recommendCarbOption(catalog, history, recipe?.carbSide?.type)
+                setCarbModalType(rec)
+                setCarbModalVariant(resolveVariant(rec, history[0]?.variant))
+            }
+            return catalog.length > 0
+        } catch (e) {
+            console.error('Failed to load carb catalog:', e)
+            return false
+        } finally {
+            setCarbCatalogLoading(false)
+        }
+    }
+
+    // One entry point for both Start Cooking buttons: asks the carb-side
+    // question first (only when the recipe wants one), or resumes an
+    // in-progress session with its stored carb decision.
+    const startCooking = async () => {
+        setActiveSheet('none')
+        let saved: any = null
+        try { saved = JSON.parse(localStorage.getItem(`timer-session-${String(id)}`) || 'null') } catch {}
+        const resuming = saved && typeof saved === 'object' &&
+            (saved.currentFlow > 0 || (Array.isArray(saved.doneFlow) && saved.doneFlow.length > 0))
+        if (resuming) {
+            if (saved.carbChoice) setCarbChoice(saved.carbChoice)
+            setIsCookingMode(true)
+            return
+        }
+        if (needsCarbChoice()) {
+            const hasCatalog = await loadCarbData()
+            if (hasCatalog) {
+                setCarbModalOpen(true)
+                return
+            }
+            // Catalog unreachable — keep working with the recipe's stored analysis
+            const fallback = fallbackCarbChoice()
+            if (fallback) {
+                setCarbChoice(fallback)
+            }
+        } else {
+            setCarbChoice(null)
+        }
+        setIsCookingMode(true)
+    }
+
+    // Catalog unreachable fallback: build a single-phase choice from the
+    // recipe's stored analysis.
+    const fallbackCarbChoice = () => {
+        const fallback = recipe?.carbSide
+        const serves = recipe?.servings && recipe.servings > 0 ? recipe.servings : 0
+        if (Array.isArray(fallback?.phases) && fallback.phases.length > 0) {
+            const phasedTime = fallback.phases.reduce((a: number, p: any) => a + (p.minutes || 0), 0) || fallback.timeMinutes || 20
+            const phased = computePhaseInsertPoints(instructions, fallback.phases.map((p: any) => ({ ...p })))
+            return {
+                type: fallback.type,
+                label: fallback.type,
+                phases: phased.map((p: any, pi: number) => ({
+                    name: fallback.phases[pi]?.name || p.name,
+                    minutes: p.minutes,
+                    instruction: fillCarbPhaseText(
+                        fallback.phases[pi]?.instruction || p.instruction || fallback.stepText || `Cook ${fallback.type} on the side.`,
+                        null,
+                        serves
+                    ),
+                    insertAfter: p.insertAfter
+                })),
+                totalMinutes: phasedTime
+            }
+        }
+        if (fallback?.stepText) {
+            return {
+                type: fallback.type,
+                label: fallback.type,
+                phases: [{
+                    name: 'Cook on the side',
+                    minutes: fallback.timeMinutes || 20,
+                    instruction: fillCarbPhaseText(fallback.stepText, null, serves),
+                    insertAfter: computeCarbInsertPoint(instructions, fallback.timeMinutes || 20, fallback.insertAfter)
+                }],
+                totalMinutes: fallback.timeMinutes || 20
+            }
+        }
+        return null
+    }
+
+    const resolveCarbChoice = (entry: any, variant: string | null) => {
+        const v = resolveVariant(entry, variant)
+        const timing = resolveCarbTiming(entry, v)
+        // Serve quantities ({qty:rice}/{serves}) are filled against the
+        // recipe's own serving count at the moment the side is picked.
+        const serves = recipe?.servings && recipe.servings > 0 ? recipe.servings : 0
+        let phases = (timing?.phases || [{ name: 'Cook', minutes: 20 }]).map((p: any) => ({ ...p }))
+        // Legacy entries without phase instructions fall back to the
+        // catalog's template text so cards are never blank
+        phases = phases.map((p: any) => ({
+            ...p,
+            // EVERY phase text (catalog tokens included) gets its serve
+            // quantities filled here — {qty:rice}/{serves} never reach the card
+            instruction: fillCarbPhaseText(p.instruction, timing, serves)
+                || fillCarbPhaseText(entry?.defaultStepText, timing, serves)
+                || `Cook ${entry.name} on the side.`
+        }))
+        const total = phases.some((p: any) => p.minutes > 0)
+            ? phases.reduce((a: number, p: any) => a + p.minutes, 0)
+            : (recipe?.carbSide?.timeMinutes || timing?.totalMinutes || 20)
+        const phased = computePhaseInsertPoints(instructions, phases)
+        return {
+            type: entry.name,
+            variant: timing?.variant,
+            label: timing?.label || entry.name,
+            phases: phased,
+            totalMinutes: total
+        }
+    }
+
+    const confirmCarbPick = (entry: any, variant: string | null) => {
+        setCarbModalOpen(false)
+        if (!entry) {
+            setCarbChoice(null)
+            setIsCookingMode(true)
+            return
+        }
+        const base = resolveCarbChoice(entry, variant)
+        // One session timer per phase with time (custom timers keep alarms,
+        // finish-gate and the timers sheet working), pending until the user
+        // starts each in the flow.
+        const stamp = Date.now().toString(36)
+        const phases = base.phases.map((p: any, pi: number) => {
+            const tid = p.minutes > 0 ? `carb-${stamp}-p${pi}` : undefined
+            if (tid) {
+                setCustomTimers(prev => [...prev, {
+                    id: tid,
+                    name: `${base.label}: ${p.name}`,
+                    duration: p.minutes,
+                    carb: true
+                } as any])
+            }
+            return { ...p, timerId: tid }
+        })
+        const choice = { ...base, phases }
+        setCarbChoice(choice)
+        setIsCookingMode(true)
+        fetch('/api/carbChoice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'edgetoken': localStorage.getItem('Token') || '' },
+            body: JSON.stringify({ type: entry.name, variant: choice.variant })
+        }).catch(() => {})
+    }
+
 
     const playAlarm = () => {
         try {
@@ -1265,6 +1465,38 @@ export default function RecipeDetail() {
         }
     }, [recipe, recipeName, listIngreds, instructions])
 
+    // Auto-analyze once per visit — for ANY recipe, not just pre-marked
+    // ones: the AI decides whether the dish wants a carb side (populating
+    // the editor flag) and whether one already exists in the steps.
+    // Results are persisted, so Start Cooking / bulk ops never re-run.
+    const carbAnalyzedRef = useRef(false)
+    useEffect(() => {
+        if (!id || !recipe?.name) return
+        const carbSide = recipe?.carbSide
+        if (carbSide?.state === 'analyzed' || carbAnalyzedRef.current) return
+        carbAnalyzedRef.current = true
+        const run = async () => {
+            try {
+                const res = await fetch('/api/ai/analyze_carb_side', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'edgetoken': localStorage.getItem('Token') || '' },
+                    body: JSON.stringify({ recipeId: id })
+                })
+                const data = await res.json()
+                if (data.success && data.data) {
+                    setRecipe((prev: any) => (prev ? { ...prev, carbSide: data.data } : prev))
+                } else {
+                    console.error('Carb side analysis failed:', data.message)
+                    carbAnalyzedRef.current = false
+                }
+            } catch (e) {
+                console.error('Carb side analysis failed:', e)
+                carbAnalyzedRef.current = false
+            }
+        }
+        run()
+    }, [recipe, id])
+
     // Clear residual timers from other recipes on mount
     useEffect(() => {
         if (!id) return
@@ -1357,7 +1589,8 @@ export default function RecipeDetail() {
                 v: 4,
                 timers: activeSession,
                 currentFlow,
-                doneFlow: Array.from(doneFlow)
+                doneFlow: Array.from(doneFlow),
+                carbChoice
             }))
         } catch {}
     }, [activeSession, currentFlow, doneFlow, id])
@@ -1568,7 +1801,7 @@ export default function RecipeDetail() {
                     </button>
                 ))}
                 <button
-                    onClick={() => { setIsCookingMode(true); setActiveSheet('none') }}
+                                onClick={() => { startCooking() }}
                     className="recipe-nav-start"
                     title="Start Cooking"
                     aria-label="Start Cooking"
@@ -1659,7 +1892,7 @@ export default function RecipeDetail() {
                                 <span className="hidden sm:inline">Export</span>
                             </Button>
                             <Button
-                                onClick={() => { setIsCookingMode(true); setActiveSheet('none') }}
+                    onClick={() => { startCooking() }}
                                 className="flex-1 h-12 sm:h-14 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base sm:text-lg rounded-md shadow-sm transition-all active:scale-[0.99] flex items-center justify-center gap-2"
                             >
                                 <ChefHat className="w-5 h-5" />
@@ -2134,6 +2367,19 @@ export default function RecipeDetail() {
                             />
                             {isSavingFeedback && <div className="text-[10px] font-semibold text-accent animate-pulse text-right pr-2 uppercase tracking-wider">Saving changes...</div>}
                         </div>
+
+                        {recipe?.carbSide?.state === 'analyzed' && (
+                            <div className="mt-4 rounded-xl bg-secondary/40 border border-border/50 px-4 py-3">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Carb side analysis</p>
+                                <p className="text-sm text-foreground/80">
+                                    {recipe.carbSide.analysis?.alreadyInInstructions
+                                        ? `The recipe already handles the ${recipe.carbSide.type} — see ${typeof recipe.carbSide.analysis.matchedStepIndex === 'number' ? `step ${recipe.carbSide.analysis.matchedStepIndex + 1}` : 'the steps'}.`
+                                        : recipe.carbSide.needs
+                                            ? `Serve with ${recipe.carbSide.type || 'a carb side'}${recipe.carbSide.analysis?.note ? ` — ${recipe.carbSide.analysis.note}` : ''}`
+                                            : recipe.carbSide.analysis?.note || 'No carb side needed for this dish.'}
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Nutrients density — collapsible, off by default */}
@@ -2332,6 +2578,62 @@ export default function RecipeDetail() {
                     )}
                 </Modal>
 
+                {/* Carb side choice — asked at Start Cooking when the recipe
+                    is marked as needing one. Session-scoped decision. */}
+                {carbModalOpen && (
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setCarbModalOpen(false)}>
+                        <div className="w-full max-w-md rounded-2xl border border-border bg-background p-5 shadow-2xl space-y-4" onClick={(e) => e.stopPropagation()}>
+                            <div>
+                                <h3 className="text-lg font-bold flex items-center gap-2"><ChefHat size={18} className="text-emerald-500" /> Serve with a carb side?</h3>
+                                {recipe?.carbSide?.analysis?.note && (
+                                    <p className="text-xs text-muted-foreground mt-1">{recipe.carbSide.analysis.note}</p>
+                                )}
+                            </div>
+                            <div className="grid grid-cols-1 gap-2 max-h-72 overflow-y-auto">
+                                {carbCatalog.map((entry: any) => {
+                                    const variants = entry.variants || []
+                                    const isSel = carbModalType?._id === entry._id
+                                    const isRec = recommendCarbOption(carbCatalog, carbHistory, recipe?.carbSide?.type)?._id === entry._id
+                                    return (
+                                        <div key={entry._id} className="space-y-1">
+                                            <button
+                                                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-left text-sm font-semibold transition-all ${isSel
+                                                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
+                                                    : 'bg-secondary border-border text-muted-foreground hover:border-accent'}`}
+                                                onClick={() => { setCarbModalType(entry); setCarbModalVariant(resolveVariant(entry, carbModalVariant)) }}
+                                            >
+                                                <span>{entry.name}{isRec && <span className="ml-2 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">recommended</span>}</span>
+                                                {variants.length > 0 && <span className="text-[11px] text-muted-foreground">{variants.map((v: any) => v.name).join(' / ')}</span>}
+                                            </button>
+                                            {isSel && variants.length > 0 && (
+                                                <div className="flex gap-1.5 pl-2">
+                                                    {variants.map((v: any) => (
+                                                        <button
+                                                            key={v.name}
+                                                            className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${carbModalVariant === v.name
+                                                                ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
+                                                                : 'bg-secondary border-border text-muted-foreground hover:border-accent'}`}
+                                                            onClick={() => setCarbModalVariant(v.name)}
+                                                        >
+                                                            {v.name} · {(v.phases?.reduce((a: number, x: any) => a + x.minutes, 0)) || ((v.cookMinutes || 0) + (v.prepMinutes || 0))} min
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                            <div className="flex gap-2 pt-1">
+                                <Button variant="outline" className="flex-1" onClick={() => confirmCarbPick(null, null)}>Nothing</Button>
+                                <Button className="flex-1 cooking-next-btn is-primary" onClick={() => confirmCarbPick(carbModalType, carbModalVariant)} disabled={!carbModalType}>
+                                    <ChefHat size={16} /> Start cooking
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Cooking Mode Overlay */}
                 {isCookingMode && (() => {
                     const clampedCurrent = Math.min(currentFlow, Math.max(0, flowItems.length - 1))
@@ -2377,9 +2679,12 @@ export default function RecipeDetail() {
                         setDoneFlow(prev => new Set([...Array.from(prev), clampedCurrent]))
                         // Timers the user never started are ticked off as if they
                         // completed — skipping a step means they manage timing themselves.
-                        ;(timersByStep[flowItems[clampedCurrent].stepIndex] || []).forEach((t: any) => {
-                            if (getTimerStatus(t.id) === 'pending') completeTimer(t)
-                        })
+                        const cur = flowItems[clampedCurrent]
+                        if (cur?.kind === 'step') {
+                            ;(timersByStep[cur.stepIndex] || []).forEach((t: any) => {
+                                if (getTimerStatus(t.id) === 'pending') completeTimer(t)
+                            })
+                        }
                         setCurrentFlow(clampedCurrent + 1)
                     }
 
@@ -2482,6 +2787,22 @@ export default function RecipeDetail() {
                         })
                         const showChips = state === 'current' || (state === 'upcoming' && isNext)
                         const stepTimers = timersByStep[item.stepIndex] || []
+                        // Side-lane tracking: this is the main-dish step the
+                        // cook returns to after any side phase — show the
+                        // side's status so parallel work stays visible.
+                        const phasesHere = (carbChoice?.phases || []).filter((p: any) => p.insertAfter === item.stepIndex)
+                        const allPhases = carbChoice?.phases || []
+                        const returnPhase = phasesHere.reduce((acc: any, p: any) => {
+                            if (!p.timerId) return acc
+                            const live = ['active', 'paused', 'overdue'].includes(getTimerStatus(p.timerId))
+                            const pending = !['completed', 'overdue'].includes(getTimerStatus(p.timerId))
+                            if (live && !acc?.live) return { phase: p, pi: allPhases.findIndex((q: any) => q.timerId === p.timerId), live: true }
+                            if (pending && !acc) return { phase: p, pi: allPhases.findIndex((q: any) => q.timerId === p.timerId), live: false }
+                            return acc
+                        }, undefined)
+                        const returnTimer = returnPhase?.phase?.timerId
+                            ? customTimers.find((t: any) => t.id === returnPhase.phase.timerId)
+                            : undefined
                         return (
                             <div
                                 key={idx}
@@ -2493,6 +2814,7 @@ export default function RecipeDetail() {
                                     onClick={state === 'done' ? () => jumpTo(idx) : undefined}
                                 >
                                     <div className="cooking-card-top">
+                                        <span className="cooking-card-label text-muted-foreground" title="Main dish step">Main dish</span>
                                         {state === 'done' && (
                                             <span className="cooking-card-label"><Check size={13} strokeWidth={3} /> Step {item.stepIndex + 1}</span>
                                         )}
@@ -2507,6 +2829,30 @@ export default function RecipeDetail() {
                                         )}
                                     </div>
                                     <p className={`cooking-card-text is-${state}`}>{text}</p>
+                                    {/* Returning to the main dish after a side
+                                        phase: keep the side's status in sight */}
+                                    {returnTimer && state === 'current' && (() => {
+                                        const status = getTimerStatus(returnTimer.id)
+                                        const live = ['active', 'paused', 'overdue'].includes(status)
+                                        return (
+                                            <button
+                                                className="cooking-prep-hint"
+                                                onClick={() => {
+                                                    const fi = flowItems.findIndex(f => f.kind === 'carb' && f.phaseIndex === returnPhase.pi)
+                                                    if (fi >= 0) jumpTo(fi)
+                                                }}
+                                            >
+                                                <span className="cooking-prep-hint-task">
+                                                    <ChefHat size={12} />
+                                                    <span className="cooking-prep-hint-text">
+                                                        {carbChoice.label}: {returnPhase.phase.name} — {live ? `${formatCountdown(getRemaining(activeSession[returnTimer.id], nowMs))} left` : 'not started yet'}
+                                                        {live && (activeSession[returnTimer.id]?.endTime) && <span className="cooking-prep-hint-more"> (done at {new Date(activeSession[returnTimer.id].endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>}
+                                                    </span>
+                                                </span>
+                                                <span className="cooking-prep-hint-cta">tap to view side</span>
+                                            </button>
+                                        )
+                                    })()}
                                     {showChips && recs.length > 0 && (
                                         <div className="cooking-chips">
                                             {recs.map((ingred: any, ci: number) => (
@@ -2541,6 +2887,63 @@ export default function RecipeDetail() {
                                     )}
                                 </div>
                                 {stepTimers.map((t: any) => renderTimerTab(t, state))}
+                            </div>
+                        )
+                    }
+
+                    // Side-dish phase card: injected flow item carrying one
+                    // phase of the chosen carb (boil, cook, fluff…). Its
+                    // timer lives as a "custom" timer (per phase) so alarms +
+                    // finish-gate work; user starts it manually, then returns
+                    // to the main-dish step they left off at.
+                    const renderCarbCard = (item: any, idx: number, state: 'done' | 'current' | 'upcoming', isNext: boolean) => {
+                        const phases = carbChoice?.phases || []
+                        const phase = phases[item.phaseIndex] || phases[0] || { name: 'Side step', instruction: '', minutes: 0 }
+                        const phaseCount = phases.length
+                        const text = phase.instruction || `${carbChoice?.label}: ${phase.name}`
+                        const carbTimer = phase.timerId ? customTimers.find((t: any) => t.id === phase.timerId) : undefined
+                        const nextPending = phases.find((p: any, pi: number) => pi > item.phaseIndex
+                            && p.timerId
+                            && !['completed', 'overdue'].includes(getTimerStatus(p.timerId)))
+                        return (
+                            <div
+                                key={idx}
+                                ref={(el: HTMLDivElement | null) => { cardRefs.current[idx] = el }}
+                                className="cooking-step-group"
+                            >
+                                {/* Optional recommendation: dashed border keeps it
+                                    visually distinct from recipe steps */}
+                                <div
+                                    className={`cooking-card cooking-card-step cooking-card-carb is-${state} ${isNext && state === 'upcoming' ? 'is-next' : ''} ${state === 'done' ? 'is-clickable' : ''}`}
+                                    style={{ borderStyle: 'dashed' }}
+                                    onClick={state === 'done' ? () => jumpTo(idx) : undefined}
+                                >
+                                    <div className="cooking-card-top">
+                                        {state === 'done' && (
+                                            <span className="cooking-card-label"><Check size={13} strokeWidth={3} /> Recommended side · done</span>
+                                        )}
+                                        {state === 'current' && (
+                                            <span className="cooking-card-label is-accent"><ChefHat size={13} /> Recommended side · {carbChoice?.label}</span>
+                                        )}
+                                        {state === 'upcoming' && (
+                                            <span className="cooking-card-label">{isNext ? 'Up next' : 'Side dish'}</span>
+                                        )}
+                                    </div>
+                                    {phaseCount > 1 && (
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                                            Phase {item.phaseIndex + 1} of {phaseCount} · {phase.name}
+                                        </p>
+                                    )}
+                                    <p className={`cooking-card-text is-${state}`}>{text}</p>
+                                    {state === 'current' && (
+                                        <div className="cooking-current-hint">
+                                            {carbTimer
+                                                ? <>Start the timer below, then carry on with <strong>Step {item.stepIndex + 1} · main dish</strong> — the side runs in the background{nextPending ? `, and its next phase (${nextPending.name}) comes up later` : ''}</>
+                                                : <>Do this as the last step finishes, then move on below</>}
+                                        </div>
+                                    )}
+                                </div>
+                                {carbTimer && renderTimerTab(carbTimer, state)}
                             </div>
                         )
                     }
@@ -2996,19 +3399,65 @@ export default function RecipeDetail() {
                                         {current ? (
                                             current.kind === 'prep'
                                                 ? <>Prep work</>
-                                                : <>Step {current.stepIndex + 1} of {instructions.length}</>
+                                                : current.kind === 'carb'
+                                                    ? <>Side · {(carbChoice?.phases || [])[current.phaseIndex]?.name || carbChoice?.label}</>
+                                                    : <>Step {current.stepIndex + 1} of {instructions.length}</>
                                         ) : 'Cooking'}
                                     </div>
+                                    {/* Sticky side-status pill: shows which side
+                                        phase is running/next so the parallel
+                                        lane stays glanceable anywhere */}
+                                    {carbChoice?.phases?.some((p: any) => p.timerId) && (() => {
+                                        const phases = carbChoice.phases as any[]
+                                        const live = phases.find((p: any) => ['active', 'paused', 'overdue'].includes(getTimerStatus(p.timerId)))
+                                        const shownTimer = live ? activeSession[live.timerId] : undefined
+                                        if (live) {
+                                            const remaining = shownTimer ? getRemaining(shownTimer, nowMs) : live.minutes * 60
+                                            return (
+                                                <button
+                                                    className="cooking-side-pill"
+                                                    onClick={() => {
+                                                        const fi = flowItems.findIndex(f => f.kind === 'carb' && carbChoice.phases[f.phaseIndex]?.timerId === live.timerId)
+                                                        if (fi >= 0) jumpTo(fi)
+                                                    }}
+                                                    title={'Side: ' + live.name}
+                                                >
+                                                    <ChefHat size={11} />
+                                                    <span>{carbChoice.label}: {live.name}</span>
+                                                    <strong>{formatCountdown(remaining)}</strong>
+                                                </button>
+                                            )
+                                        }
+                                        const pending = phases.find((p: any) => p.timerId && !['completed', 'overdue'].includes(getTimerStatus(p.timerId)))
+                                        if (!pending) return null
+                                        return (
+                                            <button
+                                                className="cooking-side-pill is-pending"
+                                                onClick={() => {
+                                                    const fi = flowItems.findIndex(f => f.kind === 'carb' && carbChoice.phases[f.phaseIndex]?.timerId === pending.timerId)
+                                                    if (fi >= 0) jumpTo(fi)
+                                                }}
+                                            >
+                                                <ChefHat size={11} />
+                                                <span>{carbChoice.label}: {pending.name}</span>
+                                                <strong>start?</strong>
+                                            </button>
+                                        )
+                                    })()}
                                     <div className="cooking-progress">
                                         {flowItems.map((item, idx) => {
                                             const segDone = idx < clampedCurrent || doneFlow.has(idx)
                                             const segCurrent = idx === clampedCurrent
-                                            const label = item.kind === 'prep' ? 'Prep work' : `Step ${item.stepIndex + 1}`
+                                            const label = item.kind === 'prep'
+                                                ? 'Prep work'
+                                                : item.kind === 'carb'
+                                                    ? `${carbChoice?.label || 'Side'}: ${carbChoice?.phases?.[item.phaseIndex]?.name || 'phase'}`
+                                                    : `Step ${item.stepIndex + 1}`
                                             return (
                                                 <button
                                                     key={idx}
                                                     onClick={() => jumpTo(idx)}
-                                                    className={`cooking-progress-seg ${segDone ? 'is-done' : ''} ${segCurrent ? 'is-current' : ''}`}
+                                                    className={`cooking-progress-seg ${item.kind === 'carb' ? 'is-side' : ''} ${segDone ? 'is-done' : ''} ${segCurrent ? 'is-current' : ''}`}
                                                     title={label}
                                                     aria-label={label}
                                                 />
@@ -3028,7 +3477,9 @@ export default function RecipeDetail() {
                                         const isNext = idx === clampedCurrent + 1
                                         return item.kind === 'prep'
                                             ? renderPrepCard(idx, state)
-                                            : renderStepCard(item, idx, state, isNext)
+                                            : item.kind === 'carb'
+                                                ? renderCarbCard(item, idx, state, isNext)
+                                                : renderStepCard(item, idx, state, isNext)
                                     })}
                                     {flowItems.length === 0 && (
                                         <div className="cooking-empty">This recipe has no steps yet.</div>

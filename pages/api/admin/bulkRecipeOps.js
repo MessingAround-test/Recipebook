@@ -7,6 +7,7 @@ import { callGroqChat, generatePollinationsImage, generateGeminiImage } from '..
 import { saveRecipeImages } from '../../../lib/recipeImageServer';
 import { normalizeExtractedIngredients, normalizePrepWords } from '../../../lib/recipeNormalize';
 import { quantity_unit_conversions } from '../../../lib/conversion';
+import { analyzeCarbSideForRecipe } from '../../../lib/carbSideServer';
 import {
     buildPrepWorkMessages,
     buildTimerMessages,
@@ -30,6 +31,7 @@ const toAmount = (val) => {
  *  - "normalize": resolve units + move prep words from ingredient names into notes
  *  - "prep": extract prep work steps via AI (merges with custom items)
  *  - "timers": extract cooking timers via AI
+ *  - "carbside": run the carb side-dish analysis (AI + timing math)
  *  - "image": generate recipe art via Pollinations anonymous tier (Gemini fallback) */
 async function runOp(recipe, op) {
     if (op === 'normalize') {
@@ -104,6 +106,18 @@ async function runOp(recipe, op) {
         return { message: `Saved ${newTimers.length} timers`, timerCount: newTimers.length };
     }
 
+    if (op === 'carbside') {
+        const result = await analyzeCarbSideForRecipe(recipe, { force: false });
+        if (result.skipped) {
+            return { message: recipe.carbSide?.analysis?.alreadyInInstructions
+                ? 'Already analyzed — carb step exists in the recipe'
+                : 'Already analyzed', alreadyIn: recipe.carbSide?.analysis?.alreadyInInstructions === true };
+        }
+        const alreadyIn = result.carbSide.analysis?.alreadyInInstructions === true;
+        const needs = result.carbSide.needs === true;
+        return { message: alreadyIn ? 'Analyzed — carb already in recipe steps' : needs ? 'Analyzed — needs a carb side' : 'Analyzed — no carb side needed', alreadyIn };
+    }
+
     if (op === 'image') {
         const promptMessages = [
             {
@@ -159,6 +173,10 @@ export default async function handler(req, res) {
                     prepChecked: '$prepWorkChecked',
                     timerCount: { $size: { $ifNull: ['$cookingTimers', []] } },
                     timersChecked: '$timersChecked',
+                    carbExists: { $gt: ['$carbSide.state', null] },
+                    carbNeeds: '$carbSide.needs',
+                    carbState: '$carbSide.state',
+                    carbAlreadyIn: '$carbSide.analysis.alreadyInInstructions',
                     image: '$hasImage'
                 } },
                 { $sort: { name: 1 } }
@@ -171,7 +189,7 @@ export default async function handler(req, res) {
             if (!recipeId || !op) {
                 return res.status(400).json({ success: false, message: 'Missing recipeId or op' });
             }
-            if (!['normalize', 'prep', 'timers', 'image'].includes(op)) {
+            if (!['normalize', 'prep', 'timers', 'carbside', 'image'].includes(op)) {
                 return res.status(400).json({ success: false, message: `Unsupported op: ${op}` });
             }
 
@@ -181,12 +199,13 @@ export default async function handler(req, res) {
             }
 
             const result = await runOp(recipe, op);
-            const fresh = await Recipe.findOne({ _id: recipeId }).select('prepWorkChecked cookingTimers ingredients prepWork hasImage').lean();
+            const fresh = await Recipe.findOne({ _id: recipeId }).select('prepWorkChecked cookingTimers ingredients prepWork hasImage carbSide').lean();
             return res.status(200).json({
                 success: true,
                 message: result.message,
                 hasPrep: (fresh.prepWork || []).length > 0 || fresh.prepWorkChecked === true,
                 hasTimers: (fresh.cookingTimers || []).length > 0 || fresh.timersChecked === true,
+                hasCarb: fresh.carbSide?.state === 'analyzed',
                 hasImage: Boolean(fresh.hasImage)
             });
         }

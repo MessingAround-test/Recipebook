@@ -19,6 +19,11 @@ const UserSchema = new mongoose.Schema(
     target_weight_kg: { type: Number },
     weekly_goal_kg: { type: Number },
     health_score_config: { type: mongoose.Schema.Types.Mixed },
+    carbHistory: [new mongoose.Schema({
+        type: { type: String, required: true },
+        variant: String,
+        at: { type: Date, default: Date.now }
+    }, { _id: false })],
 
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }

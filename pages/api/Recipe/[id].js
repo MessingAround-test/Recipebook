@@ -108,8 +108,47 @@ export default async function handler(req, res) {
         if (req.body.carbType !== undefined) updateData.carbType = req.body.carbType;
         if (req.body.servings !== undefined) updateData.servings = req.body.servings;
         if (req.body.sourceUrl !== undefined) updateData.sourceUrl = req.body.sourceUrl;
+        // carbSide comes from the editor as the user-facing subset; the
+        // analysis portion is server-owned and only written by the
+        // analyze endpoint / bulk op. Handled after the main update since
+        // $unset can't be part of a $set document.
+        if (req.body.carbSide !== undefined) {
+          if (req.body.carbSide === null) {
+            await Recipe.collection.updateOne({ _id: new mongoose.Types.ObjectId(recipe_id) }, { $unset: { carbSide: '' } });
+          } else {
+            const src = req.body.carbSide;
+            const existing = RecipeData.carbSide && typeof RecipeData.carbSide === 'object' ? RecipeData.carbSide : null;
+            let nextCarbSide;
+            if (src.needs === true) {
+              // Editor marks: pending analysis (tracking whether anything actually
+              // changed so the AI isn't re-run pointlessly)
+              nextCarbSide = {
+                needs: true,
+                state: 'pending',
+                type: typeof src.type === 'string' ? src.type.trim() : '',
+                customName: typeof src.customName === 'string' && src.customName.trim() ? src.customName.trim() : undefined
+              };
+            } else {
+              // needs false: AI/user says no carb side — keep it "analyzed"
+              // with the note when an analysis exists, otherwise a bare mark
+              nextCarbSide = existing && existing.state === 'analyzed'
+                ? { ...existing, needs: false }
+                : { needs: false, state: 'analyzed' };
+            }
+            // Also keep prior analysis when the user's marks are unchanged
+            // (saves re-running the AI for unrelated edits)
+            if (existing
+              && existing.state === 'analyzed'
+              && existing.needs === nextCarbSide.needs
+              && existing.type === nextCarbSide.type
+              && (existing.customName || '') === (nextCarbSide.customName || '')) {
+              nextCarbSide = existing;
+            }
+            await Recipe.updateOne({ _id: recipe_id }, { $set: { carbSide: nextCarbSide } });
+          }
+        }
 
-        if (Object.keys(updateData).length === 0) {
+        if (Object.keys(updateData).length === 0 && req.body.carbSide === undefined && req.body.image === undefined) {
           return res.status(400).json({ res: "No data provided to update" })
         }
 
@@ -130,8 +169,7 @@ export default async function handler(req, res) {
     } catch (e) {
       console.log(e)
       return res.status(400).json({ res: "Failed request: " + e.message })
-    }
-  } else if (req.method === "DELETE") {
+    }  } else if (req.method === "DELETE") {
     await dbConnect()
 
     let db_id = decoded.id

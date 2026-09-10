@@ -12,10 +12,14 @@ type RecipeRow = {
     prepChecked: boolean
     timerCount: number
     timersChecked: boolean
+    carbExists?: boolean
+    carbNeeds?: boolean
+    carbState?: string
+    carbAlreadyIn?: boolean
     image?: boolean
 }
 
-type OpKind = 'normalize' | 'prep' | 'timers' | 'image'
+type OpKind = 'normalize' | 'prep' | 'timers' | 'carbside' | 'image'
 type RowStatus = 'idle' | 'running' | 'done' | 'error'
 
 const OPS: { op: OpKind; label: string; confirm?: (count: number) => string }[] = [
@@ -26,6 +30,7 @@ const OPS: { op: OpKind; label: string; confirm?: (count: number) => string }[] 
     },
     { op: 'prep', label: 'Extract Prep Steps' },
     { op: 'timers', label: 'Extract Timers' },
+    { op: 'carbside', label: 'Analyze Carb Sides' },
     {
         op: 'image',
         label: 'Generate Images',
@@ -84,14 +89,17 @@ export default function BulkRecipeTools() {
 
     const hasPrep = (r: RecipeRow) => r.prepCount > 0 || r.prepChecked === true
     const hasTimers = (r: RecipeRow) => r.timerCount > 0 || r.timersChecked === true
+    // Carb tick: the AI decision has been recorded (needed or not needed)
+    const hasCarb = (r: RecipeRow) => r.carbState === 'analyzed'
     const hasImage = (r: RecipeRow) => r.image === true
 
     // Column header click: select every recipe that does NOT have a tick on that column
-    const selectMissing = (col: 'ingred' | 'prep' | 'timers' | 'image') => {
+    const selectMissing = (col: 'ingred' | 'prep' | 'timers' | 'carb' | 'image') => {
         const missing = recipes.filter(r =>
             col === 'ingred' ? r.ingredCount === 0
             : col === 'prep' ? !hasPrep(r)
             : col === 'timers' ? !hasTimers(r)
+            : col === 'carb' ? !hasCarb(r)
             : !hasImage(r)
         )
         if (missing.length === 0) {
@@ -134,6 +142,7 @@ export default function BulkRecipeTools() {
                         ? { ...r,
                             ...(data.hasPrep !== undefined ? { prepChecked: data.hasPrep } : {}),
                             ...(data.hasTimers !== undefined ? { timersChecked: data.hasTimers } : {}),
+                            ...(data.hasCarb !== undefined ? { carbState: data.hasCarb ? 'analyzed' : 'pending' } : {}),
                             ...(data.hasImage !== undefined ? { image: data.hasImage } : {})
                         }
                         : r))
@@ -219,6 +228,11 @@ export default function BulkRecipeTools() {
                                         className="px-3 py-2.5 w-20 text-center cursor-pointer select-none underline decoration-dotted underline-offset-4 hover:text-white transition-colors"
                                     >Timing</th>
                                     <th
+                                        onClick={() => selectMissing('carb')}
+                                        title="Click to select all recipes marked as needing a carb side that haven't been analyzed"
+                                        className="px-3 py-2.5 w-20 text-center cursor-pointer select-none underline decoration-dotted underline-offset-4 hover:text-white transition-colors"
+                                    >Carb side</th>
+                                    <th
                                         onClick={() => selectMissing('image')}
                                         title="Click to select all recipes without an image"
                                         className="px-3 py-2.5 w-20 text-center cursor-pointer select-none underline decoration-dotted underline-offset-4 hover:text-white transition-colors"
@@ -250,6 +264,11 @@ export default function BulkRecipeTools() {
                                                 ? <Check size={16} className="inline text-emerald-400" strokeWidth={3} />
                                                 : <span className="text-muted-foreground">—</span>}
                                         </td>
+                                        <td className="px-3 py-2 text-center" title={recipe.carbAlreadyIn ? 'Carb step already exists in the recipe' : ''}>
+                                            {hasCarb(recipe)
+                                                ? <Check size={16} className={`inline ${recipe.carbNeeds === true ? 'text-emerald-400' : 'text-muted-foreground'}`} strokeWidth={3} />
+                                                : <span className="text-muted-foreground">—</span>}
+                                        </td>
                                         <td className="px-3 py-2 text-center">
                                             {hasImage(recipe)
                                                 ? <Check size={16} className="inline text-emerald-400" strokeWidth={3} />
@@ -264,7 +283,7 @@ export default function BulkRecipeTools() {
                                 ))}
                                 {recipes.length === 0 && (
                                     <tr>
-                                        <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">No recipes found</td>
+                                        <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">No recipes found</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -274,6 +293,7 @@ export default function BulkRecipeTools() {
 
                 <p className="mt-3 text-xs text-muted-foreground">
                     Prep / Timing / Image ticks mean the recipe already has prep work / timers / AI art saved.
+                    Carb side tick = the AI has decided for that recipe (green = needs a carb side, grey = decided it doesn't — click the header to select every recipe without a decision yet).
                     Extract ops overwrite existing data. Normalise rewrites ingredient names/units and moves prep words into notes.
                     Click a column heading to select all recipes missing that item.
                     Image generation uses the Pollinations anonymous tier (~15s per image) with Gemini fallback.

@@ -32,6 +32,7 @@ export interface SaveRecipePayload {
     genre?: string
     mealTypes?: string[]
     carbType?: string
+    carbSide?: { needs: boolean; type?: string; customName?: string } | null
     servings?: number
     hidden?: boolean
     sourceUrl?: string
@@ -160,6 +161,7 @@ export const saveRecipe = async (payload: SaveRecipePayload): Promise<any> => {
             genre: payload.genre || undefined,
             mealTypes: payload.mealTypes,
             carbType: payload.carbType || undefined,
+            carbSide: payload.carbSide !== undefined ? payload.carbSide : undefined,
             servings: payload.servings,
             hidden: payload.hidden,
             sourceUrl: payload.sourceUrl || undefined,

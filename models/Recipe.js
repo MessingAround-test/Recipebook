@@ -44,6 +44,29 @@ const cookingTimerSchema = new mongoose.Schema({
     notes: { type: String }
 }, { _id: false })
 
+const carbSideSchema = new mongoose.Schema({
+    needs: { type: Boolean, default: false },
+    state: { type: String, enum: ['pending', 'analyzed'], default: 'pending' },
+    type: { type: String },
+    customName: { type: String },
+    stepText: { type: String },
+    phases: [new mongoose.Schema({
+        name: { type: String, required: true },
+        minutes: { type: Number, default: 0 },
+        instruction: { type: String, default: '' },
+        insertAfter: { type: Number }
+    }, { _id: false })],
+    timeMinutes: { type: Number },
+    insertAfter: { type: Number },
+    analysis: {
+        alreadyInInstructions: { type: Boolean },
+        matchedStepIndex: { type: Number },
+        note: { type: String }
+    },
+    analyzedAt: { type: Date },
+    analysisModel: { type: String }
+}, { _id: false })
+
 const RecipeSchema = new mongoose.Schema(
     {
         creator_username: { type: String, index: true, required: false },
@@ -64,6 +87,7 @@ const RecipeSchema = new mongoose.Schema(
         genre: { type: String, required: false },
         mealTypes: { type: [String], required: false },
         carbType: { type: String, enum: ['Rice', 'Bread/Wraps', 'Pasta/Noodles', 'Potato', 'Quinoa', 'None/Other'], required: false },
+        carbSide: carbSideSchema,
         priceCategory: { type: String, enum: ['cheap', 'medium', 'expensive'], required: false },
         timesCooked: { type: Number, default: 0 },
         hidden: { type: Boolean, default: false },

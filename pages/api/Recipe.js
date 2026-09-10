@@ -43,7 +43,8 @@ export default async function handler(req, res) {
           carbType: req.body.carbType,
           servings: req.body.servings,
           hidden: req.body.hidden,
-          sourceUrl: req.body.sourceUrl
+          sourceUrl: req.body.sourceUrl,
+          carbSide: sanitizeCarbSideInput(req.body.carbSide)
         });
         if (req.body.image) {
           await saveRecipeImages(response._id, req.body.image)
@@ -57,5 +58,21 @@ export default async function handler(req, res) {
     }
   } catch (error) {
     return res.status(500).json({ success: false, message: "Internal Server Error: " + error.message });
+  }
+}
+
+/** Normalises the client-supplied carbSide block on create. Analysis happens
+ *  separately (auto on view / bulk op), so a create only carries the marks
+ *  the user made in the editor. */
+function sanitizeCarbSideInput(carbSide) {
+  if (carbSide === null) return undefined
+  const src = carbSide && typeof carbSide === 'object' ? carbSide : {}
+  const needs = src.needs === true
+  if (!needs) return undefined
+  return {
+    needs: true,
+    state: 'pending',
+    type: typeof src.type === 'string' ? src.type.trim() : '',
+    customName: typeof src.customName === 'string' && src.customName.trim() ? src.customName.trim() : undefined
   }
 }
