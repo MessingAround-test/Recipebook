@@ -33,6 +33,15 @@ const priceLabelMap: Record<string, { label: string }> = {
 // as the "Change Image" badge so both read as one overlay system
 const CHIP_OVERLAY = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-black/60 text-white backdrop-blur-sm'
 
+function formatDuration(minutes: number) {
+    if (minutes > 60) {
+        const h = Math.floor(minutes / 60)
+        const m = minutes % 60
+        return m > 0 ? `${h}h ${m}m` : `${h}h`
+    }
+    return `${minutes} min`
+}
+
 function getPriceCategory(cost: number): 'cheap' | 'medium' | 'expensive' {
     if (cost < PRICE_THRESHOLDS.cheap) return 'cheap'
     if (cost <= PRICE_THRESHOLDS.expensive) return 'medium'
@@ -2242,7 +2251,7 @@ export default function RecipeDetail() {
                                                 })}
                                             </div>
                                             {instruction.time && (
-                                                <div className="mt-1 text-xs text-muted-foreground">~{instruction.time} min</div>
+                                                <div className="mt-1 text-xs text-muted-foreground">~{formatDuration(instruction.time)}</div>
                                             )}
                                         </div>
                                     </div>
@@ -2476,7 +2485,7 @@ export default function RecipeDetail() {
                                     {instructions.map((instruction: any, idx: number) => instruction.time ? (
                                         <div key={idx} className="px-3 py-1.5 rounded-lg bg-secondary/60 text-sm">
                                             <span className="font-semibold text-foreground/85">Step {idx + 1}</span>
-                                            <span className="text-muted-foreground ml-2">~{instruction.time} min</span>
+                                            <span className="text-muted-foreground ml-2">~{formatDuration(instruction.time)}</span>
                                         </div>
                                     ) : null)}
                                 </div>
@@ -2885,6 +2894,9 @@ export default function RecipeDetail() {
                         const sign = remaining < 0 ? '-' : ''
                         const abs = Math.abs(remaining)
                         const mins = Math.floor(abs / 60)
+                        if (abs > 3600) {
+                            return `${sign}${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, '0')}`
+                        }
                         const secs = abs % 60
                         return `${sign}${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
                     }
