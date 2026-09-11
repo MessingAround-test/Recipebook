@@ -1904,7 +1904,52 @@ export default function RecipeDetail() {
     )
 
     return (
-        <Layout title={recipeName || "Recipe"} hideMobileToolbar>
+        <Layout
+            title={recipeName || "Recipe"}
+            hideMobileToolbar
+            bottomBar={!isCookingMode && (
+                <nav className="recipe-nav" aria-label="Recipe sections">
+                    <button
+                        onClick={() => router.push('/recipes')}
+                        className="recipe-nav-back"
+                        title="Back to recipes"
+                        aria-label="Back to recipes"
+                    >
+                        <ChevronLeft size={17} />
+                    </button>
+                    <span className="recipe-nav-sep" aria-hidden />
+                    <button
+                        onClick={() => scrollToSection('top')}
+                        className={`recipe-nav-pill is-top ${activeSection === 'top' ? 'is-active' : ''}`}
+                        ref={(el) => { pillRefs.current['top'] = el }}
+                        title="Back to top"
+                        aria-label="Back to top"
+                    >
+                        <ChevronUp size={17} />
+                    </button>
+                    {navSections.map(s => (
+                        <button
+                            key={s.id}
+                            onClick={() => scrollToSection(s.id)}
+                            className={`recipe-nav-pill ${activeSection === s.id ? 'is-active' : ''}`}
+                            ref={(el) => { pillRefs.current[s.id] = el }}
+                            title={s.label}
+                            aria-label={s.label}
+                        >
+                            <s.icon size={17} />
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => { startCooking() }}
+                        className="recipe-nav-start"
+                        title="Start Cooking"
+                        aria-label="Start Cooking"
+                    >
+                        <ChefHat size={17} />
+                    </button>
+                </nav>
+            )}
+        >
             {/* Full-bleed wrapper: breaks out of the .container side padding on
                 desktop so the card colour reaches the viewport edges */}
             <div className="pb-4 min-[769px]:-mx-6">
@@ -4183,49 +4228,6 @@ export default function RecipeDetail() {
                     alsoSteps={popAlsoSteps}
                     onClose={closeIngredientPopup}
                 />
-            )}
-            {/* Section navigation — bottom taskbar: back, icon tabs, Start Cooking */}
-            {!isCookingMode && (
-                <nav className="recipe-nav" aria-label="Recipe sections">
-                    <button
-                        onClick={() => router.push('/recipes')}
-                        className="recipe-nav-back"
-                        title="Back to recipes"
-                        aria-label="Back to recipes"
-                    >
-                        <ChevronLeft size={17} />
-                    </button>
-                    <span className="recipe-nav-sep" aria-hidden />
-                    <button
-                        onClick={() => scrollToSection('top')}
-                        className={`recipe-nav-pill is-top ${activeSection === 'top' ? 'is-active' : ''}`}
-                        ref={(el) => { pillRefs.current['top'] = el }}
-                        title="Back to top"
-                        aria-label="Back to top"
-                    >
-                        <ChevronUp size={17} />
-                    </button>
-                    {navSections.map(s => (
-                        <button
-                            key={s.id}
-                            onClick={() => scrollToSection(s.id)}
-                            className={`recipe-nav-pill ${activeSection === s.id ? 'is-active' : ''}`}
-                            ref={(el) => { pillRefs.current[s.id] = el }}
-                            title={s.label}
-                            aria-label={s.label}
-                        >
-                            <s.icon size={17} />
-                        </button>
-                    ))}
-                    <button
-                        onClick={() => { startCooking() }}
-                        className="recipe-nav-start"
-                        title="Start Cooking"
-                        aria-label="Start Cooking"
-                    >
-                        <ChefHat size={17} />
-                    </button>
-                </nav>
             )}
         </Layout>
     )

@@ -1092,7 +1092,45 @@ export default function CreateRecipe() {
     ].filter(Boolean)
 
     return (
-        <Layout title={isEditMode ? "Edit Recipe" : "Create Recipe"} description={isEditMode ? "Modify your recipe" : "Add a new recipe to your collection"} hideMobileToolbar>
+        <Layout
+            title={isEditMode ? "Edit Recipe" : "Create Recipe"}
+            description={isEditMode ? "Modify your recipe" : "Add a new recipe to your collection"}
+            hideMobileToolbar
+            bottomBar={formPhase === 'builder' && (
+                <nav className="recipe-nav" aria-label="Recipe sections">
+                    <button
+                        onClick={isEditMode ? () => router.push(`/recipes/${id}`) : handleBack}
+                        className="recipe-nav-back"
+                        title={isEditMode ? 'Back to recipe' : 'Back to setup'}
+                        aria-label={isEditMode ? 'Back to recipe' : 'Back to setup'}
+                    >
+                        <ChevronLeft size={17} />
+                    </button>
+                    <span className="recipe-nav-sep" aria-hidden />
+                    {navSections.map(s => (
+                        <button
+                            key={s.id}
+                            onClick={() => scrollToSection(s.id)}
+                            className={`recipe-nav-pill ${activeSection === s.id ? 'is-active' : ''}`}
+                            ref={(el) => { pillRefs.current[s.id] = el }}
+                            title={s.label}
+                            aria-label={s.label}
+                        >
+                            <s.icon size={17} />
+                        </button>
+                    ))}
+                    <button
+                        onClick={onSubmitRecipe}
+                        disabled={loading}
+                        className="recipe-nav-save"
+                        title="Save recipe"
+                        aria-label="Save recipe"
+                    >
+                        {loading ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} />}
+                    </button>
+                </nav>
+            )}
+        >
             {formPhase === 'setup' ? (
                 /* =========================================================
                    Phase 1 — Setup: name the recipe, pick how to start
@@ -1656,40 +1694,6 @@ export default function CreateRecipe() {
                             )}
                         </div>
                     </div>
-
-                    {/* Bottom taskbar — back, sections, save (single bottom bar) */}
-                    <nav className="recipe-nav" aria-label="Recipe sections">
-                        <button
-                            onClick={isEditMode ? () => router.push(`/recipes/${id}`) : handleBack}
-                            className="recipe-nav-back"
-                            title={isEditMode ? 'Back to recipe' : 'Back to setup'}
-                            aria-label={isEditMode ? 'Back to recipe' : 'Back to setup'}
-                        >
-                            <ChevronLeft size={17} />
-                        </button>
-                        <span className="recipe-nav-sep" aria-hidden />
-                        {navSections.map(s => (
-                            <button
-                                key={s.id}
-                                onClick={() => scrollToSection(s.id)}
-                                className={`recipe-nav-pill ${activeSection === s.id ? 'is-active' : ''}`}
-                                ref={(el) => { pillRefs.current[s.id] = el }}
-                                title={s.label}
-                                aria-label={s.label}
-                            >
-                                <s.icon size={17} />
-                            </button>
-                        ))}
-                        <button
-                            onClick={onSubmitRecipe}
-                            disabled={loading}
-                            className="recipe-nav-save"
-                            title="Save recipe"
-                            aria-label="Save recipe"
-                        >
-                            {loading ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} />}
-                        </button>
-                    </nav>
                 </div>
             )}
             <IngredientPopover ingred={popIngredient} anchorRect={popIngredient ? new DOMRect(0, 80, window.innerWidth, 0) : null} onClose={() => setPopIngredient(null)} />

@@ -9,10 +9,11 @@ interface LayoutProps {
     title: string
     description?: string
     hideMobileToolbar?: boolean
+    bottomBar?: ReactNode
     children: ReactNode
 }
 
-export function Layout({ title, description = 'Premium Culinary Management', hideMobileToolbar = false, children }: LayoutProps) {
+export function Layout({ title, description = 'Premium Culinary Management', hideMobileToolbar = false, bottomBar, children }: LayoutProps) {
     return (
         <div className={styles.wrapper}>
             <Toolbar hideMobile={hideMobileToolbar} />
@@ -36,6 +37,8 @@ export function Layout({ title, description = 'Premium Culinary Management', hid
                 <footer className={styles.footer}>
                     &copy; {new Date().getFullYear()} Recipebook &bull; v{versionData.version}
                 </footer>
+
+                {bottomBar}
             </div>
         </div>
     )
