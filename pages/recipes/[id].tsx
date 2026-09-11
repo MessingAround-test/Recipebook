@@ -13,6 +13,7 @@ import IngredientPopover from '../../components/IngredientPopover'
 import PillRow from '../../components/PillRow'
 import Modal from 'react-modal'
 import ExportRecipeModal from '../../components/ExportRecipeModal'
+import { getColorForName } from '../../lib/colors'
 
 const PRICE_THRESHOLDS = { cheap: 15, expensive: 35 }
 
@@ -28,14 +29,9 @@ const priceLabelMap: Record<string, { label: string }> = {
     expensive: { label: '$$$ Pricey' }
 }
 
-// Metadata chips are deliberately neutral — colour is reserved for state
-// (active nav, primary CTA, live timers). One accent, everything else calm.
-const CHIP_META = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-secondary text-foreground/80 border border-border/40'
 // Grey scrim + white text: sits over the hero image on phones, same treatment
 // as the "Change Image" badge so both read as one overlay system
 const CHIP_OVERLAY = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-black/60 text-white backdrop-blur-sm'
-// Category chips are a desktop-only nicety — mobile skips them entirely.
-const CHIP_META_DESKTOP = `${CHIP_META} hidden sm:inline-flex`
 
 function getPriceCategory(cost: number): 'cheap' | 'medium' | 'expensive' {
     if (cost < PRICE_THRESHOLDS.cheap) return 'cheap'
@@ -1949,16 +1945,41 @@ export default function RecipeDetail() {
                 {/* Hero Header — one reading layout with or without an image:
                     the image is a full-bleed banner and never changes text insets */}
                 <div className="bg-card text-card-foreground overflow-hidden mb-0">
-                    {imageData && (
+                    {imageData ? (
                         <div className="relative h-44 sm:h-64 md:h-80 w-full cursor-pointer group" onClick={handleClick} title="Change image">
                             <img src={imageData} alt={recipeName} className="w-full h-full object-cover" />
-                            <div className="absolute bottom-3 left-3 sm:hidden" onClick={(e) => e.stopPropagation()}>
+                            <div className="absolute bottom-3 left-3" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex flex-wrap gap-1.5">
                                     {renderCategoryChips(CHIP_OVERLAY)}
                                 </div>
                             </div>
                             <div className="absolute top-3 right-3 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                 <span className="bg-black/60 text-white text-[11px] px-2.5 py-1 rounded-full backdrop-blur-sm font-semibold">Change Image</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div
+                            className="relative h-44 w-full cursor-pointer group"
+                            onClick={handleClick}
+                            title="Add image"
+                            style={{ backgroundColor: getColorForName(recipeName) }}
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-transparent to-black/30 pointer-events-none" />
+                            <div className="absolute inset-0 flex items-center justify-center px-4 sm:px-8 pointer-events-none">
+                                <span
+                                    className="text-3xl sm:text-4xl text-white/90 text-center leading-tight drop-shadow-sm line-clamp-2"
+                                    style={{ fontFamily: 'var(--font-cursive)' }}
+                                >
+                                    {recipeName}
+                                </span>
+                            </div>
+                            <div className="absolute bottom-3 left-3" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {renderCategoryChips(CHIP_OVERLAY)}
+                                </div>
+                            </div>
+                            <div className="absolute top-3 right-3 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="bg-black/60 text-white text-[11px] px-2.5 py-1 rounded-full backdrop-blur-sm font-semibold">Add Image</span>
                             </div>
                         </div>
                     )}
@@ -1982,11 +2003,6 @@ export default function RecipeDetail() {
                                     )}
                                 </div>
                             )}
-                        </div>
-                        {/* With an image these chips move onto the photo on phones
-                            (black pills, bottom-left); the row below serves sm+ */}
-                        <div className={`flex flex-wrap gap-1.5 mt-3 ${imageData ? 'hidden sm:flex' : ''}`}>
-                            {renderCategoryChips(CHIP_META)}
                         </div>
                     </div>
 
@@ -2980,7 +2996,7 @@ export default function RecipeDetail() {
                                     </div>
                                     {state === 'current' ? (
                                         <>
-                                            <p className="cooking-card-text is-current">Quick prep run - get these ready first</p>
+                                            <p className="cooking-card-text is-current">Optional prep - get these ready first</p>
                                             {renderPrepContent()}
                                             {ticked === total && (
                                                 <div className="cooking-prep-all-done"><Check size={14} strokeWidth={3} /> All prep done — ready to cook</div>

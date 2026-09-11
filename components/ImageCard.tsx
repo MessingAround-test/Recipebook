@@ -2,6 +2,7 @@ import React from 'react'
 import { useRouter } from 'next/router'
 import { Button } from './ui/button'
 import { Flame, DollarSign, Clock, Utensils, Trash2, Eye, EyeOff } from 'lucide-react'
+import { getColorForName } from '../lib/colors'
 
 export interface Recipe {
     _id: string
@@ -62,17 +63,7 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
         else router.push(path)
     }
 
-    const stringToHslColor = (str: string, s: number, l: number) => {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            hash = str.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const h = hash % 360;
-        return `hsl(${h}, ${s}%, ${l}%)`;
-    }
-
     const imageUrl = recipe.image ?? (recipe.hasImage ? `/api/Recipe/${recipe._id}/image?q=thumb` : undefined)
-    const dynamicBgColor = imageUrl ? 'transparent' : stringToHslColor(recipe.name, 40, 30);
     const isRecipesPage = currentPath.includes('recipes');
 
     const totalMinutes = (recipe.instructions || []).reduce((sum, i) => sum + (i.time || 0), 0)
@@ -109,10 +100,15 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
                 ) : (
                     <div
                         className="w-full h-full flex items-center justify-center relative"
-                        style={{ background: `linear-gradient(135deg, ${dynamicBgColor}, ${stringToHslColor(recipe.name, 40, 20)})` }}
+                        style={{ backgroundColor: getColorForName(recipe.name) }}
                     >
-                        <Utensils size={40} className="text-white/10" />
-
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-transparent to-black/30 pointer-events-none" />
+                        <span
+                            className="relative px-3 pb-8 text-center text-white/85 leading-tight line-clamp-2 pointer-events-none"
+                            style={{ fontFamily: 'var(--font-cursive)' }}
+                        >
+                            {recipe.name}
+                        </span>
                         {currentPath.includes('shoppingList') && (
                             <div className="absolute bottom-2 right-2 bg-black/40 backdrop-blur-md px-2 py-1 rounded-lg text-[10px] font-bold text-white uppercase border border-white/10">
                                 {recipe.cost !== undefined ? `$${recipe.cost.toFixed(2)}` : '?'}

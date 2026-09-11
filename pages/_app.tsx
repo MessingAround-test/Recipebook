@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import type { AppProps } from 'next/app'
-import { Lora } from 'next/font/google'
+import { Lora, Dancing_Script } from 'next/font/google'
 import '../styles/tw-animate.css'
 import '../styles/shadcn-tailwind.css'
 import '../styles/globals.css'
@@ -12,12 +12,20 @@ const lora = Lora({
     variable: '--font-reading'
 })
 
+// Cursive font for recipe titles over the hashed-colour hero banner
+const dancingScript = Dancing_Script({
+    subsets: ['latin'],
+    weight: ['400', '500', '600', '700'],
+    variable: '--font-cursive'
+})
+
 function MyApp({ Component, pageProps }: AppProps) {
     useEffect(() => {
         // Register the reading font family at :root so html/body/indexed
         // portals all inherit it (the variable class alone only covers the
         // wrapper div's subtree)
         document.documentElement.style.setProperty('--font-reading', lora.style.fontFamily)
+        document.documentElement.style.setProperty('--font-cursive', dancingScript.style.fontFamily)
     }, [])
 
     useEffect(() => {
@@ -31,7 +39,7 @@ function MyApp({ Component, pageProps }: AppProps) {
     }, [])
 
     return (
-        <div className={lora.variable}>
+        <div className={`${lora.variable} ${dancingScript.variable}`}>
             <Component {...pageProps} />
         </div>
     )
