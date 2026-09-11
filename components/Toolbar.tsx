@@ -6,7 +6,7 @@ import styles from '../styles/Toolbar.module.css'
 import { HiOutlineCog } from 'react-icons/hi'
 import { useRouter } from 'next/router'
 
-export function Toolbar() {
+export function Toolbar({ hideMobile = false }: { hideMobile?: boolean }) {
     const router = useRouter();
 
     const isActive = (path: string) => {
@@ -15,7 +15,7 @@ export function Toolbar() {
     };
 
     return (
-        <header className={styles.Container}>
+        <header className={`${styles.Container} ${hideMobile ? styles.hide_mobile : ''}`}>
             <nav className={styles.nav_wrapper}>
                 <Link href="/" className={styles.brand}>BRYNS GARBAGE</Link>
 

@@ -8,14 +8,15 @@ import versionData from '../version.json'
 interface LayoutProps {
     title: string
     description?: string
+    hideMobileToolbar?: boolean
     children: ReactNode
 }
 
-export function Layout({ title, description = 'Premium Culinary Management', children }: LayoutProps) {
+export function Layout({ title, description = 'Premium Culinary Management', hideMobileToolbar = false, children }: LayoutProps) {
     return (
         <div className={styles.wrapper}>
-            <Toolbar />
-            <div className={styles.container}>
+            <Toolbar hideMobile={hideMobileToolbar} />
+            <div className={`${styles.container} ${hideMobileToolbar ? styles.noMobileToolbar : ''}`}>
                 <Head>
                     <title>{`${title} | Recipebook`}</title>
                     <meta name="description" content={description} />

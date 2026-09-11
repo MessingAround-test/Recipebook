@@ -2,7 +2,7 @@ import { Layout } from '../../components/Layout'
 import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
 import { formatQuantityDisplay } from '../../lib/fractionFormat'
 import { Button } from '../../components/ui/button'
-import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Slice, Users, Download, Info, Hourglass } from 'lucide-react'
+import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Users, Download, Info, Hourglass } from 'lucide-react'
 import { computePhaseInsertPoints, fillCarbPhaseText, recommendCarbOption, resolveCarbSlot, resolveCarbTiming, resolveVariant } from '../../lib/carbSideOps'
 import Router, { useRouter } from 'next/router'
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
@@ -400,9 +400,7 @@ export default function RecipeDetail() {
     const pillRefs = useRef<Record<string, HTMLButtonElement | null>>({})
     const navSections = useMemo(() => [
         { id: 'ingredients', label: 'Ingredients', icon: ShoppingBasket },
-        { id: 'prep', label: 'Prep', icon: Slice },
         ...(instructions.length > 0 ? [{ id: 'instructions', label: 'Steps', icon: ListOrdered }] : []),
-        { id: 'timers', label: 'Timers', icon: Clock },
         { id: 'feedback', label: 'Notes', icon: MessageSquare },
         { id: 'nutrients', label: 'Nutrition', icon: Sparkles }
     ], [instructions.length])
@@ -1823,7 +1821,7 @@ export default function RecipeDetail() {
 
     if (recipe === undefined) {
         return (
-            <Layout title="Recipes">
+            <Layout title="Recipes" hideMobileToolbar>
                 <div className="flex h-[50vh] items-center justify-center">
                     <p className="text-muted-foreground text-xl">Loading recipe {id}...</p>
                 </div>
@@ -1906,39 +1904,7 @@ export default function RecipeDetail() {
     )
 
     return (
-        <Layout title={recipeName || "Recipe"}>
-            {/* Section navigation — sticky icon tabs + always-available Start Cooking */}
-            <nav className="recipe-nav" aria-label="Recipe sections">
-                <button
-                    onClick={() => scrollToSection('top')}
-                    className={`recipe-nav-pill is-top ${activeSection === 'top' ? 'is-active' : ''}`}
-                    ref={(el) => { pillRefs.current['top'] = el }}
-                    title="Back to top"
-                    aria-label="Back to top"
-                >
-                    <ChevronUp size={17} />
-                </button>
-                {navSections.map(s => (
-                    <button
-                        key={s.id}
-                        onClick={() => scrollToSection(s.id)}
-                        className={`recipe-nav-pill ${activeSection === s.id ? 'is-active' : ''}`}
-                        ref={(el) => { pillRefs.current[s.id] = el }}
-                        title={s.label}
-                        aria-label={s.label}
-                    >
-                        <s.icon size={17} />
-                    </button>
-                ))}
-                <button
-                                onClick={() => { startCooking() }}
-                    className="recipe-nav-start"
-                    title="Start Cooking"
-                    aria-label="Start Cooking"
-                >
-                    <ChefHat size={17} />
-                </button>
-            </nav>
+        <Layout title={recipeName || "Recipe"} hideMobileToolbar>
             {/* Full-bleed wrapper: breaks out of the .container side padding on
                 desktop so the card colour reaches the viewport edges */}
             <div className="pb-4 min-[769px]:-mx-6">
@@ -4217,6 +4183,49 @@ export default function RecipeDetail() {
                     alsoSteps={popAlsoSteps}
                     onClose={closeIngredientPopup}
                 />
+            )}
+            {/* Section navigation — bottom taskbar: back, icon tabs, Start Cooking */}
+            {!isCookingMode && (
+                <nav className="recipe-nav" aria-label="Recipe sections">
+                    <button
+                        onClick={() => router.push('/recipes')}
+                        className="recipe-nav-back"
+                        title="Back to recipes"
+                        aria-label="Back to recipes"
+                    >
+                        <ChevronLeft size={17} />
+                    </button>
+                    <span className="recipe-nav-sep" aria-hidden />
+                    <button
+                        onClick={() => scrollToSection('top')}
+                        className={`recipe-nav-pill is-top ${activeSection === 'top' ? 'is-active' : ''}`}
+                        ref={(el) => { pillRefs.current['top'] = el }}
+                        title="Back to top"
+                        aria-label="Back to top"
+                    >
+                        <ChevronUp size={17} />
+                    </button>
+                    {navSections.map(s => (
+                        <button
+                            key={s.id}
+                            onClick={() => scrollToSection(s.id)}
+                            className={`recipe-nav-pill ${activeSection === s.id ? 'is-active' : ''}`}
+                            ref={(el) => { pillRefs.current[s.id] = el }}
+                            title={s.label}
+                            aria-label={s.label}
+                        >
+                            <s.icon size={17} />
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => { startCooking() }}
+                        className="recipe-nav-start"
+                        title="Start Cooking"
+                        aria-label="Start Cooking"
+                    >
+                        <ChefHat size={17} />
+                    </button>
+                </nav>
             )}
         </Layout>
     )

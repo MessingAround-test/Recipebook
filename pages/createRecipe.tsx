@@ -1092,7 +1092,7 @@ export default function CreateRecipe() {
     ].filter(Boolean)
 
     return (
-        <Layout title={isEditMode ? "Edit Recipe" : "Create Recipe"} description={isEditMode ? "Modify your recipe" : "Add a new recipe to your collection"}>
+        <Layout title={isEditMode ? "Edit Recipe" : "Create Recipe"} description={isEditMode ? "Modify your recipe" : "Add a new recipe to your collection"} hideMobileToolbar>
             {formPhase === 'setup' ? (
                 /* =========================================================
                    Phase 1 — Setup: name the recipe, pick how to start
@@ -1299,41 +1299,6 @@ export default function CreateRecipe() {
                    Phase 2 — Builder: full-bleed sections like /recipes/[id]
                    ========================================================= */
                 <div className="min-[769px]:-mx-6 pb-4">
-                    {/* Sticky section nav — back, sections, save */}
-                    <nav className="recipe-nav" aria-label="Recipe sections">
-                        {!isEditMode && (
-                            <button
-                                onClick={handleBack}
-                                className="recipe-nav-pill"
-                                title="Back to setup"
-                                aria-label="Back to setup"
-                            >
-                                <ChevronLeft size={17} />
-                            </button>
-                        )}
-                        {navSections.map(s => (
-                            <button
-                                key={s.id}
-                                onClick={() => scrollToSection(s.id)}
-                                className={`recipe-nav-pill ${activeSection === s.id ? 'is-active' : ''}`}
-                                ref={(el) => { pillRefs.current[s.id] = el }}
-                                title={s.label}
-                                aria-label={s.label}
-                            >
-                                <s.icon size={17} />
-                            </button>
-                        ))}
-                        <button
-                            onClick={onSubmitRecipe}
-                            disabled={loading}
-                            className="recipe-nav-save"
-                            title="Save recipe"
-                            aria-label="Save recipe"
-                        >
-                            {loading ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} />}
-                        </button>
-                    </nav>
-
                     {/* Hero header: photo banner, inline title, counts */}
                     <header className="bg-card text-card-foreground overflow-hidden border-b border-border">
                         {imageData && (
@@ -1692,26 +1657,39 @@ export default function CreateRecipe() {
                         </div>
                     </div>
 
-                    {/* Sticky save bar: always one tap away */}
-                    <div className="sticky bottom-3 z-30 mt-6">
-                        <div className="recipe-band px-4 sm:px-8">
-                            <div className="flex items-center gap-3 rounded-2xl border border-border bg-background p-3 pl-4 shadow-2xl shadow-black/40">
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-bold text-foreground truncate">{recipeName.trim() || 'Untitled recipe'}</p>
-                                    <p className="text-[11px] text-muted-foreground tabular-nums">
-                                        {ingreds.length} ingredient{ingreds.length === 1 ? '' : 's'}· {instructions.length} step{instructions.length === 1 ? '' : 's'}
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={onSubmitRecipe}
-                                    disabled={loading}
-                                    className="h-12 px-5 sm:px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.99] shrink-0 disabled:opacity-50"
-                                >
-                                    {loading ? <><Loader2 size={16} className="animate-spin" /> {generatingImage ? 'Generating image\u2026' : 'Saving\u2026'}</> : <><Check size={16} /> Save recipe</>}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    {/* Bottom taskbar — back, sections, save (single bottom bar) */}
+                    <nav className="recipe-nav" aria-label="Recipe sections">
+                        <button
+                            onClick={isEditMode ? () => router.push(`/recipes/${id}`) : handleBack}
+                            className="recipe-nav-back"
+                            title={isEditMode ? 'Back to recipe' : 'Back to setup'}
+                            aria-label={isEditMode ? 'Back to recipe' : 'Back to setup'}
+                        >
+                            <ChevronLeft size={17} />
+                        </button>
+                        <span className="recipe-nav-sep" aria-hidden />
+                        {navSections.map(s => (
+                            <button
+                                key={s.id}
+                                onClick={() => scrollToSection(s.id)}
+                                className={`recipe-nav-pill ${activeSection === s.id ? 'is-active' : ''}`}
+                                ref={(el) => { pillRefs.current[s.id] = el }}
+                                title={s.label}
+                                aria-label={s.label}
+                            >
+                                <s.icon size={17} />
+                            </button>
+                        ))}
+                        <button
+                            onClick={onSubmitRecipe}
+                            disabled={loading}
+                            className="recipe-nav-save"
+                            title="Save recipe"
+                            aria-label="Save recipe"
+                        >
+                            {loading ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} />}
+                        </button>
+                    </nav>
                 </div>
             )}
             <IngredientPopover ingred={popIngredient} anchorRect={popIngredient ? new DOMRect(0, 80, window.innerWidth, 0) : null} onClose={() => setPopIngredient(null)} />

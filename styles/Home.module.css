@@ -10,6 +10,11 @@
     .container {
         padding: 0.75rem 0 5rem 0;
     }
+
+    /* Recipe pages drop the global bottom taskbar — no padding needed */
+    .noMobileToolbar {
+        padding-bottom: 0;
+    }
 }
 
 @media (max-width: 768px) {

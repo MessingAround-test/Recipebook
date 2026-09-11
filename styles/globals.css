@@ -481,12 +481,14 @@ a {
 
 /* ===================================================================
    Recipe detail page — calm neutral layout, single accent highlight.
-   Section nav: labelled pills, sticky under the desktop toolbar and
-   pinned to the top edge on mobile. Scroll-spy marks the active pill.
+   Section nav: labelled pills, pinned to the bottom edge of the screen
+   on desktop (pill) and as a full-width taskbar on mobile. It is the
+   last element in the page flow so sticky-bottom keeps it in view while
+   scrolling. Scroll-spy marks the active pill.
    =================================================================== */
 .recipe-nav {
   position: sticky;
-  top: calc(4.5rem + 0.5rem);
+  bottom: 0;
   z-index: 40;
   display: flex;
   align-items: center;
@@ -494,9 +496,7 @@ a {
   gap: 0.25rem;
   width: 100%;
   padding: 0.3125rem;
-  /* Top margin cancels the .container padding so the bar at page top sits
-     exactly where it sticks when scrolling (0.5rem below the toolbar). */
-  margin: -1rem 0 -1rem;
+  margin: 1rem 0 0;
   background: color-mix(in oklch, var(--background), transparent 20%);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -530,6 +530,42 @@ a {
 .recipe-nav-pill.is-active {
   color: var(--foreground);
   background: color-mix(in oklch, var(--foreground) 12%, transparent);
+}
+
+/* Back button — accent tint, clearly separated from the neutral
+   bookmarks by a divider so "leave the page" reads differently. */
+.recipe-nav-back {
+  flex: 0 0 auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--accent) 18%, transparent);
+  color: var(--accent);
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+}
+
+.recipe-nav-back:hover {
+  background: color-mix(in oklch, var(--accent) 28%, transparent);
+  color: var(--accent);
+}
+
+.recipe-nav-back:active {
+  transform: scale(0.94);
+}
+
+/* Vertical divider between the back button and the section bookmarks */
+.recipe-nav-sep {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 1.5rem;
+  margin: 0 0.25rem;
+  background: var(--border);
 }
 
 /* The single accent in the bar: Start Cooking */
@@ -602,20 +638,21 @@ a {
   }
 }
 
-/* Sections anchor cleanly below nav + toolbar when jumped to */
+/* Sections anchor cleanly below the desktop toolbar when jumped to */
 [data-section] {
-  scroll-margin-top: 9rem;
+  scroll-margin-top: 5.5rem;
 }
 
 @media (max-width: 768px) {
   .recipe-nav {
-    top: env(safe-area-inset-top, 0px);
-    /* Cancels the mobile .container top padding — pinned flush when scrolled */
-    margin: -0.75rem 0 -1.25rem;
+    bottom: 0;
+    /* In-flow at the end of the page — no negative margin needed */
+    margin: 0;
     padding: 0.375rem 0.25rem;
+    padding-bottom: calc(0.375rem + env(safe-area-inset-bottom, 0px));
     gap: 0.125rem;
     border: none;
-    border-bottom: 1px solid var(--border);
+    border-top: 1px solid var(--border);
     border-radius: 0;
     background: var(--background);
   }
@@ -624,6 +661,18 @@ a {
   .recipe-nav-pill {
     flex: 1 1 0;
     width: auto;
+  }
+
+  /* Back stays a fixed thumb, not a stretched tab — it's an exit, not a section */
+  .recipe-nav-back {
+    flex: 0 0 auto;
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .recipe-nav-sep {
+    height: 2rem;
+    margin: 0 0.125rem;
   }
 
   /* Slightly larger thumb target for the primary action */
@@ -643,7 +692,7 @@ a {
   }
 
   [data-section] {
-    scroll-margin-top: 4.5rem;
+    scroll-margin-top: 1rem;
   }
 }
 
