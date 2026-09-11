@@ -648,8 +648,11 @@ a {
     bottom: 0;
     /* In-flow at the end of the page — no negative margin needed */
     margin: 0;
-    padding: 0.375rem 0.25rem;
-    padding-bottom: calc(0.375rem + env(safe-area-inset-bottom, 0px));
+    /* Same overall height as the global mobile taskbar: 4.5rem + safe area */
+    min-height: 4.5rem;
+    box-sizing: content-box;
+    padding: 0 0.25rem;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     gap: 0.125rem;
     border: none;
     border-top: 1px solid var(--border);
