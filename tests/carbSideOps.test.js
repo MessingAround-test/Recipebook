@@ -10,6 +10,7 @@ const {
     findCarbType,
     findCarbMentionInInstructions,
     recommendCarbOption,
+    buildFlowItems,
     SEED_CARB_TYPES
 } = require('../lib/carbSideOps');
 
@@ -233,6 +234,48 @@ describe('computePhaseInsertPoints', () => {
 
     test('empty phases -> empty result', () => {
         expect(computePhaseInsertPoints(steps, [])).toEqual([]);
+    });
+});
+
+describe('buildFlowItems', () => {
+    // Chilli-style tail: 10 + 10 + 90 + 15 min — the couscous/rice case where
+    // every side phase anchors to the long cook or the final step.
+    const chilli = [{ Text: 'a', time: 10 }, { Text: 'b', time: 10 }, { Text: 'c', time: 90 }, { Text: 'd', time: 15 }];
+    const couscousSeed = SEED_CARB_TYPES.find(c => c.name === 'Couscous');
+
+    test('side phases stay in cooking order around their anchor step', () => {
+        // Both timed phases start partway through the 15-min final step
+        // (8 and 5 min before it ends); fluff (0 min) rides the very end.
+        const phases = computePhaseInsertPoints(chilli, resolveCarbTiming(couscousSeed, 'Couscous').phases);
+        expect(phases.map(p => p.insertAfter)).toEqual([3, 3, 3]);
+        const flow = buildFlowItems(chilli, [], { phases });
+        const labels = flow.map(it => it.kind === 'carb' ? `carb:${it.phaseIndex}` : `step:${it.stepIndex}`);
+        expect(labels).toEqual(['step:0', 'step:1', 'step:2', 'step:3', 'carb:0', 'carb:1', 'carb:2']);
+    });
+
+    test('a zero-minute phase renders after its step, at the very end', () => {
+        const riceSeed = SEED_CARB_TYPES.find(c => c.name === 'Rice');
+        const phases = computePhaseInsertPoints(chilli, resolveCarbTiming(riceSeed, 'White').phases);
+        expect(phases.map(p => p.insertAfter)).toEqual([2, 3, 3]);
+        const flow = buildFlowItems(chilli, [], { phases });
+        expect(flow[flow.length - 1]).toEqual({ kind: 'carb', stepIndex: 3, phaseIndex: 2, flowIndex: 6 });
+    });
+
+    test('prep card comes first when the recipe has prep work', () => {
+        const flow = buildFlowItems(chilli, [{ Text: 'chop' }], null);
+        expect(flow[0]).toEqual({ kind: 'prep', stepIndex: -1, flowIndex: 0 });
+        expect(flow[1]).toEqual({ kind: 'step', stepIndex: 0, flowIndex: 1 });
+    });
+
+    test('legacy single-insert carbChoice still renders before its step', () => {
+        const flow = buildFlowItems(chilli, [], { insertAfter: 2 });
+        expect(flow).toEqual([
+            { kind: 'step', stepIndex: 0, flowIndex: 0 },
+            { kind: 'step', stepIndex: 1, flowIndex: 1 },
+            { kind: 'carb', stepIndex: 2, phaseIndex: 0, flowIndex: 2 },
+            { kind: 'step', stepIndex: 2, flowIndex: 3 },
+            { kind: 'step', stepIndex: 3, flowIndex: 4 }
+        ]);
     });
 });
 

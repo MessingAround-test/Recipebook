@@ -14,7 +14,11 @@ const instructionsSchema = new mongoose.Schema(
         // InstructionN: {type: Number, required: true},
         Text: { type: String, required: true },
         time: { type: Number },
-        note: { type: String }
+        note: { type: String },
+        // How much attention the cook needs during this step:
+        // none = walk away, low = check in occasionally, active = hands-on.
+        // Edited by hand in the Timing section; unset shows nothing.
+        involvement: { type: String, enum: ['none', 'low', 'active'] }
     }
 )
 
@@ -37,6 +41,10 @@ const cookingTimerSchema = new mongoose.Schema({
     type: { type: String, enum: ['timer', 'checkpoint'], default: 'timer' },
     name: { type: String, required: true },
     duration: { type: Number, required: true },
+    // How much attention the cook needs during this timer:
+    // none = walk away, low = stay in the kitchen and check in occasionally,
+    // active = hands-on involvement. Defaults to the safe assumption.
+    involvement: { type: String, enum: ['none', 'low', 'active'], default: 'active' },
     dependencies: [timerDependencySchema],
     parentTimerId: { type: String },
     order: { type: Number, default: 0 },

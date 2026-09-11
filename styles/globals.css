@@ -1562,6 +1562,19 @@ a {
   color: var(--cooking-text-muted);
 }
 
+/* Involvement level tag on recipe timers: how much attention the cook needs.
+   low = amber, active = red; walk-away stays neutral — no colouring, active is
+   the assumed default and only check-in/walk-away are ever flagged. */
+.cooking-timer-tag.is-inv-low {
+  background: rgba(217, 119, 6, 0.14);
+  color: #d97706;
+}
+
+.cooking-timer-tag.is-inv-active {
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+}
+
 .cooking-timer-note {
   margin-top: 0.6rem;
   font-size: 0.75rem;
@@ -1836,6 +1849,20 @@ a {
 
 .cooking-progress-fill.is-wait {
   background: var(--cooking-wait);
+}
+
+/* Walk-away timers reuse the full waiting treatment once running: the
+   container carries is-wait, so blue fills without touching render code */
+.cooking-timer-tab.is-wait .cooking-progress-fill,
+.cooking-mgr-card.is-wait .cooking-progress-fill {
+  background: var(--cooking-wait);
+}
+
+/* Walk-away running timers: the primary Done ✓ follows the blue theme too */
+.cooking-timer-tab.is-wait .cooking-timer-btn.is-primary,
+.cooking-mgr-card.is-wait .cooking-timer-btn.is-primary {
+  background: var(--cooking-wait);
+  color: var(--cooking-wait-contrast);
 }
 
 /* Waiting side phase in the timers sheet */
