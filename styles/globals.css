@@ -17,7 +17,7 @@ html,
 body {
   padding: 0;
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-reading, Georgia), 'Times New Roman', ui-serif, serif;
   background-color: var(--background);
   color: var(--foreground);
   min-height: 100vh;
@@ -1104,6 +1104,12 @@ a {
   border-radius: 2px;
 }
 
+/* Reading font for step/instruction text (Lora loaded via next/font in _app) */
+.step-font {
+  font-family: var(--font-reading, Georgia), 'Times New Roman', ui-serif, serif;
+  letter-spacing: 0.01em;
+}
+
 /* ---------- Cards ---------- */
 .cooking-card {
   flex-shrink: 0;
@@ -1177,6 +1183,7 @@ a {
   font-weight: 600;
   color: var(--cooking-text);
   overflow-wrap: break-word;
+  font-family: var(--font-reading, Georgia), 'Times New Roman', ui-serif, serif;
 }
 
 /* Cook's first accent was colour — try contrast instead: keep the body near

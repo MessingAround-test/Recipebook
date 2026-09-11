@@ -201,7 +201,7 @@ function StepRow({ instruction, index, dragging = false, onDragStart, onDragMove
                         startEdit()
                     }}
                     title="Tap to edit"
-                    className={`text-foreground/80 leading-relaxed font-medium cursor-pointer ${isLongStep(instruction.Text) ? 'text-sm sm:text-[15px]' : 'text-[15px] sm:text-base'}`}
+                    className={`step-font text-foreground/80 leading-relaxed font-medium cursor-pointer ${isLongStep(instruction.Text) ? 'text-sm sm:text-[15px]' : 'text-[15px] sm:text-base'}`}
                 >
                     {renderStepText(instruction.Text, {
                         ingredients: ingreds,

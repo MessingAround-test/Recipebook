@@ -2207,7 +2207,7 @@ export default function RecipeDetail() {
                                             {index + 1}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className={`text-foreground/80 leading-relaxed font-medium ${longStep ? 'text-sm sm:text-[15px]' : 'text-[15px] sm:text-base'}`}>
+                                            <div className={`step-font text-foreground/80 leading-relaxed font-medium ${longStep ? 'text-sm sm:text-[15px]' : 'text-[15px] sm:text-base'}`}>
                                                 {renderStepText(instruction.Text, {
                                                     ingredients: recs,
                                                     onIngredientClick: (ingred, anchor) => openIngredientPopup(ingred, anchor, index)
@@ -2982,7 +2982,7 @@ export default function RecipeDetail() {
                                     </div>
                                     {state === 'current' ? (
                                         <>
-                                            <p className="cooking-card-text is-current">Quick prep run — get these ready first</p>
+                                            <p className="cooking-card-text is-current">Quick prep run - get these ready first</p>
                                             {renderPrepContent()}
                                             {ticked === total && (
                                                 <div className="cooking-prep-all-done"><Check size={14} strokeWidth={3} /> All prep done — ready to cook</div>
