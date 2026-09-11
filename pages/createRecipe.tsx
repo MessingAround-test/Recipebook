@@ -272,7 +272,13 @@ export default function CreateRecipe() {
     const [instructions, setInstructions] = useState<Instruction[]>([])
     const [popIngredient, setPopIngredient] = useState<Ingredient | null>(null)
     const [loading, setLoading] = useState(false)
+    const [generatingImage, setGeneratingImage] = useState(false)
     const [imageData, setImageData] = useState<string | undefined>()
+    // AI cover art is strictly opt-in (default off); imageRemoved distinguishes
+    // "never had a photo" from "user removed the existing photo" so the edit
+    // save can persist the deletion.
+    const [generateAiImage, setGenerateAiImage] = useState(false)
+    const [imageRemoved, setImageRemoved] = useState(false)
     const [recipeName, setRecipeName] = useState("")
     const [recipeTime, setRecipeTime] = useState<string>("")
     const [recipeGenre, setRecipeGenre] = useState<string>("")
@@ -531,20 +537,17 @@ export default function CreateRecipe() {
 
                 if (generatedImage) {
                     setImageData(generatedImage)
-                    setLoading(false)
                     return generatedImage
                 }
 
                 // Fallback for whatever reason if Gemini didn't return an image but we have a prompt
                 console.warn("Gemini image failed, no fallback provided for now.")
-                setLoading(false)
                 return undefined
             } else {
                 alert("Please set a Recipe Name")
             }
         } catch (e) {
             console.error("Error generating image:", e)
-            setLoading(false)
         }
     }
 
@@ -604,7 +607,7 @@ export default function CreateRecipe() {
             setRecipeCarbType(mapped.carbType)
             setRecipeServings(mapped.servings)
             setRecipeSourceUrl(mapped.sourceUrl)
-            if (parsed.recipe.image) setImageData(parsed.recipe.image)
+            if (parsed.recipe.image) { setImageData(parsed.recipe.image); setImageRemoved(false) }
             startConversionWarmup(mapped.ingredients)
             setFormPhase('builder')
         } catch (importError: any) {
@@ -620,12 +623,15 @@ export default function CreateRecipe() {
         }
         setLoading(true)
 
-        // Image generation no longer blocks the save — the recipe is saved
-        // first (without an image), then art is generated in the background
-        // via Pollinations and patched onto the recipe when it completes.
+        // Saving never blocks on image generation. AI cover art is only
+        // produced when the user explicitly opts in via the checkbox; if they
+        // removed an existing photo the edit save sends image:null to delete it.
         try {
             if (isEditMode) {
                 const token = localStorage.getItem('Token')
+                const imageField = imageRemoved
+                    ? null
+                    : (imageData && imageData.startsWith('data:') ? imageData : undefined)
                 const res = await fetch(`/api/Recipe/${id}`, {
                     method: 'PUT',
                     headers: {
@@ -635,7 +641,7 @@ export default function CreateRecipe() {
                     body: JSON.stringify({
                         "ingreds": normalizeIngredientsForSave(ingreds),
                         "instructions": instructions,
-                        "image": imageData,
+                        "image": imageField,
                         "name": recipeName,
                         "time": recipeTime || undefined,
                         "genre": recipeGenre || undefined,
@@ -652,8 +658,13 @@ export default function CreateRecipe() {
                 if (data.success === false || data.success === undefined) {
                     alert(data.message || "failed, unexpected error")
                 } else {
-                    if (!imageData) generateImageInBackground(recipeName, Array.isArray(id) ? id[0] : (id as string))
-                    Router.push("/recipes")
+                    const recipeId = Array.isArray(id) ? id[0] : (id as string)
+                    if (!imageData && generateAiImage) {
+                        setGeneratingImage(true)
+                        await generateImageInBackground(recipeName, recipeId)
+                    }
+                    // Return to the recipe we came from, not the full list
+                    Router.push(`/recipes/${recipeId}`)
                 }
             } else {
                 const created = await saveRecipe({
@@ -670,7 +681,10 @@ export default function CreateRecipe() {
                     sourceUrl: recipeSourceUrl || undefined,
                     sourceNotes: sourceNotes || undefined
                 })
-                if (!imageData && created?._id) generateImageInBackground(recipeName, created._id)
+                if (!imageData && generateAiImage && created?._id) {
+                    setGeneratingImage(true)
+                    await generateImageInBackground(recipeName, created._id)
+                }
                 // Auto-populate the carb side decision for the new recipe
                 if (created?._id) {
                     fetch('/api/ai/analyze_carb_side', {
@@ -686,26 +700,29 @@ export default function CreateRecipe() {
             alert(error?.message || "failed, unexpected error")
         } finally {
             setLoading(false)
+            setGeneratingImage(false)
         }
     }
 
-    // Fire-and-forget: generate recipe art after the recipe is saved (only
-    // when the saved recipe has no image yet) and patch it onto the record.
-    const generateImageInBackground = (name: string, recipeId: string) => {
-        generateImage(name)
-            .then(img => {
-                if (!img) return
-                return fetch(`/api/Recipe/${recipeId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'edgetoken': localStorage.getItem('Token') || ''
-                    },
-                    body: JSON.stringify({ image: img })
-                })
+    // Generates recipe art and patches it onto the saved record. Awaited by
+    // the save flow when the user opted in, so the spinner stays up until the
+    // image is ready; otherwise it can be called fire-and-forget.
+    const generateImageInBackground = async (name: string, recipeId: string) => {
+        try {
+            const img = await generateImage(name)
+            if (!img) return
+            const res = await fetch(`/api/Recipe/${recipeId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'edgetoken': localStorage.getItem('Token') || ''
+                },
+                body: JSON.stringify({ image: img })
             })
-            .then(res => res && console.log('Background recipe image saved:', res.ok))
-            .catch(e => console.error('Background image generation failed:', e))
+            console.log('Recipe image saved:', res.ok)
+        } catch (e) {
+            console.error('Image generation failed:', e)
+        }
     }
 
     const onSubmitRecipeSiteImport = async (e: FormEvent<HTMLFormElement>) => {
@@ -814,7 +831,7 @@ export default function CreateRecipe() {
             // Keep the raw caption in the notes box so it can be reviewed or
             // re-parsed via the AI Notes flow if auto-extraction ever fails.
             setRecipeNotes(description)
-            if (image) setImageData(image)
+            if (image) { setImageData(image); setImageRemoved(false) }
 
             try {
                 const result = await extractRecipeFromNotes(description)
@@ -989,7 +1006,10 @@ export default function CreateRecipe() {
     }
 
     const handleRecipeImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) fileToBase64(e.target.files[0], setExtractionStatus).then(setImageData)
+        if (e.target.files && e.target.files[0]) fileToBase64(e.target.files[0], setExtractionStatus).then(img => {
+            setImageData(img)
+            setImageRemoved(false)
+        })
     }
 
     const handleIngredientAdded = (ing: Ingredient) => {
@@ -1013,6 +1033,7 @@ export default function CreateRecipe() {
                     if (data.res) {
                         setRecipeName(data.res.name)
                         setImageData(data.res.image)
+                        setImageRemoved(false)
                         setRecipeTime(data.res.time || "")
                         setRecipeGenre(data.res.genre || "")
                         setRecipeMealTypes(data.res.mealTypes || [])
@@ -1319,7 +1340,7 @@ export default function CreateRecipe() {
                             <div className="relative h-44 sm:h-64 md:h-80 w-full">
                                 <img src={imageData} alt={recipeName || 'Recipe photo'} className="w-full h-full object-cover" />
                                 <button
-                                    onClick={() => setImageData(undefined)}
+                                    onClick={() => { setImageData(undefined); setImageRemoved(true) }}
                                     className="absolute top-3 right-3 bg-black/60 hover:bg-black/80 text-white text-[11px] px-2.5 py-1.5 rounded-full backdrop-blur-sm font-semibold transition-colors"
                                 >
                                     Remove photo
@@ -1371,7 +1392,15 @@ export default function CreateRecipe() {
                                 )}
                             </div>
                             {!imageData && (
-                                <p className="text-[11px] text-muted-foreground mt-2">No photo? An AI cover is generated when you save.</p>
+                                <label className="flex items-center gap-2 mt-3 text-[11px] font-semibold text-muted-foreground cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={generateAiImage}
+                                        onChange={(e) => setGenerateAiImage(e.target.checked)}
+                                        className="accent-emerald-500 w-4 h-4 cursor-pointer"
+                                    />
+                                    Generate an AI cover image on save
+                                </label>
                             )}
                         </div>
                     </header>
@@ -1678,7 +1707,7 @@ export default function CreateRecipe() {
                                     disabled={loading}
                                     className="h-12 px-5 sm:px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.99] shrink-0 disabled:opacity-50"
                                 >
-                                    {loading ? <><Loader2 size={16} className="animate-spin" /> Saving&#8230;</> : <><Check size={16} /> Save recipe</>}
+                                    {loading ? <><Loader2 size={16} className="animate-spin" /> {generatingImage ? 'Generating image\u2026' : 'Saving\u2026'}</> : <><Check size={16} /> Save recipe</>}
                                 </button>
                             </div>
                         </div>
