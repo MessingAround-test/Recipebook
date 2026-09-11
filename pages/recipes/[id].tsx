@@ -1,5 +1,6 @@
 import { Layout } from '../../components/Layout'
 import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
+import { formatQuantityDisplay } from '../../lib/fractionFormat'
 import { Button } from '../../components/ui/button'
 import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Slice, Users, Download, Info, Hourglass } from 'lucide-react'
 import { computePhaseInsertPoints, fillCarbPhaseText, recommendCarbOption, resolveCarbSlot, resolveCarbTiming, resolveVariant } from '../../lib/carbSideOps'
@@ -498,7 +499,7 @@ export default function RecipeDetail() {
             return new RegExp(`\\b${escaped}\\b`).test(n)
         })
         if (!match) return null
-        return `${match.quantity} ${match.quantity_type_shorthand || match.quantity_type || 'each'}`
+        return `${formatQuantityDisplay(match.quantity)} ${match.quantity_type_shorthand || match.quantity_type || 'each'}`
     }
 
     const reloadAllIngredients = async () => {

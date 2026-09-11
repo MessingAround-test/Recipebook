@@ -43,6 +43,13 @@ export default function Profile() {
         return false
     })
 
+    const [showFractions, setShowFractions] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('showFractions') !== 'false'
+        }
+        return true
+    })
+
     // Health Score settings
     const [healthScoreConfig, setHealthScoreConfig] = useState<HealthScoreConfig>(DEFAULT_HEALTH_SCORE_CONFIG)
     const [targets, setTargets] = useState<Record<string, number> | null>(null)
@@ -277,6 +284,25 @@ export default function Profile() {
                                 const newValue = !e.target.checked;
                                 localStorage.setItem('skipConversion', newValue.toString());
                                 setSkipConversion(newValue);
+                                window.dispatchEvent(new Event('storage'));
+                            }}
+                        />
+                    </div>
+
+                    {/* Fraction Display Toggle */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-muted/20 rounded-lg border border-border/20 mt-4 transition-colors">
+                        <div className="min-w-0">
+                            <p className="font-semibold text-foreground">Show Fractions</p>
+                            <p className="text-sm text-muted-foreground">Display ingredient quantities as fractions (e.g. 1/3) instead of decimals.</p>
+                        </div>
+                        <input
+                            type="checkbox"
+                            className="toggle toggle-emerald"
+                            checked={showFractions}
+                            onChange={(e) => {
+                                const newValue = e.target.checked;
+                                localStorage.setItem('showFractions', newValue.toString());
+                                setShowFractions(newValue);
                                 window.dispatchEvent(new Event('storage'));
                             }}
                         />

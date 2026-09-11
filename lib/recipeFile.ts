@@ -1,3 +1,5 @@
+import { decimalToFraction } from './fractionFormat'
+
 /**
  * Recipe export/import file format.
  *
@@ -99,7 +101,7 @@ const formatIngredientLine = (i: any): string => {
     if (!ing.Name) return ''
     const bits: string[] = []
     if (ing.Amount !== '' && ing.Amount != null) {
-        let amount = String(ing.Amount)
+        let amount = String(decimalToFraction(ing.Amount))
         if (ing.AmountType) amount += ` ${ing.AmountType}`
         bits.push(amount.trim())
     }

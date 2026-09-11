@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import ClipboardJS from 'clipboard';
 import { Button } from './ui/button';
+import { formatQuantityDisplay } from '../lib/fractionFormat';
 
 const CopyToClipboard = ({ listIngreds }: any) => {
     const textToCopyRef = useRef<HTMLDivElement>(null);
@@ -20,7 +21,7 @@ const CopyToClipboard = ({ listIngreds }: any) => {
 
         return ingredients
             .filter((ingred) => !ingred.complete)
-            .map((ingred) => `${ingred.quantity} ${ingred.quantity_type_shorthand || ingred.quantity_type} ${ingred.name}`)
+            .map((ingred) => `${formatQuantityDisplay(ingred.quantity)} ${ingred.quantity_type_shorthand || ingred.quantity_type} ${ingred.name}`)
             .join('\n');
     };
 

@@ -1,4 +1,5 @@
 import React from 'react'
+import { formatQuantityDisplay } from '../lib/fractionFormat'
 
 /**
  * Readability helpers for instruction steps:
@@ -204,7 +205,7 @@ export function getIngredientStepMap(instructions: any[], ingredients: any[]): R
 
 export function formatQuantity(ingred: any): string {
     if (ingred?.quantity == null) return ''
-    return `${ingred.quantity} ${ingred.quantity_type_shorthand || ingred.quantity_type || 'each'}`
+    return `${formatQuantityDisplay(ingred.quantity)} ${ingred.quantity_type_shorthand || ingred.quantity_type || 'each'}`
 }
 
 type TextNode = React.ReactNode

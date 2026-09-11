@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { quantity_unit_conversions } from "../lib/conversion"
+import { quantity_unit_conversions, parseAmountValue } from "../lib/conversion"
 import SearchableDropdown from './SearchableDropdown'
 import { Button } from './ui/button'
 import { X, Check, Loader2, Sparkles, Search, Minus, Plus, RefreshCw, Save } from 'lucide-react'
@@ -497,6 +497,10 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                                     placeholder="Amount"
                                     required
                                     onChange={handleChange}
+                                    onBlur={(e) => {
+                                        const parsed = parseAmountValue(e.target.value)
+                                        if (parsed != null) setFormData(prev => ({ ...prev, quantity: parsed }))
+                                    }}
                                     value={formData.quantity}
                                     className={`input-modern ${isOverlay
                                         ? '!py-3 !px-3.5 !pr-[5.5rem] !rounded-xl text-sm font-bold'

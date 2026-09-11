@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { quantity_unit_conversions, convertToStandardUnit } from '../lib/conversion'
+import { quantity_unit_conversions, convertToStandardUnit, parseAmountValue } from '../lib/conversion'
 import { normalizePrepWords } from '../lib/recipeNormalize'
 import { Ingredient } from '../lib/recipeExtraction'
 import SearchableDropdown from './SearchableDropdown'
@@ -278,6 +278,10 @@ export default function RecipeIngredientInput({ onAdd, disabled = false }: Recip
                                     placeholder="Amount"
                                     value={String(quantity)}
                                     onChange={(e) => { userChangedFields.current = true; setQuantity(e.target.value) }}
+                                    onBlur={(e) => {
+                                        const parsed = parseAmountValue(e.target.value)
+                                        if (parsed != null) setQuantity(parsed)
+                                    }}
                                     className={`${fieldInputClass} !pr-24`}
                                 />
                                 <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">

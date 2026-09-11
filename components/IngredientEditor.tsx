@@ -1,5 +1,5 @@
 import { useState, useEffect, useId, useRef } from 'react'
-import { quantity_unit_conversions, convertToStandardUnit } from '../lib/conversion'
+import { quantity_unit_conversions, convertToStandardUnit, parseAmountValue } from '../lib/conversion'
 import { Ingredient } from '../lib/recipeExtraction'
 import { RiDeleteBin7Line, RiAddLine } from 'react-icons/ri'
 
@@ -133,6 +133,10 @@ export default function IngredientEditor({ ingredients, onChange, autoDefaults =
                                         type="text"
                                         value={String(ing.Amount)}
                                         onChange={e => updateIngredient(i, { Amount: e.target.value })}
+                                        onBlur={e => {
+                                            const parsed = parseAmountValue(e.target.value)
+                                            if (parsed != null) updateIngredient(i, { Amount: parsed })
+                                        }}
                                         placeholder="Amount"
                                         className={inputClass}
                                     />
@@ -172,6 +176,10 @@ export default function IngredientEditor({ ingredients, onChange, autoDefaults =
                         type="text"
                         value={String(draft.Amount)}
                         onChange={e => { userChangedFields.current = true; setDraft({ ...draft, Amount: e.target.value }) }}
+                        onBlur={e => {
+                            const parsed = parseAmountValue(e.target.value)
+                            if (parsed != null) setDraft(prev => ({ ...prev, Amount: parsed }))
+                        }}
                         placeholder="Amount"
                         className={inputClass}
                     />

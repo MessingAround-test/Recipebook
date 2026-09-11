@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { getColorForCategory } from '../lib/colors';
+import { formatQuantityDisplay } from '../lib/fractionFormat';
 import PropTypes from 'prop-types';
 import styles from '../styles/Home.module.css';
 import { IngredientSearchList } from './IngredientSearchList';
@@ -117,7 +118,7 @@ function IngredientCard({
                                 </span>
                             )}
                             <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)', marginLeft: '0.6rem', fontWeight: '600' }}>
-                                &bull; {isGroup ? (ingredient.totalString || `${ingredient.quantity} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`) : `${ingredient.quantity} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`}
+                                &bull; {isGroup ? (ingredient.totalString || `${formatQuantityDisplay(ingredient.quantity)} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`) : `${formatQuantityDisplay(ingredient.quantity)} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`}
                             </span>
                         </div>
                         {isGroup && (
@@ -162,7 +163,7 @@ function IngredientCard({
                                                 </svg>
                                             )}
                                         </button>
-                                        <span className="mobile-text-large shrink-0">{item.quantity} {item.quantity_type_shorthand || item.quantity_type || 'each'}</span>
+                                        <span className="mobile-text-large shrink-0">{formatQuantityDisplay(item.quantity)} {item.quantity_type_shorthand || item.quantity_type || 'each'}</span>
                                         {item.note && <span className="italic opacity-60 text-xs truncate min-w-0">{item.note}</span>}
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
