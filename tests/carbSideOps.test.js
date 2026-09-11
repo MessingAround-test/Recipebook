@@ -3,6 +3,7 @@ const {
     computeCarbInsertPoint,
     computePhaseInsertPoints,
     parseCarbDetectResult,
+    resolveCarbSlot,
     resolveCarbTiming,
     resolveVariant,
     fillCarbPhaseText,
@@ -212,8 +213,81 @@ describe('computePhaseInsertPoints', () => {
         expect(out.map(p => p.insertAfter)).toEqual([2, 2]);
     });
 
+    test('brown rice lands mid-step of a long cook (the chilli case)', () => {
+        // Rice (5 + 20 min) must finish with the recipe; both timed phases
+        // start partway through the 90-min chilli step, not before it.
+        const chilli = [{ Text: 'a', time: 10 }, { Text: 'b', time: 10 }, { Text: 'c', time: 90 }, { Text: 'd', time: 15 }];
+        const phases = resolveCarbTiming(riceSeed, 'Brown').phases; // boil 5, cook 20, fluff 0
+        const out = computePhaseInsertPoints(chilli, phases);
+        expect(out.map(p => p.insertAfter)).toEqual([2, 2, 3]);
+        expect(out.map(p => p.during)).toEqual([true, true, false]);
+        expect(out.map(p => p.intoMinutes)).toEqual([80, 85, 0]);
+    });
+
+    test('boundary slots are not marked during', () => {
+        const out = computePhaseInsertPoints(steps, resolveCarbTiming(riceSeed, 'White').phases);
+        expect(out.map(p => p.insertAfter)).toEqual([2, 2, 3]);
+        expect(out[0].during).toBe(false); // boil lands exactly 20 min before end
+        expect(out[0].intoMinutes).toBe(0);
+    });
+
     test('empty phases -> empty result', () => {
         expect(computePhaseInsertPoints(steps, [])).toEqual([]);
+    });
+});
+
+describe('resolveCarbSlot (mid-step "during" detection)', () => {
+    // Chilli-style tail: a 90-min cook followed by a 15-min finisher
+    const chilli = [{ Text: 'a', time: 10 }, { Text: 'b', time: 10 }, { Text: 'c', time: 90 }, { Text: 'd', time: 15 }];
+
+    test('slot landing mid-step reports how far into the step it starts', () => {
+        // 25 min before the end => 80 min into the 90-min step
+        expect(resolveCarbSlot(chilli, 25)).toEqual({ index: 2, intoMinutes: 80 });
+        expect(resolveCarbSlot(chilli, 20)).toEqual({ index: 2, intoMinutes: 85 });
+    });
+
+    test('slot landing exactly on a step boundary is a plain insert', () => {
+        // steps c+d span 105; need 15 => lands exactly where step d starts
+        expect(resolveCarbSlot(chilli, 15)).toEqual({ index: 3, intoMinutes: 0 });
+    });
+
+    test('overshoot under 5 min snaps back to the boundary', () => {
+        const steps = [{ Text: 'a', time: 10 }, { Text: 'b', time: 10 }, { Text: 'c', time: 10 }, { Text: 'd', time: 10 }];
+        // need 17: step c starts 20 min before the end, only 3 min early
+        expect(resolveCarbSlot(steps, 17)).toEqual({ index: 2, intoMinutes: 0 });
+        // need 15: exactly 5 min overshoot => stays "during"
+        expect(resolveCarbSlot(steps, 15)).toEqual({ index: 2, intoMinutes: 5 });
+    });
+
+    test('zero and recipe-shorter-than-slot cases stay boundary inserts', () => {
+        expect(resolveCarbSlot(chilli, 0)).toEqual({ index: 3, intoMinutes: 0 });
+        expect(resolveCarbSlot([{ Text: 'a', time: 15 }], 20)).toEqual({ index: 0, intoMinutes: 0 });
+        expect(resolveCarbSlot([], 20)).toEqual({ index: 0, intoMinutes: 0 });
+    });
+});
+
+describe('no-minute steps and timer-backed durations', () => {
+    const riceSeed = SEED_CARB_TYPES.find(c => c.name === 'Rice');
+
+    test('an explicit 0-min last step stays 0 instead of the average fallback', () => {
+        // "stir and serve" finishing step with no duration: the rice must
+        // finish with the 90-min cook, not be pulled onto the fake tail
+        const chilli = [{ Text: 'a', time: 10 }, { Text: 'b', time: 10 }, { Text: 'c', time: 90 }, { Text: 'd', time: 0 }];
+        const out = computePhaseInsertPoints(chilli, resolveCarbTiming(riceSeed, 'White').phases);
+        expect(out.map(p => p.insertAfter)).toEqual([2, 2, 3]);
+        expect(out.map(p => p.during)).toEqual([true, true, false]);
+        expect(out.map(p => p.intoMinutes)).toEqual([70, 75, 0]);
+    });
+
+    test('resolveCarbSlot walks straight over a 0-min tail step', () => {
+        expect(resolveCarbSlot([{ time: 90 }, { time: 0 }], 20)).toEqual({ index: 0, intoMinutes: 70 });
+        expect(resolveCarbSlot([{ time: 90 }, { time: 0 }], 90)).toEqual({ index: 0, intoMinutes: 0 });
+        expect(computeCarbInsertPoint([{ time: 90 }, { time: 0 }], 20, null)).toBe(0);
+    });
+
+    test('a MISSING time still falls back to the known average', () => {
+        // avg of known [90] = 90 for the time-less step
+        expect(resolveCarbSlot([{ time: 90 }, {}], 20)).toEqual({ index: 1, intoMinutes: 70 });
     });
 });
 

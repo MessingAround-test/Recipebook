@@ -12,6 +12,9 @@ import {
      ListOrdered, SlidersHorizontal, Check, Loader2, Trash2, Images, GripVertical, MoreHorizontal, Wand2, FileJson, RefreshCw
 } from 'lucide-react'
 import { normalizePrepWords } from '../lib/recipeNormalize'
+import { renderStepText, isLongStep, findIngredientSpans, PILL_MAX } from '../components/stepText'
+import IngredientPopover from '../components/IngredientPopover'
+import PillRow from '../components/PillRow'
 
 interface Instruction {
     Text: string
@@ -143,14 +146,23 @@ interface StepRowProps {
     onDragEnd: () => void
     onChange: (index: number, patch: Partial<Instruction>) => void
     onRemove: (index: number) => void
+    ingreds?: Ingredient[]
+    onIngredientClick?: (ingred: Ingredient) => void
 }
 
 // One numbered step, matching the detail page's timeline; tap to edit inline,
 // drag the grip handle to reorder
-function StepRow({ instruction, index, dragging = false, onDragStart, onDragMove, onDragEnd, onChange, onRemove }: StepRowProps) {
+function StepRow({ instruction, index, dragging = false, onDragStart, onDragMove, onDragEnd, onChange, onRemove, ingreds, onIngredientClick }: StepRowProps) {
     const [editing, setEditing] = useState(false)
     const [draft, setDraft] = useState('')
     const [noteDraft, setNoteDraft] = useState('')
+
+    const matchedIngreds = useMemo(
+        () => (instruction.Text && ingreds && ingreds.length > 0
+            ? findIngredientSpans(instruction.Text, ingreds).map(s => s.ingred)
+            : []),
+        [instruction.Text, ingreds]
+    )
 
     const startEdit = () => {
         setDraft(instruction.Text)
@@ -182,14 +194,24 @@ function StepRow({ instruction, index, dragging = false, onDragStart, onDragMove
                     {index + 1}
                 </div>
                 <div className="flex-1 min-w-0">
-                    <p
-                        onClick={startEdit}
-                        title="Tap to edit"
-                        className="text-foreground leading-relaxed text-[15px] sm:text-base font-medium cursor-pointer"
-                    >
-                        {instruction.Text}
-                    </p>
-                    {instruction.Note && <p className="mt-1 text-xs text-muted-foreground">{instruction.Note}</p>}
+                <div
+                    onClick={(e) => {
+                        // ingredient link taps open the popup, not the editor
+                        if ((e.target as HTMLElement).closest('button')) return
+                        startEdit()
+                    }}
+                    title="Tap to edit"
+                    className={`text-foreground leading-relaxed font-medium cursor-pointer ${isLongStep(instruction.Text) ? 'text-sm sm:text-[15px]' : 'text-[15px] sm:text-base'}`}
+                >
+                    {renderStepText(instruction.Text, {
+                        ingredients: ingreds,
+                        onIngredientClick: (ingred) => onIngredientClick?.(ingred)
+                    })}
+                </div>
+                {matchedIngreds.length > 0 && matchedIngreds.length <= PILL_MAX && (
+                    <PillRow ingreds={matchedIngreds} onSelect={(ingred) => onIngredientClick?.(ingred)} />
+                )}
+                {instruction.Note && <p className="mt-1 text-xs text-muted-foreground">{instruction.Note}</p>}
                 </div>
                 <button
                     onClick={() => onRemove(index)}
@@ -248,6 +270,7 @@ export default function CreateRecipe() {
     const isAuthed = useAuthGuard()
     const [ingreds, setIngreds] = useState<Ingredient[]>([])
     const [instructions, setInstructions] = useState<Instruction[]>([])
+    const [popIngredient, setPopIngredient] = useState<Ingredient | null>(null)
     const [loading, setLoading] = useState(false)
     const [imageData, setImageData] = useState<string | undefined>()
     const [recipeName, setRecipeName] = useState("")
@@ -1436,9 +1459,11 @@ export default function CreateRecipe() {
                                             onDragStart={beginStepDrag}
                                             onDragMove={moveStepDrag}
                                             onDragEnd={endStepDrag}
-                                            onChange={updateInstruction}
-                                            onRemove={removeInstruction}
-                                        />
+                        onChange={updateInstruction}
+                        onRemove={removeInstruction}
+                        ingreds={ingreds}
+                        onIngredientClick={(ingred) => { setPopIngredient(ingred) }}
+                    />
                                     ))}
                                 </div>
                             )}
@@ -1660,6 +1685,7 @@ export default function CreateRecipe() {
                     </div>
                 </div>
             )}
+            <IngredientPopover ingred={popIngredient} anchorRect={popIngredient ? new DOMRect(0, 80, window.innerWidth, 0) : null} onClose={() => setPopIngredient(null)} />
         </Layout>
     )
 }

@@ -362,6 +362,12 @@ a {
     --cooking-accent-soft: rgba(251, 191, 36, 0.12);
     --cooking-accent-border: rgba(251, 191, 36, 0.4);
     --cooking-accent-glow: rgba(251, 191, 36, 0.25);
+    /* "Wait" state (scheduled side phases): calm blue = nothing to do yet */
+    --cooking-wait: #38bdf8;
+    --cooking-wait-contrast: #082f49;
+    --cooking-wait-soft: rgba(56, 189, 248, 0.1);
+    --cooking-wait-border: rgba(56, 189, 248, 0.38);
+    --cooking-wait-glow: rgba(56, 189, 248, 0.2);
   }
 
   .light {
@@ -399,6 +405,12 @@ a {
     --cooking-accent-soft: rgba(180, 83, 9, 0.08);
     --cooking-accent-border: rgba(180, 83, 9, 0.35);
     --cooking-accent-glow: rgba(180, 83, 9, 0.18);
+    /* "Wait" state (scheduled side phases): calm blue = nothing to do yet */
+    --cooking-wait: #0369a1;
+    --cooking-wait-contrast: #f0f9ff;
+    --cooking-wait-soft: rgba(3, 105, 161, 0.08);
+    --cooking-wait-border: rgba(3, 105, 161, 0.35);
+    --cooking-wait-glow: rgba(3, 105, 161, 0.16);
   }
 
   .theme {
@@ -1139,8 +1151,23 @@ a {
   font-size: 1.375rem;
   line-height: 1.55;
   font-weight: 700;
-  text-align: center;
   padding-block: 0.75rem;
+}
+
+/* Step rows read left-aligned so stacked lines/bullets don't float oddly;
+   ingredient chips and labels below the text stay centered */
+.cooking-card-text.is-current.is-stacked,
+.cooking-card-text.is-current.is-long {
+  padding-block: 0.5rem;
+}
+
+.cooking-card-text.is-current.is-stacked {
+  font-size: 1.25rem;
+}
+
+/* Very long steps: shrink a touch further */
+.cooking-card-text.is-current.is-long {
+  font-size: 1.15rem;
 }
 
 .cooking-card-text.is-upcoming {
@@ -1228,6 +1255,14 @@ a {
 .cooking-prep-hint:hover {
   color: var(--cooking-text);
   background: var(--cooking-hover);
+}
+
+/* Heads-up fired: the side starts in a few minutes — go back to the kitchen */
+.cooking-prep-hint.is-headsup {
+  color: var(--cooking-wait);
+  background: var(--cooking-wait-soft);
+  border-color: var(--cooking-wait-border);
+  animation: cooking-wait-glow 1s ease-in-out infinite;
 }
 
 .cooking-prep-hint-task {
@@ -1563,6 +1598,152 @@ a {
   border-radius: 0 0 0.75rem 0.75rem;
   padding: 0.55rem 0.85rem 0.65rem;
   transition: border-color 0.3s, background-color 0.3s;
+}
+
+/* ---------- Waiting side phase (scheduled carb card) ---------- */
+/* Distinct calm-blue styling: nothing to do yet, the timer counts down to
+   the moment this phase starts. */
+.cooking-card.is-waiting {
+  border-style: solid;
+  border-color: var(--cooking-wait-border);
+  background: linear-gradient(var(--cooking-wait-soft), var(--cooking-wait-soft)), var(--cooking-card-bg);
+}
+
+.cooking-card.is-current.is-waiting {
+  border-color: var(--cooking-wait-border);
+  box-shadow: 0 0 0 1px var(--cooking-wait-border), 0 6px 24px var(--cooking-wait-glow);
+}
+
+.cooking-card-label.is-wait {
+  color: var(--cooking-wait);
+}
+
+.cooking-wait-headline {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 1.375rem;
+  line-height: 1.55;
+  font-weight: 700;
+  color: var(--cooking-text);
+  text-align: center;
+  justify-content: center;
+  padding-block: 0.5rem;
+}
+
+.cooking-wait-headline .cooking-wait-count {
+  color: var(--cooking-wait);
+  font-variant-numeric: tabular-nums;
+}
+
+.cooking-wait-sub {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--cooking-text-muted);
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.cooking-slide-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  border: 1px dashed var(--cooking-wait-border);
+  background: transparent;
+  color: var(--cooking-wait);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 0.6rem;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+.cooking-slide-toggle svg {
+  transition: transform 0.25s ease;
+}
+
+.cooking-slide-toggle.is-open svg {
+  transform: rotate(180deg);
+}
+
+.cooking-side-slideout {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.25s ease, margin 0.3s ease;
+  margin-top: 0;
+}
+
+.cooking-side-slideout.open {
+  max-height: 22rem;
+  opacity: 1;
+  margin-top: 0.6rem;
+}
+
+.cooking-slideout-text {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  font-weight: 500;
+  color: var(--cooking-text-muted);
+  overflow-wrap: break-word;
+}
+
+/* Blue timer tab for waiting side phases */
+.cooking-timer-tab.is-wait {
+  border-color: var(--cooking-wait-border);
+  background: linear-gradient(var(--cooking-wait-soft), var(--cooking-wait-soft)), var(--cooking-card-bg);
+}
+
+.cooking-timer-tab.is-wait.is-headsup {
+  border-color: var(--cooking-wait);
+  box-shadow: 0 0 0 1px var(--cooking-wait-border), 0 0 18px var(--cooking-wait-glow);
+  animation: cooking-wait-glow 1s ease-in-out infinite;
+}
+
+@keyframes cooking-wait-glow {
+  0%, 100% { box-shadow: 0 0 0 1px var(--cooking-wait-border), 0 0 10px var(--cooking-wait-glow); }
+  50% { box-shadow: 0 0 0 1px var(--cooking-wait), 0 0 26px var(--cooking-wait-glow); }
+}
+
+.cooking-timer-tab.is-wait .cooking-countdown,
+.cooking-countdown.is-wait {
+  color: var(--cooking-wait);
+}
+
+.cooking-timer-tab-name.is-wait {
+  color: var(--cooking-wait);
+}
+
+.cooking-progress-fill.is-wait {
+  background: var(--cooking-wait);
+}
+
+/* Waiting side phase in the timers sheet */
+.cooking-mgr-card.is-wait {
+  border-color: var(--cooking-wait-border);
+  background: linear-gradient(var(--cooking-wait-soft), var(--cooking-wait-soft)), var(--cooking-card-bg);
+}
+
+.cooking-mgr-card.is-wait.is-headsup {
+  border-color: var(--cooking-wait);
+  animation: cooking-wait-glow 1s ease-in-out infinite;
+}
+
+.cooking-mgr-countdown.is-wait {
+  color: var(--cooking-wait);
+}
+
+.cooking-mgr-name.is-wait {
+  color: var(--cooking-wait);
+}
+
+.cooking-timer-tag.is-wait {
+  background: var(--cooking-wait-soft);
+  color: var(--cooking-wait);
 }
 
 /* Additional timers on the same step stack as separate rounded cards */
@@ -2221,6 +2402,14 @@ a {
 
   .cooking-card-text.is-current {
     font-size: 1.625rem;
+  }
+
+  .cooking-card-text.is-current.is-stacked {
+    font-size: 1.4rem;
+  }
+
+  .cooking-card-text.is-current.is-long {
+    font-size: 1.35rem;
   }
 
   .cooking-ingredients-grid {

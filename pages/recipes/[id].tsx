@@ -1,14 +1,17 @@
 import { Layout } from '../../components/Layout'
 import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
 import { Button } from '../../components/ui/button'
-import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Slice, Users, Download, Info } from 'lucide-react'
-import { buildRecipeExport, downloadRecipeFile, fetchImageAsDataUrl } from '../../lib/recipeFile'
-import { computeCarbInsertPoint, computePhaseInsertPoints, fillCarbPhaseText, recommendCarbOption, resolveCarbTiming, resolveVariant } from '../../lib/carbSideOps'
+import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Slice, Users, Download, Info, Hourglass } from 'lucide-react'
+import { computePhaseInsertPoints, fillCarbPhaseText, recommendCarbOption, resolveCarbSlot, resolveCarbTiming, resolveVariant } from '../../lib/carbSideOps'
 import Router, { useRouter } from 'next/router'
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
 import IngredientCard from '../../components/IngredientCard'
 import { IngredientSearchList } from '../../components/IngredientSearchList'
+import { renderStepText, isLongStep, PILL_MAX, getIngredientStepMap, isGenericIngredientWord, splitSentences } from '../../components/stepText'
+import IngredientPopover from '../../components/IngredientPopover'
+import PillRow from '../../components/PillRow'
 import Modal from 'react-modal'
+import ExportRecipeModal from '../../components/ExportRecipeModal'
 
 const PRICE_THRESHOLDS = { cheap: 15, expensive: 35 }
 
@@ -108,7 +111,7 @@ function getRecommendedIngredients(stepText: string, ingredients: any[]): { reco
 
     const scored = ingredients.map(ing => {
         const nameWords = ing.name.toLowerCase().split(/\s+/)
-        const score = nameWords.filter(nw => stepWords.some(sw => wordMatches(nw, sw))).length
+        const score = nameWords.filter(nw => !isGenericIngredientWord(nw) && stepWords.some(sw => wordMatches(nw, sw))).length
         return { ...ing, score, recommended: score > 0 }
     })
 
@@ -179,8 +182,10 @@ type FlowItem = { kind: 'prep' | 'step' | 'carb'; stepIndex: number; flowIndex: 
 // has prep work), then the instruction steps. Timers attach to their step as a
 // poke-out tab underneath the card instead of being flow items.
 // Carb side: each phase of the chosen side (boil water, cook, fluff…) is
-// injected just before the instruction step where its timer should start, so
-// every phase lines up to finish with the recipe's last step.
+// injected at the instruction step where its timer should start, so every
+// phase lines up to finish with the recipe's last step. Boundary slots sit
+// just before their step; slots that land mid-step ("during" phases) sit
+// just after it, since they only begin partway through that step.
 function buildFlowItems(instructions: any[], prepWork: any[], carbChoice: any): FlowItem[] {
     const items: FlowItem[] = []
     if ((prepWork || []).length > 0) {
@@ -193,11 +198,16 @@ function buildFlowItems(instructions: any[], prepWork: any[], carbChoice: any): 
             : [])
     ;(instructions || []).forEach((_: any, i: number) => {
         carbPhases.forEach((p: any, pi: number) => {
-            if (typeof p?.insertAfter === 'number' && p.insertAfter === i) {
+            if (typeof p?.insertAfter === 'number' && p.insertAfter === i && !p.during) {
                 items.push({ kind: 'carb', stepIndex: i, phaseIndex: pi, flowIndex: items.length })
             }
         })
         items.push({ kind: 'step', stepIndex: i, flowIndex: items.length })
+        carbPhases.forEach((p: any, pi: number) => {
+            if (typeof p?.insertAfter === 'number' && p.insertAfter === i && p.during) {
+                items.push({ kind: 'carb', stepIndex: i, phaseIndex: pi, flowIndex: items.length })
+            }
+        })
     })
     return items
 }
@@ -251,7 +261,7 @@ export default function RecipeDetail() {
     const [isCalculatingCost, setIsCalculatingCost] = useState(false)
     const [showNutrients, setShowNutrients] = useState(false)
     const [recipeServings, setRecipeServings] = useState<number>(0)
-    const [isExporting, setIsExporting] = useState(false)
+    const [exportModalOpen, setExportModalOpen] = useState(false)
 
     // Prep work state
     const [prepWork, setPrepWork] = useState<any[]>([])
@@ -271,13 +281,18 @@ export default function RecipeDetail() {
 
     // Cooking timer state
     const [cookingTimers, setCookingTimers] = useState<any[]>([])
-    const [activeSession, setActiveSession] = useState<Record<string, { endTime: number | null; remaining: number; status: string; checkpointsHit: string[] }>>({})
+    const [activeSession, setActiveSession] = useState<Record<string, { endTime: number | null; remaining: number; status: string; checkpointsHit: string[]; during?: boolean; preAlertHit?: boolean }>>({})
     const [activeSheet, setActiveSheet] = useState<'none' | 'prep' | 'ingredients' | 'timers'>('none')
     const [alarmPopupClosed, setAlarmPopupClosed] = useState<Set<string>>(new Set())
-    const [customTimers, setCustomTimers] = useState<{ id: string; name: string; duration: number }[]>([])
+    const [customTimers, setCustomTimers] = useState<{ id: string; name: string; duration: number; carb?: boolean; stepIndex?: number; during?: boolean; intoMinutes?: number }[]>([])
     const [customTimerName, setCustomTimerName] = useState("")
     const [customTimerMinutes, setCustomTimerMinutes] = useState("")
     const [doneFlow, setDoneFlow] = useState<Set<number>>(new Set())
+    // Peek navigation: "View step"-style jumps force-show a card without
+    // moving the real flow position; Next/Back on the peeked card returns.
+    const [forcedView, setForcedView] = useState<{ idx: number; returnTo: number } | null>(null)
+    // Which waiting side phase has its "what you'll do" slide-out expanded.
+    const [openCarbSlide, setOpenCarbSlide] = useState<string | null>(null)
     const [finishConfirm, setFinishConfirm] = useState(false)
     const [resetConfirm, setResetConfirm] = useState(false)
     const [clearResidualPrompt, setClearResidualPrompt] = useState({ show: false, recipeName: '', recipeId: '' })
@@ -333,6 +348,20 @@ export default function RecipeDetail() {
         return map
     }, [instructions, cookingTimers])
 
+    // Real durations for the side-dish scheduling math: prefer the extracted
+    // step time, then the longest timer attached to the step (eg a 90-min
+    // simmer timer on a step with no time of its own). An explicit time: 0
+    // stays 0 — a genuinely instant step. Steps with neither fall through to
+    // the lib's average fallback.
+    const schedulingInstructions = useMemo(() => (instructions || []).map((s: any, i: number) => {
+        if (s && typeof s.time === 'number' && s.time > 0) return s
+        const timerMins = (timersByStep[i] || [])
+            .filter((t: any) => typeof t.duration === 'number' && t.duration > 0)
+            .reduce((m: number, t: any) => Math.max(m, t.duration), 0)
+        if (timerMins > 0) return { ...(s || {}), time: timerMins }
+        return s
+    }), [instructions, timersByStep])
+
     // Per-step ingredient/prep recommendations (computed once per step, read in cards)
     const ingredsByStep = useMemo(() => {
         const map: Record<number, { recommended: any[]; others: any[] }> = {}
@@ -349,6 +378,22 @@ export default function RecipeDetail() {
         })
         return map
     }, [instructions, prepWork])
+
+    // Tap-to-see-amount popups for ingredient mentions in step text
+    const [popIngredient, setPopIngredient] = useState<any>(null)
+    const [popAnchor, setPopAnchor] = useState<DOMRect | null>(null)
+    const [popStepIndex, setPopStepIndex] = useState<number | null>(null)
+    const ingredientStepMap = useMemo(() => getIngredientStepMap(instructions, listIngreds || []), [instructions, listIngreds])
+    const openIngredientPopup = (ingred: any, anchorEl?: HTMLElement, stepIndex?: number) => {
+        setPopIngredient(ingred)
+        setPopAnchor(anchorEl ? anchorEl.getBoundingClientRect() : null)
+        setPopStepIndex(stepIndex ?? null)
+    }
+    const closeIngredientPopup = () => { setPopIngredient(null); setPopAnchor(null); setPopStepIndex(null) }
+    const popAlsoSteps = popIngredient
+        ? (ingredientStepMap[String(popIngredient.name).toLowerCase().trim()] || [])
+            .filter((i: number) => popStepIndex == null || i !== popStepIndex)
+        : []
 
     const cardRefs = useRef<Record<number, HTMLDivElement | null>>({})
 
@@ -414,15 +459,16 @@ export default function RecipeDetail() {
         return () => mq.removeListener(update)
     }, [])
 
-    // Keep the current step centered in the timeline whenever it changes
+    // Keep the current step centered in the timeline whenever it changes —
+    // a peeked ("View step") card takes over the scroll until it's dismissed.
     useEffect(() => {
         if (!isCookingMode) return
-        const el = cardRefs.current[currentFlow]
+        const el = cardRefs.current[forcedView ? forcedView.idx : currentFlow]
         if (el) {
             const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
             el.scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'center' })
         }
-    }, [currentFlow, isCookingMode])
+    }, [currentFlow, isCookingMode, forcedView])
 
     const costSavedRef = useRef(false)
 
@@ -527,28 +573,19 @@ export default function RecipeDetail() {
         }
     }
 
-    const handleExportRecipe = async () => {
-        setIsExporting(true)
-        try {
-            // listIngreds are in API shape ({name, quantity, quantity_type});
-            // buildRecipeExport normalizes them to the canonical file shape.
-            const image = await fetchImageAsDataUrl(imageData)
-            downloadRecipeFile(buildRecipeExport({
-                name: recipeName,
-                ingredients: listIngreds,
-                instructions,
-                time: recipeTime,
-                genre: recipeGenre,
-                mealTypes: recipeMealTypes,
-                carbType: recipeCarbType,
-                servings: recipeServings,
-                sourceUrl: recipe?.sourceUrl,
-                prepWork,
-                image
-            }))
-        } finally {
-            setIsExporting(false)
-        }
+    // Shared recipe payload for the export modal; buildRecipe*/toFileIngredient
+    // normalizers accept either the API ({name, quantity, ...}) or model shape.
+    const exportRecipeData = {
+        name: recipeName,
+        ingredients: listIngreds,
+        instructions,
+        time: recipeTime,
+        genre: recipeGenre,
+        mealTypes: recipeMealTypes,
+        carbType: recipeCarbType,
+        servings: recipeServings,
+        sourceUrl: recipe?.sourceUrl,
+        prepWork
     }
 
     async function getRecipeDetails() {
@@ -1103,6 +1140,44 @@ export default function RecipeDetail() {
 
     const getTimerStatus = (timerId: string) => activeSession[timerId]?.status || 'pending'
 
+    // ---------- Scheduled side phases ----------
+    // "During" carb phases are anchored to a step's timer: when that timer
+    // starts, each phase activates automatically with an end time
+    // `intoMinutes` after the step timer's start — its alarm means "start
+    // this now". Extending the step timer shifts phases that haven't fired
+    // yet by the same amount so the side still finishes with the step.
+    // A blue "heads-up" ring fires a few minutes before each start so the
+    // cook has time to get back to the kitchen.
+    const SIDE_HEADS_UP_MIN = 3
+
+    const duringPhasesForStep = (stepIndex: number) =>
+        ((carbChoice?.phases || []) as any[]).filter((p: any) =>
+            p.during && p.timerId && typeof p.insertAfter === 'number' && p.insertAfter === stepIndex)
+
+    const scheduleDuringPhases = (stepIndex: number) => {
+        duringPhasesForStep(stepIndex).forEach((p: any) => {
+            if (getTimerStatus(p.timerId) !== 'pending') return
+            const waitSecs = Math.max(0, (p.intoMinutes || 0) * 60)
+            updateTimerSession(p.timerId, () => ({
+                endTime: Date.now() + waitSecs * 1000,
+                remaining: waitSecs,
+                status: 'active',
+                checkpointsHit: [],
+                during: true
+            }))
+        })
+    }
+
+    const shiftDuringPhases = (stepIndex: number, deltaMs: number) => {
+        if (!deltaMs) return
+        duringPhasesForStep(stepIndex).forEach((p: any) => {
+            updateTimerSession(p.timerId, (session: any) => {
+                if (!session?.endTime || session.endTime <= Date.now()) return session // already fired
+                return { ...session, endTime: session.endTime + deltaMs }
+            })
+        })
+    }
+
     const startTimer = (timer: any) => {
         updateTimerSession(timer.id, () => ({
             endTime: Date.now() + timer.duration * 60 * 1000,
@@ -1110,6 +1185,8 @@ export default function RecipeDetail() {
             status: 'active',
             checkpointsHit: []
         }))
+        // Starting a step's timer auto-schedules its "during" side phases.
+        if (!timer.carb && typeof timer.stepIndex === 'number') scheduleDuringPhases(timer.stepIndex)
     }
 
     const pauseResumeTimer = (timer: any) => {
@@ -1129,6 +1206,8 @@ export default function RecipeDetail() {
             status: 'active',
             checkpointsHit: session?.checkpointsHit || []
         }))
+        // A longer step pushes its not-yet-fired side phases back equally.
+        if (!timer.carb && typeof timer.stepIndex === 'number') shiftDuringPhases(timer.stepIndex, minutes * 60 * 1000)
     }
 
     const completeTimer = (timer: any) => {
@@ -1150,12 +1229,17 @@ export default function RecipeDetail() {
     }
 
     const setTimerRemaining = (timer: any, totalSecs: number) => {
+        const prevEnd = activeSession[timer.id]?.endTime
+        const newEnd = Date.now() + totalSecs * 1000
         updateTimerSession(timer.id, (session: any) => ({
-            endTime: Date.now() + totalSecs * 1000,
+            endTime: newEnd,
             remaining: totalSecs,
             status: 'active',
             checkpointsHit: session?.checkpointsHit || []
         }))
+        if (!timer.carb && typeof timer.stepIndex === 'number' && prevEnd) {
+            shiftDuringPhases(timer.stepIndex, newEnd - prevEnd)
+        }
     }
 
     const addTimerSeconds = (timer: any, seconds: number) => {
@@ -1165,12 +1249,16 @@ export default function RecipeDetail() {
             }
             return { ...session, remaining: (session.remaining || 0) + seconds }
         })
+        if (!timer.carb && typeof timer.stepIndex === 'number' && ['active', 'overdue'].includes(getTimerStatus(timer.id))) {
+            shiftDuringPhases(timer.stepIndex, seconds * 1000)
+        }
     }
 
     const closeCooking = () => {
         setActiveSession({})
         setCustomTimers([])
         setAlarmPopupClosed(new Set())
+        setForcedView(null)
         if (id) {
             const keys = Object.keys(localStorage).filter(k => k.startsWith('timer-session-'))
             keys.forEach(k => localStorage.removeItem(k))
@@ -1231,6 +1319,9 @@ export default function RecipeDetail() {
             (saved.currentFlow > 0 || (Array.isArray(saved.doneFlow) && saved.doneFlow.length > 0))
         if (resuming) {
             if (saved.carbChoice) setCarbChoice(saved.carbChoice)
+            // Carb phase timers live in component state, not the DB — restore
+            // them so the side's timers/tabs survive a page reload mid-wait.
+            if (Array.isArray(saved.customTimers)) setCustomTimers(saved.customTimers as any)
             setIsCookingMode(true)
             return
         }
@@ -1259,7 +1350,7 @@ export default function RecipeDetail() {
         const serves = recipe?.servings && recipe.servings > 0 ? recipe.servings : 0
         if (Array.isArray(fallback?.phases) && fallback.phases.length > 0) {
             const phasedTime = fallback.phases.reduce((a: number, p: any) => a + (p.minutes || 0), 0) || fallback.timeMinutes || 20
-            const phased = computePhaseInsertPoints(instructions, fallback.phases.map((p: any) => ({ ...p })))
+            const phased = computePhaseInsertPoints(schedulingInstructions, fallback.phases.map((p: any) => ({ ...p })))
             return {
                 type: fallback.type,
                 label: fallback.type,
@@ -1271,22 +1362,34 @@ export default function RecipeDetail() {
                         null,
                         serves
                     ),
-                    insertAfter: p.insertAfter
+                    insertAfter: p.insertAfter,
+                    during: p.during,
+                    intoMinutes: p.intoMinutes
                 })),
                 totalMinutes: phasedTime
             }
         }
         if (fallback?.stepText) {
+            const fallbackMinutes = fallback.timeMinutes || 20
+            const slot = resolveCarbSlot(schedulingInstructions, fallbackMinutes)
+            // A stored AI hint agreeing within one step wins and pins the
+            // phase to that step boundary (timings always win otherwise).
+            const hintOk = typeof fallback.insertAfter === 'number'
+                && Math.abs(fallback.insertAfter - slot.index) <= 1
+            const insertIdx = hintOk ? fallback.insertAfter : slot.index
+            const intoMin = hintOk ? 0 : slot.intoMinutes
             return {
                 type: fallback.type,
                 label: fallback.type,
                 phases: [{
                     name: 'Cook on the side',
-                    minutes: fallback.timeMinutes || 20,
+                    minutes: fallbackMinutes,
                     instruction: fillCarbPhaseText(fallback.stepText, null, serves),
-                    insertAfter: computeCarbInsertPoint(instructions, fallback.timeMinutes || 20, fallback.insertAfter)
+                    insertAfter: insertIdx,
+                    during: intoMin > 0,
+                    intoMinutes: intoMin
                 }],
-                totalMinutes: fallback.timeMinutes || 20
+                totalMinutes: fallbackMinutes
             }
         }
         return null
@@ -1312,7 +1415,7 @@ export default function RecipeDetail() {
         const total = phases.some((p: any) => p.minutes > 0)
             ? phases.reduce((a: number, p: any) => a + p.minutes, 0)
             : (recipe?.carbSide?.timeMinutes || timing?.totalMinutes || 20)
-        const phased = computePhaseInsertPoints(instructions, phases)
+        const phased = computePhaseInsertPoints(schedulingInstructions, phases)
         return {
             type: entry.name,
             variant: timing?.variant,
@@ -1332,7 +1435,8 @@ export default function RecipeDetail() {
         const base = resolveCarbChoice(entry, variant)
         // One session timer per phase with time (custom timers keep alarms,
         // finish-gate and the timers sheet working), pending until the user
-        // starts each in the flow.
+        // starts each in the flow — or until the anchor step's timer starts
+        // it automatically for "during" phases.
         const stamp = Date.now().toString(36)
         const phases = base.phases.map((p: any, pi: number) => {
             const tid = p.minutes > 0 ? `carb-${stamp}-p${pi}` : undefined
@@ -1341,7 +1445,13 @@ export default function RecipeDetail() {
                     id: tid,
                     name: `${base.label}: ${p.name}`,
                     duration: p.minutes,
-                    carb: true
+                    carb: true,
+                    // Anchor step + mid-step offset: when the anchor step's
+                    // timer starts, "during" phases are scheduled to fire
+                    // intoMinutes after it starts.
+                    stepIndex: p.insertAfter,
+                    during: !!p.during,
+                    intoMinutes: p.intoMinutes || 0
                 } as any])
             }
             return { ...p, timerId: tid }
@@ -1594,10 +1704,11 @@ export default function RecipeDetail() {
                 timers: activeSession,
                 currentFlow,
                 doneFlow: Array.from(doneFlow),
-                carbChoice
+                carbChoice,
+                customTimers
             }))
         } catch {}
-    }, [activeSession, currentFlow, doneFlow, id])
+    }, [activeSession, currentFlow, doneFlow, id, customTimers])
 
     // Tick clock + countdown engine. A 100ms clock drives re-renders while any
     // timer runs, so countdowns step at true second boundaries (ceiled) and
@@ -1606,6 +1717,8 @@ export default function RecipeDetail() {
     const [nowMs, setNowMs] = useState(() => Date.now())
     const activeSessionRef = useRef(activeSession)
     activeSessionRef.current = activeSession
+    const customTimersRef = useRef(customTimers)
+    customTimersRef.current = customTimers
     const lastAlarmAtRef = useRef(0)
 
     useEffect(() => {
@@ -1637,7 +1750,12 @@ export default function RecipeDetail() {
                     updates[timerId] = { ...session, status: 'overdue' }
                     playAlarm()
                     lastAlarmAtRef.current = now
-                    sendNotification('Timer Complete', `${getTimerById(cookingTimers, timerId)?.name || 'Timer'} is done!`)
+                    // Scheduled side phases ring as "start now", not "done"
+                    const firingTimer = getTimerById(cookingTimers, timerId) || customTimersRef.current.find((x: any) => x.id === timerId)
+                    sendNotification(
+                        firingTimer?.carb ? 'Side dish time' : 'Timer Complete',
+                        firingTimer?.carb ? `Time to start: ${firingTimer?.name || 'side'}` : `${firingTimer?.name || 'Timer'} is done!`
+                    )
                     // A fresh overdue event — make sure the alarm popup shows for it again
                     setAlarmPopupClosed(prev => {
                         if (!prev.has(timerId)) return prev
@@ -1645,6 +1763,17 @@ export default function RecipeDetail() {
                         next.delete(timerId)
                         return next
                     })
+                    continue
+                }
+                // Blue heads-up ring: a few minutes before a scheduled side
+                // phase starts, so the cook has time to get back to the
+                // kitchen. Rings once; the real alarm still fires at start time.
+                if (session.during && !session.preAlertHit && session.endTime - now <= SIDE_HEADS_UP_MIN * 60000) {
+                    updates[timerId] = { ...session, preAlertHit: true }
+                    playAlarm()
+                    lastAlarmAtRef.current = now
+                    const sideTimer = customTimersRef.current.find((x: any) => x.id === timerId)
+                    sendNotification('Head back to the kitchen', `${sideTimer?.name || 'Side dish'} — starts in about ${SIDE_HEADS_UP_MIN} min`)
                     continue
                 }
                 // Check checkpoints
@@ -1885,14 +2014,13 @@ export default function RecipeDetail() {
                                 <span className="hidden sm:inline">Edit</span>
                             </Button>
                             <Button
-                                onClick={handleExportRecipe}
+                                onClick={() => setExportModalOpen(true)}
                                 variant="outline"
-                                disabled={isExporting}
-                                className="h-12 sm:h-14 px-3 sm:px-6 rounded-md bg-secondary/70 hover:bg-secondary text-foreground/85 font-semibold text-sm flex items-center justify-center gap-1.5 transition-all shrink-0 !border-0 disabled:opacity-60"
-                                title="Export recipe to a JSON file"
+                                className="h-12 sm:h-14 px-3 sm:px-6 rounded-md bg-secondary/70 hover:bg-secondary text-foreground/85 font-semibold text-sm flex items-center justify-center gap-1.5 transition-all shrink-0 !border-0"
+                                title="Export, copy or download this recipe"
                                 aria-label="Export recipe"
                             >
-                                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                <Download className="w-4 h-4" />
                                 <span className="hidden sm:inline">Export</span>
                             </Button>
                             <Button
@@ -2070,19 +2198,31 @@ export default function RecipeDetail() {
                                 <span className="ml-auto text-xs text-muted-foreground">{instructions.length} steps</span>
                             </div>
                             <div className="space-y-5 sm:space-y-6">
-                                {instructions.map((instruction, index) => (
+                                {instructions.map((instruction, index) => {
+                                    const recs = ingredsByStep[index]?.recommended || []
+                                    const longStep = isLongStep(instruction.Text)
+                                    return (
                                     <div key={index} className="flex gap-3 sm:gap-4">
                                         <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-sm font-bold text-foreground/70">
                                             {index + 1}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-foreground/85 leading-relaxed text-[15px] sm:text-base font-medium">{instruction.Text}</p>
+                                            <div className={`text-foreground/85 leading-relaxed font-medium ${longStep ? 'text-sm sm:text-[15px]' : 'text-[15px] sm:text-base'}`}>
+                                                {renderStepText(instruction.Text, {
+                                                    ingredients: recs,
+                                                    onIngredientClick: (ingred, anchor) => openIngredientPopup(ingred, anchor, index)
+                                                })}
+                                            </div>
+                                            {recs.length > 0 && recs.length <= PILL_MAX && (
+                                                <PillRow ingreds={recs} onSelect={(ingred) => openIngredientPopup(ingred, undefined, index)} />
+                                            )}
                                             {instruction.time && (
                                                 <div className="mt-1 text-xs text-muted-foreground">~{instruction.time} min</div>
                                             )}
                                         </div>
                                     </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         </div>
                     )}
@@ -2443,6 +2583,14 @@ export default function RecipeDetail() {
                     </div>
                 </div>
 
+                {/* Export modal — clipboard / JSON / Markdown options */}
+                <ExportRecipeModal
+                    isOpen={exportModalOpen}
+                    onClose={() => setExportModalOpen(false)}
+                    recipe={exportRecipeData}
+                    imageSrc={imageData}
+                />
+
                 {/* Ingredient Research Modal — bottom sheet on phones, centered card on desktop */}
                 <Modal
                     isOpen={modalIsOpen}
@@ -2603,7 +2751,7 @@ export default function RecipeDetail() {
                     side" is the first list option, so the footer is a single
                     Start button. */}
                 {carbModalOpen && (
-                    <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center sm:p-4 bg-black/70 backdrop-blur-sm" onClick={() => setCarbModalOpen(false)}>
+                    <div className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center sm:p-4 bg-black/70 backdrop-blur-sm" onClick={() => setCarbModalOpen(false)}>
                         <div
                             className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-border bg-background shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh]"
                             onClick={(e) => e.stopPropagation()}
@@ -2704,7 +2852,16 @@ export default function RecipeDetail() {
                     const allRecipeTimers = sortTimersByStartTime(cookingTimers.filter((t: any) => t.type === 'timer'))
 
                     const jumpTo = (idx: number) => setCurrentFlow(Math.max(0, Math.min(idx, flowItems.length - 1)))
-                    const goBack = () => setCurrentFlow(Math.max(0, clampedCurrent - 1))
+                    // Peek: force-show a card without moving the real flow
+                    // position — Next/Back on the peeked card returns to it.
+                    const peekTo = (idx: number) => {
+                        const target = Math.max(0, Math.min(idx, flowItems.length - 1))
+                        setForcedView(prev => prev || { idx: target, returnTo: clampedCurrent })
+                    }
+                    const goBack = () => {
+                        if (forcedView) { setForcedView(null); return }
+                        setCurrentFlow(Math.max(0, clampedCurrent - 1))
+                    }
                     const openSheet = (name: 'prep' | 'ingredients' | 'timers') => setActiveSheet(prev => (prev === name ? 'none' : name))
 
                     const formatCountdown = (remaining: number) => {
@@ -2716,6 +2873,13 @@ export default function RecipeDetail() {
                     }
 
                     const advance = () => {
+                        // Peeking at another card: Next wraps up the peek and
+                        // returns to the step the cook was actually on.
+                        if (forcedView) {
+                            setDoneFlow(prev => new Set([...Array.from(prev), forcedView.idx]))
+                            setForcedView(null)
+                            return
+                        }
                         if (isLast) {
                             if (runningTimerCount > 0 || customTimers.length > 0) setFinishConfirm(true)
                             else closeCooking()
@@ -2733,7 +2897,20 @@ export default function RecipeDetail() {
                         setCurrentFlow(clampedCurrent + 1)
                     }
 
-                    const nextLabel = isLast ? 'Finish' : 'Next step'
+                    // While peeking, the primary button wraps up the peek and
+                    // names where it returns to.
+                    const peekReturnLabel = (() => {
+                        const t = forcedView ? flowItems[forcedView.returnTo] : undefined
+                        if (!t) return 'Back'
+                        return t.kind === 'prep'
+                            ? 'Back to prep'
+                            : t.kind === 'carb'
+                                ? 'Back to side'
+                                : `Back to Step ${t.stepIndex + 1}`
+                    })()
+                    const nextLabel = forcedView
+                        ? peekReturnLabel
+                        : isLast ? 'Finish' : 'Next step'
                     const nextHint = runningCurrentTimer
                         ? (getTimerStatus(runningCurrentTimer.id) === 'overdue'
                             ? `${runningCurrentTimer.name || 'Timer'} is overdue`
@@ -2822,7 +2999,7 @@ export default function RecipeDetail() {
                         )
                     }
 
-                    const renderStepCard = (item: any, idx: number, state: 'done' | 'current' | 'upcoming', isNext: boolean) => {
+                    const renderStepCard = (item: any, idx: number, state: 'done' | 'current' | 'upcoming', isNext: boolean, peeked: boolean = false) => {
                         const text = instructions[item.stepIndex]?.Text || ''
                         const recs = ingredsByStep[item.stepIndex]?.recommended || []
                         const prepRecs = prepByStep[item.stepIndex]?.recommended || []
@@ -2873,31 +3050,47 @@ export default function RecipeDetail() {
                                             <span className="cooking-card-label">Last step</span>
                                         )}
                                     </div>
-                                    <p className={`cooking-card-text is-${state}`}>{text}</p>
+                                    <div className={`cooking-card-text is-${state} ${state === 'current' && splitSentences(text).length >= 2 ? 'is-stacked' : ''} ${state === 'current' && isLongStep(text) ? 'is-long' : ''}`}>
+                                        {renderStepText(text, {
+                                            ingredients: state === 'done' ? [] : recs,
+                                            onIngredientClick: (ingred, anchor) => openIngredientPopup(ingred, anchor, item.stepIndex)
+                                        })}
+                                    </div>
                                     {/* Returning to the main dish after a side
                                         phase: keep the side's status in sight */}
                                     {returnTimer && state === 'current' && (() => {
                                         const status = getTimerStatus(returnTimer.id)
                                         const live = ['active', 'paused', 'overdue'].includes(status)
+                                        const during = !!returnPhase.phase.during
+                                        const hintHeadsup = during && live && !!activeSession[returnTimer.id]?.preAlertHit
                                         return (
                                             <button
-                                                className="cooking-prep-hint"
+                                                className={`cooking-prep-hint ${hintHeadsup ? 'is-headsup' : ''}`}
                                                 onClick={() => {
                                                     const fi = flowItems.findIndex(f => f.kind === 'carb' && f.phaseIndex === returnPhase.pi)
-                                                    if (fi >= 0) jumpTo(fi)
+                                                    if (fi >= 0) peekTo(fi)
                                                 }}
                                             >
                                                 <span className="cooking-prep-hint-task">
                                                     <ChefHat size={12} />
                                                     <span className="cooking-prep-hint-text">
-                                                        {carbChoice.label}: {returnPhase.phase.name} — {live ? `${formatCountdown(getRemaining(activeSession[returnTimer.id], nowMs))} left` : 'not started yet'}
-                                                        {live && (activeSession[returnTimer.id]?.endTime) && <span className="cooking-prep-hint-more"> (done at {new Date(activeSession[returnTimer.id].endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>}
+                                                        {carbChoice.label}: {returnPhase.phase.name} — {live
+                                                            ? (during
+                                                                ? (activeSession[returnTimer.id]?.preAlertHit
+                                                                    ? `head back! starts in ${formatCountdown(getRemaining(activeSession[returnTimer.id], nowMs))}`
+                                                                    : `starts in ${formatCountdown(getRemaining(activeSession[returnTimer.id], nowMs))} (heads-up ${SIDE_HEADS_UP_MIN} min before)`)
+                                                                : `${formatCountdown(getRemaining(activeSession[returnTimer.id], nowMs))} left`)
+                                                            : 'not started yet'}
+                                                        {live && (activeSession[returnTimer.id]?.endTime) && <span className="cooking-prep-hint-more"> ({during ? 'start at' : 'done at'} {new Date(activeSession[returnTimer.id].endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>}
                                                     </span>
                                                 </span>
                                                 <span className="cooking-prep-hint-cta">tap to view side</span>
                                             </button>
                                         )
                                     })()}
+                                    {peeked && state === 'current' && (
+                                        <div className="cooking-current-hint">Peeking · Next returns to where you were</div>
+                                    )}
                                     {showChips && recs.length > 0 && (
                                         <div className="cooking-chips">
                                             {recs.map((ingred: any, ci: number) => (
@@ -2941,7 +3134,7 @@ export default function RecipeDetail() {
                     // timer lives as a "custom" timer (per phase) so alarms +
                     // finish-gate work; user starts it manually, then returns
                     // to the main-dish step they left off at.
-                    const renderCarbCard = (item: any, idx: number, state: 'done' | 'current' | 'upcoming', isNext: boolean) => {
+                    const renderCarbCard = (item: any, idx: number, state: 'done' | 'current' | 'upcoming', isNext: boolean, peeked: boolean = false) => {
                         const phases = carbChoice?.phases || []
                         const phase = phases[item.phaseIndex] || phases[0] || { name: 'Side step', instruction: '', minutes: 0 }
                         const phaseCount = phases.length
@@ -2950,6 +3143,24 @@ export default function RecipeDetail() {
                         const nextPending = phases.find((p: any, pi: number) => pi > item.phaseIndex
                             && p.timerId
                             && !['completed', 'overdue'].includes(getTimerStatus(p.timerId)))
+                        // Scheduled ("during") phases present as a WAIT while their
+                        // timer counts down to the start moment — calm blue card,
+                        // "Wait X min" headline, the actual work in a slide-out.
+                        // Once the timer fires the card flips to "do it now".
+                        // Only auto-scheduled waits count; a phase started by hand
+                        // is work in progress, not waiting.
+                        const waitSession = phase.during && carbTimer ? activeSession[carbTimer.id] : undefined
+                        const isWaiting = !!(waitSession && waitSession.during && ['active', 'paused'].includes(waitSession.status))
+                        const isDoing = !isWaiting && !!phase.during && !!carbTimer && ['active', 'paused'].includes(getTimerStatus(carbTimer.id))
+                        const isDue = waitSession && waitSession.status === 'overdue'
+                        const headsup = !!(waitSession && waitSession.preAlertHit)
+                        const waitRemaining = waitSession ? getRemaining(waitSession, nowMs) : 0
+                        const waitMins = Math.max(1, Math.ceil(waitRemaining / 60))
+                        const waitStartStr = waitSession?.endTime
+                            ? new Date(waitSession.status === 'paused' ? Date.now() + (waitSession.remaining || 0) * 1000 : waitSession.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            : null
+                        const slideId = phase.timerId || `phase-${item.phaseIndex}`
+                        const slideOpen = openCarbSlide === slideId
                         return (
                             <div
                                 key={idx}
@@ -2957,20 +3168,24 @@ export default function RecipeDetail() {
                                 className="cooking-step-group"
                             >
                                 {/* Optional recommendation: dashed border keeps it
-                                    visually distinct from recipe steps */}
+                                    visually distinct from recipe steps (waiting
+                                    phases go solid in their own calm colour) */}
                                 <div
-                                    className={`cooking-card cooking-card-step cooking-card-carb is-${state} ${isNext && state === 'upcoming' ? 'is-next' : ''} ${state === 'done' ? 'is-clickable' : ''}`}
-                                    style={{ borderStyle: 'dashed' }}
+                                    className={`cooking-card cooking-card-step cooking-card-carb is-${state} ${isWaiting ? 'is-waiting' : ''} ${isNext && state === 'upcoming' ? 'is-next' : ''} ${state === 'done' ? 'is-clickable' : ''}`}
+                                    style={{ borderStyle: isWaiting ? 'solid' : 'dashed' }}
                                     onClick={state === 'done' ? () => jumpTo(idx) : undefined}
                                 >
                                     <div className="cooking-card-top">
                                         {state === 'done' && (
                                             <span className="cooking-card-label"><Check size={13} strokeWidth={3} /> Recommended side · done</span>
                                         )}
-                                        {state === 'current' && (
-                                            <span className="cooking-card-label is-accent"><ChefHat size={13} /> Recommended side · {carbChoice?.label}</span>
+                                        {!isWaiting && state === 'current' && (
+                                            <span className="cooking-card-label is-accent"><ChefHat size={13} /> Recommended side · {isDue ? 'do it now' : carbChoice?.label}</span>
                                         )}
-                                        {state === 'upcoming' && (
+                                        {isWaiting && state !== 'done' && (
+                                            <span className="cooking-card-label is-wait"><Hourglass size={13} /> Recommended side · waiting</span>
+                                        )}
+                                        {!isWaiting && state === 'upcoming' && (
                                             <span className="cooking-card-label">{isNext ? 'Up next' : 'Side dish'}</span>
                                         )}
                                     </div>
@@ -2979,23 +3194,68 @@ export default function RecipeDetail() {
                                             Phase {item.phaseIndex + 1} of {phaseCount} · {phase.name}
                                         </p>
                                     )}
-                                    <p className={`cooking-card-text is-${state}`}>{text}</p>
-                                    {state === 'current' && (
-                                        <div className="cooking-current-hint">
-                                            {carbTimer
-                                                ? <>Start the timer below, then carry on with <strong>Step {item.stepIndex + 1} · main dish</strong> — the side runs in the background{nextPending ? `, and its next phase (${nextPending.name}) comes up later` : ''}</>
-                                                : <>Do this as the last step finishes, then move on below</>}
-                                        </div>
+                                    {isWaiting && state !== 'done' ? (
+                                        <>
+                                            <p className="cooking-wait-headline">
+                                                Wait <span className="cooking-wait-count">{waitSession?.status === 'paused' ? 'paused' : `${waitMins} min`}</span>
+                                            </p>
+                                            <p className="cooking-wait-sub">
+                                                {headsup
+                                                    ? <>Head back — {phase.name}{waitStartStr ? ` starts at ${waitStartStr}` : ''}</>
+                                                    : <>then {phase.name}{waitStartStr ? ` · start at ${waitStartStr}` : ''} · we'll ring {SIDE_HEADS_UP_MIN} min before</>}
+                                                {' '}— Step {item.stepIndex + 1} keeps cooking
+                                            </p>
+                                            <button
+                                                className={`cooking-slide-toggle ${slideOpen ? 'is-open' : ''}`}
+                                                onClick={() => setOpenCarbSlide(slideOpen ? null : slideId)}
+                                            >
+                                                What you'll do <ChevronDown size={13} />
+                                            </button>
+                                            <div className={`cooking-side-slideout ${slideOpen ? 'open' : ''}`}>
+                                                <p className="cooking-slideout-text">{text}</p>
+                                            </div>
+                                        </>
+                                            ) : (
+                                                <>
+                                            <p className={`cooking-card-text is-${state}`}>{text}</p>
+                                            {peeked && (
+                                                <div className="cooking-current-hint">Peeking · Next returns to where you were</div>
+                                            )}
+                                            {isDue && state === 'current' && !peeked && (
+                                                <>
+                                                    <div className="cooking-current-hint">
+                                                        Time to do this now — <strong>Step {item.stepIndex + 1} · main dish</strong> keeps cooking in the background{nextPending ? `, and its next phase (${nextPending.name}) comes up later` : ''}
+                                                    </div>
+                                                    {carbTimer && (
+                                                        <button className="cooking-start-timer" onClick={() => completeTimer(carbTimer)}>
+                                                            <Check size={16} strokeWidth={3} />
+                                                            Done ✓
+                                                        </button>
+                                                    )}
+                                                </>
+                                            )}
+                                            {!isDue && state === 'current' && !peeked && (
+                                                <div className="cooking-current-hint">
+                                                    {carbTimer
+                                                        ? (isDoing
+                                                            ? <>Timer running — carry on with <strong>Step {item.stepIndex + 1} · main dish</strong> — the side runs in the background{nextPending ? `, and its next phase (${nextPending.name}) comes up later` : ''}</>
+                                                            : phase.during
+                                                                ? <>Timer fires ~{phase.intoMinutes} min into <strong>Step {item.stepIndex + 1} · main dish</strong> once that timer runs — or start it below yourself; the side runs in the background{nextPending ? `, and its next phase (${nextPending.name}) comes up later` : ''}</>
+                                                                : <>Start the timer below, then carry on with <strong>Step {item.stepIndex + 1} · main dish</strong> — the side runs in the background{nextPending ? `, and its next phase (${nextPending.name}) comes up later` : ''}</>)
+                                                        : <>Do this as the last step finishes, then move on below</>}
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                 </div>
-                                {carbTimer && renderTimerTab(carbTimer, state)}
+                                {carbTimer && renderTimerTab(carbTimer, state, isWaiting ? 'wait' : undefined)}
                             </div>
                         )
                     }
 
                     // Timer attached to its step: pokes out underneath the step card,
                     // suggests/controls the timer that helps complete the step.
-                    const renderTimerTab = (timer: any, state: 'done' | 'current' | 'upcoming') => {
+                    const renderTimerTab = (timer: any, state: 'done' | 'current' | 'upcoming', variant?: 'wait') => {
                         const status = getTimerStatus(timer.id)
                         const session = activeSession[timer.id]
                         const remaining = session ? getRemaining(session, nowMs) : timer.duration * 60
@@ -3011,6 +3271,41 @@ export default function RecipeDetail() {
                         const name = timer.name || 'Timer'
                         const live = status === 'active' || status === 'paused' || status === 'overdue'
                         const isOverdue = status === 'overdue'
+
+                        // Blue waiting tab: the countdown runs down to the moment
+                        // this scheduled phase starts (not to its completion).
+                        if (variant === 'wait' && (status === 'active' || status === 'paused')) {
+                            const waitTotalSecs = Math.max(1, (timer.intoMinutes || 0) * 60)
+                            const waitProgress = Math.min(100, Math.max(0, ((waitTotalSecs - remaining) / waitTotalSecs) * 100))
+                            const headsup = !!session?.preAlertHit
+                            return (
+                                <div key={timer.id} className={`cooking-timer-tab is-wait ${headsup ? 'is-headsup' : ''}`}>
+                                    <div className="cooking-timer-tab-head">
+                                        <span className="cooking-timer-tab-name is-wait"><Hourglass size={12} /> {name}</span>
+                                        <span className="cooking-timer-tag">{headsup ? 'Head back' : 'Waiting'}</span>
+                                    </div>
+                                    <div className="cooking-countdown is-wait">{formatCountdown(remaining)}</div>
+                                    {finishTimeStr && (
+                                        <div className="cooking-countdown-sub">
+                                            {headsup ? 'Head back — start at ' : 'Start at '}{finishTimeStr} · rings {SIDE_HEADS_UP_MIN} min before
+                                        </div>
+                                    )}
+                                    <div className="cooking-progress-track">
+                                        <div className="cooking-progress-fill is-wait" style={{ width: `${waitProgress}%` }} />
+                                    </div>
+                                    <div className="cooking-timer-actions">
+                                        <button className="cooking-timer-btn" onClick={() => pauseResumeTimer(timer)}>{status === 'active' ? 'Pause' : 'Resume'}</button>
+                                        <button className="cooking-timer-btn" onClick={() => addTimerSeconds(timer, 300)}>+5 min</button>
+                                        <button
+                                            className="cooking-timer-btn is-primary"
+                                            onClick={() => updateTimerSession(timer.id, (s: any) => ({ ...(s || {}), endTime: Date.now() }))}
+                                        >
+                                            Do it now
+                                        </button>
+                                    </div>
+                                </div>
+                            )
+                        }
 
                         if (state === 'done') {
                             if (live) {
@@ -3275,21 +3570,33 @@ export default function RecipeDetail() {
                                     const seconds = remaining % 60
                                     const progress = getTimerProgress(timer, session, nowMs)
                                     const isOverdue = status === 'overdue'
+                                    // Scheduled side phase sitting in its wait: blue
+                                    // card counting down to the start moment.
+                                    const isWait = !!(timer.during && session?.during && ['active', 'paused'].includes(status))
+                                    const waitHeadsup = isWait && !!session?.preAlertHit
+                                    const waitStartStr = session?.endTime
+                                        ? new Date(session.status === 'paused' ? Date.now() + (session.remaining || 0) * 1000 : session.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                        : null
                                     if (status === 'active' || status === 'paused' || status === 'overdue') {
                                         return (
-                                            <div key={timer.id} className={`cooking-mgr-card is-${status}`}>
+                                            <div key={timer.id} className={`cooking-mgr-card is-${status} ${isWait ? 'is-wait' : ''} ${waitHeadsup ? 'is-headsup' : ''}`}>
                                                 <div className="cooking-mgr-head">
-                                                    <span className="cooking-mgr-name">{timer.name}</span>
+                                                    <span className={`cooking-mgr-name ${isWait ? 'is-wait' : ''}`}>{timer.name}</span>
                                                     <div className="cooking-mgr-head-actions">
+                                                        {isWait && <span className="cooking-timer-tag is-wait">{waitHeadsup ? 'Head back' : 'Waiting'}</span>}
                                                         {isOverdue && <span className="cooking-timer-tag is-overdue">Overdue</span>}
                                                         <button className="cooking-mgr-link" onClick={() => resetTimer(timer)}>Reset</button>
                                                         <button className="cooking-mgr-link is-danger" onClick={() => removeCustomTimer(timer.id)}>✕</button>
                                                     </div>
                                                 </div>
-                                                <div className={`cooking-mgr-countdown ${isOverdue ? 'is-overdue' : ''}`}>{formatCountdown(remaining)}</div>
+                                                <div className={`cooking-mgr-countdown ${isOverdue ? 'is-overdue' : ''} ${isWait ? 'is-wait' : ''}`}>{formatCountdown(remaining)}
+                                                    <span className="cooking-mgr-countdown-hint">
+                                                        {isWait ? (waitStartStr ? `${waitHeadsup ? 'head back — start at ' : 'start at '}${waitStartStr}` : 'waiting') : 'tap to adjust'}
+                                                    </span>
+                                                </div>
                                                 <div className="cooking-progress-wrap">
                                                     <div className="cooking-progress-track">
-                                                        <div className="cooking-progress-fill" style={{ width: `${progress}%` }} />
+                                                        <div className={`cooking-progress-fill ${isWait ? 'is-wait' : ''}`} style={{ width: `${progress}%` }} />
                                                     </div>
                                                 </div>
                                                 {isOverdue ? (
@@ -3302,7 +3609,16 @@ export default function RecipeDetail() {
                                                     <div className="cooking-timer-actions">
                                                         <button className="cooking-timer-btn" onClick={() => pauseResumeTimer(timer)}>{status === 'active' ? 'Pause' : 'Resume'}</button>
                                                         <button className="cooking-timer-btn" onClick={() => addTimerSeconds(timer, 300)}>+5 min</button>
-                                                        <button className="cooking-timer-btn is-primary" onClick={() => completeTimer(timer)}>Done ✓</button>
+                                                        {isWait ? (
+                                                            <button
+                                                                className="cooking-timer-btn is-primary"
+                                                                onClick={() => updateTimerSession(timer.id, (s: any) => ({ ...(s || {}), endTime: Date.now() }))}
+                                                            >
+                                                                Do it now
+                                                            </button>
+                                                        ) : (
+                                                            <button className="cooking-timer-btn is-primary" onClick={() => completeTimer(timer)}>Done ✓</button>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
@@ -3436,18 +3752,23 @@ export default function RecipeDetail() {
                     return (
                         <div className="cooking-mode-overlay">
                             <header className="cooking-mode-header">
-                                <button className="cooking-icon-btn" onClick={() => { setIsCookingMode(false); setDoneFlow(new Set()) }} aria-label="Exit cooking mode">
+                                <button className="cooking-icon-btn" onClick={() => { setIsCookingMode(false); setDoneFlow(new Set()); setForcedView(null) }} aria-label="Exit cooking mode">
                                     <img src="/cross.png" className="w-4 h-4 invert-[.25] dark:invert" alt="close" />
                                 </button>
                                 <div className="cooking-header-center">
                                     <div className="cooking-header-title">
-                                        {current ? (
-                                            current.kind === 'prep'
-                                                ? <>Prep work</>
-                                                : current.kind === 'carb'
-                                                    ? <>Side · {(carbChoice?.phases || [])[current.phaseIndex]?.name || carbChoice?.label}</>
-                                                    : <>Step {current.stepIndex + 1} of {instructions.length}</>
-                                        ) : 'Cooking'}
+                                        {(() => {
+                                            // While peeking, the title names the
+                                            // peeked card, not the flow position.
+                                            const titleItem = forcedView ? flowItems[forcedView.idx] : current
+                                            return titleItem ? (
+                                                titleItem.kind === 'prep'
+                                                    ? <>Prep work</>
+                                                    : titleItem.kind === 'carb'
+                                                        ? <>Side · {(carbChoice?.phases || [])[titleItem.phaseIndex]?.name || carbChoice?.label}</>
+                                                        : <>Step {titleItem.stepIndex + 1} of {instructions.length}</>
+                                            ) : 'Cooking'
+                                        })()}
                                     </div>
                                     {/* Sticky side-status pill: shows which side
                                         phase is running/next so the parallel
@@ -3463,13 +3784,13 @@ export default function RecipeDetail() {
                                                     className="cooking-side-pill"
                                                     onClick={() => {
                                                         const fi = flowItems.findIndex(f => f.kind === 'carb' && carbChoice.phases[f.phaseIndex]?.timerId === live.timerId)
-                                                        if (fi >= 0) jumpTo(fi)
+                                                        if (fi >= 0) peekTo(fi)
                                                     }}
                                                     title={'Side: ' + live.name}
                                                 >
                                                     <ChefHat size={11} />
                                                     <span>{carbChoice.label}: {live.name}</span>
-                                                    <strong>{formatCountdown(remaining)}</strong>
+                                                    <strong>{live.during && shownTimer?.status === 'active' ? `in ${formatCountdown(remaining)}` : formatCountdown(remaining)}</strong>
                                                 </button>
                                             )
                                         }
@@ -3480,7 +3801,7 @@ export default function RecipeDetail() {
                                                 className="cooking-side-pill is-pending"
                                                 onClick={() => {
                                                     const fi = flowItems.findIndex(f => f.kind === 'carb' && carbChoice.phases[f.phaseIndex]?.timerId === pending.timerId)
-                                                    if (fi >= 0) jumpTo(fi)
+                                                    if (fi >= 0) peekTo(fi)
                                                 }}
                                             >
                                                 <ChefHat size={11} />
@@ -3492,7 +3813,7 @@ export default function RecipeDetail() {
                                     <div className="cooking-progress">
                                         {flowItems.map((item, idx) => {
                                             const segDone = idx < clampedCurrent || doneFlow.has(idx)
-                                            const segCurrent = idx === clampedCurrent
+                                            const segCurrent = idx === clampedCurrent || idx === forcedView?.idx
                                             const label = item.kind === 'prep'
                                                 ? 'Prep work'
                                                 : item.kind === 'carb'
@@ -3518,13 +3839,18 @@ export default function RecipeDetail() {
                             <div className="cooking-mode-body">
                                 <div className="cooking-timeline">
                                     {flowItems.map((item, idx) => {
-                                        const state = idx < clampedCurrent ? 'done' : idx === clampedCurrent ? 'current' : 'upcoming'
+                                        // A peeked card renders as current on top
+                                        // of the real flow position beneath it.
+                                        const peeked = forcedView?.idx === idx
+                                        const state = peeked
+                                            ? 'current'
+                                            : idx < clampedCurrent ? 'done' : idx === clampedCurrent ? 'current' : 'upcoming'
                                         const isNext = idx === clampedCurrent + 1
                                         return item.kind === 'prep'
                                             ? renderPrepCard(idx, state)
                                             : item.kind === 'carb'
-                                                ? renderCarbCard(item, idx, state, isNext)
-                                                : renderStepCard(item, idx, state, isNext)
+                                                ? renderCarbCard(item, idx, state, isNext, peeked)
+                                                : renderStepCard(item, idx, state, isNext, peeked)
                                     })}
                                     {flowItems.length === 0 && (
                                         <div className="cooking-empty">This recipe has no steps yet.</div>
@@ -3594,7 +3920,7 @@ export default function RecipeDetail() {
                                     variant="outline"
                                     className="cooking-back-btn"
                                     onClick={goBack}
-                                    disabled={clampedCurrent === 0}
+                                    disabled={clampedCurrent === 0 && !forcedView}
                                 >
                                     <ChevronLeft size={18} /> Back
                                 </Button>
@@ -3640,9 +3966,13 @@ export default function RecipeDetail() {
                                             {visibleOverdue.map((timer: any) => {
                                                 const session = activeSession[timer.id]
                                                 const remaining = session ? getRemaining(session, nowMs) : 0
-                                                const stepFlowIdx = typeof timer.stepIndex === 'number'
-                                                    ? flowItems.findIndex(f => f.kind === 'step' && f.stepIndex === timer.stepIndex)
-                                                    : -1
+                                                // Carb phase timers point at their flow
+                                                // card; recipe timers at their step.
+                                                const stepFlowIdx = timer.carb
+                                                    ? flowItems.findIndex(f => f.kind === 'carb' && carbChoice?.phases?.[f.phaseIndex]?.timerId === timer.id)
+                                                    : (typeof timer.stepIndex === 'number'
+                                                        ? flowItems.findIndex(f => f.kind === 'step' && f.stepIndex === timer.stepIndex)
+                                                        : -1)
                                                 return (
                                                     <div key={timer.id} className="cooking-alarm-item">
                                                         <span className="cooking-alarm-item-icon"><Clock size={22} /></span>
@@ -3684,7 +4014,9 @@ export default function RecipeDetail() {
                                                             <button
                                                                 className="cooking-alarm-popup-view"
                                                                 onClick={() => {
-                                                                    jumpTo(stepFlowIdx)
+                                                                    // Peek at the card without
+                                                                    // abandoning the current step.
+                                                                    peekTo(stepFlowIdx)
                                                                     setAlarmPopupClosed(prev => new Set([...Array.from(prev), timer.id]))
                                                                 }}
                                                             >
@@ -3786,6 +4118,7 @@ export default function RecipeDetail() {
                                     setActiveSession({})
                                     setCustomTimers([])
                                     setAlarmPopupClosed(new Set())
+                                    setForcedView(null)
                                     if (id) {
                                         const keys = Object.keys(localStorage).filter(k => k.startsWith('timer-session-'))
                                         keys.forEach(k => localStorage.removeItem(k))
@@ -3863,6 +4196,14 @@ export default function RecipeDetail() {
                 </div>
             )}
             </div>
+            {popIngredient && (
+                <IngredientPopover
+                    ingred={popIngredient}
+                    anchorRect={popAnchor}
+                    alsoSteps={popAlsoSteps}
+                    onClose={closeIngredientPopup}
+                />
+            )}
         </Layout>
     )
 }

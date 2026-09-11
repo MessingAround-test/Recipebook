@@ -94,6 +94,123 @@ export const buildRecipeExport = (data: Partial<RecipeFileData>): RecipeFilePayl
     }
 })
 
+const formatIngredientLine = (i: any): string => {
+    const ing = toFileIngredient(i)
+    if (!ing.Name) return ''
+    const bits: string[] = []
+    if (ing.Amount !== '' && ing.Amount != null) {
+        let amount = String(ing.Amount)
+        if (ing.AmountType) amount += ` ${ing.AmountType}`
+        bits.push(amount.trim())
+    }
+    bits.push(ing.Name)
+    if (ing.note) bits.push(`(${ing.note})`)
+    return bits.join(' ')
+}
+
+const formatInstructionLine = (i: any): string => {
+    const ins = toFileInstruction(i)
+    let line = ins.Text
+    if (ins.time && ins.time > 0) line += ` (${ins.time} min)`
+    if (ins.note) line += ` – ${ins.note}`
+    return line
+}
+
+const formatMetaLine = (r: RecipeFileData): string => {
+    const bits: string[] = []
+    if (r.servings != null && r.servings > 0) bits.push(`Servings: ${r.servings}`)
+    if (r.time) bits.push(`Time: ${r.time}`)
+    if (r.genre) bits.push(r.genre)
+    return bits.join(' · ')
+}
+
+/** Builds a plain-text export of a recipe (headers with spacing, ingredient list, numbered steps) for pasting into notes/messages. */
+export const buildRecipeTextExport = (recipe: Partial<RecipeFileData>): string => {
+    const data = buildRecipeExport({ ...recipe, image: undefined }).recipe
+    const out: string[] = [data.name]
+    const meta = formatMetaLine(data)
+    if (meta) {
+        out.push('')
+        out.push(meta)
+    }
+    if (data.ingredients?.length) {
+        out.push('')
+        out.push('INGREDIENTS')
+        for (const i of data.ingredients) {
+            const line = formatIngredientLine(i)
+            if (line) out.push(`  • ${line}`)
+        }
+    }
+    if (data.prepWork?.length) {
+        out.push('')
+        out.push('PREP WORK')
+        for (const p of data.prepWork) {
+            const line = [p?.action || p?.ingredient, p?.timeEstimate ? `(${p.timeEstimate} min)` : '', !p?.optional ? undefined : '(optional)']
+                .filter(Boolean).join(' ').trim()
+            if (line) out.push(`  • ${line}`)
+        }
+    }
+    if (data.instructions?.length) {
+        out.push('')
+        out.push('INSTRUCTIONS')
+        data.instructions.forEach((i, idx) => {
+            const line = formatInstructionLine(i)
+            if (line) out.push(`  ${idx + 1}. ${line}`)
+        })
+    }
+    return out.join('\n').replace(/\n{3,}/g, '\n\n') + '\n'
+}
+
+/** Builds a Markdown export: headings, tick-boxes on ingredient list items, numbered instructions. */
+export const buildRecipeMarkdownExport = (recipe: Partial<RecipeFileData>): string => {
+    const data = buildRecipeExport({ ...recipe, image: undefined }).recipe
+    const out: string[] = [`# ${data.name}`]
+    const meta = formatMetaLine(data)
+    if (meta) {
+        out.push('')
+        out.push(meta)
+    }
+    if (data.ingredients?.length) {
+        out.push('')
+        out.push('## Ingredients')
+        for (const i of data.ingredients) {
+            const line = formatIngredientLine(i)
+            if (line) out.push(`- [ ] ${line}`)
+        }
+    }
+    if (data.prepWork?.length) {
+        out.push('')
+        out.push('## Prep Work')
+        for (const p of data.prepWork) {
+            const line = [p?.action || p?.ingredient, p?.timeEstimate ? `(${p.timeEstimate} min)` : '', !p?.optional ? undefined : '(optional)']
+                .filter(Boolean).join(' ').trim()
+            if (line) out.push(`- ${line}`)
+        }
+    }
+    if (data.instructions?.length) {
+        out.push('')
+        out.push('## Instructions')
+        data.instructions.forEach((i, idx) => {
+            const line = formatInstructionLine(i)
+            if (line) out.push(`${idx + 1}. ${line}`)
+        })
+    }
+    return out.join('\n').replace(/\n{3,}/g, '\n\n') + '\n'
+}
+
+/** Generic text file download (used for the Markdown export; JSON uses downloadRecipeFile). */
+export const downloadTextFile = (content: string, filename: string, mime = 'text/plain;charset=utf-8'): void => {
+    const blob = new Blob([content], { type: mime })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+}
+
 export const sanitizeRecipeFilename = (name: string): string => {
     const cleaned = (name || '')
         .replace(/[\\/:*?"<>|\x00-\x1f]/g, '')
