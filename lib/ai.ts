@@ -183,37 +183,58 @@ export async function callGroqWithFallback(body: any, modelOverride?: string) {
         return JSON.stringify(modelBody);
     };
 
-    for (const keyStatus of statuses) {
-        const index = keyStatus.keyIndex;
-        const apiKey = process.env[`GROQ_API_KEY_${index}`] || (index === 1 ? process.env.GROQ_API_KEY : null);
-
-        if (!apiKey) continue;
-
+    // Single fetch attempt with its own timeout — sharing one AbortController
+    // across attempts caused later attempts to inherit an almost-expired timer.
+    const attemptFetch = async (apiKey: string, modelBody: string, timeoutMs: number) => {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // Strict 10s timeout
-
-        const now = Date.now();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         try {
+            return await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json',
+                },
+                body: modelBody,
+                signal: controller.signal
+            });
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    };
+
+    // Escalating wait when we hit 429s during a pass
+    const BACKOFF_DELAYS = [2000, 5000, 10000];
+    const backoff = async (i: number) => {
+        const delay = BACKOFF_DELAYS[Math.min(i, BACKOFF_DELAYS.length - 1)];
+        console.warn(`[Groq] Rate limited — backing off ${delay}ms`);
+        await new Promise(r => setTimeout(r, delay));
+    };
+
+    let backoffIndex = 0;
+    let overloadSeenAt = 0;
+
+    const runPass = async (): Promise<Response | null> => {
+        for (const keyStatus of statuses) {
+            const index = keyStatus.keyIndex;
+            const apiKey = process.env[`GROQ_API_KEY_${index}`] || (index === 1 ? process.env.GROQ_API_KEY : null);
+
+            if (!apiKey) continue;
+
             // 1. Try Primary Model on this key
+            const now = Date.now();
             const isPrimaryAvailable = keyStatus.primaryStatus === 'AVAILABLE' || (now - new Date(keyStatus.primaryLastOverloaded).getTime() > 60000);
             if (isPrimaryAvailable) {
                 try {
                     await logUsage(index, 'PRIMARY', false);
-                    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${apiKey}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: buildModelBody(primaryModel),
-                        signal: controller.signal
-                    });
+                    const response = await attemptFetch(apiKey, buildModelBody(primaryModel), 10000);
 
                     if (response.status === 429) {
+                        overloadSeenAt = Math.max(overloadSeenAt, Date.now());
                         await updateKeyStatus(index, 'PRIMARY', 'OVERLOADED');
                         await logUsage(index, 'PRIMARY', true);
+                        await backoff(backoffIndex++);
                     } else if (response.ok) {
-                        clearTimeout(timeoutId);
                         if (keyStatus.primaryStatus === 'OVERLOADED') await updateKeyStatus(index, 'PRIMARY', 'AVAILABLE');
                         return response;
                     }
@@ -227,21 +248,14 @@ export async function callGroqWithFallback(body: any, modelOverride?: string) {
             if (isFallbackAvailable) {
                 try {
                     await logUsage(index, 'FALLBACK', false);
-                    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${apiKey}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: buildModelBody(fallbackModel),
-                        signal: controller.signal
-                    });
+                    const response = await attemptFetch(apiKey, buildModelBody(fallbackModel), 10000);
 
                     if (response.status === 429) {
+                        overloadSeenAt = Math.max(overloadSeenAt, Date.now());
                         await updateKeyStatus(index, 'FALLBACK', 'OVERLOADED');
                         await logUsage(index, 'FALLBACK', true);
+                        await backoff(backoffIndex++);
                     } else if (response.ok) {
-                        clearTimeout(timeoutId);
                         if (keyStatus.fallbackStatus === 'OVERLOADED') await updateKeyStatus(index, 'FALLBACK', 'AVAILABLE');
                         return response;
                     }
@@ -253,25 +267,28 @@ export async function callGroqWithFallback(body: any, modelOverride?: string) {
             // 3. Last-resort model on this key (not status-tracked; only
             //    reached when primary and fallback both failed)
             try {
-                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: buildModelBody(GROQ_MODELS.FALLBACK_2),
-                    signal: controller.signal
-                });
+                const response = await attemptFetch(apiKey, buildModelBody(GROQ_MODELS.FALLBACK_2), 10000);
                 if (response.ok) {
-                    clearTimeout(timeoutId);
                     return response;
                 }
             } catch (err) {
                 // Fail fast
             }
-        } finally {
-            clearTimeout(timeoutId);
         }
+        return null;
+    };
+
+    const firstResult = await runPass();
+    if (firstResult) return firstResult;
+
+    // Everything was rate limited — wait out the 60s overload cooldown window
+    // (plus a little buffer) and give the keys one more chance.
+    if (overloadSeenAt > 0) {
+        const waitMs = Math.max(0, 60000 - (Date.now() - overloadSeenAt)) + 2000;
+        console.warn(`[Groq] All keys overloaded — waiting ${waitMs}ms for cooldown and retrying`);
+        await new Promise(r => setTimeout(r, waitMs));
+        const retryResult = await runPass();
+        if (retryResult) return retryResult;
     }
 
     throw new Error('All Groq API keys and models are exhausted or rate limited.');

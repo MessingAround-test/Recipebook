@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAdminGuard } from '../../lib/useAdminGuard'
 import { Layout } from '../../components/Layout'
 import { PageHeader } from '../../components/PageHeader'
-import { Check, X, Loader2 } from 'lucide-react'
+import { Check, X, Loader2, Clock } from 'lucide-react'
 
 type RecipeRow = {
     _id: string
@@ -20,7 +20,13 @@ type RecipeRow = {
 }
 
 type OpKind = 'normalize' | 'prep' | 'timers' | 'carbside' | 'image'
-type RowStatus = 'idle' | 'running' | 'done' | 'error'
+type RowStatus = 'idle' | 'running' | 'waiting' | 'done' | 'error'
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+// Too specific to retry — recipe simply doesn't exist or auth is broken
+const isHardFailure = (message: string) =>
+    /not found|forbidden|unauthor|missing recipeId|unsupported op/i.test(message)
 
 const OPS: { op: OpKind; label: string; confirm?: (count: number) => string }[] = [
     {
@@ -125,36 +131,59 @@ export default function BulkRecipeTools() {
         let failed = 0
         for (const id of targets) {
             setStatus(prev => ({ ...prev, [id]: 'running' }))
-            try {
-                const res = await fetch('/api/admin/bulkRecipeOps', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'edgetoken': localStorage.getItem('Token') || ''
-                    },
-                    body: JSON.stringify({ recipeId: id, op })
-                })
-                const data = await res.json()
-                if (data.success) {
-                    ok++
-                    setStatus(prev => ({ ...prev, [id]: 'done' }))
-                    setRecipes(prev => prev.map(r => r._id === id
-                        ? { ...r,
-                            ...(data.hasPrep !== undefined ? { prepChecked: data.hasPrep } : {}),
-                            ...(data.hasTimers !== undefined ? { timersChecked: data.hasTimers } : {}),
-                            ...(data.hasCarb !== undefined ? { carbState: data.hasCarb ? 'analyzed' : 'pending' } : {}),
-                            ...(data.hasImage !== undefined ? { image: data.hasImage } : {})
-                        }
-                        : r))
-                } else {
-                    failed++
-                    setStatus(prev => ({ ...prev, [id]: 'error' }))
-                    console.error(`Op ${op} failed for recipe ${id}:`, data.message)
+            // Rate-limit/parsing glitches are usually transient: back off and retry.
+            const imageOp = op === 'image' // image has its own pacing/retries server-side
+            const ladder = imageOp ? [] : [2000, 5000, 10000, 30000, 60000]
+            let attemptIdx = 0
+            let stopped = false
+            while (!stopped) {
+                try {
+                    const res = await fetch('/api/admin/bulkRecipeOps', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'edgetoken': localStorage.getItem('Token') || ''
+                        },
+                        body: JSON.stringify({ recipeId: id, op })
+                    })
+                    const data = await res.json()
+                    if (data.success) {
+                        ok++
+                        setStatus(prev => ({ ...prev, [id]: 'done' }))
+                        setRecipes(prev => prev.map(r => r._id === id
+                            ? { ...r,
+                                ...(data.hasPrep !== undefined ? { prepChecked: data.hasPrep } : {}),
+                                ...(data.hasTimers !== undefined ? { timersChecked: data.hasTimers } : {}),
+                                ...(data.hasCarb !== undefined ? { carbState: data.hasCarb ? 'analyzed' : 'pending' } : {}),
+                                ...(data.hasImage !== undefined ? { image: data.hasImage } : {})
+                            }
+                            : r))
+                        stopped = true
+                        break
+                    }
+                    const message = data.message || String(data)
+                    if (isHardFailure(message) || attemptIdx >= ladder.length) {
+                        failed++
+                        setStatus(prev => ({ ...prev, [id]: 'error' }))
+                        console.error(`Op ${op} failed for recipe ${id}:`, message)
+                        stopped = true
+                        break
+                    }
+                } catch (e: any) {
+                    if (attemptIdx >= ladder.length) {
+                        failed++
+                        setStatus(prev => ({ ...prev, [id]: 'error' }))
+                        console.error(e)
+                        stopped = true
+                        break
+                    }
                 }
-            } catch (e: any) {
-                failed++
-                setStatus(prev => ({ ...prev, [id]: 'error' }))
-                console.error(e)
+                // Back off (possible rate limit) and retry
+                const waitMs = ladder[attemptIdx++]
+                setStatus(prev => ({ ...prev, [id]: 'waiting' }))
+                console.warn(`Op ${op} for recipe ${id} waiting ${waitMs / 1000}s before retry ${attemptIdx}/${ladder.length}`)
+                await sleep(waitMs)
+                setStatus(prev => ({ ...prev, [id]: 'running' }))
             }
         }
         setRunningOp(null)
@@ -276,6 +305,14 @@ export default function BulkRecipeTools() {
                                         </td>
                                         <td className="px-3 py-2 text-center">
                                             {status[recipe._id] === 'running' && <Loader2 size={14} className="inline animate-spin text-primary" />}
+                                            {status[recipe._id] === 'waiting' && (
+                                                <span
+                                                    title="Waiting — backing off to avoid rate limits"
+                                                    className="inline-flex items-center opacity-60"
+                                                >
+                                                    <Clock size={14} className="text-amber-400" />
+                                                </span>
+                                            )}
                                             {status[recipe._id] === 'done' && <Check size={14} className="inline text-emerald-400" strokeWidth={3} />}
                                             {status[recipe._id] === 'error' && <X size={14} className="inline text-rose-400" strokeWidth={3} />}
                                         </td>
