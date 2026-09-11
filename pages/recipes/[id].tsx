@@ -41,6 +41,11 @@ const INVOLVEMENT_META: Record<string, { label: string; title: string }> = {
     low: { label: 'Check in', title: 'Stay close — check in every so often' },
     active: { label: 'Active', title: 'You need to stay involved the whole time' }
 }
+// Recipe-page wording: effort-first phrasing instead of "check in"/"walk away".
+const PAGE_INVOLVEMENT_TERMS: Record<string, { label: string; title: string }> = {
+    none: { label: 'Hands-off', title: 'Least effort — walk away and come back when it rings' },
+    low: { label: 'Swing by', title: 'Some effort — swing by now and then to check on it' }
+}
 const INVOLVEMENT_RANK: Record<string, number> = { none: 0, low: 1, active: 2 }
 
 function formatDuration(minutes: number) {
@@ -1150,12 +1155,15 @@ export default function RecipeDetail() {
         return INVOLVEMENT_META[timer.involvement] ? timer.involvement : 'active'
     }
 
-    const renderInvolvementTag = (timer: any) => {
+    const renderInvolvementTag = (timer: any, page?: boolean) => {
         const level = involvementOf(timer)
         // Active is the assumed default — only flag check-in/walk-away.
         if (!level || level === 'active') return null
-        const meta = INVOLVEMENT_META[level]
-        return <span key={`inv-${timer.id}`} className={`cooking-timer-tag is-inv-${level}`} title={meta.title}>{meta.label}</span>
+        // On the recipe page the terms are effort-based and the tag is neutral
+        // (uncoloured); cooking mode keeps its effort-coloured labels.
+        const meta = page ? PAGE_INVOLVEMENT_TERMS[level] : INVOLVEMENT_META[level]
+        if (!meta) return null
+        return <span key={`inv-${timer.id}`} className={`cooking-timer-tag ${page ? '' : `is-inv-${level}`}`} title={meta.title}>{meta.label}</span>
     }
 
     // The most-attentive level among a step's timers — what the step pill shows
@@ -2343,8 +2351,8 @@ export default function RecipeDetail() {
                             })
                             const tiles = [
                                 {inv: 'active', label: 'Active'},
-                                {inv: 'low', label: 'Check-in'},
-                                {inv: 'none', label: 'Walk-away'},
+                                {inv: 'low', label: 'Swing by'},
+                                {inv: 'none', label: 'Hands-off'},
                             ]
                             return (
                                 <div className="grid grid-cols-3 gap-2 mb-3">
@@ -2433,8 +2441,8 @@ export default function RecipeDetail() {
                                                         className="bg-secondary text-foreground/85 rounded-lg px-2 py-1 focus:outline-none"
                                                         title="How much attention this timer needs"
                                                     >
-                                                        <option value="none">Walk away</option>
-                                                        <option value="low">Check in</option>
+                                                        <option value="none">Hands-off</option>
+                                                        <option value="low">Swing by</option>
                                                         <option value="active">Active</option>
                                                     </select>
                                                 </div>
@@ -2468,7 +2476,7 @@ export default function RecipeDetail() {
                                                         </p>
                                                     )}
                                                 </div>
-                                                {renderInvolvementTag(timer)}
+                                                {renderInvolvementTag(timer, true)}
                                                 <button
                                                     onClick={() => {
                                                         setEditingRecipeTimerId(timer.id)
@@ -2563,8 +2571,8 @@ export default function RecipeDetail() {
                                                 title="Set how much attention this step needs"
                                             >
                                                 <option value="">Set…</option>
-                                                <option value="none">Walk away</option>
-                                                <option value="low">Check in</option>
+                                                <option value="none">Hands-off</option>
+                                                <option value="low">Swing by</option>
                                                 <option value="active">Active</option>
                                             </select>
                                         </div>
