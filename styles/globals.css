@@ -651,6 +651,10 @@ a {
     /* Same overall height as the global mobile taskbar: 4.5rem + safe area */
     min-height: 4.5rem;
     box-sizing: content-box;
+    /* content-box is deliberate (min-height + safe-area padding stack
+       outside it) — so width must be auto or the 0.25rem side paddings
+       add on top of 100% and push the bar past the viewport edge */
+    width: auto;
     padding: 0 0.25rem;
     padding-bottom: env(safe-area-inset-bottom, 0px);
     gap: 0.125rem;

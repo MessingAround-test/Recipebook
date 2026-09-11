@@ -83,7 +83,7 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
 
     return (
         <div 
-            className="group relative flex flex-col bg-secondary/30 backdrop-blur-md rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:bg-secondary/40 hover:shadow-2xl hover:shadow-accent/5 cursor-pointer"
+            className="group relative flex flex-col bg-secondary/30 backdrop-blur-md rounded-2xl overflow-hidden transition-colors duration-300 hover:bg-secondary/40 hover:shadow-2xl hover:shadow-accent/5 cursor-pointer"
             style={{ height: cardHeight }}
             onClick={() => handleRedirect(`${currentPath}/${recipe._id}`)}
         >
@@ -117,6 +117,9 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
                     </div>
                 )}
             </div>
+
+            {/* Hover overlay */}
+            <div className="absolute inset-0 z-10 bg-black/0 group-hover:bg-black/15 transition-colors duration-300 pointer-events-none" />
 
             {/* Top Actions/Badges */}
             <div className="absolute top-2 left-2 right-2 flex justify-between items-start z-20">

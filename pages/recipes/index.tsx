@@ -166,7 +166,7 @@ export default function Recipes() {
         <Layout title="Your Recipes" description="View and manage your recipes">
             <div className="relative min-h-screen pb-24">
                 {/* Modern Header */}
-                <header className="sticky top-0 z-40 -mx-6 sm:-mx-8 px-6 sm:px-8 py-2 bg-background/80 backdrop-blur-xl shadow-sm">
+                <header className="sticky top-0 z-40 px-6 sm:px-8 py-2 bg-background/80 backdrop-blur-xl shadow-sm">
                     <div className="flex flex-col gap-2">
                         <div className="flex items-center justify-between">
                             <h1 className="text-xl font-black tracking-tight flex items-center gap-2">
@@ -256,7 +256,7 @@ export default function Recipes() {
 
                  {/* Active Filter Chips (Scrollable Row) */}
                 {hasActiveFilters && (
-                    <div className="flex items-center gap-2 py-4 overflow-x-auto no-scrollbar -mx-6 px-6 sm:mx-0 sm:px-0">
+                    <div className="flex items-center gap-2 py-4 overflow-x-auto no-scrollbar">
                          {filterTime.map(t => (
                             <button key={t} onClick={() => setFilterTime(prev => prev.filter(i => i !== t))} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-1 shadow-sm">
                                 {t} <Plus size={12} className="rotate-45" />

@@ -683,7 +683,7 @@ export default function Dashboard() {
 
     return (
         <Layout title="Dashboard" description="Your health, plans and lists at a glance">
-            <div className="-mx-3 sm:mx-0">
+            <div className="mx-0 sm:mx-0">
                 <div className="mx-auto max-w-6xl px-3 md:px-4 pt-1 pb-3 md:pt-2 md:pb-8 space-y-3 md:space-y-6">
                     {/* ═══ HEADER ═══ */}
                     <div className="flex items-center justify-between gap-2 min-w-0">
