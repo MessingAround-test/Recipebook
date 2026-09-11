@@ -2,7 +2,7 @@ import { Layout } from '../../components/Layout'
 import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
 import { formatQuantityDisplay } from '../../lib/fractionFormat'
 import { Button } from '../../components/ui/button'
-import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, Sparkles, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Users, Download, Info, Hourglass } from 'lucide-react'
+import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Users, Download, Info, Hourglass } from 'lucide-react'
 import { computePhaseInsertPoints, fillCarbPhaseText, recommendCarbOption, resolveCarbSlot, resolveCarbTiming, resolveVariant } from '../../lib/carbSideOps'
 import Router, { useRouter } from 'next/router'
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
@@ -256,7 +256,6 @@ export default function RecipeDetail() {
     const [feedback, setFeedback] = useState("")
     const [isSavingFeedback, setIsSavingFeedback] = useState(false)
     const [isCalculatingCost, setIsCalculatingCost] = useState(false)
-    const [showNutrients, setShowNutrients] = useState(false)
     const [recipeServings, setRecipeServings] = useState<number>(0)
     const [exportModalOpen, setExportModalOpen] = useState(false)
 
@@ -402,7 +401,7 @@ export default function RecipeDetail() {
         { id: 'ingredients', label: 'Ingredients', icon: ShoppingBasket },
         ...(instructions.length > 0 ? [{ id: 'instructions', label: 'Steps', icon: ListOrdered }] : []),
         { id: 'feedback', label: 'Notes', icon: MessageSquare },
-        { id: 'nutrients', label: 'Nutrition', icon: Sparkles }
+        { id: 'nutrients', label: 'Nutrition', icon: BarChart3 }
     ], [instructions.length])
 
     useEffect(() => {
@@ -865,10 +864,11 @@ export default function RecipeDetail() {
         })
     }
 
-    const logRecipeServe = async () => {
+    const logRecipeServe = async (quantity: number = 1) => {
         const token = localStorage.getItem('Token');
         if (!token || !recipe) return;
-        
+
+        const serves = Math.max(1, quantity);
         try {
             const res = await fetch('/api/dailyLog', {
                 method: 'POST',
@@ -878,13 +878,13 @@ export default function RecipeDetail() {
                     type: 'recipe',
                     name: recipe.name,
                     recipe_id: id,
-                    quantity: 1, // 1 serve
+                    quantity: serves, // selected number of serves
                     quantity_unit: 'serving'
                 })
             });
             const data = await res.json();
             if (data.success) {
-                alert(`✅ Logged 1 serving of ${recipe.name}!`);
+                alert(`✅ Logged ${serves} serving${serves === 1 ? '' : 's'} of ${recipe.name}!`);
             } else {
                 alert(`❌ Failed: ${data.message}`);
             }
@@ -2566,30 +2566,22 @@ export default function RecipeDetail() {
                         )}
                     </div>
 
-                    {/* Nutrients density — collapsible, off by default */}
+                    {/* Nutrients density — always visible */}
                     <div data-section="nutrients" className="recipe-band recipe-section px-4 py-6 sm:px-8 sm:py-10">
-                        <button
-                            onClick={() => setShowNutrients(!showNutrients)}
-                            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            <Sparkles className={`w-4 h-4 transition-transform duration-300 ${showNutrients ? 'text-accent' : ''}`} />
+                        <div className="flex items-center gap-2 mb-4">
+                            <BarChart3 className="w-4 h-4 text-accent" />
                             <h2 className="text-sm font-bold uppercase tracking-wider">
                                 Nutritional Density
                             </h2>
-                            <span className={`text-[10px] transition-transform duration-300 ${showNutrients ? 'rotate-180' : ''}`}>
-                                ▼
-                            </span>
-                        </button>
+                        </div>
 
-                        {showNutrients && (
-                            <div className="mt-4 rounded-2xl bg-secondary/50 p-4 sm:p-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <IngredientNutrientGraph
-                                    ingredients={matchedListIngreds}
-                                    onLogServe={logRecipeServe}
-                                    logLabel="Log 1 Serve"
-                                />
-                            </div>
-                        )}
+                        <div className="rounded-2xl bg-secondary/50 p-4 sm:p-6">
+                            <IngredientNutrientGraph
+                                ingredients={matchedListIngreds}
+                                onLogServe={logRecipeServe}
+                                recipeServings={recipeServings}
+                            />
+                        </div>
                     </div>
 
 
