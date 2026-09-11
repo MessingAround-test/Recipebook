@@ -1072,6 +1072,38 @@ a {
   font-size: 0.9rem;
 }
 
+/* Ingredient mention inside step text: bold + slightly brighter than the
+   muted instruction body — no colour, contrast does the work */
+:root {
+  --step-ingredient: var(--foreground);
+  --step-ingredient-hover: var(--foreground);
+}
+
+.step-ingredient-link {
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--step-ingredient);
+  transition: color 0.15s;
+}
+
+.step-ingredient-link:hover {
+  color: var(--step-ingredient-hover);
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+
+.step-ingredient-link:focus-visible {
+  outline: 2px solid var(--muted-foreground);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
 /* ---------- Cards ---------- */
 .cooking-card {
   flex-shrink: 0;
@@ -1147,11 +1179,32 @@ a {
   overflow-wrap: break-word;
 }
 
+/* Cook's first accent was colour — try contrast instead: keep the body near
+   full strength; ingredient links still pop via +bold +full colour */
 .cooking-card-text.is-current {
   font-size: 1.375rem;
   line-height: 1.55;
-  font-weight: 700;
+  font-weight: 500;
   padding-block: 0.75rem;
+  color: color-mix(in srgb, var(--cooking-text-muted), var(--cooking-text) 45%);
+}
+
+/* Keep emphasis readable without shouting: keywords and ingredient mentions
+   step one weight above the body, rather than being heavy-bold */
+.cooking-card-text strong {
+  font-weight: 650;
+}
+
+.cooking-card-text .step-ingredient-link {
+  font-weight: 600;
+}
+
+.cooking-card-text.is-current .step-ingredient-link {
+  color: var(--cooking-text);
+}
+
+.cooking-card-text.is-current .step-ingredient-link:hover {
+  color: var(--cooking-text);
 }
 
 /* Step rows read left-aligned so stacked lines/bullets don't float oddly;

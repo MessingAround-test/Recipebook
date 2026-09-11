@@ -2207,7 +2207,7 @@ export default function RecipeDetail() {
                                             {index + 1}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className={`text-foreground/85 leading-relaxed font-medium ${longStep ? 'text-sm sm:text-[15px]' : 'text-[15px] sm:text-base'}`}>
+                                            <div className={`text-foreground/80 leading-relaxed font-medium ${longStep ? 'text-sm sm:text-[15px]' : 'text-[15px] sm:text-base'}`}>
                                                 {renderStepText(instruction.Text, {
                                                     ingredients: recs,
                                                     onIngredientClick: (ingred, anchor) => openIngredientPopup(ingred, anchor, index)

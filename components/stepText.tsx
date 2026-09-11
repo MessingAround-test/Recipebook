@@ -247,7 +247,7 @@ function renderSegment(text: string, opts: RenderOptions, keyBase: string): Text
             <button
                 key={`${keyBase}-i${i}`}
                 type="button"
-                className="step-ingredient-link underline decoration-dotted decoration-1 underline-offset-[3px] font-semibold hover:decoration-solid hover:decoration-accent transition-colors"
+                className="step-ingredient-link"
                 onClick={(e) => opts.onIngredientClick?.(m.ingred, e.currentTarget)}
             >
                 {text.slice(m.start, m.end)}

@@ -56,7 +56,7 @@ export default function IngredientPopover({ ingred, anchorRect, onClose, alsoSte
                     <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                         <Info size={11} className="shrink-0" /> Total for this recipe
                     </div>
-                    <div className="text-base font-bold text-accent leading-snug">{qty || 'No amount set'}</div>
+                    <div className="text-base font-bold leading-snug text-[color:var(--step-ingredient)]">{qty || 'No amount set'}</div>
                     {ingred.note && <div className="text-xs text-muted-foreground mt-0.5">{ingred.note}</div>}
                 </div>
                 {alsoSteps && alsoSteps.length > 0 ? (
