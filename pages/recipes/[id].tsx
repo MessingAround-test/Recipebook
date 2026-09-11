@@ -8,7 +8,7 @@ import Router, { useRouter } from 'next/router'
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
 import IngredientCard from '../../components/IngredientCard'
 import { IngredientSearchList } from '../../components/IngredientSearchList'
-import { renderStepText, isLongStep, PILL_MAX, getIngredientStepMap, isGenericIngredientWord, splitSentences } from '../../components/stepText'
+import { renderStepText, isLongStep, getIngredientStepMap, isGenericIngredientWord, splitSentences } from '../../components/stepText'
 import IngredientPopover from '../../components/IngredientPopover'
 import PillRow from '../../components/PillRow'
 import Modal from 'react-modal'
@@ -2214,9 +2214,6 @@ export default function RecipeDetail() {
                                                     onIngredientClick: (ingred, anchor) => openIngredientPopup(ingred, anchor, index)
                                                 })}
                                             </div>
-                                            {recs.length > 0 && recs.length <= PILL_MAX && (
-                                                <PillRow ingreds={recs} onSelect={(ingred) => openIngredientPopup(ingred, undefined, index)} />
-                                            )}
                                             {instruction.time && (
                                                 <div className="mt-1 text-xs text-muted-foreground">~{instruction.time} min</div>
                                             )}
