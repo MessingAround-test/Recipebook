@@ -3,7 +3,7 @@ import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
 import { formatQuantityDisplay } from '../../lib/fractionFormat'
 import { Button } from '../../components/ui/button'
 import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Users, Download, Info, Hourglass, Flame, Scale, Minus } from 'lucide-react'
-import { calculateRecipeWeight, formatWeight, formatScaledQuantity } from '../../lib/conversion'
+import { calculateRecipeWeight, formatWeight, rescaleDisplayAmount } from '../../lib/conversion'
 import { isImperialDisplay, convertForDisplay, formatWeightImperial } from '../../lib/unitDisplay'
 import { buildFlowItems, computePhaseInsertPoints, fillCarbPhaseText, recommendCarbOption, resolveCarbSlot, resolveCarbTiming, resolveVariant } from '../../lib/carbSideOps'
 import Router, { useRouter } from 'next/router'
@@ -481,21 +481,21 @@ export default function RecipeDetail() {
     const baseServings = recipeServings > 0 ? recipeServings : 0
     const estimatedWeight = baseWeight * scaleFactor
     const displayedServings = baseServings > 0 ? Math.max(1, Math.round(baseServings * scaleFactor)) : 0
-    const scaleQty = (q: any) => formatScaledQuantity(Number(q) * scaleFactor)
     const isScaled = Math.abs(scaleFactor - 1) > 0.0001
 
-    // Display pipeline for a quantity+unit: scale -> convert to the user's
-    // unit system (metric default, imperial opt-in) -> fraction format.
+    // Display pipeline for a quantity+unit: scale -> re-express tiny scaled
+    // amounts in friendlier units (cups -> tbsp/tsp/ml) -> convert to the
+    // user's unit system (metric default, imperial opt-in) -> fraction format.
     // Display-only; ingredients state, API payloads and the DB are never touched.
     const displayQty = (q: any, unit: any) => {
-        const scaled = formatScaledQuantity(Number(q) * scaleFactor)
-        const { quantity, shorthand } = convertForDisplay(scaled, unit, unitSystem)
+        const rescaled = rescaleDisplayAmount(Number(q), unit, scaleFactor)
+        const { quantity, shorthand } = convertForDisplay(rescaled.quantity, rescaled.unit, unitSystem)
         return `${formatQuantityDisplay(quantity)} ${shorthand}`
     }
     // Maps an ingredient object to its scaled+converted display form
     const withDisplayUnits = (ingred: any) => {
-        const q = isScaled && !isNaN(Number(ingred.quantity)) ? scaleQty(ingred.quantity) : Number(ingred.quantity)
-        const { quantity, shorthand } = convertForDisplay(q, ingred.quantity_type_shorthand || ingred.quantity_type, unitSystem)
+        const rescaled = rescaleDisplayAmount(Number(ingred.quantity), ingred.quantity_type_shorthand || ingred.quantity_type, scaleFactor)
+        const { quantity, shorthand } = convertForDisplay(rescaled.quantity, rescaled.unit, unitSystem)
         return { ...ingred, quantity, quantity_type_shorthand: shorthand }
     }
 
