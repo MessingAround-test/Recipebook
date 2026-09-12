@@ -1,4 +1,5 @@
 import { formatQuantity } from './stepText'
+import { renderFractions } from './Fraction'
 
 /**
  * Ingredient tags under a step — informational only (no click action):
@@ -23,7 +24,7 @@ export default function PillRow({ ingreds }: PillRowProps) {
                         className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-secondary border border-border/60 px-2 py-0.5"
                     >
                         <span className="text-[11px] leading-none font-semibold text-foreground/80">{name}</span>
-                        {qty && <span className="text-[10px] leading-none font-bold text-[color:var(--step-ingredient)]">{qty}</span>}
+                        {qty && <span className="text-[10px] leading-none font-bold text-[color:var(--step-ingredient)]">{renderFractions(qty)}</span>}
                         {ingred.note && (
                             <span className="text-[10px] leading-none text-muted-foreground italic truncate max-w-[110px]">{ingred.note}</span>
                         )}

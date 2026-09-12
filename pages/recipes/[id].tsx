@@ -1,6 +1,7 @@
 import { Layout } from '../../components/Layout'
 import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
 import { formatQuantityDisplay } from '../../lib/fractionFormat'
+import { renderFractions } from '../../components/Fraction'
 import { Button } from '../../components/ui/button'
 import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Users, Download, Info, Hourglass, Flame, Scale } from 'lucide-react'
 import { calculateRecipeWeight, formatWeight, rescaleDisplayAmount } from '../../lib/conversion'
@@ -484,18 +485,30 @@ export default function RecipeDetail() {
     const displayedServings = baseServings > 0 ? Math.max(1, Math.round(baseServings * scaleFactor)) : 0
     const isScaled = Math.abs(scaleFactor - 1) > 0.0001
 
+    // Formats a multi-part scaled amount ("1 cup + 1 3/4 tbsp") through the
+    // same unit-system + fraction settings as single quantities.
+    const formatRescaledParts = (parts: { quantity: number; unit: string }[]) => parts
+        .map(p => {
+            const { quantity, shorthand } = convertForDisplay(p.quantity, p.unit, unitSystem)
+            return `${formatQuantityDisplay(quantity)} ${shorthand}`
+        })
+        .join(' + ')
     // Display pipeline for a quantity+unit: scale -> re-express tiny scaled
     // amounts in friendlier units (cups -> tbsp/tsp/ml) -> convert to the
     // user's unit system (metric default, imperial opt-in) -> fraction format.
     // Display-only; ingredients state, API payloads and the DB are never touched.
     const displayQty = (q: any, unit: any) => {
         const rescaled = rescaleDisplayAmount(Number(q), unit, scaleFactor)
+        if (rescaled.parts) return formatRescaledParts(rescaled.parts)
         const { quantity, shorthand } = convertForDisplay(rescaled.quantity, rescaled.unit, unitSystem)
         return `${formatQuantityDisplay(quantity)} ${shorthand}`
     }
     // Maps an ingredient object to its scaled+converted display form
     const withDisplayUnits = (ingred: any) => {
         const rescaled = rescaleDisplayAmount(Number(ingred.quantity), ingred.quantity_type_shorthand || ingred.quantity_type, scaleFactor)
+        if (rescaled.parts) {
+            return { ...ingred, displayString: formatRescaledParts(rescaled.parts) }
+        }
         const { quantity, shorthand } = convertForDisplay(rescaled.quantity, rescaled.unit, unitSystem)
         return { ...ingred, quantity, quantity_type_shorthand: shorthand }
     }
@@ -3385,7 +3398,7 @@ export default function RecipeDetail() {
                                             {recs.map((ingred: any, ci: number) => (
                                                 <span key={ci} className="cooking-chip">
                                                     <span className="cooking-chip-name">{ingred.name}</span>
-                                                    <span className="cooking-chip-qty">{displayQty(ingred.quantity, ingred.quantity_type_shorthand || ingred.quantity_type)}</span>
+                                                    <span className="cooking-chip-qty">{renderFractions(displayQty(ingred.quantity, ingred.quantity_type_shorthand || ingred.quantity_type))}</span>
                                                     {ingred.note && <span className="cooking-chip-note" title={ingred.note}>{ingred.note}</span>}
                                                 </span>
                                             ))}
@@ -3401,7 +3414,7 @@ export default function RecipeDetail() {
                                                     <span className="cooking-prep-hint-text">
                                                         {firstPrep.ingredient && <strong>{firstPrep.ingredient}: </strong>}
                                                         {firstPrep.action}
-                                                        {getPrepIngredientQty(firstPrep.ingredient) && <span className="cooking-prep-qty"> [ {getPrepIngredientQty(firstPrep.ingredient)} ]</span>}
+                                                        {getPrepIngredientQty(firstPrep.ingredient) && <span className="cooking-prep-qty"> [ {renderFractions(getPrepIngredientQty(firstPrep.ingredient))} ]</span>}
                                                         {extra > 0 && <span className="cooking-prep-hint-more"> +{extra} more</span>}
                                                     </span>
                                                 </span>
@@ -4002,7 +4015,7 @@ export default function RecipeDetail() {
                                         {currentStepRecs.map((ingred: any, idx: number) => (
                                             <div key={`rec-${idx}`} className="cooking-ingredient-card is-recommended">
                                                 <span className="cooking-ingredient-name">{ingred.name}</span>
-                                                <span className="cooking-ingredient-qty">{displayQty(ingred.quantity, ingred.quantity_type_shorthand || ingred.quantity_type)}</span>
+                                                <span className="cooking-ingredient-qty">{renderFractions(displayQty(ingred.quantity, ingred.quantity_type_shorthand || ingred.quantity_type))}</span>
                                                 {ingred.note && <span className="cooking-ingredient-note" title={ingred.note}>{ingred.note}</span>}
                                             </div>
                                         ))}
@@ -4016,7 +4029,7 @@ export default function RecipeDetail() {
                                         {currentStepOthers.map((ingred: any, idx: number) => (
                                             <div key={`other-${idx}`} className="cooking-ingredient-card">
                                                 <span className="cooking-ingredient-name">{ingred.name}</span>
-                                                <span className="cooking-ingredient-qty">{displayQty(ingred.quantity, ingred.quantity_type_shorthand || ingred.quantity_type)}</span>
+                                                <span className="cooking-ingredient-qty">{renderFractions(displayQty(ingred.quantity, ingred.quantity_type_shorthand || ingred.quantity_type))}</span>
                                                 {ingred.note && <span className="cooking-ingredient-note" title={ingred.note}>{ingred.note}</span>}
                                             </div>
                                         ))}
@@ -4048,7 +4061,7 @@ export default function RecipeDetail() {
                                         <span className="cooking-prep-text">
                                             {item.ingredient && <strong>{item.ingredient}: </strong>}
                                             {item.action}
-                                            {qty && <span className="cooking-prep-qty"> [ {qty} ]</span>}
+                                            {qty && <span className="cooking-prep-qty"> [ {renderFractions(qty)} ]</span>}
                                         </span>
                                         {item.timeEstimate && <span className="cooking-prep-time">~{item.timeEstimate}m</span>}
                                     </div>

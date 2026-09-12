@@ -34,6 +34,51 @@ describe('rescaleDisplayAmount — volume downscaling', () => {
         expect(rescaleDisplayAmount(1, 'cup', 0.25))
             .toEqual({ quantity: 0.25, unit: 'cup' });
     });
+});
+
+describe('rescaleDisplayAmount — combined units (nothing above 5)', () => {
+    test('17 3/4 tbsp → 1 cup + 1 3/4 tbsp', () => {
+        const res = rescaleDisplayAmount(1.109375, 'cup', 1);
+        expect(res.parts).toEqual([
+            { quantity: 1, unit: 'cup' },
+            { quantity: 1.75, unit: 'tablespoon' }
+        ]);
+    });
+
+    test('21 1/4 tbsp → 1 1/4 cup + 1 1/4 tbsp', () => {
+        const res = rescaleDisplayAmount(21.25/16, 'cup', 1);
+        expect(res.parts).toEqual([
+            { quantity: 1.25, unit: 'cup' },
+            { quantity: 1.25, unit: 'tablespoon' }
+        ]);
+    });
+
+    test('5 1/4 tbsp → 1/4 cup + 1 1/4 tbsp (limit enforced even slightly over 5)', () => {
+        const res = rescaleDisplayAmount(5.25 / 16, 'cup', 1);
+        expect(res.parts).toEqual([
+            { quantity: 0.25, unit: 'cup' },
+            { quantity: 1.25, unit: 'tablespoon' }
+        ]);
+    });
+
+    test('6 tbsp → 1/4 cup + 2 tbsp', () => {
+        const res = rescaleDisplayAmount(6 / 16, 'cup', 1);
+        expect(res.parts).toEqual([
+            { quantity: 0.25, unit: 'cup' },
+            { quantity: 2, unit: 'tablespoon' }
+        ]);
+    });
+
+    test('huge amounts beyond 5 cups fall back to ml', () => {
+        // 8 cups: cups alone stay above the limit even after decomposition
+        expect(rescaleDisplayAmount(8, 'cup', 1))
+            .toEqual({ quantity: 2273, unit: 'milliliter' });
+    });
+
+    test('well-inside-5 amounts stay single unit', () => {
+        expect(rescaleDisplayAmount(0.16, 'cup', 1))
+            .toEqual({ quantity: 2.5, unit: 'tablespoon' });
+    });
 
     test('snapped within 5% tolerance (tsp)', () => {
         // 0.05 cup = 14.2 ml = 2.40 tsp → snaps to 2.5 (4.3% off)
@@ -42,9 +87,9 @@ describe('rescaleDisplayAmount — volume downscaling', () => {
     });
 
     test('whole tbsp when cup is not clean', () => {
-        // 0.375 cup: cup snap (0.5) is 33% off → 6 tbsp exact
-        expect(rescaleDisplayAmount(0.75, 'cup', 0.5))
-            .toEqual({ quantity: 6, unit: 'tablespoon' });
+        // 0.4 cup: cup snap (0.5) is 25% off → 1/4 cup + 2 1/2 tbsp
+        expect(rescaleDisplayAmount(0.4, 'cup', 1))
+            .toEqual({ parts: [{ quantity: 0.25, unit: 'cup' }, { quantity: 2.5, unit: 'tablespoon' }] });
     });
 });
 
@@ -78,11 +123,11 @@ describe('rescaleDisplayAmount — each-style units', () => {
 });
 
 describe('rescaleDisplayAmount — passthrough + guards', () => {
-    test('unscaled (f=1) values pass through untouched', () => {
-        expect(rescaleDisplayAmount(0.16, 'cup', 1))
-            .toEqual({ quantity: 0.16, unit: 'cup' });
+    test('unscaled values: each/weight untouched, volume cleaned', () => {
         expect(rescaleDisplayAmount(0.5, 'pound', 1))
             .toEqual({ quantity: 0.5, unit: 'pound' });
+        expect(rescaleDisplayAmount(3, 'each', 1))
+            .toEqual({ quantity: 3, unit: 'each' });
     });
 
     test('zero / invalid quantities return zero', () => {

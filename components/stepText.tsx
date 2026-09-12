@@ -1,6 +1,7 @@
 import React from 'react'
 import { formatQuantityDisplay } from '../lib/fractionFormat'
 import { convertForDisplay } from '../lib/unitDisplay'
+import { renderFractions } from './Fraction'
 
 /**
  * Readability helpers for instruction steps:
@@ -233,7 +234,7 @@ function boldKeywords(text: string, keyBase: string): TextNode[] {
     let pos = 0
     clean.forEach((m, i) => {
         if (m.start > pos) out.push(text.slice(pos, m.start))
-        out.push(<strong key={`${keyBase}-k${i}`}>{text.slice(m.start, m.end)}</strong>)
+        out.push(<strong key={`${keyBase}-k${i}`}>{renderFractions(text.slice(m.start, m.end))}</strong>)
         pos = m.end
     })
     if (pos < text.length) out.push(text.slice(pos))

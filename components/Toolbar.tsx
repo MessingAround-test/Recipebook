@@ -1,6 +1,6 @@
 import React from "react"
 import { AiFillPlusCircle } from "react-icons/ai"
-import { MdOutlineMenuBook, MdSearch, MdShoppingCart, MdHome, MdTimeline, MdApps } from 'react-icons/md'
+import { MdOutlineMenuBook, MdBuild, MdShoppingCart, MdHome, MdTimeline, MdApps } from 'react-icons/md'
 import Link from 'next/link'
 import styles from '../styles/Toolbar.module.css'
 import { HiOutlineCog } from 'react-icons/hi'
@@ -45,9 +45,9 @@ export function Toolbar({ hideMobile = false }: { hideMobile?: boolean }) {
                         </Link>
                     </li>
                     <li className={styles.nav_item}>
-                        <Link href="/ingredientResearch" className={`${styles.nav_link} ${isActive('/ingredientResearch') ? styles.active : ''}`}>
-                            <div className={styles.icon_wrapper}><MdSearch size={30} /></div>
-                            <span className={styles.nav_label}>Ingredients</span>
+                        <Link href="/quickTools" className={`${styles.nav_link} ${isActive('/quickTools') ? styles.active : ''}`}>
+                            <div className={styles.icon_wrapper}><MdBuild size={30} /></div>
+                            <span className={styles.nav_label}>Quick Tools</span>
                         </Link>
                     </li>
                     <li className={`${styles.nav_item} ${styles.hide_mobile}`}>
