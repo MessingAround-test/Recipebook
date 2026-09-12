@@ -63,9 +63,9 @@ export const QUICK_TOOLS: QuickTool[] = [
     {
         id: 'preset-timers',
         name: 'Preset Timers',
-        description: 'One-tap times for eggs, rice, pasta, resting meat and tea.',
+        description: 'One-tap times for eggs, rice, pasta, tea and veg.',
         kind: 'presets',
-        keywords: ['eggs', 'rice', 'pasta', 'meat', 'tea', 'boil', 'preset', 'quick', 'timer']
+        keywords: ['eggs', 'rice', 'pasta', 'tea', 'boil', 'preset', 'quick', 'timer']
     },
     {
         id: 'unit-converter',
@@ -93,7 +93,6 @@ export const TIMER_PRESETS: TimerPreset[] = [
     { id: 'egg-hard', label: 'Hard-boiled egg', seconds: 10 * 60, category: 'Eggs', keywords: ['boiled', 'egg', 'solid', 'breakfast'] },
     { id: 'rice', label: 'Rice', seconds: 12 * 60, category: 'Grains', keywords: ['jasmine', 'basmati', 'rice', 'simmer'] },
     { id: 'pasta', label: 'Pasta (al dente)', seconds: 9 * 60, category: 'Pasta', keywords: ['pasta', 'spaghetti', 'al dente', 'boil'] },
-    { id: 'rest-meat', label: 'Resting meat', seconds: 10 * 60, category: 'Meat', keywords: ['rest', 'steak', 'roast', 'meat'] },
     { id: 'green-tea', label: 'Green tea', seconds: 2 * 60, category: 'Drinks', keywords: ['tea', 'green', 'brew', 'steep'] },
     { id: 'black-tea', label: 'Black tea', seconds: 3 * 60, category: 'Drinks', keywords: ['tea', 'black', 'brew', 'steep'] },
     { id: 'coffee', label: 'Plunger coffee', seconds: 4 * 60, category: 'Drinks', keywords: ['coffee', 'french press', 'plunger', 'brew'] },
@@ -190,36 +189,6 @@ export const QUICK_GUIDES: QuickGuide[] = [
         ]
     },
     {
-        id: 'resting-meat',
-        title: 'Resting meat',
-        summary: 'How long to rest and why it makes meat juicier.',
-        category: 'Meat',
-        keywords: ['rest', 'meat', 'steak', 'roast', 'juice', 'carryover'],
-        sections: [
-            {
-                heading: 'Why rest',
-                body: 'Heat drives juices to the centre. Resting lets them redistribute so they stay in the meat when you slice, not on the board.'
-            },
-            {
-                heading: 'Rough times',
-                bullets: [
-                    'Steaks & chops — 5 min (thick cuts 8–10 min).',
-                    'Whole roast chicken — 10–15 min.',
-                    'Large beef roast — 15–20 min, loosely tented.',
-                    'Fish fillets — 2–3 min.'
-                ]
-            },
-            {
-                heading: 'Do it right',
-                bullets: [
-                    'Tent loosely with foil — do not wrap tight or the crust steams.',
-                    'Rest on a warm plate or board.',
-                    'Remember carryover: internal temp rises 3–5°C while resting, so pull early.'
-                ]
-            }
-        ]
-    },
-    {
         id: 'knife-care',
         title: 'Knife care & sharpening',
         summary: 'Honing vs sharpening, angles and keeping edges alive.',
@@ -248,7 +217,7 @@ export const QUICK_GUIDES: QuickGuide[] = [
                     'Hand wash and dry straight away — no dishwasher.',
                     'Store on a magnetic strip, in a block, or with edge guards.',
                     'Use a soft cutting board (wood or plastic), never glass.',
-                    'Cut on the board, not through bone or frozen food.'
+                    'Cut on the board, not through frozen food.'
                 ]
             }
         ]
