@@ -37,6 +37,14 @@ describe('quickTools — formatting', () => {
         expect(formatCountdown(-12)).toBe('-12s')
     })
 
+    test('formatCountdown shows seconds under 10 minutes', () => {
+        expect(formatCountdown(570)).toBe('9m 30s')
+        expect(formatCountdown(59)).toBe('59s')
+        expect(formatCountdown(600)).toBe('10m')
+        expect(formatCountdown(599)).toBe('9m 59s')
+        expect(formatCountdown(-570)).toBe('-9m 30s')
+    })
+
     test('formatDurationLabel renders minute durations', () => {
         expect(formatDurationLabel(12)).toBe('12 min')
         expect(formatDurationLabel(60)).toBe('1h')

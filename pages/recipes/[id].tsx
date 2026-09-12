@@ -380,7 +380,9 @@ export default function RecipeDetail() {
     const [popStepIndex, setPopStepIndex] = useState<number | null>(null)
     const ingredientStepMap = useMemo(() => getIngredientStepMap(instructions, listIngreds || []), [instructions, listIngreds])
     const openIngredientPopup = (ingred: any, anchorEl?: HTMLElement, stepIndex?: number) => {
-        setPopIngredient(ingred)
+        // Popups read through the exact same scale/conversion pipeline as the
+        // visible ingredient displays (scale -> unit re-expression -> system)
+        setPopIngredient(ingred ? withDisplayUnits(ingred) : ingred)
         setPopAnchor(anchorEl ? anchorEl.getBoundingClientRect() : null)
         setPopStepIndex(stepIndex ?? null)
     }

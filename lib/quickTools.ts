@@ -378,12 +378,18 @@ export function formatClock(totalSeconds: number): string {
     return `${sign}${pad2(mins)}:${pad2(secs)}`
 }
 
-// Human countdown used on timer cards: 45s, 5m, 1h 5m (negative when overdue).
+// Human countdown used on timer cards: 45s, 5m, 9m 30s, 1h 5m (negative when
+// overdue). Under 10 minutes the seconds are shown too, so the final stretch
+// counts down visibly.
 export function formatCountdown(remaining: number): string {
     const sign = remaining < 0 ? '-' : ''
     const abs = Math.abs(Math.round(remaining))
     if (abs < 60) return `${sign}${abs}s`
     const mins = Math.floor(abs / 60)
+    if (mins < 10) {
+        const secs = abs % 60
+        return secs > 0 ? `${sign}${mins}m ${secs}s` : `${sign}${mins}m`
+    }
     if (mins < 60) return `${sign}${mins}m`
     const hours = Math.floor(mins / 60)
     const remMins = mins % 60

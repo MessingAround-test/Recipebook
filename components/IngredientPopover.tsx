@@ -41,7 +41,8 @@ export default function IngredientPopover({ ingred, anchorRect, onClose, alsoSte
     }, [onClose])
 
     if (!ingred || !anchorRect || !pos) return null
-    const qty = formatQuantity(ingred)
+    // Pre-formatted amount from the page's scale/conversion pipeline
+    const qty = ingred.displayString || formatQuantity(ingred)
 
     return createPortal(
         <>
