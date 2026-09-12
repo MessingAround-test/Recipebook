@@ -50,6 +50,14 @@ export default function Profile() {
         return true
     })
 
+    const [useImperial, setUseImperial] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('unitSystem') === 'imperial'
+        }
+        return false
+    })
+
+
     // Health Score settings
     const [healthScoreConfig, setHealthScoreConfig] = useState<HealthScoreConfig>(DEFAULT_HEALTH_SCORE_CONFIG)
     const [targets, setTargets] = useState<Record<string, number> | null>(null)
@@ -306,6 +314,29 @@ export default function Profile() {
                                 window.dispatchEvent(new Event('storage'));
                             }}
                         />
+                    </div>
+
+                    {/* Unit System Toggle */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-muted/20 rounded-lg border border-border/20 mt-4 transition-colors">
+                        <div className="min-w-0">
+                            <p className="font-semibold text-foreground">Unit System</p>
+                            <p className="text-sm text-muted-foreground">Choose how ingredient amounts are shown on recipes. Metric is the default; Imperial shows oz, lb and cups instead. Stored amounts are never changed.</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className={`text-xs font-bold uppercase tracking-widest ${!useImperial ? 'text-primary' : 'text-muted-foreground opacity-50'}`}>Metric</span>
+                            <input
+                                type="checkbox"
+                                className="toggle toggle-emerald"
+                                checked={useImperial}
+                                onChange={(e) => {
+                                    const newValue = e.target.checked;
+                                    localStorage.setItem('unitSystem', newValue ? 'imperial' : 'metric');
+                                    setUseImperial(newValue);
+                                    window.dispatchEvent(new Event('storage'));
+                                }}
+                            />
+                            <span className={`text-xs font-bold uppercase tracking-widest ${useImperial ? 'text-primary' : 'text-muted-foreground opacity-50'}`}>Imperial</span>
+                        </div>
                     </div>
 
                     {/* Logout Button */}

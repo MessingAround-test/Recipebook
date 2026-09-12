@@ -4,6 +4,7 @@ import { formatQuantityDisplay } from '../../lib/fractionFormat'
 import { Button } from '../../components/ui/button'
 import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Users, Download, Info, Hourglass, Flame, Scale, Minus } from 'lucide-react'
 import { calculateRecipeWeight, formatWeight, formatScaledQuantity } from '../../lib/conversion'
+import { isImperialDisplay, convertForDisplay, formatWeightImperial } from '../../lib/unitDisplay'
 import { buildFlowItems, computePhaseInsertPoints, fillCarbPhaseText, recommendCarbOption, resolveCarbSlot, resolveCarbTiming, resolveVariant } from '../../lib/carbSideOps'
 import Router, { useRouter } from 'next/router'
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
@@ -247,6 +248,7 @@ export default function RecipeDetail() {
     const [isCalculatingCost, setIsCalculatingCost] = useState(false)
     const [recipeServings, setRecipeServings] = useState<number>(0)
     const [scaleFactor, setScaleFactor] = useState<number>(1)
+    const [unitSystem, setUnitSystem] = useState<'metric' | 'imperial'>(() => isImperialDisplay() ? 'imperial' : 'metric')
     const [gramsPerEachMap, setGramsPerEachMap] = useState<Record<string, number>>({})
     const [pendingGrams, setPendingGrams] = useState<number | null>(null)
     const [scaleModalOpen, setScaleModalOpen] = useState(false)
@@ -448,6 +450,14 @@ export default function RecipeDetail() {
         return () => mq.removeListener(update)
     }, [])
 
+    // Unit system preference (metric default, set in profile) — reacts live
+    // via the 'storage' event the toggle dispatches.
+    useEffect(() => {
+        const sync = () => setUnitSystem(isImperialDisplay() ? 'imperial' : 'metric')
+        window.addEventListener('storage', sync)
+        return () => window.removeEventListener('storage', sync)
+    }, [])
+
     // Keep the current step centered in the timeline whenever it changes —
     // a peeked ("View step") card takes over the scroll until it's dismissed.
     useEffect(() => {
@@ -473,6 +483,21 @@ export default function RecipeDetail() {
     const displayedServings = baseServings > 0 ? Math.max(1, Math.round(baseServings * scaleFactor)) : 0
     const scaleQty = (q: any) => formatScaledQuantity(Number(q) * scaleFactor)
     const isScaled = Math.abs(scaleFactor - 1) > 0.0001
+
+    // Display pipeline for a quantity+unit: scale -> convert to the user's
+    // unit system (metric default, imperial opt-in) -> fraction format.
+    // Display-only; ingredients state, API payloads and the DB are never touched.
+    const displayQty = (q: any, unit: any) => {
+        const scaled = formatScaledQuantity(Number(q) * scaleFactor)
+        const { quantity, shorthand } = convertForDisplay(scaled, unit, unitSystem)
+        return `${formatQuantityDisplay(quantity)} ${shorthand}`
+    }
+    // Maps an ingredient object to its scaled+converted display form
+    const withDisplayUnits = (ingred: any) => {
+        const q = isScaled && !isNaN(Number(ingred.quantity)) ? scaleQty(ingred.quantity) : Number(ingred.quantity)
+        const { quantity, shorthand } = convertForDisplay(q, ingred.quantity_type_shorthand || ingred.quantity_type, unitSystem)
+        return { ...ingred, quantity, quantity_type_shorthand: shorthand }
+    }
 
     // Modal draft state: one pending "target grams" drives BOTH the weight
     // and servings fields, so they visibly move together while editing.
@@ -551,8 +576,7 @@ export default function RecipeDetail() {
             return new RegExp(`\\b${escaped}\\b`).test(n)
         })
         if (!match) return null
-        const qty = isScaled ? scaleQty(match.quantity) : match.quantity
-        return `${formatQuantityDisplay(qty)} ${match.quantity_type_shorthand || match.quantity_type || 'each'}`
+        return displayQty(match.quantity, match.quantity_type_shorthand || match.quantity_type)
     }
 
     const reloadAllIngredients = async () => {
@@ -2136,7 +2160,7 @@ export default function RecipeDetail() {
                                                 title="Scale all ingredients to a target weight"
                                             >
                                                 <Scale className="w-4 h-4 text-muted-foreground" />
-                                                <span className="tabular-nums">{formatWeight(baseWeight > 0 ? estimatedWeight : NaN)}</span>
+                                                <span className="tabular-nums">{unitSystem === 'imperial' ? formatWeightImperial(baseWeight > 0 ? estimatedWeight : NaN) : formatWeight(baseWeight > 0 ? estimatedWeight : NaN)}</span>
                                             </button>
                                             {isScaled && (
                                                 <button
@@ -2261,7 +2285,7 @@ export default function RecipeDetail() {
                             }).flatMap(([, ingredients]: [string, any[]]) => ingredients).map((ingred, idx) => (
                                 <IngredientCard
                                     key={idx}
-                                    ingredient={isScaled && !isNaN(Number(ingred.quantity)) ? { ...ingred, quantity: scaleQty(ingred.quantity) } : ingred}
+                                    ingredient={withDisplayUnits(ingred)}
                                     variant="minimal"
                                     filters={filters}
                                     openModal={openModal}
@@ -2873,7 +2897,7 @@ export default function RecipeDetail() {
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Target weight</span>
                             {baseWeight > 0 && (
-                                <span className="text-xs font-semibold tabular-nums text-foreground/80">{formatWeight(pendingWeight)}</span>
+                                <span className="text-xs font-semibold tabular-nums text-foreground/80">{unitSystem === 'imperial' ? formatWeightImperial(pendingWeight) : formatWeight(pendingWeight)}</span>
                             )}
                         </div>
                         {baseWeight > 0 ? (
@@ -3510,7 +3534,7 @@ export default function RecipeDetail() {
                                             {recs.map((ingred: any, ci: number) => (
                                                 <span key={ci} className="cooking-chip">
                                                     <span className="cooking-chip-name">{ingred.name}</span>
-                                                    <span className="cooking-chip-qty">{scaleQty(ingred.quantity)} {ingred.quantity_type_shorthand || ingred.quantity_type}</span>
+                                                    <span className="cooking-chip-qty">{displayQty(ingred.quantity, ingred.quantity_type_shorthand || ingred.quantity_type)}</span>
                                                     {ingred.note && <span className="cooking-chip-note" title={ingred.note}>{ingred.note}</span>}
                                                 </span>
                                             ))}
@@ -4127,7 +4151,7 @@ export default function RecipeDetail() {
                                         {currentStepRecs.map((ingred: any, idx: number) => (
                                             <div key={`rec-${idx}`} className="cooking-ingredient-card is-recommended">
                                                 <span className="cooking-ingredient-name">{ingred.name}</span>
-                                                <span className="cooking-ingredient-qty">{scaleQty(ingred.quantity)} {ingred.quantity_type_shorthand || ingred.quantity_type}</span>
+                                                <span className="cooking-ingredient-qty">{displayQty(ingred.quantity, ingred.quantity_type_shorthand || ingred.quantity_type)}</span>
                                                 {ingred.note && <span className="cooking-ingredient-note" title={ingred.note}>{ingred.note}</span>}
                                             </div>
                                         ))}
@@ -4141,7 +4165,7 @@ export default function RecipeDetail() {
                                         {currentStepOthers.map((ingred: any, idx: number) => (
                                             <div key={`other-${idx}`} className="cooking-ingredient-card">
                                                 <span className="cooking-ingredient-name">{ingred.name}</span>
-                                                <span className="cooking-ingredient-qty">{scaleQty(ingred.quantity)} {ingred.quantity_type_shorthand || ingred.quantity_type}</span>
+                                                <span className="cooking-ingredient-qty">{displayQty(ingred.quantity, ingred.quantity_type_shorthand || ingred.quantity_type)}</span>
                                                 {ingred.note && <span className="cooking-ingredient-note" title={ingred.note}>{ingred.note}</span>}
                                             </div>
                                         ))}
