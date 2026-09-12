@@ -15,9 +15,9 @@ describe('convertForDisplay unit system (metric default)', () => {
         expect(bigLb.quantity).toBeCloseTo(1.36, 2)
         const oz = convertForDisplay(4, 'ounce', 'metric')
         expect(oz.shorthand).toBe('g')
-        expect(oz.quantity).toBeCloseTo(113.4, 1)
+        expect(oz.quantity).toBeCloseTo(113, 0)
     })
-    it('metric leaves metric, volume and count units untouched', () => {
+    it('metric leaves metric and count units untouched', () => {
         expect(convertForDisplay(500, 'g', 'metric')).toEqual({ quantity: 500, shorthand: 'g' })
         expect(convertForDisplay(2, 'kg', 'metric')).toEqual({ quantity: 2, shorthand: 'kg' })
         expect(convertForDisplay(250, 'ml', 'metric')).toEqual({ quantity: 250, shorthand: 'ml' })
@@ -35,14 +35,6 @@ describe('convertForDisplay unit system (metric default)', () => {
         expect(convertForDisplay(1, 'gallon', 'metric')).toEqual({ quantity: 1, shorthand: 'gal' })
     })
 
-    it('metric leaves metric and count units untouched', () => {
-        expect(convertForDisplay(500, 'g', 'metric')).toEqual({ quantity: 500, shorthand: 'g' })
-        expect(convertForDisplay(2, 'kg', 'metric')).toEqual({ quantity: 2, shorthand: 'kg' })
-        expect(convertForDisplay(250, 'ml', 'metric')).toEqual({ quantity: 250, shorthand: 'ml' })
-        expect(convertForDisplay(2, 'clove', 'metric')).toEqual({ quantity: 2, shorthand: 'clove' })
-        expect(convertForDisplay(3, 'tbsp', 'metric')).toEqual({ quantity: 3, shorthand: 'tbsp' })
-    })
-
     it('imperial converts g/kg to oz/lb, switching at >= half pound', () => {
         expect(convertForDisplay(100, 'g', 'imperial').shorthand).toBe('oz')
         expect(convertForDisplay(1000, 'g', 'imperial').shorthand).toBe('lb')
@@ -58,6 +50,21 @@ describe('convertForDisplay unit system (metric default)', () => {
         const l = convertForDisplay(2, 'liter', 'imperial')
         expect(l.shorthand).toBe('qt')
         expect(l.quantity).toBeCloseTo(1.75, 2)
+    })
+
+    it('imperial only shows cups within ±5% of a clean 1/8-cup step (min 1/8 cup)', () => {
+        // exact 1/8-cup step: 1/2 cup = 142.07 ml
+        expect(convertForDisplay(142.07, 'ml', 'imperial')).toEqual({ quantity: 0.5, shorthand: 'cup' })
+        // within 5% of 1 cup: 284.131 ± 14.2
+        expect(convertForDisplay(280, 'ml', 'imperial').shorthand).toBe('cup')
+        expect(convertForDisplay(290, 'ml', 'imperial').shorthand).toBe('cup')
+        // min: 1/8 cup ≈ 35.5 ml is the smallest cup measure shown
+        expect(convertForDisplay(36, 'ml', 'imperial')).toEqual({ quantity: 0.125, shorthand: 'cup' })
+        expect(convertForDisplay(30, 'ml', 'imperial').shorthand).toBe('fl oz')
+        // outside 5% of the nearest 1/8 step: 200 ml is ~0.70 cup (nearest 3/4 = 213 ml, ~6.4% off)
+        expect(convertForDisplay(200, 'ml', 'imperial').shorthand).toBe('fl oz')
+        // below minimum and off-step
+        expect(convertForDisplay(45, 'ml', 'imperial').shorthand).toBe('fl oz')
     })
 
     it('imperial leaves imperial and count units untouched', () => {

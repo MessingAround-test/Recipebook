@@ -58,15 +58,19 @@ describe('formatWeight', () => {
 });
 
 describe('formatScaledQuantity', () => {
-    test('snaps small values to quarter steps', () => {
-        expect(formatScaledQuantity(0.33)).toBe(0.25);
+    test('snaps to eighth steps only within +/-5%, else keeps precise value', () => {
+        expect(formatScaledQuantity(0.5)).toBe(0.5);
+        expect(formatScaledQuantity(0.125)).toBe(0.125);
+        // 0.33 is >5% away from 3/8 (0.375) - keep precise, don't fake a fraction
+        expect(formatScaledQuantity(0.33)).toBe(0.33);
         expect(formatScaledQuantity(1.5)).toBe(1.5);
     });
-    test('rounds large values to integers', () => {
+    test('rounds large values to integers only within +/-5%', () => {
         expect(formatScaledQuantity(12.4)).toBe(12);
+        expect(formatScaledQuantity(10.8)).toBe(11);
     });
-    test('never rounds a positive value to zero', () => {
-        expect(formatScaledQuantity(0.01)).toBe(0.25);
+    test('never rounds a tiny positive value up to a fake fraction', () => {
+        expect(formatScaledQuantity(0.01)).toBe(0.01);
     });
     test('zero stays zero', () => {
         expect(formatScaledQuantity(0)).toBe(0);
