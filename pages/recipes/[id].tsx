@@ -2,7 +2,8 @@ import { Layout } from '../../components/Layout'
 import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
 import { formatQuantityDisplay } from '../../lib/fractionFormat'
 import { Button } from '../../components/ui/button'
-import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Users, Download, Info, Hourglass, Flame } from 'lucide-react'
+import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Users, Download, Info, Hourglass, Flame, Scale, Minus } from 'lucide-react'
+import { calculateRecipeWeight, formatWeight, formatScaledQuantity } from '../../lib/conversion'
 import { buildFlowItems, computePhaseInsertPoints, fillCarbPhaseText, recommendCarbOption, resolveCarbSlot, resolveCarbTiming, resolveVariant } from '../../lib/carbSideOps'
 import Router, { useRouter } from 'next/router'
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
@@ -245,6 +246,11 @@ export default function RecipeDetail() {
     const [isSavingFeedback, setIsSavingFeedback] = useState(false)
     const [isCalculatingCost, setIsCalculatingCost] = useState(false)
     const [recipeServings, setRecipeServings] = useState<number>(0)
+    const [scaleFactor, setScaleFactor] = useState<number>(1)
+    const [gramsPerEachMap, setGramsPerEachMap] = useState<Record<string, number>>({})
+    const [pendingGrams, setPendingGrams] = useState<number | null>(null)
+    const [scaleModalOpen, setScaleModalOpen] = useState(false)
+    const gramLookupDoneRef = useRef<string | null>(null)
     const [exportModalOpen, setExportModalOpen] = useState(false)
 
     // Prep work state
@@ -459,6 +465,70 @@ export default function RecipeDetail() {
     const cookTimeEstimate = (instructions || []).reduce((sum: number, i: any) => sum + (i.time || 0), 0)
     const totalTimeEstimate = prepTimeEstimate + cookTimeEstimate
 
+    // ---------- Local recipe scaling (servings <-> weight, one factor) ----------
+    const baseWeightInfo = useMemo(() => calculateRecipeWeight(listIngreds, gramsPerEachMap), [listIngreds, gramsPerEachMap])
+    const baseWeight = baseWeightInfo.totalGrams
+    const baseServings = recipeServings > 0 ? recipeServings : 0
+    const estimatedWeight = baseWeight * scaleFactor
+    const displayedServings = baseServings > 0 ? Math.max(1, Math.round(baseServings * scaleFactor)) : 0
+    const scaleQty = (q: any) => formatScaledQuantity(Number(q) * scaleFactor)
+    const isScaled = Math.abs(scaleFactor - 1) > 0.0001
+
+    // Modal draft state: one pending "target grams" drives BOTH the weight
+    // and servings fields, so they visibly move together while editing.
+    const pendingFactor = pendingGrams != null && baseWeight > 0 ? pendingGrams / baseWeight : scaleFactor
+    const pendingWeight = baseWeight * pendingFactor
+    const pendingServings = baseServings > 0 ? Math.max(1, Math.round(baseServings * pendingFactor)) : 0
+    const weightStep = Math.max(1, Math.round(baseWeight / 100))
+
+    const setPendingWeight = (grams: number) => {
+        if (baseWeight > 0 && grams > 0) setPendingGrams(grams)
+    }
+    const setPendingServes = (serves: number) => {
+        if (serves > 0 && baseServings > 0) setPendingGrams((serves / baseServings) * baseWeight)
+    }
+    const applyPendingScale = () => {
+        if (baseWeight > 0) setScaleFactor(pendingFactor)
+        setScaleModalOpen(false)
+    }
+    const resetScale = () => {
+        setScaleFactor(1)
+        setScaleModalOpen(false)
+    }
+    const openScaleModal = () => {
+        setPendingGrams(estimatedWeight)
+        setScaleModalOpen(true)
+    }
+
+    // Fetch grams-per-each conversion factors for 'each'-unit ingredients so
+    // the total weight can be estimated locally (same lookup dailyTracker uses).
+    useEffect(() => {
+        if (!listIngreds || listIngreds.length === 0 || !id) return
+        const cacheKey = String(id)
+        if (gramLookupDoneRef.current === cacheKey) return
+        gramLookupDoneRef.current = cacheKey
+        let cancelled = false
+        const token = localStorage.getItem('Token') || ''
+        const run = async () => {
+            const map: Record<string, number> = {}
+            for (const ing of listIngreds) {
+                if (cancelled) return
+                const name = ing.name || ing.Name
+                if (!name || map[name] !== undefined) continue
+                try {
+                    const res = await fetch(`/api/Ingredients/SearchLogLookup?search_term=${encodeURIComponent(name)}`, { headers: { edgetoken: token } })
+                    const data = await res.json()
+                    if (data.success && data.res) map[name] = data.res.grams_per_each || 0
+                } catch {
+                    map[name] = 0
+                }
+            }
+            if (!cancelled && Object.keys(map).length > 0) setGramsPerEachMap(prev => ({ ...prev, ...map }))
+        }
+        run()
+        return () => { cancelled = true }
+    }, [listIngreds, id])
+
     async function openModal(ingredName: string) {
         setIsOpen(true)
         setSelectedIngred(ingredName)
@@ -481,7 +551,8 @@ export default function RecipeDetail() {
             return new RegExp(`\\b${escaped}\\b`).test(n)
         })
         if (!match) return null
-        return `${formatQuantityDisplay(match.quantity)} ${match.quantity_type_shorthand || match.quantity_type || 'each'}`
+        const qty = isScaled ? scaleQty(match.quantity) : match.quantity
+        return `${formatQuantityDisplay(qty)} ${match.quantity_type_shorthand || match.quantity_type || 'each'}`
     }
 
     const reloadAllIngredients = async () => {
@@ -1308,6 +1379,8 @@ export default function RecipeDetail() {
         setActiveSheet('none')
         setCarbChoice(null)
         setCarbModalOpen(false)
+        setScaleFactor(1)
+        setScaleModalOpen(false)
     }
 
     // ---------- Carb side (Start Cooking) ----------
@@ -1386,7 +1459,7 @@ export default function RecipeDetail() {
     // recipe's stored analysis.
     const fallbackCarbChoice = () => {
         const fallback = recipe?.carbSide
-        const serves = recipe?.servings && recipe.servings > 0 ? recipe.servings : 0
+        const serves = displayedServings || (recipe?.servings && recipe.servings > 0 ? recipe.servings : 0)
         if (Array.isArray(fallback?.phases) && fallback.phases.length > 0) {
             const phasedTime = fallback.phases.reduce((a: number, p: any) => a + (p.minutes || 0), 0) || fallback.timeMinutes || 20
             const phased = computePhaseInsertPoints(schedulingInstructions, fallback.phases.map((p: any) => ({ ...p })))
@@ -1439,7 +1512,7 @@ export default function RecipeDetail() {
         const timing = resolveCarbTiming(entry, v)
         // Serve quantities ({qty:rice}/{serves}) are filled against the
         // recipe's own serving count at the moment the side is picked.
-        const serves = recipe?.servings && recipe.servings > 0 ? recipe.servings : 0
+        const serves = displayedServings || (recipe?.servings && recipe.servings > 0 ? recipe.servings : 0)
         let phases = (timing?.phases || [{ name: 'Cook', minutes: 20 }]).map((p: any) => ({ ...p }))
         // Legacy entries without phase instructions fall back to the
         // catalog's template text so cards are never blank
@@ -1680,11 +1753,15 @@ export default function RecipeDetail() {
             if (saved) {
                 const parsed = JSON.parse(saved)
                 if (parsed.timers) setActiveSession(parsed.timers)
+                // Keep the ingredient scale the cook chose last time
+                if (typeof parsed.scaleFactor === 'number' && parsed.scaleFactor > 0 && parsed.scaleFactor !== 1) {
+                    setScaleFactor(parsed.scaleFactor)
+                }
 
                 const legacy = legacyFlowStepIndices(instructions || [], cookingTimers)
                 const prepShift = (prepWork || []).length > 0 ? 1 : 0
                 const toFlowIndices = (idxs: any[]): number[] => {
-                    const mapped: number[] = parsed.v === 4
+                    const mapped: number[] = parsed.v >= 4
                         ? idxs
                         : parsed.v === 3
                             ? idxs.map((i: number) => i + prepShift)
@@ -1739,15 +1816,16 @@ export default function RecipeDetail() {
         if (!id) return
         try {
             localStorage.setItem(`timer-session-${id}`, JSON.stringify({
-                v: 4,
+                v: 5,
                 timers: activeSession,
                 currentFlow,
                 doneFlow: Array.from(doneFlow),
                 carbChoice,
-                customTimers
+                customTimers,
+                scaleFactor
             }))
         } catch {}
-    }, [activeSession, currentFlow, doneFlow, id, customTimers])
+    }, [activeSession, currentFlow, doneFlow, id, customTimers, scaleFactor])
 
     // Tick clock + countdown engine. A 100ms clock drives re-renders while any
     // timer runs, so countdowns step at true second boundaries (ceiled) and
@@ -2050,10 +2128,48 @@ export default function RecipeDetail() {
                                             <span className="tabular-nums">{totalTimeEstimate} min</span>
                                         </span>
                                     )}
+                                    {recipeServings > 0 && baseWeightInfo.totalCount > 0 && (
+                                        <span className="relative inline-flex items-center gap-1.5">
+                                            <button
+                                                onClick={openScaleModal}
+                                                className="inline-flex items-center gap-1.5 cursor-pointer hover:text-accent transition-colors"
+                                                title="Scale all ingredients to a target weight"
+                                            >
+                                                <Scale className="w-4 h-4 text-muted-foreground" />
+                                                <span className="tabular-nums">{formatWeight(baseWeight > 0 ? estimatedWeight : NaN)}</span>
+                                            </button>
+                                            {isScaled && (
+                                                <button
+                                                    onClick={resetScale}
+                                                    className="text-muted-foreground hover:text-accent cursor-pointer"
+                                                    title="Reset to original amounts"
+                                                    aria-label="Reset scale"
+                                                >
+                                                    <RotateCcw className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                        </span>
+                                    )}
                                     {recipeServings > 0 && (
-                                        <span className="inline-flex items-center gap-1.5">
-                                            <Users className="w-4 h-4 text-muted-foreground" />
-                                            <span className="tabular-nums">{recipeServings} serving{recipeServings === 1 ? '' : 's'}</span>
+                                        <span className="relative inline-flex items-center gap-1.5">
+                                            <button
+                                                onClick={openScaleModal}
+                                                className="inline-flex items-center gap-1.5 cursor-pointer hover:text-accent transition-colors"
+                                                title="Change servings — scales all ingredients"
+                                            >
+                                                <Users className="w-4 h-4 text-muted-foreground" />
+                                                <span className="tabular-nums">{displayedServings} serving{displayedServings === 1 ? '' : 's'}</span>
+                                            </button>
+                                            {isScaled && (
+                                                <button
+                                                    onClick={resetScale}
+                                                    className="text-muted-foreground hover:text-accent cursor-pointer"
+                                                    title="Reset to original servings"
+                                                    aria-label="Reset scale"
+                                                >
+                                                    <RotateCcw className="w-3 h-3" />
+                                                </button>
+                                            )}
                                         </span>
                                     )}
                                 </div>
@@ -2145,7 +2261,7 @@ export default function RecipeDetail() {
                             }).flatMap(([, ingredients]: [string, any[]]) => ingredients).map((ingred, idx) => (
                                 <IngredientCard
                                     key={idx}
-                                    ingredient={ingred}
+                                    ingredient={isScaled && !isNaN(Number(ingred.quantity)) ? { ...ingred, quantity: scaleQty(ingred.quantity) } : ingred}
                                     variant="minimal"
                                     filters={filters}
                                     openModal={openModal}
@@ -2677,7 +2793,7 @@ export default function RecipeDetail() {
                             <IngredientNutrientGraph
                                 ingredients={matchedListIngreds}
                                 onLogServe={logRecipeServe}
-                                recipeServings={recipeServings}
+                                recipeServings={displayedServings || recipeServings}
                             />
                         </div>
                     </div>
@@ -2705,6 +2821,175 @@ export default function RecipeDetail() {
                     recipe={exportRecipeData}
                     imageSrc={imageData}
                 />
+
+                {/* Recipe Scale Modal — centered card, weight & servings in one place */}
+                <Modal
+                    isOpen={scaleModalOpen}
+                    onRequestClose={() => setScaleModalOpen(false)}
+                    style={{
+                        content: {
+                            backgroundColor: 'var(--background)',
+                            color: 'var(--foreground)',
+                            border: '1px solid var(--border)',
+                            maxWidth: '360px',
+                            width: 'calc(100% - 2rem)',
+                            margin: '0 auto',
+                            padding: '1.25rem',
+                            borderRadius: '1rem',
+                            inset: '1.5rem',
+                            maxHeight: 'calc(100vh - 3rem)',
+                            overflowY: 'auto'
+                        },
+                        overlay: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            backdropFilter: 'blur(8px)',
+                            zIndex: 100,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }
+                    }}
+                    contentLabel="Scale recipe"
+                >
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-lg font-bold flex items-center gap-2">
+                            <Scale className="w-4 h-4 text-muted-foreground" /> Scale recipe
+                        </h2>
+                        <button
+                            onClick={() => setScaleModalOpen(false)}
+                            className="bg-secondary hover:bg-secondary/80 w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+                            aria-label="Close"
+                        >
+                            <img src="/cross.png" className="w-4 h-4 invert-[.25] dark:invert" alt="close" />
+                        </button>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground mb-4">
+                        Drag or type in either one — weight and servings stay in sync and update all ingredients.
+                    </p>
+
+                    {/* Weight */}
+                    <div className="rounded-xl bg-secondary/50 p-3">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Target weight</span>
+                            {baseWeight > 0 && (
+                                <span className="text-xs font-semibold tabular-nums text-foreground/80">{formatWeight(pendingWeight)}</span>
+                            )}
+                        </div>
+                        {baseWeight > 0 ? (
+                            <>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <input
+                                        type="range"
+                                        min={1}
+                                        max={baseWeight * 3}
+                                        step={weightStep}
+                                        value={Math.min(Math.max(pendingWeight, 1), baseWeight * 3)}
+                                        onChange={e => setPendingWeight(Number(e.target.value))}
+                                        className="flex-1 accent-emerald-500 cursor-pointer"
+                                        aria-label="Target weight slider"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <input
+                                        type="number" min="1" inputMode="numeric"
+                                        value={Math.round(pendingWeight)}
+                                        onChange={e => setPendingWeight(Number(e.target.value))}
+                                        onKeyDown={e => { if (e.key === 'Enter') applyPendingScale() }}
+                                        className="w-24 bg-background border border-border focus:border-accent outline-none rounded-md text-sm tabular-nums px-2 py-1.5"
+                                    />
+                                    <span className="text-xs text-muted-foreground">g total</span>
+                                    <div className="flex flex-wrap gap-1.5 ml-auto justify-end">
+                                        {[0.5, 1.5, 2, 3].map(m => (
+                                            <button
+                                                key={m}
+                                                onClick={() => setPendingWeight(baseWeight * m)}
+                                                className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${Math.abs(pendingFactor - m) < 0.0001 ? 'bg-emerald-500 text-white' : 'bg-background hover:bg-background/60 border border-border text-foreground/80'}`}
+                                            >
+                                                {m}×
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                {baseWeightInfo.resolvedCount < baseWeightInfo.totalCount && (
+                                    <p className="text-[10px] text-muted-foreground">
+                                        Estimate — {baseWeightInfo.totalCount - baseWeightInfo.resolvedCount} of {baseWeightInfo.totalCount} ingredients couldn't be weighed.
+                                    </p>
+                                )}
+                            </>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">Fetching ingredient weights…</p>
+                        )}
+                    </div>
+
+                    {/* OR separator */}
+                    <div className="flex items-center gap-3 my-4">
+                        <span className="flex-1 h-px bg-border" />
+                        <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground">or</span>
+                        <span className="flex-1 h-px bg-border" />
+                    </div>
+
+                    {/* Servings */}
+                    {baseServings > 0 && (
+                        <div className="rounded-xl bg-secondary/50 p-3">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Servings</span>
+                                <span className="text-xs font-semibold tabular-nums text-foreground/80">{pendingServings} serving{pendingServings === 1 ? '' : 's'}</span>
+                            </div>
+                            <input
+                                type="range"
+                                min={1}
+                                max={Math.max(3, baseServings * 3)}
+                                step={1}
+                                value={Math.min(Math.max(pendingServings, 1), Math.max(3, baseServings * 3))}
+                                onChange={e => setPendingServes(Number(e.target.value))}
+                                className="w-full accent-emerald-500 cursor-pointer mb-2"
+                                aria-label="Servings slider"
+                            />
+                            <div className="flex items-center gap-2 mb-3">
+                                <button
+                                    onClick={() => setPendingServes(pendingServings - 1)}
+                                    className="w-8 h-8 rounded-md bg-background hover:bg-background/60 border border-border flex items-center justify-center cursor-pointer" aria-label="Fewer servings"
+                                >
+                                    <Minus className="w-3.5 h-3.5" />
+                                </button>
+                                <input
+                                    type="number" min="1" inputMode="numeric"
+                                    value={pendingServings}
+                                    onChange={e => setPendingServes(Number(e.target.value))}
+                                    onKeyDown={e => { if (e.key === 'Enter') applyPendingScale() }}
+                                    className="w-16 bg-background border border-border focus:border-accent outline-none rounded-md text-sm tabular-nums text-center px-2 py-1.5"
+                                />
+                                <button
+                                    onClick={() => setPendingServes(pendingServings + 1)}
+                                    className="w-8 h-8 rounded-md bg-background hover:bg-background/60 border border-border flex items-center justify-center cursor-pointer" aria-label="More servings"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                </button>
+                                <div className="flex flex-wrap gap-1.5 ml-auto justify-end">
+                                    {[1, 2, 4, 6, 8].map(s => (
+                                        <button
+                                            key={s}
+                                            onClick={() => setPendingServes(s)}
+                                            className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${pendingServings === s ? 'bg-emerald-500 text-white' : 'bg-background hover:bg-background/60 border border-border text-foreground/80'}`}
+                                        >
+                                            {s}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex items-center justify-between mt-4">
+                        <button onClick={resetScale} disabled={!isScaled} className="text-xs text-muted-foreground hover:text-accent disabled:opacity-30 cursor-pointer flex items-center gap-1">
+                            <RotateCcw className="w-3 h-3" /> Reset to original
+                        </button>
+                        <Button size="sm" onClick={applyPendingScale} className="h-9 px-6 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-md">
+                            Apply scale
+                        </Button>
+                    </div>
+                </Modal>
 
                 {/* Ingredient Research Modal — bottom sheet on phones, centered card on desktop */}
                 <Modal
@@ -3225,7 +3510,7 @@ export default function RecipeDetail() {
                                             {recs.map((ingred: any, ci: number) => (
                                                 <span key={ci} className="cooking-chip">
                                                     <span className="cooking-chip-name">{ingred.name}</span>
-                                                    <span className="cooking-chip-qty">{ingred.quantity} {ingred.quantity_type_shorthand || ingred.quantity_type}</span>
+                                                    <span className="cooking-chip-qty">{scaleQty(ingred.quantity)} {ingred.quantity_type_shorthand || ingred.quantity_type}</span>
                                                     {ingred.note && <span className="cooking-chip-note" title={ingred.note}>{ingred.note}</span>}
                                                 </span>
                                             ))}
@@ -3842,7 +4127,7 @@ export default function RecipeDetail() {
                                         {currentStepRecs.map((ingred: any, idx: number) => (
                                             <div key={`rec-${idx}`} className="cooking-ingredient-card is-recommended">
                                                 <span className="cooking-ingredient-name">{ingred.name}</span>
-                                                <span className="cooking-ingredient-qty">{ingred.quantity} {ingred.quantity_type_shorthand || ingred.quantity_type}</span>
+                                                <span className="cooking-ingredient-qty">{scaleQty(ingred.quantity)} {ingred.quantity_type_shorthand || ingred.quantity_type}</span>
                                                 {ingred.note && <span className="cooking-ingredient-note" title={ingred.note}>{ingred.note}</span>}
                                             </div>
                                         ))}
@@ -3856,7 +4141,7 @@ export default function RecipeDetail() {
                                         {currentStepOthers.map((ingred: any, idx: number) => (
                                             <div key={`other-${idx}`} className="cooking-ingredient-card">
                                                 <span className="cooking-ingredient-name">{ingred.name}</span>
-                                                <span className="cooking-ingredient-qty">{ingred.quantity} {ingred.quantity_type_shorthand || ingred.quantity_type}</span>
+                                                <span className="cooking-ingredient-qty">{scaleQty(ingred.quantity)} {ingred.quantity_type_shorthand || ingred.quantity_type}</span>
                                                 {ingred.note && <span className="cooking-ingredient-note" title={ingred.note}>{ingred.note}</span>}
                                             </div>
                                         ))}
