@@ -52,6 +52,24 @@ const cookingTimerSchema = new mongoose.Schema({
     notes: { type: String }
 }, { _id: false })
 
+// Optional overlay links back to the explore "dish lists" a recipe was
+// imported for. Nothing else reads this — it exists only so the recipe page
+// can show an "On list" badge. Removing it must never break a recipe.
+const dishListRefSchema = new mongoose.Schema({
+    listId: { type: mongoose.Schema.Types.ObjectId, ref: 'DishList' },
+    itemId: { type: mongoose.Schema.Types.ObjectId, ref: 'DishListItem' },
+    listName: { type: String }
+}, { _id: false })
+
+// Optional geo data for a future "where is this dish from" world map.
+const recipeLocationSchema = new mongoose.Schema({
+    country: { type: String },
+    region: { type: String },
+    city: { type: String },
+    lat: { type: Number },
+    lng: { type: Number }
+}, { _id: false })
+
 const carbSideSchema = new mongoose.Schema({
     needs: { type: Boolean, default: false },
     state: { type: String, enum: ['pending', 'analyzed'], default: 'pending' },
@@ -102,7 +120,10 @@ const RecipeSchema = new mongoose.Schema(
         feedback: { type: String, required: false },
         sourceNotes: { type: String, required: false },
         servings: { type: Number, required: false },
-        sourceUrl: { type: String, required: false }
+        sourceUrl: { type: String, required: false },
+        // Explore overlay (additive, optional). See dishListRefSchema.
+        dishListRefs: { type: [dishListRefSchema], required: false },
+        location: { type: recipeLocationSchema, required: false }
     },
     { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 )

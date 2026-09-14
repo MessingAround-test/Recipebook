@@ -12,6 +12,7 @@ import { logAPI } from "../../../lib/logger.ts";
 import { safeToObject } from "../../../lib/utils";
 import { determineCategory } from '../../../lib/categoryDetermination';
 import { callGroqChat } from '../../../lib/ai';
+import { sanitizeDishListRefs, sanitizeRecipeLocation } from '../../../lib/dishLists/recipeLink';
 
 
 async function convertIngredients(originalObject) {
@@ -109,6 +110,8 @@ export default async function handler(req, res) {
         if (req.body.servings !== undefined) updateData.servings = req.body.servings;
         if (req.body.sourceUrl !== undefined) updateData.sourceUrl = req.body.sourceUrl;
         if (req.body.sourceNotes !== undefined) updateData.sourceNotes = req.body.sourceNotes;
+        if (req.body.dishListRefs !== undefined) updateData.dishListRefs = sanitizeDishListRefs(req.body.dishListRefs);
+        if (req.body.location !== undefined) updateData.location = sanitizeRecipeLocation(req.body.location);
         // carbSide comes from the editor as the user-facing subset; the
         // analysis portion is server-owned and only written by the
         // analyze endpoint / bulk op. Handled after the main update since

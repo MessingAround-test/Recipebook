@@ -25,11 +25,15 @@ export default async function handler(req, res) {
     if (!decoded) return;
 
     try {
-        const { notes } = req.body;
+        const { notes, dietary } = req.body;
 
         if (!notes) {
             return res.status(400).json({ success: false, message: "Missing notes" });
         }
+
+        const dietaryBlock = dietary
+            ? `\n\nDIETARY ADAPTATION (IMPORTANT): The user requires this diet — ${dietary}\nAdapt the recipe so EVERY ingredient and step conforms: replace any non-conforming ingredient with a suitable substitute that does, keeping the dish recognisable and the amounts sensible. Record the substitution in that ingredient's 'Note' (e.g. "soy butter, for butter"). If a step references a replaced ingredient, rewrite it to use the substitute. Never output a non-conforming ingredient.`
+            : '';
 
         const messages = [
             {
@@ -61,11 +65,11 @@ STRICT RULES:
 - Never invent or alter an amount that is stated in the notes. Never drop a step the user wrote.
 - If a unit is not in the list, use 'each' and put the unit in 'Note' or 'Name'.
 - 'Amount' must be clean. If you see "320g", 'Amount' is "320" and 'AmountType' is "gram".
-- Output MUST be a single valid JSON object. No markdown.`
+- Output MUST be a single valid JSON object. No markdown.${dietaryBlock}`
             },
             {
                 role: "user",
-                content: `Notes to extract from:\n\n${notes}`
+                content: `Notes to extract from:\n\n${notes}${dietary ? `\n\nDietary requirement to apply: ${dietary}` : ''}`
             }
         ];
 

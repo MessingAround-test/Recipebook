@@ -17,9 +17,10 @@ type RecipeRow = {
     carbState?: string
     carbAlreadyIn?: boolean
     image?: boolean
+    hasLocation?: boolean
 }
 
-type OpKind = 'normalize' | 'prep' | 'timers' | 'carbside' | 'image'
+type OpKind = 'normalize' | 'prep' | 'timers' | 'carbside' | 'location' | 'image'
 type RowStatus = 'idle' | 'running' | 'waiting' | 'done' | 'error'
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -37,6 +38,11 @@ const OPS: { op: OpKind; label: string; confirm?: (count: number) => string }[] 
     { op: 'prep', label: 'Extract Prep Steps' },
     { op: 'timers', label: 'Extract Timers' },
     { op: 'carbside', label: 'Analyze Carb Sides' },
+    {
+        op: 'location',
+        label: 'Generate Locations',
+        confirm: (count) => `AI-guess the country/region/city for ${count} selected recipe(s) and geocode each pin?\n\nRecipes that already have a location are skipped. Geocoding respects OpenStreetMap's ~1 request/second limit, so this is slow.`
+    },
     {
         op: 'image',
         label: 'Generate Images',
@@ -98,18 +104,21 @@ export default function BulkRecipeTools() {
     // Carb tick: the AI decision has been recorded (needed or not needed)
     const hasCarb = (r: RecipeRow) => r.carbState === 'analyzed'
     const hasImage = (r: RecipeRow) => r.image === true
+    const hasLocation = (r: RecipeRow) => r.hasLocation === true
 
     // Column header click: select every recipe that does NOT have a tick on that column
-    const selectMissing = (col: 'ingred' | 'prep' | 'timers' | 'carb' | 'image') => {
+    const selectMissing = (col: 'ingred' | 'prep' | 'timers' | 'carb' | 'location' | 'image') => {
         const missing = recipes.filter(r =>
             col === 'ingred' ? r.ingredCount === 0
             : col === 'prep' ? !hasPrep(r)
             : col === 'timers' ? !hasTimers(r)
             : col === 'carb' ? !hasCarb(r)
+            : col === 'location' ? !hasLocation(r)
             : !hasImage(r)
         )
         if (missing.length === 0) {
-            alert(`All recipes already have ${col === 'ingred' ? 'ingredients' : col} ticks`)
+            const label = col === 'ingred' ? 'ingredients' : col === 'location' ? 'locations' : col
+            alert(`All recipes already have ${label} ticks`)
             return
         }
         setSelected(new Set(missing.map(r => r._id)))
@@ -155,7 +164,8 @@ export default function BulkRecipeTools() {
                                 ...(data.hasPrep !== undefined ? { prepChecked: data.hasPrep } : {}),
                                 ...(data.hasTimers !== undefined ? { timersChecked: data.hasTimers } : {}),
                                 ...(data.hasCarb !== undefined ? { carbState: data.hasCarb ? 'analyzed' : 'pending' } : {}),
-                                ...(data.hasImage !== undefined ? { image: data.hasImage } : {})
+                                ...(data.hasImage !== undefined ? { image: data.hasImage } : {}),
+                                ...(data.hasLocation !== undefined ? { hasLocation: data.hasLocation } : {})
                             }
                             : r))
                         stopped = true
@@ -262,6 +272,11 @@ export default function BulkRecipeTools() {
                                         className="px-3 py-2.5 w-20 text-center cursor-pointer select-none underline decoration-dotted underline-offset-4 hover:text-white transition-colors"
                                     >Carb side</th>
                                     <th
+                                        onClick={() => selectMissing('location')}
+                                        title="Click to select all recipes without a location"
+                                        className="px-3 py-2.5 w-20 text-center cursor-pointer select-none underline decoration-dotted underline-offset-4 hover:text-white transition-colors"
+                                    >Location</th>
+                                    <th
                                         onClick={() => selectMissing('image')}
                                         title="Click to select all recipes without an image"
                                         className="px-3 py-2.5 w-20 text-center cursor-pointer select-none underline decoration-dotted underline-offset-4 hover:text-white transition-colors"
@@ -299,6 +314,11 @@ export default function BulkRecipeTools() {
                                                 : <span className="text-muted-foreground">—</span>}
                                         </td>
                                         <td className="px-3 py-2 text-center">
+                                            {hasLocation(recipe)
+                                                ? <Check size={16} className="inline text-emerald-400" strokeWidth={3} />
+                                                : <span className="text-muted-foreground">—</span>}
+                                        </td>
+                                        <td className="px-3 py-2 text-center">
                                             {hasImage(recipe)
                                                 ? <Check size={16} className="inline text-emerald-400" strokeWidth={3} />
                                                 : <span className="text-muted-foreground">—</span>}
@@ -320,7 +340,7 @@ export default function BulkRecipeTools() {
                                 ))}
                                 {recipes.length === 0 && (
                                     <tr>
-                                        <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">No recipes found</td>
+                                        <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">No recipes found</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -331,6 +351,7 @@ export default function BulkRecipeTools() {
                 <p className="mt-3 text-xs text-muted-foreground">
                     Prep / Timing / Image ticks mean the recipe already has prep work / timers / AI art saved.
                     Carb side tick = the AI has decided for that recipe (green = needs a carb side, grey = decided it doesn't — click the header to select every recipe without a decision yet).
+                    Location tick = the recipe has a country/region/city saved (recipes that already have one are skipped by Generate Locations).
                     Extract ops overwrite existing data. Normalise rewrites ingredient names/units and moves prep words into notes.
                     Click a column heading to select all recipes missing that item.
                     Image generation uses the Pollinations anonymous tier (~15s per image) with Gemini fallback.

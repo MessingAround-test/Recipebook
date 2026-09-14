@@ -285,7 +285,13 @@ export default function CreateRecipe() {
     const [recipeMealTypes, setRecipeMealTypes] = useState<string[]>([])
     const [recipeCarbType, setRecipeCarbType] = useState<string>("")
     const [recipeServings, setRecipeServings] = useState<number | string>("")
+    // Where the dish is from. lat/lng are filled by the geocoder (auto-fill /
+    // bulk tools); editing the place text clears them so the pin is re-resolved.
+    const [recipeLocation, setRecipeLocation] = useState<{ country: string; region: string; city: string; lat?: number; lng?: number }>({ country: '', region: '', city: '' })
     const [recipeSourceUrl, setRecipeSourceUrl] = useState("")
+    // The Web-import link, kept controlled so a URL handed over from the
+    // Explore search appears in the field (and can be edited/retried).
+    const [siteUrl, setSiteUrl] = useState("")
     const [sourceNotes, setSourceNotes] = useState("")
     const [recipeNotes, setRecipeNotes] = useState("")
     const [isExtracting, setIsExtracting] = useState(false)
@@ -316,6 +322,37 @@ export default function CreateRecipe() {
     const router = useRouter();
     const { id } = router.query || {};
     const isEditMode = id !== undefined;
+
+    // Explore "dish list" overlay: when arriving from a list item, remember
+    // which list/item this recipe is being imported for so we can attach a
+    // back-reference on save without any downstream recipe code depending on it.
+    const listId = typeof router.query.listId === 'string' ? router.query.listId : undefined
+    const listItemId = typeof router.query.itemId === 'string' ? router.query.itemId : undefined
+    const listName = typeof router.query.listName === 'string' ? router.query.listName : undefined
+    const presetSourceUrl = typeof router.query.sourceUrl === 'string' ? router.query.sourceUrl : undefined
+    const itemLocation = useMemo(() => {
+        const raw = router.query.loc
+        if (typeof raw !== 'string') return undefined
+        try { return JSON.parse(raw) } catch { return undefined }
+    }, [router.query.loc])
+
+    // Keep the Web-import field in sync with a URL handed over from Explore.
+    useEffect(() => {
+        if (presetSourceUrl) setSiteUrl(presetSourceUrl)
+    }, [presetSourceUrl])
+
+    // Seed the location fields from a dish list item handed over via ?loc=.
+    useEffect(() => {
+        if (!itemLocation) return
+        if (!itemLocation.country && !itemLocation.region && !itemLocation.city) return
+        setRecipeLocation({
+            country: itemLocation.country || '',
+            region: itemLocation.region || '',
+            city: itemLocation.city || '',
+            lat: typeof itemLocation.lat === 'number' ? itemLocation.lat : undefined,
+            lng: typeof itemLocation.lng === 'number' ? itemLocation.lng : undefined
+        })
+    }, [itemLocation])
 
     // Sticky section nav with scroll-spy (same pattern as the detail page)
     const navSections = useMemo(() => ([
@@ -616,6 +653,21 @@ export default function CreateRecipe() {
         }
     }
 
+    const updateLocationField = (field: 'country' | 'region' | 'city', value: string) => {
+        // Changing the place invalidates any stored coordinates.
+        setRecipeLocation(prev => ({ ...prev, [field]: value, lat: undefined, lng: undefined }))
+    }
+
+    const locationPayload = (recipeLocation.country || recipeLocation.region || recipeLocation.city)
+        ? {
+            country: recipeLocation.country || undefined,
+            region: recipeLocation.region || undefined,
+            city: recipeLocation.city || undefined,
+            lat: recipeLocation.lat,
+            lng: recipeLocation.lng
+        }
+        : undefined
+
     const onSubmitRecipe = async () => {
         if (!recipeName.trim()) {
             alert("Please enter a recipe name first!")
@@ -650,6 +702,7 @@ export default function CreateRecipe() {
                         "servings": recipeServings !== "" ? Number(recipeServings) : undefined,
                         "sourceUrl": recipeSourceUrl || undefined,
                         "sourceNotes": sourceNotes || undefined,
+                        "location": locationPayload,
                         "carbSide": carbSideSaveBody(),
                         "prepWorkChecked": false
                     })
@@ -679,11 +732,21 @@ export default function CreateRecipe() {
                      carbSide: carbSideSaveBody(),
                     servings: recipeServings !== "" ? Number(recipeServings) : undefined,
                     sourceUrl: recipeSourceUrl || undefined,
-                    sourceNotes: sourceNotes || undefined
+                    sourceNotes: sourceNotes || undefined,
+                    dishListRefs: listId ? [{ listId, itemId: listItemId, listName }] : undefined,
+                    location: locationPayload || itemLocation
                 })
                 if (!imageData && generateAiImage && created?._id) {
                     setGeneratingImage(true)
                     await generateImageInBackground(recipeName, created._id)
+                }
+                // Link the recipe back to the dish-list item it was imported for
+                if (created?._id && listItemId) {
+                    await fetch('/api/dishLists/items', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'edgetoken': localStorage.getItem('Token') || '' },
+                        body: JSON.stringify({ itemId: listItemId, recipeId: created._id })
+                    }).catch(() => {})
                 }
                 // Auto-populate the carb side decision for the new recipe
                 if (created?._id) {
@@ -693,7 +756,7 @@ export default function CreateRecipe() {
                         body: JSON.stringify({ recipeId: created._id })
                     }).catch(() => {})
                 }
-                Router.push("/recipes")
+                Router.push(listId ? `/dishLists/${listId}` : "/recipes")
             }
         } catch (error: any) {
             console.error("Error saving recipe:", error)
@@ -725,13 +788,9 @@ export default function CreateRecipe() {
         }
     }
 
-    const onSubmitRecipeSiteImport = async (e: FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+    const importFromUrl = async (tasteURL: string) => {
+        if (!tasteURL) return
         const token = localStorage.getItem('Token')
-        const target = e.target as typeof e.target & {
-            tasteURL: { value: string }
-        }
-        const tasteURL = target.tasteURL.value
 
         if (!confirmOverwrite()) return;
 
@@ -796,6 +855,24 @@ export default function CreateRecipe() {
         }
         setLoading(false)
     }
+
+    const onSubmitRecipeSiteImport = async (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        await importFromUrl(siteUrl)
+    }
+
+    // Auto-run the web import when arriving from a dish list with a chosen
+    // source, so the editor opens pre-filled for review.
+    const autoImportRef = useRef(false)
+    useEffect(() => {
+        if (!isAuthed || isEditMode || autoImportRef.current) return
+        const auto = router.query.autoImport === '1' || router.query.autoImport === 'true'
+        if (!auto || !presetSourceUrl) return
+        autoImportRef.current = true
+        setCreationMethod('url')
+        importFromUrl(presetSourceUrl)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isAuthed, isEditMode, presetSourceUrl, router.query.autoImport])
 
     const onSubmitFacebookImport = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -862,8 +939,10 @@ export default function CreateRecipe() {
         setLoading(false)
     }
 
-    const onSubmitNotesExtract = async () => {
-        if (!recipeNotes.trim()) {
+    // Core notes extraction, callable with an explicit string so it can be
+    // driven by the AI-notes form or handed over from the pre-recipe page.
+    const extractNotes = async (text: string, dietary?: string) => {
+        if (!text.trim()) {
             alert("Please paste some notes first!")
             return
         }
@@ -872,7 +951,7 @@ export default function CreateRecipe() {
 
         setIsExtracting(true)
         try {
-            const result = await extractRecipeFromNotes(recipeNotes)
+            const result = await extractRecipeFromNotes(text, dietary)
             const { name, ingredients, instructions, time, genre, mealTypes, servings, carbType } = result
 
             if (name) setRecipeName(name)
@@ -890,13 +969,36 @@ export default function CreateRecipe() {
             setRecipeNotes("") // Clear notes after successful extraction
             // No name in the notes? Ask for it before the editor
             setFormPhase(name ? 'builder' : 'name')
-            alert("Recipe extracted successfully!")
         } catch (error) {
             console.error("Extraction error:", error)
             alert("An error occurred during extraction.")
         }
         setIsExtracting(false)
     }
+
+    const onSubmitNotesExtract = async () => {
+        await extractNotes(recipeNotes)
+    }
+
+    // Handed over from the pre-recipe page: run the pasted notes through AI.
+    const notesImportRef = useRef(false)
+    useEffect(() => {
+        if (!isAuthed || isEditMode || notesImportRef.current) return
+        const wants = router.query.notesImport === '1'
+        if (!wants) return
+        notesImportRef.current = true
+        let text = ''
+        try { text = sessionStorage.getItem('dishNotesImport') || '' } catch { /* ignore */ }
+        let dietary = ''
+        try { dietary = sessionStorage.getItem('dishNotesDietary') || '' } catch { /* ignore */ }
+        try { sessionStorage.removeItem('dishNotesImport') } catch { /* ignore */ }
+        try { sessionStorage.removeItem('dishNotesDietary') } catch { /* ignore */ }
+        if (!text.trim()) return
+        setCreationMethod('notes')
+        setRecipeNotes(text)
+        extractNotes(text, dietary || undefined)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isAuthed, isEditMode, router.query.notesImport])
 
     const onSubmitImageExtract = async () => {
         if (!extractImage) {
@@ -1044,6 +1146,13 @@ export default function CreateRecipe() {
                         if (data.res.carbSide?.state === 'analyzed') setCarbAnalysis(data.res.carbSide)
                         recipeLoadedRef.current = true
                         setRecipeServings(data.res.servings || "")
+                        setRecipeLocation({
+                            country: data.res.location?.country || '',
+                            region: data.res.location?.region || '',
+                            city: data.res.location?.city || '',
+                            lat: data.res.location?.lat,
+                            lng: data.res.location?.lng
+                        })
                         setRecipeSourceUrl(data.res.sourceUrl || "")
                         setInstructions(data.res.instructions.map((i: any) => ({
                             Text: i.Text,
@@ -1088,7 +1197,8 @@ export default function CreateRecipe() {
         recipeGenre,
         servingCount > 0 ? `${servingCount} serving${servingCount === 1 ? '' : 's'}` : '',
         ...recipeMealTypes,
-        recipeCarbType
+        recipeCarbType,
+        [recipeLocation.city || recipeLocation.region, recipeLocation.country].filter(Boolean).join(', ')
     ].filter(Boolean)
 
     return (
@@ -1186,10 +1296,12 @@ export default function CreateRecipe() {
                                                         name="tasteURL"
                                                         type="url"
                                                         required
+                                                        value={siteUrl}
+                                                        onChange={(e) => setSiteUrl(e.target.value)}
                                                         placeholder="Paste a link (Taste, RecipeTin Eats, VegKit)…"
                                                         className="input-modern"
                                                     />
-                                                    <button type="submit" disabled={loading} className={primaryBtnClass}>
+                                                    <button type="submit" disabled={loading || !siteUrl.trim()} className={primaryBtnClass}>
                                                         {loading ? <><Loader2 size={16} className="animate-spin" /> Importing&#8230;</> : <><Globe size={16} /> Import & continue</>}
                                                     </button>
                                                 </form>
@@ -1573,6 +1685,33 @@ export default function CreateRecipe() {
                                             <option key={g} value={g}>{g}</option>
                                         ))}
                                     </select>
+                                </div>
+                                <div className="space-y-2 sm:col-span-2 lg:col-span-3">
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block ml-1">Origin</label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <input
+                                            type="text"
+                                            value={recipeLocation.country}
+                                            onChange={(e) => updateLocationField('country', e.target.value)}
+                                            placeholder="Country"
+                                            className="input-modern"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={recipeLocation.region}
+                                            onChange={(e) => updateLocationField('region', e.target.value)}
+                                            placeholder="Region / state"
+                                            className="input-modern"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={recipeLocation.city}
+                                            onChange={(e) => updateLocationField('city', e.target.value)}
+                                            placeholder="City"
+                                            className="input-modern"
+                                        />
+                                    </div>
+                                    <p className="ml-1 text-[11px] text-muted-foreground">Where the dish is from — powers the World Map pin. Left blank, it's AI-filled when the recipe is opened.</p>
                                 </div>
                                 <div className="space-y-2 sm:col-span-2 lg:col-span-3">
                                     <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block ml-1">Meal occasions</label>

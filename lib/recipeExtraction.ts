@@ -37,6 +37,8 @@ export interface SaveRecipePayload {
     hidden?: boolean
     sourceUrl?: string
     sourceNotes?: string
+    dishListRefs?: Array<{ listId?: string; itemId?: string; listName?: string }>
+    location?: { country?: string; region?: string; city?: string; lat?: number; lng?: number }
 }
 
 export const normalizeAmount = (value: string | number): number => {
@@ -74,7 +76,7 @@ export const extractRecipeFromImage = async (image: string, notes?: string): Pro
     return result.data
 }
 
-export const extractRecipeFromNotes = async (notes: string): Promise<ExtractedRecipe> => {
+export const extractRecipeFromNotes = async (notes: string, dietary?: string): Promise<ExtractedRecipe> => {
     const token = localStorage.getItem('Token')
     const res = await fetch('/api/ai/extract_from_notes', {
         method: 'POST',
@@ -82,7 +84,7 @@ export const extractRecipeFromNotes = async (notes: string): Promise<ExtractedRe
             'Content-Type': 'application/json',
             'edgetoken': token || ''
         },
-        body: JSON.stringify({ notes })
+        body: JSON.stringify({ notes, dietary: dietary || undefined })
     })
     const result = await res.json()
     if (!result.success || !result.data) {
@@ -180,6 +182,8 @@ export const saveRecipe = async (payload: SaveRecipePayload): Promise<any> => {
             hidden: payload.hidden,
             sourceUrl: payload.sourceUrl || undefined,
             sourceNotes: payload.sourceNotes || undefined,
+            dishListRefs: payload.dishListRefs,
+            location: payload.location,
             instructions: normalizeInstructionsForSave(payload.instructions),
             ingreds: normalizeIngredientsForSave(payload.ingreds)
         })

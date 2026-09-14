@@ -17,6 +17,8 @@ export default function Tools() {
 
     const [allPages] = useState<NavPage[]>([
         { name: "Quick Tools", _id: "/quickTools", image: "", adminOnly: false },
+        { name: "Explore", _id: "/dishLists", image: "", adminOnly: false },
+        { name: "World Map", _id: "/map", image: "", adminOnly: false },
         { name: "Recipes", _id: "/recipes", image: "/recipes_v2_oragami.png", adminOnly: false },
         { name: "Shopping List", _id: "/shoppingList", image: "/shop_list_oragami.png", adminOnly: false },
         { name: "Health Tracker", _id: "/dailyTracker", image: "/health_tracker_oragami.png", adminOnly: false },

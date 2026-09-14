@@ -8,6 +8,7 @@ import { saveRecipeImages } from '../../../lib/recipeImageServer';
 import { normalizeExtractedIngredients, normalizePrepWords } from '../../../lib/recipeNormalize';
 import { quantity_unit_conversions } from '../../../lib/conversion';
 import { analyzeCarbSideForRecipe } from '../../../lib/carbSideServer';
+import { resolveRecipeLocation, locationPatch } from '../../../lib/dishLists/geocode';
 import {
     buildPrepWorkMessages,
     buildTimerMessages,
@@ -32,6 +33,7 @@ const toAmount = (val) => {
  *  - "prep": extract prep work steps via AI (merges with custom items)
  *  - "timers": extract cooking timers via AI
  *  - "carbside": run the carb side-dish analysis (AI + timing math)
+ *  - "location": AI-guess country/region/city (when missing) and geocode the pin
  *  - "image": generate recipe art via Pollinations anonymous tier (Gemini fallback) */
 async function runOp(recipe, op) {
     if (op === 'normalize') {
@@ -118,6 +120,26 @@ async function runOp(recipe, op) {
         return { message: alreadyIn ? 'Analyzed — carb already in recipe steps' : needs ? 'Analyzed — needs a carb side' : 'Analyzed — no carb side needed', alreadyIn };
     }
 
+    if (op === 'location') {
+        const existing = recipe.location || {};
+        if (existing.country || existing.region || existing.city) {
+            return { message: 'Already has a location — skipped', hasLocation: true };
+        }
+        const input = {
+            name: recipe.name,
+            genre: recipe.genre,
+            ingredients: (recipe.ingredients || []).map(i => i.Name).join(', '),
+            description: recipe.sourceNotes
+        };
+        const resolved = await resolveRecipeLocation(input);
+        if (!resolved) {
+            return { message: 'No confident location found', hasLocation: false };
+        }
+        await Recipe.updateOne({ _id: recipe._id }, { $set: locationPatch(resolved, { includeCountry: true }) });
+        const place = [resolved.city || resolved.region, resolved.country].filter(Boolean).join(', ');
+        return { message: place ? `Located in ${place}` : 'Located', hasLocation: true };
+    }
+
     if (op === 'image') {
         const promptMessages = [
             {
@@ -177,7 +199,13 @@ export default async function handler(req, res) {
                     carbNeeds: '$carbSide.needs',
                     carbState: '$carbSide.state',
                     carbAlreadyIn: '$carbSide.analysis.alreadyInInstructions',
-                    image: '$hasImage'
+                    image: '$hasImage',
+                    hasLocation: { $cond: [{ $or: [
+                        { $ne: [{ $ifNull: ['$location.country', null] }, null] },
+                        { $ne: [{ $ifNull: ['$location.region', null] }, null] },
+                        { $ne: [{ $ifNull: ['$location.city', null] }, null] },
+                        { $ne: [{ $ifNull: ['$location.lat', null] }, null] }
+                    ] }, true, false] }
                 } },
                 { $sort: { name: 1 } }
             ]);
@@ -189,7 +217,7 @@ export default async function handler(req, res) {
             if (!recipeId || !op) {
                 return res.status(400).json({ success: false, message: 'Missing recipeId or op' });
             }
-            if (!['normalize', 'prep', 'timers', 'carbside', 'image'].includes(op)) {
+            if (!['normalize', 'prep', 'timers', 'carbside', 'location', 'image'].includes(op)) {
                 return res.status(400).json({ success: false, message: `Unsupported op: ${op}` });
             }
 
@@ -199,14 +227,15 @@ export default async function handler(req, res) {
             }
 
             const result = await runOp(recipe, op);
-            const fresh = await Recipe.findOne({ _id: recipeId }).select('prepWorkChecked cookingTimers ingredients prepWork hasImage carbSide').lean();
+            const fresh = await Recipe.findOne({ _id: recipeId }).select('prepWorkChecked cookingTimers ingredients prepWork hasImage carbSide location').lean();
             return res.status(200).json({
                 success: true,
                 message: result.message,
                 hasPrep: (fresh.prepWork || []).length > 0 || fresh.prepWorkChecked === true,
                 hasTimers: (fresh.cookingTimers || []).length > 0 || fresh.timersChecked === true,
                 hasCarb: fresh.carbSide?.state === 'analyzed',
-                hasImage: Boolean(fresh.hasImage)
+                hasImage: Boolean(fresh.hasImage),
+                hasLocation: Boolean(fresh.location && (fresh.location.country || fresh.location.region || fresh.location.city || Number.isFinite(fresh.location.lat)))
             });
         }
 

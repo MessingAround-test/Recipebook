@@ -6,8 +6,8 @@ import RecipeImage from '../models/RecipeImage'
 
 export type Quality = 'thumb' | 'full'
 
-const THUMB_LONG_EDGE = 400
-const FULL_LONG_EDGE = 1600
+export const THUMB_LONG_EDGE = 400
+export const FULL_LONG_EDGE = 1600
 
 const MIME_ALIASES: Record<string, string> = {
     'image/jpg': 'image/jpeg'
@@ -51,8 +51,7 @@ export async function decodeImageValue(value: string): Promise<{ buffer: Buffer;
     return null
 }
 
-async function sharpResize(buffer: Buffer, longEdge: number, format: 'webp' | 'jpeg', quality: number) {
-    const sharp = (await import('sharp')).default
+export async function sharpResize(buffer: Buffer, longEdge: number, format: 'webp' | 'jpeg', quality: number) {    const sharp = (await import('sharp')).default
     return sharp(buffer)
         .resize({ width: longEdge, height: longEdge, fit: 'inside', withoutEnlargement: true })
         .toFormat(format, { quality })

@@ -1,6 +1,6 @@
 import Head from 'next/head'
 import { useEffect, useState } from 'react'
-import Router from 'next/router'
+import Router, { useRouter } from 'next/router'
 import { Layout } from '../../components/Layout'
 import ImageCard, { Recipe } from '../../components/ImageCard'
 import { Button } from '../../components/ui/button'
@@ -17,7 +17,8 @@ import {
     ChefHat,
     Loader2,
     Trash2,
-    EyeOff
+    EyeOff,
+    Compass
 } from 'lucide-react'
 import { FilterSheet } from '../../components/recipes/FilterSheet'
 
@@ -30,9 +31,11 @@ interface UserData {
 
 export default function Recipes() {
     const isAuthed = useAuthGuard()
+    const router = useRouter()
     const [userData, setUserData] = useState<UserData | null>(null)
     const [recipes, setRecipes] = useState<Recipe[]>([])
     const [searchTerm, setSearchTerm] = useState('')
+    const [idFilter, setIdFilter] = useState<string[]>([])
     const [bulkAction, setBulkAction] = useState<'delete' | 'hide' | null>(null)
     const [bulkMenuOpen, setBulkMenuOpen] = useState(false)
     const [filterTime, setFilterTime] = useState<string[]>([])
@@ -76,6 +79,16 @@ export default function Recipes() {
         }
     }, [isAuthed])
 
+    // Filter to a specific set of recipes (e.g. the ones linked to a dish) via
+    // /recipes?ids=a,b,c, and seed the search box from ?search=.
+    useEffect(() => {
+        const rawIds = router.query.ids
+        const ids = typeof rawIds === 'string' ? rawIds.split(',').filter(Boolean) : []
+        setIdFilter(ids)
+        const q = typeof router.query.search === 'string' ? router.query.search : ''
+        if (q) setSearchTerm(q)
+    }, [router.query.ids, router.query.search])
+
     const redirect = (page: string) => {
         Router.push(page)
     }
@@ -100,7 +113,8 @@ export default function Recipes() {
 
     const filteredRecipes = recipes
         .filter(recipe => {
-            if (recipe.hidden && !showHidden && !searchTerm && bulkAction !== 'hide') return false
+            if (idFilter.length > 0 && !idFilter.includes(recipe._id)) return false
+            if (recipe.hidden && !showHidden && !searchTerm && idFilter.length === 0 && bulkAction !== 'hide') return false
             if (searchTerm) {
                 const term = searchTerm.toLowerCase()
                 const matches = ['name', 'genre', 'time', 'priceCategory'].some(key =>
@@ -250,6 +264,15 @@ export default function Recipes() {
                             >
                                 <Sparkles size={18} />
                             </Button>
+                            <Button
+                                size="icon"
+                                variant="secondary"
+                                onClick={() => redirect('/map?recipes=1&from=/recipes')}
+                                className="h-10 w-10 rounded-xl shrink-0 bg-secondary/50 hover:bg-accent/20 hover:text-accent transition-colors"
+                                title="View recipes on the world map"
+                            >
+                                <Compass size={18} />
+                            </Button>
                         </div>
                     </div>
                 </header>
@@ -289,6 +312,21 @@ export default function Recipes() {
                         )}
                         <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-rose-500 whitespace-nowrap px-2">
                             Clear all
+                        </button>
+                    </div>
+                )}
+
+                {/* Dish-linked filter banner */}
+                {idFilter.length > 0 && (
+                    <div className="flex items-center gap-2 py-3">
+                        <span className="px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-2">
+                            <ChefHat size={12} /> Showing recipes for this dish
+                        </span>
+                        <button
+                            onClick={() => { setIdFilter([]); Router.push('/recipes') }}
+                            className="text-xs text-muted-foreground hover:text-rose-500"
+                        >
+                            Clear
                         </button>
                     </div>
                 )}

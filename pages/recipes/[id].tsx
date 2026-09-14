@@ -3,7 +3,7 @@ import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
 import { formatQuantityDisplay } from '../../lib/fractionFormat'
 import { renderFractions } from '../../components/Fraction'
 import { Button } from '../../components/ui/button'
-import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Users, Download, Info, Hourglass, Flame, Scale } from 'lucide-react'
+import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Users, Download, Info, Hourglass, Flame, Scale, Globe2 } from 'lucide-react'
 import { calculateRecipeWeight, formatWeight, rescaleDisplayAmount } from '../../lib/conversion'
 import { isImperialDisplay, convertForDisplay, formatWeightImperial } from '../../lib/unitDisplay'
 import { buildFlowItems, computePhaseInsertPoints, fillCarbPhaseText, recommendCarbOption, resolveCarbSlot, resolveCarbTiming, resolveVariant } from '../../lib/carbSideOps'
@@ -771,57 +771,78 @@ export default function RecipeDetail() {
         const missingMealTypes = !recipeMealTypes || recipeMealTypes.length === 0
         const missingServings = !recipeServings || recipeServings === 0
         const missingCarbType = !recipeCarbType
-        if (!missingTime && !missingGenre && !missingMealTypes && !missingServings && !missingCarbType) return
+        const missingLocation = !recipe?.location?.country && !recipe?.location?.region && !recipe?.location?.city
+        if (!missingTime && !missingGenre && !missingMealTypes && !missingServings && !missingCarbType && !missingLocation) return
 
-        try {
-            const token = localStorage.getItem('Token') || ""
-            const ingredNames = ingreds.map(i => i.name).join(', ')
-            const mealTypeQuery = recipeMealTypes.length > 0 ? `&mealType=${encodeURIComponent(recipeMealTypes.join(','))}` : ""
-            const res = await fetch(`/api/ai/auto_fill_recipe?recipeName=${encodeURIComponent(name)}&ingredients=${encodeURIComponent(ingredNames)}${mealTypeQuery}`, {
-                headers: { 'edgetoken': token }
-            })
-            const data = await res.json()
-            if (!data.success || !data.data) return
+        const token = localStorage.getItem('Token') || ""
+        const missingMeta = missingTime || missingGenre || missingMealTypes || missingServings || missingCarbType
 
-            const updates: any = {}
-            const filled: string[] = []
-
-            if (missingTime && data.data.time) {
-                setRecipeTime(data.data.time)
-                updates.time = data.data.time
-                filled.push('time')
-            }
-            if (missingGenre && data.data.genre) {
-                setRecipeGenre(data.data.genre)
-                updates.genre = data.data.genre
-                filled.push('genre')
-            }
-            if (missingMealTypes && data.data.mealType) {
-                setRecipeMealTypes([data.data.mealType])
-                updates.mealTypes = [data.data.mealType]
-                filled.push('mealType')
-            }
-            if (missingServings && data.data.servings) {
-                setRecipeServings(data.data.servings)
-                updates.servings = data.data.servings
-                filled.push('servings')
-            }
-            if (missingCarbType && data.data.carbType) {
-                setRecipeCarbType(data.data.carbType)
-                updates.carbType = data.data.carbType
-                filled.push('carbType')
-            }
-
-            if (Object.keys(updates).length > 0) {
-                setAiFilledFields(filled)
-                await fetch(`/api/Recipe/${String(id)}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', 'edgetoken': token },
-                    body: JSON.stringify(updates)
+        if (missingMeta) {
+            try {
+                const ingredNames = ingreds.map(i => i.name).join(', ')
+                const mealTypeQuery = recipeMealTypes.length > 0 ? `&mealType=${encodeURIComponent(recipeMealTypes.join(','))}` : ""
+                const res = await fetch(`/api/ai/auto_fill_recipe?recipeName=${encodeURIComponent(name)}&ingredients=${encodeURIComponent(ingredNames)}${mealTypeQuery}`, {
+                    headers: { 'edgetoken': token }
                 })
+                const data = await res.json()
+                if (!data.success || !data.data) throw new Error('auto-fill returned no data')
+
+                const updates: any = {}
+                const filled: string[] = []
+
+                if (missingTime && data.data.time) {
+                    setRecipeTime(data.data.time)
+                    updates.time = data.data.time
+                    filled.push('time')
+                }
+                if (missingGenre && data.data.genre) {
+                    setRecipeGenre(data.data.genre)
+                    updates.genre = data.data.genre
+                    filled.push('genre')
+                }
+                if (missingMealTypes && data.data.mealType) {
+                    setRecipeMealTypes([data.data.mealType])
+                    updates.mealTypes = [data.data.mealType]
+                    filled.push('mealType')
+                }
+                if (missingServings && data.data.servings) {
+                    setRecipeServings(data.data.servings)
+                    updates.servings = data.data.servings
+                    filled.push('servings')
+                }
+                if (missingCarbType && data.data.carbType) {
+                    setRecipeCarbType(data.data.carbType)
+                    updates.carbType = data.data.carbType
+                    filled.push('carbType')
+                }
+
+                if (Object.keys(updates).length > 0) {
+                    setAiFilledFields(filled)
+                    await fetch(`/api/Recipe/${String(id)}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'edgetoken': token },
+                        body: JSON.stringify(updates)
+                    })
+                }
+            } catch (e) {
+                console.error('Auto-fill failed:', e)
             }
-        } catch (e) {
-            console.error('Auto-fill failed:', e)
+        }
+
+        // Location is filled separately (AI origin guess + geocoding).
+        if (missingLocation) {
+            try {
+                const locRes = await fetch(`/api/ai/auto_fill_recipe_location?recipeId=${String(id)}`, {
+                    headers: { 'edgetoken': token }
+                })
+                const locData = await locRes.json()
+                if (locData.success && locData.data) {
+                    setRecipe((prev: any) => (prev ? { ...prev, location: locData.data } : prev))
+                    setAiFilledFields(prev => prev.includes('location') ? prev : [...prev, 'location'])
+                }
+            } catch (e) {
+                console.error('Auto-fill location failed:', e)
+            }
         }
     }
 
@@ -2049,6 +2070,11 @@ export default function RecipeDetail() {
             {recipeGenre && <span className={chipClass}>{recipeGenre}</span>}
             {recipeMealTypes && recipeMealTypes.map(type => <span key={type} className={chipClass}>{type}</span>)}
             {recipeCarbType && <span className={chipClass}>{recipeCarbType}</span>}
+            {recipe?.location && (recipe.location.city || recipe.location.region || recipe.location.country) && (
+                <span className={chipClass}>
+                    <Globe2 size={11} /> {[recipe.location.city || recipe.location.region, recipe.location.country].filter(Boolean).join(', ')}
+                </span>
+            )}
             {isHidden && (
                 <span className={chipClass}>
                     <EyeOff size={11} /> Hidden
@@ -2065,6 +2091,18 @@ export default function RecipeDetail() {
                     {isVideoSource ? '▶ Watch Original' : 'View Source'}
                 </a>
             )}
+            {Array.isArray(recipe.dishListRefs) && recipe.dishListRefs.map((ref: any, i: number) => (
+                ref?.listId ? (
+                    <a
+                        key={`${ref.listId}-${i}`}
+                        href={`/dishLists/${ref.listId}`}
+                        title={`From the "${ref.listName || 'dish list'}" list`}
+                        className={`${chipClass} hover:opacity-80 transition-opacity`}
+                    >
+                        <Globe2 size={11} /> {ref.listName || 'On list'}
+                    </a>
+                ) : null
+            ))}
         </>
     )
 

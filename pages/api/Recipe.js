@@ -4,6 +4,7 @@ import Recipe from '../../models/Recipe'
 import { saveRecipeImages, recipeImageUrl } from '../../lib/recipeImageServer'
 import { verifyToken } from "../../lib/auth.ts";
 import { logAPI } from '../../lib/logger.ts';
+import { sanitizeDishListRefs, sanitizeRecipeLocation } from '../../lib/dishLists/recipeLink'
 
 export default async function handler(req, res) {
   logAPI(req)
@@ -45,6 +46,8 @@ export default async function handler(req, res) {
           hidden: req.body.hidden,
           sourceUrl: req.body.sourceUrl,
           sourceNotes: req.body.sourceNotes,
+          dishListRefs: sanitizeDishListRefs(req.body.dishListRefs),
+          location: sanitizeRecipeLocation(req.body.location),
           carbSide: sanitizeCarbSideInput(req.body.carbSide)
         });
         if (req.body.image) {
