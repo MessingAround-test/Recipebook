@@ -6,7 +6,7 @@ import { useAuthGuard } from '../lib/useAuthGuard'
 import { useIsAdmin } from '../lib/useIsAdmin'
 import { ArrowLeft, Loader2, MapPin, Plus, Minus, Compass, UtensilsCrossed, Check, Maximize2, List, Wand2 } from 'lucide-react'
 import { buildViewportTiles, projectToPercent, tileZoomForScale } from '../lib/dishLists/mercator'
-import { hasRegionArea } from '../lib/dishLists/locationStatus'
+import { hasRegionArea, continentOf } from '../lib/dishLists/locationStatus'
 
 interface MapPoint {
     _id: string
@@ -28,9 +28,12 @@ interface MapPoint {
     sourceUrl?: string
 }
 
+type ClusterLevel = 'continent' | 'country' | 'region' | 'city' | 'dish'
+
 interface Marker {
     key: string
     kind: 'dish' | 'cluster'
+    level?: ClusterLevel
     label: string
     city?: string
     country?: string
@@ -47,8 +50,6 @@ interface View {
 
 const MIN_SCALE = 1
 const MAX_SCALE = 32
-// Past this zoom (1000%) we switch from country clusters to individual city pins.
-const CITY_PIN_SCALE = 10
 // Sentinel values for the source filters in the list dropdown (never real ids).
 const ALL_RECIPES = '__recipes__'
 const EVERYTHING = '__everything__'
@@ -72,34 +73,59 @@ const recipeIdsOf = (p: MapPoint): string[] =>
     p.recipeIds && p.recipeIds.length ? p.recipeIds : (p.recipeId ? [p.recipeId] : [])
 
 /**
- * Country clusters when zoomed out. Once zoomed in, dishes that have a
- * region/city become their own pin at their exact position; dishes without one
- * still cluster on the country's middle point.
+ * Hierarchical clustering: continents → countries → regions → cities → individual pins.
+ * The zoom scale determines the clustering level.
  */
-const buildMarkers = (points: MapPoint[], detailed: boolean): Marker[] => {
-    const markers: Marker[] = []
+const buildMarkers = (points: MapPoint[], scale: number): Marker[] => {
+    const level = clusterLevelForScale(scale)
+
+    // At max zoom, show individual pins for dishes with a location
+    if (scale >= ZOOM_CITY) {
+        const markers: Marker[] = []
+        const clusters = new Map<string, Marker>()
+
+        for (const p of points) {
+            const area = (p.city || p.region || '').trim()
+            if (area) {
+                markers.push({
+                    key: `d:${p._id}`,
+                    kind: 'dish',
+                    level: 'dish',
+                    label: p.name,
+                    city: area,
+                    country: p.country,
+                    points: [p],
+                    lat: p.lat,
+                    lng: p.lng
+                })
+                continue
+            }
+            // Dishes without a city still cluster at country level
+            const key = clusterKey(p, 'country')
+            let c = clusters.get(key)
+            if (!c) {
+                c = { key: `c:${key}`, kind: 'cluster', level: 'country', label: key, points: [], lat: 0, lng: 0 }
+                clusters.set(key, c)
+            }
+            c.points.push(p)
+        }
+
+        for (const c of Array.from(clusters.values())) {
+            c.points.sort((a, b) => a.name.localeCompare(b.name))
+            c.lat = c.points.reduce((s, p) => s + p.lat, 0) / c.points.length
+            c.lng = c.points.reduce((s, p) => s + p.lng, 0) / c.points.length
+        }
+        return [...markers, ...Array.from(clusters.values())]
+    }
+
+    // Hierarchical clustering at lower zoom levels
     const clusters = new Map<string, Marker>()
 
     for (const p of points) {
-        const area = (p.city || p.region || '').trim()
-        if (detailed && area) {
-            markers.push({
-                key: `d:${p._id}`,
-                kind: 'dish',
-                label: p.name,
-                city: area,
-                country: p.country,
-                points: [p],
-                lat: p.lat,
-                lng: p.lng
-            })
-            continue
-        }
-        const label = (p.country || p.region || p.city || 'Unknown').trim()
-        const key = label.toLowerCase()
+        const key = clusterKey(p, level)
         let c = clusters.get(key)
         if (!c) {
-            c = { key: `c:${key}`, kind: 'cluster', label, points: [], lat: 0, lng: 0 }
+            c = { key: `${level}:${key}`, kind: 'cluster', level, label: key, points: [], lat: 0, lng: 0 }
             clusters.set(key, c)
         }
         c.points.push(p)
@@ -110,7 +136,7 @@ const buildMarkers = (points: MapPoint[], detailed: boolean): Marker[] => {
         c.lat = c.points.reduce((s, p) => s + p.lat, 0) / c.points.length
         c.lng = c.points.reduce((s, p) => s + p.lng, 0) / c.points.length
     }
-    return [...markers, ...Array.from(clusters.values())]
+    return Array.from(clusters.values())
 }
 
 const markerTone = (marker: Marker): string => {
@@ -130,6 +156,29 @@ const listUrl = (p: MapPoint): string =>
 /** Where a pin links to: the recipe page for recipes, its list for dishes. */
 const itemUrl = (p: MapPoint): string =>
     isRecipe(p) ? `/recipes/${p._id}` : listUrl(p)
+
+// Zoom thresholds for hierarchical clustering
+const ZOOM_CONTINENT = 1   // 100% - show continents
+const ZOOM_COUNTRY = 2     // 200% - show countries
+const ZOOM_CITY = 12       // 1200% - show individual pins
+// > ZOOM_CITY: individual pins
+
+/** Get the cluster level for a given zoom scale. */
+const clusterLevelForScale = (scale: number): ClusterLevel => {
+    if (scale < ZOOM_COUNTRY) return 'continent'
+    return 'country'
+}
+
+/** Build the cluster key for a point at a given level. */
+const clusterKey = (p: MapPoint, level: ClusterLevel): string => {
+    switch (level) {
+        case 'continent': return continentOf(p.country || '')
+        case 'country': return (p.country || 'Unknown').trim()
+        case 'region': return (p.region || p.country || 'Unknown').trim()
+        case 'city': return (p.city || p.region || p.country || 'Unknown').trim()
+        default: return (p.country || 'Unknown').trim()
+    }
+}
 
 export default function WorldMap() {
     const isAuthed = useAuthGuard()
@@ -344,8 +393,7 @@ export default function WorldMap() {
         return { located, total }
     }, [listFilter, located, total, recipeLocated, recipeTotal])
 
-    const detailed = view.scale >= CITY_PIN_SCALE
-    const markers = useMemo(() => buildMarkers(visible, detailed), [visible, detailed])
+    const markers = useMemo(() => buildMarkers(visible, view.scale), [visible, view.scale])
     const markerByKey = useMemo(() => new Map(markers.map(m => [m.key, m])), [markers])
     const countryCount = useMemo(
         () => new Set(visible.map(p => (p.country || '').trim()).filter(Boolean)).size,
@@ -540,7 +588,7 @@ export default function WorldMap() {
                                 />
                             ))}
 
-                            {/* Markers (country clusters, then individual cities when zoomed in) */}
+                            {/* Markers (hierarchical clusters → individual pins when zoomed in) */}
                             {markers.map(marker => {
                                 const { x, y } = toScreen(marker.lat, marker.lng)
                                 if (x < -60 || y < -60 || x > size + 60 || y > size + 60) return null

@@ -10,7 +10,7 @@ import { PasteModal } from '../../components/dishLists/PasteModal'
 import { ItemEditModal } from '../../components/dishLists/ItemEditModal'
 import { DishListTable } from '../../components/dishLists/DishListTable'
 import { DishListItem, DishListSummary } from '../../components/dishLists/types'
-import { needsLocationWork, hasPoint } from '../../lib/dishLists/locationStatus'
+import { needsLocationWork, hasPoint, continentOf } from '../../lib/dishLists/locationStatus'
 
 export default function DishListDetail() {
     const isAuthed = useAuthGuard()
@@ -24,6 +24,7 @@ export default function DishListDetail() {
     const [search, setSearch] = useState('')
     const [filter, setFilter] = useState<'all' | 'uncooked' | 'cooked'>('uncooked')
     const [filterCountry, setFilterCountry] = useState('')
+    const [filterContinent, setFilterContinent] = useState('')
     const [filterCategory, setFilterCategory] = useState('')
     const [filterIssues, setFilterIssues] = useState(false)
     const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
@@ -84,6 +85,15 @@ export default function DishListDetail() {
         return Array.from(set).sort((a, b) => a.localeCompare(b))
     }, [items])
 
+    const continentOptions = useMemo(() => {
+        const set = new Set<string>()
+        for (const item of items) {
+            const continent = continentOf(item.location?.country || '')
+            if (continent !== 'Other') set.add(continent)
+        }
+        return Array.from(set).sort((a, b) => a.localeCompare(b))
+    }, [items])
+
     const categoryOptions = useMemo(() => {
         const set = new Set<string>()
         for (const item of items) {
@@ -93,11 +103,12 @@ export default function DishListDetail() {
         return Array.from(set).sort((a, b) => a.localeCompare(b))
     }, [items])
 
-    const hasActiveFilters = filter !== 'uncooked' || filterCountry !== '' || filterCategory !== '' || filterIssues || search.trim() !== ''
+    const hasActiveFilters = filter !== 'uncooked' || filterCountry !== '' || filterContinent !== '' || filterCategory !== '' || filterIssues || search.trim() !== ''
 
     const clearFilters = () => {
         setFilter('uncooked')
         setFilterCountry('')
+        setFilterContinent('')
         setFilterCategory('')
         setFilterIssues(false)
         setSearch('')
@@ -107,6 +118,7 @@ export default function DishListDetail() {
         return items.filter(item => {
             if (filter === 'cooked' && !item.cooked) return false
             if (filter === 'uncooked' && item.cooked) return false
+            if (filterContinent && continentOf(item.location?.country || '') !== filterContinent) return false
             if (filterCountry && (item.location?.country || '') !== filterCountry) return false
             if (filterCategory && (item.category || '') !== filterCategory) return false
             // Location issues: the dish has no usable map point yet, so it
@@ -119,7 +131,7 @@ export default function DishListDetail() {
             }
             return true
         })
-    }, [items, filter, filterCountry, filterCategory, filterIssues, search])
+    }, [items, filter, filterContinent, filterCountry, filterCategory, filterIssues, search])
 
     const cookedCount = items.filter(i => i.cooked).length
     const issueCount = items.filter(i => !hasPoint(i.location)).length
@@ -359,6 +371,16 @@ export default function DishListDetail() {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
                             <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search dishes…" className="pl-9 h-9" />
                         </div>
+
+                        <select
+                            value={filterContinent}
+                            onChange={e => setFilterContinent(e.target.value)}
+                            className="h-9 rounded-xl bg-secondary border border-border px-3 text-xs font-semibold focus:outline-none focus:border-accent max-w-[11rem]"
+                            title="Filter by continent"
+                        >
+                            <option value="">All continents</option>
+                            {continentOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
 
                         <select
                             value={filterCountry}

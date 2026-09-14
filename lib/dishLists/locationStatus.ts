@@ -43,3 +43,22 @@ export const needsLocationWork = (loc?: ItemLocation | null): boolean => {
     if (!hasRegionArea(loc)) return loc?.regionSearchFailed !== true
     return !hasPoint(loc)
 }
+
+/** Map a country name to its continent. */
+export const continentOf = (country: string): string => {
+    const c = country.toLowerCase().trim()
+    // Europe
+    if (['france', 'germany', 'italy', 'spain', 'portugal', 'united kingdom', 'uk', 'england', 'netherlands', 'belgium', 'switzerland', 'austria', 'poland', 'czech republic', 'czechia', 'denmark', 'sweden', 'norway', 'finland', 'ireland', 'greece', 'turkey', 'turkiye', 'georgia', 'armenia', 'azerbaijan', 'romania', 'hungary', 'croatia', 'serbia', 'bulgaria', 'slovakia', 'slovenia', 'lithuania', 'latvia', 'estonia', 'ukraine', 'belarus', 'moldova', 'albania', 'north macedonia', 'montenegro', 'bosnia and herzegovina', 'kosovo', 'luxembourg', 'malta', 'cyprus', 'iceland', 'liechtenstein', 'monaco', 'san marino', 'vatican city', 'andorra'].includes(c)) return 'Europe'
+    // Asia
+    if (['china', 'japan', 'south korea', 'korea', 'india', 'thailand', 'vietnam', 'indonesia', 'malaysia', 'singapore', 'philippines', 'taiwan', 'hong kong', 'macau', 'cambodia', 'laos', 'myanmar', 'bangladesh', 'sri lanka', 'nepal', 'pakistan', 'afghanistan', 'iran', 'iraq', 'saudi arabia', 'united arab emirates', 'uae', 'qatar', 'kuwait', 'bahrain', 'oman', 'yemen', 'jordan', 'lebanon', 'israel', 'palestine', 'syria', 'uzbekistan', 'kazakhstan', 'turkmenistan', 'kyrgyzstan', 'tajikistan', 'mongolia', 'brunei', 'east timor', 'timor-leste'].includes(c)) return 'Asia'
+    // North America
+    if (['united states', 'united states of america', 'usa', 'canada', 'mexico', 'guatemala', 'belize', 'honduras', 'el salvador', 'nicaragua', 'costa rica', 'panama', 'cuba', 'jamaica', 'haiti', 'dominican republic', 'puerto rico', 'trinidad and tobago', 'barbados', 'bahamas', 'antigua and barbuda', 'dominica', 'grenada', 'saint kitts and nevis', 'saint lucia', 'saint vincent and the grenadines'].includes(c)) return 'North America'
+    // South America
+    if (['brazil', 'argentina', 'chile', 'colombia', 'peru', 'venezuela', 'ecuador', 'bolivia', 'paraguay', 'uruguay', 'guyana', 'suriname'].includes(c)) return 'South America'
+    // Africa
+    if (['south africa', 'nigeria', 'kenya', 'ethiopia', 'ghana', 'tanzania', 'egypt', 'morocco', 'tunisia', 'algeria', 'libya', 'sudan', 'senegal', 'mali', 'burkina faso', 'niger', 'chad', 'cameroon', 'ivory coast', 'cote d\'ivoire', 'guinea', 'benin', 'togo', 'sierra leone', 'liberia', 'mauritania', 'gabon', 'congo', 'democratic republic of the congo', 'uganda', 'rwanda', 'burundi', 'somalia', 'djibouti', 'eritrea', 'madagascar', 'mozambique', 'malawi', 'zambia', 'zimbabwe', 'botswana', 'namibia', 'angola', 'lesotho', 'eswatini', 'swaziland', 'seychelles', 'mauritius', 'comoros', 'cape verde', 'sao tome and principe', 'equatorial guinea', 'central african republic', 'republic of the congo', 'gambia', 'guinea-bissau'].includes(c)) return 'Africa'
+    // Oceania
+    if (['australia', 'new zealand', 'fiji', 'papua new guinea', 'samoa', 'tonga', 'vanuatu', 'solomon islands', 'micronesia', 'marshall islands', 'palau', 'kiribati', 'nauru', 'tuvalu'].includes(c)) return 'Oceania'
+    // Fallback: use rough longitude-based estimation
+    return 'Other'
+}
