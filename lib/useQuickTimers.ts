@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getRemaining } from './quickTools'
+import { playAlarm, requestNotificationPermission, sendNotification } from './alarm'
 
 // Quick timers live entirely in localStorage (absolute end times) so they keep
 // counting while you navigate — reopening Quick Tools recomputes the remaining
@@ -54,42 +55,7 @@ export function makeTimerId(): string {
     return `qt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 }
 
-export function playAlarm() {
-    if (typeof window === 'undefined') return
-    try {
-        const Ctor = window.AudioContext || (window as any).webkitAudioContext
-        if (!Ctor) return
-        const ctx = new Ctor()
-        const playBeep = (freq: number, startTime: number) => {
-            const osc = ctx.createOscillator()
-            const gain = ctx.createGain()
-            osc.connect(gain)
-            gain.connect(ctx.destination)
-            osc.frequency.value = freq
-            osc.type = 'sine'
-            gain.gain.setValueAtTime(0.3, startTime)
-            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3)
-            osc.start(startTime)
-            osc.stop(startTime + 0.3)
-        }
-        const now = ctx.currentTime
-        playBeep(880, now)
-        playBeep(880, now + 0.35)
-        playBeep(1100, now + 0.7)
-    } catch (e) {
-        console.error('Audio alarm failed:', e)
-    }
-}
-
-export function sendNotification(title: string, body: string) {
-    try {
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-            new Notification(title, { body, icon: '/favicon.ico' })
-        }
-    } catch (e) {
-        console.error('Notification failed:', e)
-    }
-}
+export { playAlarm, sendNotification }
 
 export function useQuickTimers() {
     const [timers, setTimers] = useState<QuickTimer[]>([])
@@ -121,11 +87,7 @@ export function useQuickTimers() {
     }, [hydrated, timers, stopwatch])
 
     useEffect(() => {
-        try {
-            if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-                Notification.requestPermission()
-            }
-        } catch {}
+        requestNotificationPermission()
     }, [])
 
     const engineActive =

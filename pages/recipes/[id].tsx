@@ -18,6 +18,7 @@ import Modal from 'react-modal'
 import ExportRecipeModal from '../../components/ExportRecipeModal'
 import ScaleRecipeModal, { ScaleIngredientOption } from '../../components/ScaleRecipeModal'
 import { getColorForName } from '../../lib/colors'
+import { playAlarm, requestNotificationPermission, sendNotification } from '../../lib/alarm'
 
 const PRICE_THRESHOLDS = { cheap: 15, expensive: 35 }
 
@@ -234,6 +235,15 @@ export default function RecipeDetail() {
     const [loading, setLoading] = useState(false)
     const [isCookingMode, setIsCookingMode] = useState(false)
     const [currentFlow, setCurrentFlow] = useState(0)
+    // Persisted "a cook is underway" flag. Unlike isCookingMode (component
+    // state) this survives leaving the page so the global cooking bubble knows
+    // to show; it clears only when the cook is finished/reset/dismissed.
+    const [cookingActive, setCookingActive] = useState(false)
+    const [cookingStartedAt, setCookingStartedAt] = useState(0)
+    // Gates the save effect: until the stored session for THIS recipe has been
+    // read back, the state is still the empty/previous value and writing it
+    // would wipe the cook's live timers before they can be restored.
+    const [hydratedId, setHydratedId] = useState<string | null>(null)
 
     // Metadata fields
     const [recipeTime, setRecipeTime] = useState<string>('')
@@ -1434,6 +1444,7 @@ export default function RecipeDetail() {
         setCustomTimers([])
         setAlarmPopupClosed(new Set())
         setForcedView(null)
+        setCookingActive(false)
         if (id) {
             const keys = Object.keys(localStorage).filter(k => k.startsWith('timer-session-'))
             keys.forEach(k => localStorage.removeItem(k))
@@ -1492,13 +1503,18 @@ export default function RecipeDetail() {
         setActiveSheet('none')
         let saved: any = null
         try { saved = JSON.parse(localStorage.getItem(`timer-session-${String(id)}`) || 'null') } catch {}
+        const hasLiveTimers = saved && saved.timers && typeof saved.timers === 'object' &&
+            Object.values(saved.timers).some((s: any) => s && ['active', 'paused', 'overdue'].includes(s.status))
         const resuming = saved && typeof saved === 'object' &&
-            (saved.currentFlow > 0 || (Array.isArray(saved.doneFlow) && saved.doneFlow.length > 0))
+            (saved.cooking === true || hasLiveTimers ||
+                saved.currentFlow > 0 || (Array.isArray(saved.doneFlow) && saved.doneFlow.length > 0))
         if (resuming) {
             if (saved.carbChoice) setCarbChoice(saved.carbChoice)
             // Carb phase timers live in component state, not the DB — restore
             // them so the side's timers/tabs survive a page reload mid-wait.
             if (Array.isArray(saved.customTimers)) setCustomTimers(saved.customTimers as any)
+            setCookingStartedAt(typeof saved.startedAt === 'number' && saved.startedAt > 0 ? saved.startedAt : Date.now())
+            setCookingActive(true)
             setIsCookingMode(true)
             return
         }
@@ -1517,6 +1533,8 @@ export default function RecipeDetail() {
         } else {
             setCarbChoice(null)
         }
+        setCookingStartedAt(Date.now())
+        setCookingActive(true)
         setIsCookingMode(true)
     }
 
@@ -1606,6 +1624,8 @@ export default function RecipeDetail() {
         setCarbModalOpen(false)
         if (!entry) {
             setCarbChoice(null)
+            setCookingStartedAt(Date.now())
+            setCookingActive(true)
             setIsCookingMode(true)
             return
         }
@@ -1635,6 +1655,8 @@ export default function RecipeDetail() {
         })
         const choice = { ...base, phases }
         setCarbChoice(choice)
+        setCookingStartedAt(Date.now())
+        setCookingActive(true)
         setIsCookingMode(true)
         fetch('/api/carbChoice', {
             method: 'POST',
@@ -1644,48 +1666,8 @@ export default function RecipeDetail() {
     }
 
 
-    const playAlarm = () => {
-        try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-            const playBeep = (freq: number, startTime: number) => {
-                const osc = ctx.createOscillator()
-                const gain = ctx.createGain()
-                osc.connect(gain)
-                gain.connect(ctx.destination)
-                osc.frequency.value = freq
-                osc.type = 'sine'
-                gain.gain.setValueAtTime(0.3, startTime)
-                gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3)
-                osc.start(startTime)
-                osc.stop(startTime + 0.3)
-            }
-            const now = ctx.currentTime
-            playBeep(880, now)
-            playBeep(880, now + 0.35)
-            playBeep(1100, now + 0.7)
-        } catch (e) {
-            console.error('Audio alarm failed:', e)
-        }
-    }
-
-    const sendNotification = (title: string, body: string) => {
-        try {
-            if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification(title, { body, icon: '/favicon.ico' })
-            }
-        } catch (e) {
-            console.error('Notification failed:', e)
-        }
-    }
-
     useEffect(() => {
-        try {
-            if ('Notification' in window && Notification.permission === 'default') {
-                Notification.requestPermission()
-            }
-        } catch (e) {
-            console.error('Notification permission request failed:', e)
-        }
+        requestNotificationPermission()
     }, [])
 
     useEffect(() => {
@@ -1812,12 +1794,18 @@ export default function RecipeDetail() {
     //  - v-less "timer-interleaved flow" indices -> step indices
     //  - oldest instruction-index based sessions
     useEffect(() => {
-        if (!id || flowItems.length === 0) return
+        if (!id || flowItems.length === 0 || hydratedId === String(id)) return
         try {
             const saved = localStorage.getItem(`timer-session-${id}`)
             if (saved) {
                 const parsed = JSON.parse(saved)
                 if (parsed.timers) setActiveSession(parsed.timers)
+                // Restore the persisted "cook underway" flag so the global
+                // bubble stays visible after a page reload.
+                if (parsed.cooking) {
+                    setCookingActive(true)
+                    if (typeof parsed.startedAt === 'number' && parsed.startedAt > 0) setCookingStartedAt(parsed.startedAt)
+                }
                 // Keep the ingredient scale the cook chose last time
                 if (typeof parsed.scaleFactor === 'number' && parsed.scaleFactor > 0 && parsed.scaleFactor !== 1) {
                     setScaleFactor(parsed.scaleFactor)
@@ -1874,23 +1862,66 @@ export default function RecipeDetail() {
                 }
             }
         } catch {}
-    }, [id, flowItems, cookingTimers, instructions])
+        setHydratedId(String(id))
+    }, [id, flowItems, cookingTimers, instructions, hydratedId])
+
+    // Tapping the global cooking bubble navigates to /recipes/<id>?cook=1 —
+    // drop the user straight back into the saved flow instead of the read view.
+    const autoResumeRef = useRef(false)
+    useEffect(() => {
+        if (autoResumeRef.current) return
+        if (!router.isReady || recipe === undefined || flowItems.length === 0) return
+        if (router.query.cook !== '1') return
+        autoResumeRef.current = true
+        startCooking()
+        if (id) router.replace(`/recipes/${id}`, undefined, { shallow: true })
+        // startCooking is intentionally excluded — it is re-created each render
+        // and the ref guard makes this a one-shot on query arrival.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [router.isReady, router.query.cook, recipe, flowItems.length, id])
 
     // Save session to localStorage
     useEffect(() => {
-        if (!id) return
+        if (!id || hydratedId !== String(id)) return
         try {
+            // Never let a bare recipe visit (cookingActive still false) erase an
+            // in-progress cook's flag — only finishing/resetting clears it.
+            let prevCooking = false
+            let prevStartedAt = 0
+            try {
+                const existing = JSON.parse(localStorage.getItem(`timer-session-${id}`) || 'null')
+                if (existing?.cooking === true) {
+                    prevCooking = true
+                    prevStartedAt = typeof existing.startedAt === 'number' ? existing.startedAt : 0
+                }
+            } catch {}
+            const cooking = cookingActive || prevCooking
+            // Lightweight name/duration per timer so the global bubble can
+            // label the countdown without loading the whole recipe.
+            const timerMeta: Record<string, { name: string; durationSec: number }> = {}
+            ;(cookingTimers || []).forEach((t: any) => {
+                if (t.type !== 'timer' || !t.id) return
+                timerMeta[t.id] = { name: t.name || 'Timer', durationSec: Math.max(0, Math.round((t.duration || 0) * 60)) }
+            })
+            ;(customTimers || []).forEach((t: any) => {
+                if (!t.id) return
+                timerMeta[t.id] = { name: t.name || 'Timer', durationSec: Math.max(0, Math.round((t.duration || 0) * 60)) }
+            })
             localStorage.setItem(`timer-session-${id}`, JSON.stringify({
-                v: 5,
+                v: 6,
                 timers: activeSession,
                 currentFlow,
                 doneFlow: Array.from(doneFlow),
                 carbChoice,
                 customTimers,
-                scaleFactor
+                scaleFactor,
+                cooking,
+                recipeName,
+                startedAt: cooking ? (cookingStartedAt || prevStartedAt || Date.now()) : 0,
+                timerMeta
             }))
         } catch {}
-    }, [activeSession, currentFlow, doneFlow, id, customTimers, scaleFactor])
+    }, [activeSession, currentFlow, doneFlow, id, customTimers, scaleFactor, cookingActive, cookingStartedAt, recipeName, cookingTimers, hydratedId])
 
     // Tick clock + countdown engine. A 100ms clock drives re-renders while any
     // timer runs, so countdowns step at true second boundaries (ceiled) and
@@ -4485,6 +4516,7 @@ export default function RecipeDetail() {
                                     setCustomTimers([])
                                     setAlarmPopupClosed(new Set())
                                     setForcedView(null)
+                                    setCookingActive(false)
                                     if (id) {
                                         const keys = Object.keys(localStorage).filter(k => k.startsWith('timer-session-'))
                                         keys.forEach(k => localStorage.removeItem(k))
@@ -4566,6 +4598,7 @@ export default function RecipeDetail() {
                                     keys.forEach(k => localStorage.removeItem(k))
                                     setActiveSession({})
                                     setCustomTimers([])
+                                    setCookingActive(false)
                                     setClearResidualPrompt({ show: false, recipeName: '', recipeId: '' })
                                 }}
                             >

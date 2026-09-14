@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import type { AppProps } from 'next/app'
 import { Lora, Dancing_Script } from 'next/font/google'
+import CookingBubble from '../components/cooking/CookingBubble'
 import '../styles/tw-animate.css'
 import '../styles/shadcn-tailwind.css'
 import '../styles/globals.css'
@@ -41,6 +42,7 @@ function MyApp({ Component, pageProps }: AppProps) {
     return (
         <div className={`${lora.variable} ${dancingScript.variable}`}>
             <Component {...pageProps} />
+            <CookingBubble />
         </div>
     )
 }

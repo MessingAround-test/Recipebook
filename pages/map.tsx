@@ -150,6 +150,7 @@ export default function WorldMap() {
     const [geocoding, setGeocoding] = useState(false)
     const [geocodeRemaining, setGeocodeRemaining] = useState<number | null>(null)
     const [listFilter, setListFilter] = useState('')
+    const [cookedFilter, setCookedFilter] = useState<'all' | 'cooked' | 'uncooked'>('all')
     const [selectedKey, setSelectedKey] = useState<string | null>(null)
     const [hoveredKey, setHoveredKey] = useState<string | null>(null)
     const [view, setView] = useState<View>({ scale: 1, tx: 0, ty: 0 })
@@ -325,11 +326,16 @@ export default function WorldMap() {
     }, [points])
 
     const visible = useMemo(() => {
-        if (listFilter === ALL_RECIPES) return recipePoints
-        if (listFilter === EVERYTHING) return [...points, ...recipePoints]
-        if (listFilter) return points.filter(p => p.listId === listFilter)
-        return points
-    }, [points, recipePoints, listFilter])
+        let result: MapPoint[]
+        if (listFilter === ALL_RECIPES) result = recipePoints
+        else if (listFilter === EVERYTHING) result = [...points, ...recipePoints]
+        else if (listFilter) result = points.filter(p => p.listId === listFilter)
+        else result = points
+
+        if (cookedFilter === 'cooked') return result.filter(p => p.cooked)
+        if (cookedFilter === 'uncooked') return result.filter(p => !p.cooked)
+        return result
+    }, [points, recipePoints, listFilter, cookedFilter])
 
     // Header stats follow the active filter.
     const stats = useMemo(() => {
@@ -461,17 +467,20 @@ export default function WorldMap() {
                             onChange={e => { setListFilter(e.target.value); setSelectedKey(null) }}
                             className="h-9 rounded-xl bg-secondary border border-border px-3 text-xs font-semibold focus:outline-none focus:border-accent max-w-[16rem]"
                         >
+                            <option value={EVERYTHING}>Everything</option>
                             <option value="">All lists</option>
                             <option value={ALL_RECIPES}>All Recipes</option>
-                            <option value={EVERYTHING}>Everything</option>
                             {listOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
                         </select>
 
-                        <span className="inline-flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] font-semibold text-muted-foreground ml-1">
-                            <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Not cooked</span>
-                            <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Mixed</span>
-                            <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Cooked</span>
-                        </span>
+                        <div className="flex rounded-xl border border-border overflow-hidden">
+                            {(['all', 'uncooked', 'cooked'] as const).map(f => (
+                                <button key={f} onClick={() => setCookedFilter(f)}
+                                    className={`px-3 h-9 text-xs font-semibold capitalize transition-colors ${cookedFilter === f ? 'bg-accent text-accent-foreground' : 'bg-secondary hover:bg-border'}`}>
+                                    {f}
+                                </button>
+                            ))}
+                        </div>
 
                         <div className="ml-auto flex items-center gap-1">
                             <Button size="icon-sm" variant="secondary" onClick={() => zoomButton(1 / 1.5)} disabled={view.scale <= MIN_SCALE} title="Zoom out">
@@ -485,6 +494,12 @@ export default function WorldMap() {
                                 <Maximize2 size={14} />
                             </Button>
                         </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] font-semibold text-muted-foreground mt-2">
+                        <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Not cooked</span>
+                        <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Mixed</span>
+                        <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Cooked</span>
                     </div>
                 </header>
 
