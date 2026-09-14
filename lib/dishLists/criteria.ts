@@ -83,6 +83,29 @@ export const criteriaFromUser = (user: any): string[] => {
 const PREFERENCE_VALUES = ['vegetarian', 'vegan', 'pescetarian']
 
 /**
+ * Dietary preference implications. Selecting a broader preference implies the
+ * stricter ones beneath it, so they get enabled together by default:
+ *   - pescetarian implies vegetarian + vegan
+ *   - vegetarian implies vegan
+ * Used only when loading profile defaults — not on manual chip toggles.
+ */
+const CRITERIA_IMPLIES: Record<string, string[]> = {
+    vegetarian: ['vegan'],
+    pescetarian: ['vegetarian', 'vegan'],
+}
+
+export const expandImpliedCriteria = (criteria: string[] = []): string[] => {
+    const out: string[] = []
+    for (const value of normalizeCriteria(criteria)) {
+        if (!out.includes(value)) out.push(value)
+        for (const implied of CRITERIA_IMPLIES[value] || []) {
+            if (!out.includes(implied)) out.push(implied)
+        }
+    }
+    return out
+}
+
+/**
  * Turns the selected criteria into the shared dietary-rules sentence used by
  * the planner AI, so recipe extraction can adapt/substitute accordingly.
  * Returns '' when nothing is selected.

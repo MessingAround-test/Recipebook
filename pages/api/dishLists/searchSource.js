@@ -29,7 +29,7 @@ export default async function handler(req, res) {
         }
 
         const query = buildSearchQuery(name, criteria, req.body?.extra)
-        const results = await searchRecipeSources(query)
+        const results = await searchRecipeSources(query, { criteria })
 
         return res.status(200).json({ success: true, data: { query, criteria, results } })
     } catch (error) {

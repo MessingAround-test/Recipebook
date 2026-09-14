@@ -1096,6 +1096,38 @@ export default function CreateRecipe() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthed, isEditMode, router.query.notesImport])
 
+    // Handed over from the pre-recipe page: a recipe generated/remixed by AI.
+    const genImportRef = useRef(false)
+    useEffect(() => {
+        if (!isAuthed || isEditMode || genImportRef.current) return
+        const wants = router.query.genImport === '1'
+        if (!wants) return
+        genImportRef.current = true
+        let raw = ''
+        try { raw = sessionStorage.getItem('dishGeneratedRecipe') || '' } catch { /* ignore */ }
+        try { sessionStorage.removeItem('dishGeneratedRecipe') } catch { /* ignore */ }
+        if (!raw) return
+        try {
+            const r = JSON.parse(raw)
+            if (r.name) setRecipeName(r.name)
+            if (Array.isArray(r.ingredients) && r.ingredients.length) {
+                setIngreds(r.ingredients)
+                startConversionWarmup(r.ingredients)
+            }
+            if (Array.isArray(r.instructions) && r.instructions.length) setInstructions(r.instructions)
+            if (r.time) setRecipeTime(r.time)
+            if (r.genre) setRecipeGenre(r.genre)
+            if (Array.isArray(r.mealTypes) && r.mealTypes.length) setRecipeMealTypes(r.mealTypes)
+            if (r.carbType) setRecipeCarbType(r.carbType)
+            if (r.servings) setRecipeServings(r.servings)
+            setCreationMethod('manual')
+            setFormPhase(r.name ? 'builder' : 'name')
+        } catch {
+            console.error('Failed to parse generated recipe from storage')
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isAuthed, isEditMode, router.query.genImport])
+
     const onSubmitImageExtract = async () => {
         if (!extractImage) {
             alert("Please provide an image first!")

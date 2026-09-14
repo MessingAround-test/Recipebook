@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio'
+import { CRITERIA_OPTIONS, normalizeCriteria } from './criteria'
 
 export interface RecipeSourceCandidate {
     title: string
@@ -100,12 +101,41 @@ const isAdOrInternal = (url: string): boolean => {
 const looksLikeRecipeUrl = (url: string): boolean =>
     /recipe|recept|recette|ricetta|kochrezept|rezept/i.test(url)
 
+const CRITERIA_BY_VALUE = new Map(CRITERIA_OPTIONS.map(c => [c.value, c]))
+
+/**
+ * Builds the lowercased match terms for a set of dietary criteria — each
+ * criterion contributes its display label and its search query word(s)
+ * (e.g. "vegetarian", "gluten free", "vegan"). Used to drop search results
+ * that don't actually mention the chosen diets.
+ */
+const dietaryMatchTerms = (criteria: string[]): string[] => {
+    const out = new Set<string>()
+    for (const value of normalizeCriteria(criteria)) {
+        const opt = CRITERIA_BY_VALUE.get(value)
+        if (!opt) continue
+        if (opt.label) out.add(opt.label.toLowerCase())
+        if (opt.query) out.add(opt.query.toLowerCase())
+    }
+    return Array.from(out)
+}
+
+/**
+ * True when a candidate's title or snippet references at least one of the
+ * selected dietary requirements. With no terms, everything passes.
+ */
+const candidateMatchesDietary = (c: RecipeSourceCandidate, terms: string[]): boolean => {
+    if (terms.length === 0) return true
+    const hay = `${c.title} ${c.snippet}`.toLowerCase()
+    return terms.some(t => hay.includes(t))
+}
+
 /** Preferred recipe sites first, then recipe-shaped URLs, then the rest. */
 const rank = (url: string): number =>
     (isPreferred(url) ? 2 : 0) + (looksLikeRecipeUrl(url) ? 1 : 0)
 
 /** Parses a DuckDuckGo HTML results page. Pure, so it can be unit-tested. */
-export const parseDuckDuckGoHtml = (html: string): RecipeSourceCandidate[] => {
+export const parseDuckDuckGoHtml = (html: string, limit = Infinity): RecipeSourceCandidate[] => {
     if (!html || typeof html !== 'string') return []
     const $ = cheerio.load(html)
     const out: RecipeSourceCandidate[] = []
@@ -125,7 +155,7 @@ export const parseDuckDuckGoHtml = (html: string): RecipeSourceCandidate[] => {
     })
 
     // Preferred recipe domains first, then recipe-shaped URLs, else DDG order.
-    return out.sort((a, b) => rank(b.url) - rank(a.url))
+    return out.sort((a, b) => rank(b.url) - rank(a.url)).slice(0, limit)
 }
 
 /** Guarantees the literal "recipe" keyword is present in the query. */
@@ -136,8 +166,18 @@ const ensureRecipeKeyword = (query: string): string =>
  * Searches the web for recipe sources via DuckDuckGo's HTML endpoint (no API
  * key). Results are biased to English and filtered to importable domains.
  * Returns an empty array on failure so callers can degrade gracefully.
+ *
+ * When `criteria` are supplied (a dietary requirement was selected) the raw
+ * result pool is fetched larger and then filtered so only sources whose
+ * title/snippet actually mentions at least one of the diets is kept — this
+ * drops the "dud" results that merely match the dish name.
  */
-export const searchRecipeSources = async (query: string, limit = 12): Promise<RecipeSourceCandidate[]> => {
+export const searchRecipeSources = async (
+    query: string,
+    options: { limit?: number; criteria?: string[] } = {}
+): Promise<RecipeSourceCandidate[]> => {
+    const limit = options.limit ?? 12
+    const criteria = normalizeCriteria(options.criteria)
     const q = ensureRecipeKeyword((query || '').trim())
     if (!q) return []
     console.log(`[dishLists] DuckDuckGo search: "${q}"`)
@@ -152,7 +192,13 @@ export const searchRecipeSources = async (query: string, limit = 12): Promise<Re
         })
         if (!res.ok) return []
         const html = await res.text()
-        return parseDuckDuckGoHtml(html).slice(0, limit)
+        // Pull a larger pool when filtering by diet so we don't starve out.
+        const fetchLimit = criteria.length > 0 ? Math.max(limit * 3, 30) : limit
+        const parsed = parseDuckDuckGoHtml(html, fetchLimit)
+        if (criteria.length === 0) return parsed.slice(0, limit)
+        const terms = dietaryMatchTerms(criteria)
+        const filtered = parsed.filter(c => candidateMatchesDietary(c, terms))
+        return filtered.slice(0, limit)
     } catch (err: any) {
         console.error('[dishLists] Search failed:', err?.message || err)
         return []

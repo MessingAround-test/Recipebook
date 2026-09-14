@@ -10,7 +10,7 @@ import {
 import { buildViewportTiles, projectToPercent, tileZoomForScale } from '../../../lib/dishLists/mercator'
 import { DishListItem } from '../../../components/dishLists/types'
 import { RecipeSourceCandidate } from '../../../components/dishLists/types'
-import { CRITERIA_OPTIONS, criterionLabel, criteriaFromUser, criteriaInstruction } from '../../../lib/dishLists/criteria'
+import { CRITERIA_OPTIONS, criterionLabel, criteriaFromUser, criteriaInstruction, expandImpliedCriteria } from '../../../lib/dishLists/criteria'
 
 interface ListInfo {
     _id: string
@@ -86,6 +86,7 @@ export default function PreRecipe() {
 
     const [results, setResults] = useState<RecipeSourceCandidate[]>([])
     const [searching, setSearching] = useState(false)
+    const [generating, setGenerating] = useState(false)
     const [query, setQuery] = useState('')
 
     const [manualUrl, setManualUrl] = useState('')
@@ -119,6 +120,8 @@ export default function PreRecipe() {
     }, [isAuthed, itemId])
 
     // Pull the user's dietary requirements from Settings and use them by default.
+    // Profile preferences imply stricter ones (e.g. pescetarian ⇒ vegetarian +
+    // vegan), applied here on load only — not when the user toggles chips.
     useEffect(() => {
         if (!isAuthed) return
         let cancelled = false
@@ -130,8 +133,9 @@ export default function PreRecipe() {
                 profile = criteriaFromUser(data.res)
             } catch { /* ignore */ }
             if (cancelled) return
-            setProfileCriteria(profile)
-            setSelectedCriteria(profile)
+            const expanded = expandImpliedCriteria(profile)
+            setProfileCriteria(expanded)
+            setSelectedCriteria(expanded)
         })()
         return () => { cancelled = true }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -189,10 +193,52 @@ export default function PreRecipe() {
         if (url) useSource(url)
     }
 
+    /**
+     * Generate a recipe with AI: produce a normal (no-dietary) baseline from
+     * the dish name, then remix it to the selected dietary requirements, then
+     * hand the finished recipe to the editor. Always offered, even when the
+     * web search returns plenty of results.
+     */
+    const generateWithAI = async () => {
+        if (!item || generating) return
+        setGenerating(true)
+        try {
+            const headers = { 'Content-Type': 'application/json', edgetoken: token() }
+            const baseRes = await fetch('/api/ai/generate_recipe', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ name: item.name })
+            })
+            const baseData = await baseRes.json()
+            if (!baseRes.ok || !baseData.success) {
+                throw new Error(baseData.message || 'Could not generate a recipe.')
+            }
+            let recipe = baseData.data
+            if (selectedCriteria.length > 0) {
+                const remixRes = await fetch('/api/Recipe/remix_recipe', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ recipe, criteria: selectedCriteria })
+                })
+                const remixData = await remixRes.json()
+                if (!remixRes.ok || !remixData.success) {
+                    throw new Error(remixData.message || 'Could not adapt the recipe to your diet.')
+                }
+                recipe = remixData.data
+            }
+            try { sessionStorage.setItem('dishGeneratedRecipe', JSON.stringify(recipe)) } catch { /* ignore */ }
+            goImport({ genImport: '1' })
+        } catch (err: any) {
+            alert(err?.message || 'Something went wrong generating the recipe.')
+        } finally {
+            setGenerating(false)
+        }
+    }
+
     const toggleProfile = () => {
         const nextUse = !useProfile
         const next = nextUse
-            ? Array.from(new Set([...selectedCriteria, ...profileCriteria]))
+            ? expandImpliedCriteria(Array.from(new Set([...selectedCriteria, ...profileCriteria])))
             : selectedCriteria.filter(c => !profileCriteria.includes(c))
         setUseProfile(nextUse)
         setSelectedCriteria(next)
@@ -425,7 +471,12 @@ export default function PreRecipe() {
                                         <Loader2 className="animate-spin" size={16} /> Searching…
                                     </div>
                                 ) : results.length === 0 ? (
-                                    <p className="text-xs text-muted-foreground py-3">No results — paste a recipe URL or recipe text below.</p>
+                                    <div className="py-3 space-y-3">
+                                        <p className="text-xs text-muted-foreground">No results — paste a recipe URL or recipe text below, or let AI build one.</p>
+                                        <Button onClick={generateWithAI} disabled={generating}>
+                                            {generating ? <><Loader2 className="animate-spin" size={14} /> Generating…</> : <><Sparkles size={14} /> Generate a recipe with AI</>}
+                                        </Button>
+                                    </div>
                                 ) : (
                                     <div className="mt-3 space-y-2">
                                         {results.map(r => (
@@ -454,6 +505,12 @@ export default function PreRecipe() {
                                         className="flex-1 h-10 rounded-xl bg-secondary border border-border px-3 text-sm focus:outline-none focus:border-accent"
                                     />
                                     <Button variant="secondary" disabled={!manualUrl.trim()} onClick={useManualUrl}>Import</Button>
+                                </div>
+
+                                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+                                    <Button variant="secondary" onClick={generateWithAI} disabled={generating} className="w-full">
+                                        {generating ? <><Loader2 className="animate-spin" size={14} /> Generating…</> : <><Sparkles size={14} /> Generate a recipe with AI{selectedCriteria.length > 0 ? ' (diet-adapted)' : ''}</>}
+                                    </Button>
                                 </div>
                             </div>
                         </div>
