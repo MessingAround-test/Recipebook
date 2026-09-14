@@ -239,6 +239,107 @@ const parseAwardsHolders = ($: cheerio.CheerioAPI, holders: any[]): ParsedDish[]
 }
 
 // ---------------------------------------------------------------------------
+// Current top-list card parser (.card.top-list-primary / .top-list-secondary)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parses the current TasteAtlas top-list cards. Ranks 1-10 use the rich
+ * `.card.top-list-primary` format (with a description); ranks 11-100 use the
+ * compact `.card.top-list-secondary` format (no description, image after the
+ * location). Scoped to the card so restaurant links inside a card can't create
+ * phantom dishes.
+ */
+const parseTopListCards = ($: cheerio.CheerioAPI, selector: string): ParsedDish[] => {
+    const bySlug = new Map<string, ParsedDish>()
+    const elements = $(selector).toArray()
+    if (elements.length === 0) return []
+
+    for (const el of elements) {
+        const $c = $(el)
+        const visualLink = $c.find('a.card__visual-link').first()
+        const titleLink = $c.find('a').filter((_, a) => $(a).find('h1, h2, h3, h4').length > 0).first()
+        const href = visualLink.attr('href') || titleLink.attr('href') || ''
+        const slug = slugFromUrl(href)
+        if (!slug) continue
+
+        const name = cleanText($c.find('h1, h2, h3, h4').first().text()) || cleanText(titleLink.text())
+        if (!name) continue
+
+        const rankMatch = cleanText($c.find('.card__order').first().text()).match(/^\D*(\d{1,3})/)
+        const rank = rankMatch ? Number(rankMatch[1]) : undefined
+        const rating = parseRating($c.find('.card__info-value').first().text())
+        const location = extractLocation($, $c, '')
+        const regionId = extractRegionId($c)
+        if (regionId) location.regionId = regionId
+
+        // Prefer the dish image in `.card__visual`; compact cards place the
+        // location emblem before the photo, so scanning the whole card would
+        // otherwise grab the wrong image.
+        const $visual = $c.find('.card__visual').first()
+        const imageOriginalUrl = extractImage($, $visual.length ? $visual : $c)
+        const description = extractDescription($, $c, [name, String(rating ?? '')])
+
+        let recipeSourceUrl: string | undefined
+        $c.find('a').each((_, a) => {
+            if (recipeSourceUrl) return
+            const aHref = $(a).attr('href') || ''
+            if (looksLikeRecipeLink(aHref, $(a).text())) recipeSourceUrl = resolveTasteAtlasUrl(aHref)
+        })
+
+        const candidate: ParsedDish = {
+            slug,
+            rank,
+            name,
+            rating,
+            location,
+            description,
+            imageOriginalUrl,
+            sourceUrl: `${ORIGIN}/${slug}`,
+            recipeSourceUrl
+        }
+
+        const existing = bySlug.get(slug)
+        if (!existing || (candidate.rank != null && (existing.rank == null || candidate.rank < existing.rank))) {
+            bySlug.set(slug, candidate)
+        }
+    }
+
+    return Array.from(bySlug.values())
+}
+
+/**
+ * Merges parsed dishes by slug, keeping the richest field values (primary and
+ * secondary cards can overlap when "Load more" re-sends a rank). Ordered by
+ * rank so the imported list keeps its 1..N order.
+ */
+const mergeParsed = (dishes: ParsedDish[]): ParsedDish[] => {
+    const bySlug = new Map<string, ParsedDish>()
+    for (const dish of dishes) {
+        const existing = bySlug.get(dish.slug)
+        if (!existing) {
+            bySlug.set(dish.slug, dish)
+            continue
+        }
+        bySlug.set(dish.slug, {
+            ...existing,
+            rank: existing.rank ?? dish.rank,
+            category: existing.category || dish.category,
+            rating: existing.rating ?? dish.rating,
+            location: existing.location?.country ? existing.location : (dish.location || {}),
+            description: existing.description || dish.description,
+            imageOriginalUrl: existing.imageOriginalUrl || dish.imageOriginalUrl,
+            recipeSourceUrl: existing.recipeSourceUrl || dish.recipeSourceUrl
+        })
+    }
+    return Array.from(bySlug.values()).sort((a, b) => {
+        if (a.rank == null && b.rank == null) return 0
+        if (a.rank == null) return 1
+        if (b.rank == null) return -1
+        return a.rank - b.rank
+    })
+}
+
+// ---------------------------------------------------------------------------
 // Generic parser (standard "Top 100" pages + any template with dish links)
 // ---------------------------------------------------------------------------
 
@@ -292,14 +393,14 @@ const parseGeneric = ($: cheerio.CheerioAPI): ParsedDish[] => {
         if (!name || name.length < 2) continue
 
         const category = firstText($, $container, ['.subtitle', '.item-subtitle', '[class*="subtitle"]', '[class*="category"]']) || undefined
-        const rating = parseRating(firstText($, $container, ['.rating', '[class*="rating"]']))
+        const rating = parseRating(firstText($, $container, ['.rating', '[class*="rating"]', '.card__info-value']))
         const location = extractLocation($, $container, '')
         const regionId = extractRegionId($container)
         if (regionId) location.regionId = regionId
 
         const imageOriginalUrl = extractImage($, $container)
 
-        const rankText = cleanText($container.find('.order, .rank, [class*="rank"]').first().text())
+        const rankText = cleanText($container.find('.order, .rank, .card__order, [class*="rank"]').first().text())
         const rankMatch = rankText.match(/^\D*(\d{1,3})/)
         const rank = rankMatch ? Number(rankMatch[1]) : undefined
 
@@ -339,13 +440,23 @@ const parseGeneric = ($: cheerio.CheerioAPI): ParsedDish[] => {
 }
 
 /**
- * Parses a pasted TasteAtlas page into dish entries. Prefers the awards
+ * Parses a pasted TasteAtlas page into dish entries. Prefers the current
+ * card-based ranked list (primary + secondary cards merged), then the awards
  * template (.box-holder); otherwise falls back to a generic dish-link scan so
  * standard "Top 100" pages (with descriptions + regions) also work.
  */
 export const parseTasteAtlasList = (html: string): ParsedDish[] => {
     if (!html || typeof html !== 'string') return []
     const $ = cheerio.load(html)
+
+    // Current layout: ranks 1-10 are primary cards and the rest (11-100) are
+    // compact secondary cards, whether already in the page or loaded via the
+    // "Load more" fragment. Merge both, preferring the richer copy on clashes.
+    const cards = mergeParsed([
+        ...parseTopListCards($, '.card.top-list-primary'),
+        ...parseTopListCards($, '.card.top-list-secondary')
+    ])
+    if (cards.length > 0) return cards
 
     const holders = $('.box-holder').toArray()
     if (holders.length > 0) {

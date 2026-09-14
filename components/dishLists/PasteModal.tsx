@@ -10,6 +10,22 @@ interface PasteModalProps {
     onDone: () => void
 }
 
+// Runs on the TasteAtlas page (same origin, so Cloudflare lets it through).
+// It clicks "Load more" until every dish is rendered, then copies the full
+// page HTML so the user can paste it here. Falls back to a selectable textarea
+// when the async clipboard call is not permitted.
+const COPY_LIST_BOOKMARKLET = 'javascript:' + encodeURIComponent(
+    `(async()=>{` +
+    `const f=()=>document.querySelector('button[hx-get*="food-secondary-list"]');` +
+    `let g=0;while(f()&&g++<12){f().click();await new Promise(r=>setTimeout(r,1800));}` +
+    `const h=document.documentElement.outerHTML;` +
+    `try{await navigator.clipboard.writeText(h);alert('Copied the full list HTML ('+h.length+' characters). Paste it into Recipebook.');}` +
+    `catch(e){const t=document.createElement('textarea');t.value=h;` +
+    `t.style.cssText='position:fixed;inset:0;width:100%;height:100%;z-index:2147483647;font:12px monospace;background:#fff;color:#000';` +
+    `document.body.appendChild(t);t.focus();t.select();try{document.execCommand('copy');}catch(_){}` +
+    `alert('Full HTML is shown selected. Press Ctrl+C to copy, then paste it into Recipebook.');}})();`
+)
+
 export function PasteModal({ isOpen, onClose, list, onDone }: PasteModalProps) {
     const [mode, setMode] = useState<'html' | 'urls'>('html')
     const [html, setHtml] = useState('')
@@ -68,8 +84,26 @@ export function PasteModal({ isOpen, onClose, list, onDone }: PasteModalProps) {
                     </div>
 
                     <p className="text-[11px] leading-snug text-muted-foreground">
-                        TasteAtlas blocks automated fetching, so open the list in your browser, then paste the page source (View Source → Ctrl+A → Ctrl+C) or a newline list of dish URLs/slugs. Names, categories, regions, descriptions and images are pulled in automatically — use <strong>Blurbs &amp; images</strong> afterwards only to fill any gaps.
+                        TasteAtlas blocks automated fetching, so open the list in your browser, then paste the full page HTML (see the helper below — the page only ships the first 10 dishes until you load the rest) or a newline list of dish URLs/slugs. Names, categories, regions, descriptions and images are pulled in automatically — use <strong>Blurbs &amp; images</strong> afterwards only to fill any gaps.
                     </p>
+
+                    {mode === 'html' && (
+                        <div className="rounded-2xl bg-secondary/60 border border-border p-3.5 space-y-2">
+                            <p className="text-sm font-bold">Get every dish (TasteAtlas only embeds the first 10)</p>
+                            <p className="text-[11px] leading-snug text-muted-foreground">
+                                Drag the button below onto your bookmarks bar. Open the TasteAtlas list in your browser, click the saved bookmark once — it loads all remaining dishes and copies the full page HTML. Then paste it above.
+                            </p>
+                            <a
+                                href={COPY_LIST_BOOKMARKLET}
+                                onClick={e => e.preventDefault()}
+                                draggable
+                                title="Drag me to your bookmarks bar"
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent text-accent-foreground text-sm font-semibold cursor-grab active:cursor-grabbing select-none"
+                            >
+                                <ClipboardPaste size={14} /> Copy full list HTML
+                            </a>
+                        </div>
+                    )}
 
                     {mode === 'html' ? (
                         <textarea

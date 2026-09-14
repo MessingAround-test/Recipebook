@@ -9,7 +9,7 @@ import { PasteModal } from '../../components/dishLists/PasteModal'
 import { ItemEditModal } from '../../components/dishLists/ItemEditModal'
 import { DishListTable } from '../../components/dishLists/DishListTable'
 import { DishListItem, DishListSummary } from '../../components/dishLists/types'
-import { needsLocationWork } from '../../lib/dishLists/locationStatus'
+import { needsLocationWork, hasPoint } from '../../lib/dishLists/locationStatus'
 
 export default function DishListDetail() {
     const isAuthed = useAuthGuard()
@@ -23,6 +23,7 @@ export default function DishListDetail() {
     const [filter, setFilter] = useState<'all' | 'uncooked' | 'cooked'>('uncooked')
     const [filterCountry, setFilterCountry] = useState('')
     const [filterCategory, setFilterCategory] = useState('')
+    const [filterIssues, setFilterIssues] = useState(false)
     const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
 
     const [pasteOpen, setPasteOpen] = useState(false)
@@ -84,12 +85,13 @@ export default function DishListDetail() {
         return Array.from(set).sort((a, b) => a.localeCompare(b))
     }, [items])
 
-    const hasActiveFilters = filter !== 'uncooked' || filterCountry !== '' || filterCategory !== '' || search.trim() !== ''
+    const hasActiveFilters = filter !== 'uncooked' || filterCountry !== '' || filterCategory !== '' || filterIssues || search.trim() !== ''
 
     const clearFilters = () => {
         setFilter('uncooked')
         setFilterCountry('')
         setFilterCategory('')
+        setFilterIssues(false)
         setSearch('')
     }
 
@@ -99,6 +101,9 @@ export default function DishListDetail() {
             if (filter === 'uncooked' && item.cooked) return false
             if (filterCountry && (item.location?.country || '') !== filterCountry) return false
             if (filterCategory && (item.category || '') !== filterCategory) return false
+            // Location issues: the dish has no usable map point yet, so it
+            // isn't showing on the world map.
+            if (filterIssues && hasPoint(item.location)) return false
             if (search.trim()) {
                 const term = search.toLowerCase()
                 const haystack = [item.name, item.category, item.location?.country, item.location?.city, item.location?.region].join(' ').toLowerCase()
@@ -106,9 +111,10 @@ export default function DishListDetail() {
             }
             return true
         })
-    }, [items, filter, filterCountry, filterCategory, search])
+    }, [items, filter, filterCountry, filterCategory, filterIssues, search])
 
     const cookedCount = items.filter(i => i.cooked).length
+    const issueCount = items.filter(i => !hasPoint(i.location)).length
 
     const markBusy = (id: string, on: boolean) => {
         setBusyIds(prev => {
@@ -286,6 +292,23 @@ export default function DishListDetail() {
                             {geocoding ? <Loader2 size={14} className="animate-spin" /> : <MapPin size={14} />}
                             {geocoding ? `Locations${geocodeRemaining != null ? ` (${geocodeRemaining} left)` : '…'}` : 'Locations'}
                         </Button>
+                        <label
+                            title="Dishes whose location has a problem, so they're not showing on the map"
+                            className={`inline-flex items-center gap-2 h-9 px-3 rounded-xl border text-xs font-semibold select-none transition-colors ${issueCount === 0
+                                ? 'opacity-40 cursor-not-allowed border-border bg-secondary text-muted-foreground'
+                                : filterIssues
+                                    ? 'cursor-pointer bg-amber-500/15 border-amber-500/50 text-amber-500'
+                                    : 'cursor-pointer bg-secondary border-border text-muted-foreground hover:text-amber-500 hover:border-amber-500/40'}`}
+                        >
+                            <input
+                                type="checkbox"
+                                checked={filterIssues}
+                                disabled={issueCount === 0}
+                                onChange={e => { const next = e.target.checked; setFilterIssues(next); if (next) setFilter('all') }}
+                                className={`h-3.5 w-3.5 rounded border-border accent-amber-500 ${issueCount === 0 ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                            />
+                            Location issues{issueCount > 0 ? ` (${issueCount})` : ''}
+                        </label>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 mt-3">

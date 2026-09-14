@@ -288,6 +288,12 @@ export default function CreateRecipe() {
     // Where the dish is from. lat/lng are filled by the geocoder (auto-fill /
     // bulk tools); editing the place text clears them so the pin is re-resolved.
     const [recipeLocation, setRecipeLocation] = useState<{ country: string; region: string; city: string; lat?: number; lng?: number; regionSearchFailed?: boolean }>({ country: '', region: '', city: '' })
+    // Live geocode status for the Origin fields: idle (untouched), matching,
+    // matched (pin placed), or failed (no result → field highlighted).
+    const [locationMatch, setLocationMatch] = useState<'idle' | 'matching' | 'matched' | 'failed'>('idle')
+    // Only re-match after the user actually edits the place, so loading a saved
+    // recipe (which already has coordinates) doesn't trigger a fresh search.
+    const locationTouchedRef = useRef(false)
     const [recipeSourceUrl, setRecipeSourceUrl] = useState("")
     // The Web-import link, kept controlled so a URL handed over from the
     // Explore search appears in the field (and can be edited/retried).
@@ -654,9 +660,28 @@ export default function CreateRecipe() {
         }
     }
 
+    // Resolves a place to coordinates via the server (Nominatim). Returns the
+    // matched point or null when nothing was found.
+    const matchLocation = async (place: { country?: string; region?: string; city?: string }) => {
+        try {
+            const res = await fetch('/api/geo/place', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': localStorage.getItem('Token') || '' },
+                body: JSON.stringify(place)
+            })
+            const data = await res.json()
+            return data.success && data.data?.matched
+                ? { lat: data.data.lat as number, lng: data.data.lng as number }
+                : null
+        } catch {
+            return null
+        }
+    }
+
     const updateLocationField = (field: 'country' | 'region' | 'city', value: string) => {
         // Changing the place invalidates any stored coordinates. Entering a
         // place also clears the "we searched and found nothing" marker.
+        locationTouchedRef.current = true
         setRecipeLocation(prev => ({
             ...prev,
             [field]: value,
@@ -665,6 +690,30 @@ export default function CreateRecipe() {
             regionSearchFailed: value.trim() ? false : prev.regionSearchFailed
         }))
     }
+
+    // Re-match the origin whenever the place text changes (debounced), so the
+    // pin is re-placed and the field is highlighted when no match is found.
+    useEffect(() => {
+        if (!locationTouchedRef.current) return
+        const { country, region, city } = recipeLocation
+        if (!country.trim() && !region.trim() && !city.trim()) {
+            setLocationMatch('idle')
+            return
+        }
+        setLocationMatch('matching')
+        const timer = setTimeout(async () => {
+            const match = await matchLocation({ country, region, city })
+            if (match) {
+                setRecipeLocation(prev => ({ ...prev, lat: match.lat, lng: match.lng, regionSearchFailed: false }))
+                setLocationMatch('matched')
+            } else {
+                setRecipeLocation(prev => ({ ...prev, lat: undefined, lng: undefined, regionSearchFailed: true }))
+                setLocationMatch('failed')
+            }
+        }, 800)
+        return () => clearTimeout(timer)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [recipeLocation.country, recipeLocation.region, recipeLocation.city])
 
     const locationPayload = (recipeLocation.country || recipeLocation.region || recipeLocation.city || recipeLocation.regionSearchFailed)
         ? {
@@ -676,6 +725,13 @@ export default function CreateRecipe() {
             regionSearchFailed: recipeLocation.regionSearchFailed === true ? true : undefined
         }
         : undefined
+
+    // Inline styles so the match state wins over the .input-modern border/box-shadow.
+    const locationFieldStyle = locationMatch === 'failed'
+        ? { borderColor: 'rgb(245 158 11)', boxShadow: '0 0 0 2px rgba(245,158,11,0.35)' }
+        : locationMatch === 'matched'
+            ? { borderColor: 'rgba(16,185,129,0.6)' }
+            : undefined
 
     const onSubmitRecipe = async () => {
         if (!recipeName.trim()) {
@@ -693,6 +749,25 @@ export default function CreateRecipe() {
                 const imageField = imageRemoved
                     ? null
                     : (imageData && imageData.startsWith('data:') ? imageData : undefined)
+                // If the place was edited, resolve fresh coordinates (or a
+                // "not found" marker) before persisting rather than relying on
+                // the debounced match having finished.
+                let finalLocation = locationPayload
+                if (locationTouchedRef.current && locationPayload
+                    && (locationPayload.country || locationPayload.region || locationPayload.city)
+                    && !(Number.isFinite(locationPayload.lat) && Number.isFinite(locationPayload.lng))) {
+                    setLocationMatch('matching')
+                    const match = await matchLocation(locationPayload)
+                    if (match) {
+                        finalLocation = { ...locationPayload, lat: match.lat, lng: match.lng, regionSearchFailed: undefined }
+                        setRecipeLocation(prev => ({ ...prev, lat: match.lat, lng: match.lng, regionSearchFailed: false }))
+                        setLocationMatch('matched')
+                    } else {
+                        finalLocation = { ...locationPayload, lat: undefined, lng: undefined, regionSearchFailed: true }
+                        setRecipeLocation(prev => ({ ...prev, lat: undefined, lng: undefined, regionSearchFailed: true }))
+                        setLocationMatch('failed')
+                    }
+                }
                 const res = await fetch(`/api/Recipe/${id}`, {
                     method: 'PUT',
                     headers: {
@@ -711,7 +786,7 @@ export default function CreateRecipe() {
                         "servings": recipeServings !== "" ? Number(recipeServings) : undefined,
                         "sourceUrl": recipeSourceUrl || undefined,
                         "sourceNotes": sourceNotes || undefined,
-                        "location": locationPayload,
+                        "location": finalLocation,
                         "carbSide": carbSideSaveBody(),
                         "prepWorkChecked": false
                     })
@@ -729,6 +804,18 @@ export default function CreateRecipe() {
                     Router.push(`/recipes/${recipeId}`)
                 }
             } else {
+                // Resolve a user-entered origin before creating, so the pin is
+                // correct immediately (the detail-page auto-fill skips recipes
+                // that already have a country/region/city).
+                let createLocation = locationPayload || itemLocation
+                if (locationTouchedRef.current && createLocation
+                    && (createLocation.country || createLocation.region || createLocation.city)
+                    && !(Number.isFinite(createLocation.lat) && Number.isFinite(createLocation.lng))) {
+                    const match = await matchLocation(createLocation)
+                    createLocation = match
+                        ? { ...createLocation, lat: match.lat, lng: match.lng, regionSearchFailed: undefined }
+                        : { ...createLocation, lat: undefined, lng: undefined, regionSearchFailed: true }
+                }
                 const created = await saveRecipe({
                     name: recipeName,
                     ingreds,
@@ -743,7 +830,7 @@ export default function CreateRecipe() {
                     sourceUrl: recipeSourceUrl || undefined,
                     sourceNotes: sourceNotes || undefined,
                     dishListRefs: listId ? [{ listId, itemId: listItemId, listName }] : undefined,
-                    location: locationPayload || itemLocation
+                    location: createLocation
                 })
                 if (!imageData && generateAiImage && created?._id) {
                     setGeneratingImage(true)
@@ -1705,6 +1792,7 @@ export default function CreateRecipe() {
                                             onChange={(e) => updateLocationField('country', e.target.value)}
                                             placeholder="Country"
                                             className="input-modern"
+                                            style={locationFieldStyle}
                                         />
                                         <input
                                             type="text"
@@ -1712,6 +1800,7 @@ export default function CreateRecipe() {
                                             onChange={(e) => updateLocationField('region', e.target.value)}
                                             placeholder={recipeLocation.regionSearchFailed ? 'Not found' : 'Region / state'}
                                             className="input-modern"
+                                            style={locationFieldStyle}
                                         />
                                         <input
                                             type="text"
@@ -1719,9 +1808,16 @@ export default function CreateRecipe() {
                                             onChange={(e) => updateLocationField('city', e.target.value)}
                                             placeholder={recipeLocation.regionSearchFailed ? 'Not found' : 'City'}
                                             className="input-modern"
+                                            style={locationFieldStyle}
                                         />
                                     </div>
-                                    {recipeLocation.regionSearchFailed && !recipeLocation.region.trim() && !recipeLocation.city.trim() ? (
+                                    {locationMatch === 'matching' ? (
+                                        <p className="ml-1 text-[11px] text-muted-foreground flex items-center gap-1"><Loader2 size={11} className="animate-spin" /> Matching location&#8230;</p>
+                                    ) : locationMatch === 'failed' ? (
+                                        <p className="ml-1 text-[11px] text-amber-500">Couldn't find a match for that place — check the spelling, or add/remove a region or city.</p>
+                                    ) : locationMatch === 'matched' ? (
+                                        <p className="ml-1 text-[11px] text-emerald-500">Location matched — the pin will be placed here on the World Map.</p>
+                                    ) : recipeLocation.regionSearchFailed && !recipeLocation.region.trim() && !recipeLocation.city.trim() ? (
                                         <p className="ml-1 text-[11px] text-amber-500">We searched for an origin but couldn't confidently find one — enter a region/city to place it on the map.</p>
                                     ) : (
                                         <p className="ml-1 text-[11px] text-muted-foreground">Where the dish is from — powers the World Map pin. Left blank, it's AI-filled when the recipe is opened.</p>

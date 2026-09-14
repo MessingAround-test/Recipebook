@@ -3,63 +3,7 @@ import { verifyToken } from '../../../lib/auth'
 import { logAPI } from '../../../lib/logger'
 import dbConnect from '../../../lib/dbConnect'
 import DishListItem from '../../../models/DishListItem'
-
-const LOCATION_KEYS = ['country', 'region', 'city', 'regionId', 'lat', 'lng']
-
-function buildSingleUpdate(body) {
-    const set = {}
-    const unset = {}
-    const addToSet = {}
-
-    if (body.cooked !== undefined) {
-        set.cooked = body.cooked === true
-        if (body.cooked === true) set.cookedAt = new Date()
-        else unset.cookedAt = ''
-    }
-    if (body.notes !== undefined) set.notes = String(body.notes || '').trim()
-    if (body.description !== undefined) set.description = String(body.description || '').trim()
-    if (body.rank !== undefined) set.rank = Number(body.rank) || undefined
-
-    if (body.location !== undefined && body.location && typeof body.location === 'object') {
-        for (const key of LOCATION_KEYS) {
-            if (body.location[key] === undefined) continue
-            const value = body.location[key]
-            if (value === '' || value === null) {
-                unset[`location.${key}`] = ''
-            } else if (key === 'lat' || key === 'lng') {
-                // Only persist real numeric coordinates. Coercing null/''/false
-                // with Number() yields 0, which the map would plot off Africa.
-                const n = typeof value === 'number' ? value : (typeof value === 'string' && value.trim() ? Number(value) : NaN)
-                if (Number.isFinite(n)) set[`location.${key}`] = n
-                else unset[`location.${key}`] = ''
-            } else {
-                set[`location.${key}`] = String(value)
-            }
-        }
-        // A manual region/city edit (with an actual value) clears the
-        // "couldn't find one" marker. Saving blanks leaves it as-is.
-        const regionVal = typeof body.location.region === 'string' ? body.location.region.trim() : ''
-        const cityVal = typeof body.location.city === 'string' ? body.location.city.trim() : ''
-        if (regionVal || cityVal) {
-            set['location.regionSearchFailed'] = false
-        }
-    }
-
-    if (body.recipeId !== undefined) {
-        if (body.recipeId && mongoose.Types.ObjectId.isValid(body.recipeId)) {
-            // Link a recipe; a dish may accumulate several over time.
-            set.recipeId = body.recipeId
-            set.importStatus = 'linked'
-            addToSet.recipeIds = body.recipeId
-        } else {
-            unset.recipeId = ''
-            set.recipeIds = []
-            set.importStatus = 'none'
-        }
-    }
-
-    return { set, unset, addToSet }
-}
+import { buildItemUpdate } from '../../../lib/dishLists/itemUpdate'
 
 export default async function handler(req, res) {
     logAPI(req)
@@ -90,7 +34,10 @@ export default async function handler(req, res) {
             return res.status(400).json({ success: false, message: 'A valid itemId is required' })
         }
 
-        const { set, unset, addToSet } = buildSingleUpdate(req.body || {})
+        const existing = await DishListItem.findById(itemId).select('location').lean()
+        if (!existing) return res.status(404).json({ success: false, message: 'Item not found' })
+
+        const { set, unset, addToSet } = buildItemUpdate(req.body || {}, existing.location || {})
         const update = {}
         if (Object.keys(set).length > 0) update.$set = set
         if (Object.keys(unset).length > 0) update.$unset = unset
