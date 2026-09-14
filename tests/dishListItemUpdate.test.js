@@ -74,3 +74,46 @@ describe('buildItemUpdate location handling', () => {
         expect(set['location.regionSearchFailed']).toBe(false)
     })
 })
+
+describe('buildItemUpdate role restrictions', () => {
+    const existing = { country: 'Türkiye', region: 'Adana', city: 'Adana', lat: 37, lng: 35.3 }
+
+    test('non-admins cannot edit location, notes, description or rank', () => {
+        const { set, unset, addToSet } = buildItemUpdate(
+            {
+                notes: 'hacked',
+                description: 'hacked',
+                rank: 1,
+                location: { country: 'Italy', region: 'Lazio', city: 'Rome', lat: 41.9, lng: 12.5 }
+            },
+            existing,
+            { isAdmin: false }
+        )
+        expect(set).toEqual({})
+        expect(unset).toEqual({})
+        expect(addToSet).toEqual({})
+    })
+
+    test('non-admins can still mark a dish cooked', () => {
+        const { set } = buildItemUpdate({ cooked: true, notes: 'ignored' }, existing, { isAdmin: false })
+        expect(set.cooked).toBe(true)
+        expect(set.notes).toBeUndefined()
+    })
+
+    test('non-admins can still link a recipe', () => {
+        const recipeId = '507f1f77bcf86cd799439011'
+        const { set, addToSet } = buildItemUpdate({ recipeId }, existing, { isAdmin: false })
+        expect(set.recipeId).toBe(recipeId)
+        expect(set.importStatus).toBe('linked')
+        expect(addToSet.recipeIds).toBe(recipeId)
+    })
+
+    test('admins default to full edit access', () => {
+        const { set } = buildItemUpdate(
+            { location: { country: 'Italy', region: 'Lazio', city: 'Rome', lat: 41.9, lng: 12.5 } },
+            existing
+        )
+        expect(set['location.country']).toBe('Italy')
+        expect(set['location.lat']).toBe(41.9)
+    })
+})

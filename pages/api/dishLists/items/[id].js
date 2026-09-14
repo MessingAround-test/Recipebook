@@ -5,6 +5,7 @@ import dbConnect from '../../../../lib/dbConnect'
 import DishList from '../../../../models/DishList'
 import DishListItem from '../../../../models/DishListItem'
 import Recipe from '../../../../models/Recipe'
+import User from '../../../../models/User'
 
 /** Single dish-list item with its list + (optional) linked recipe summary. */
 export default async function handler(req, res) {
@@ -35,7 +36,14 @@ export default async function handler(req, res) {
 
         let recipes = []
         if (recipeIds.length > 0) {
-            const docs = await Recipe.find({ _id: { $in: recipeIds } }).select('name hasImage timesCooked').lean()
+            // Normal users only see their own recipe implementations; admins
+            // see every recipe linked to the dish.
+            const recipeQuery = { _id: { $in: recipeIds } }
+            if (decoded.role !== 'admin') {
+                const user = await User.findById(decoded.id).select('email').lean()
+                recipeQuery.creator_email = user?.email || '__no_such_user__'
+            }
+            const docs = await Recipe.find(recipeQuery).select('name hasImage timesCooked').lean()
             recipes = docs.map(doc => ({
                 _id: doc._id,
                 name: doc.name,

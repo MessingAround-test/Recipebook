@@ -6,6 +6,7 @@ import { DishListItem } from './types'
 interface DishListTableProps {
     items: DishListItem[]
     busyIds?: Set<string>
+    canEdit?: boolean
     onToggle: (item: DishListItem) => void
     onEdit: (item: DishListItem) => void
 }
@@ -15,13 +16,15 @@ interface DishListTableProps {
  * rank, category, rating, origin and blurb; the tick-off + recipe tools sit in
  * the card footer so nothing from the old table is lost.
  */
-export function DishListTable({ items, busyIds, onToggle, onEdit }: DishListTableProps) {
+export function DishListTable({ items, busyIds, canEdit = false, onToggle, onEdit }: DishListTableProps) {
     if (items.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-border rounded-3xl bg-secondary/40">
                 <div className="text-4xl mb-3">🌍</div>
                 <p className="text-sm font-semibold">No dishes to show</p>
-                <p className="text-xs text-muted-foreground mt-1 max-w-[260px]">Add dishes by pasting the TasteAtlas page source, or clear your filters.</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-[260px]">
+                    {canEdit ? 'Add dishes by pasting the TasteAtlas page source, or clear your filters.' : 'Try clearing your filters.'}
+                </p>
             </div>
         )
     }
@@ -120,9 +123,11 @@ export function DishListTable({ items, busyIds, onToggle, onEdit }: DishListTabl
                                             <UtensilsCrossed size={15} />
                                         </a>
                                     )}
-                                    <button onClick={() => onEdit(item)} title="Edit dish" className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
-                                        <Pencil size={15} />
-                                    </button>
+                                    {canEdit && (
+                                        <button onClick={() => onEdit(item)} title="Edit dish" className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                                            <Pencil size={15} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>

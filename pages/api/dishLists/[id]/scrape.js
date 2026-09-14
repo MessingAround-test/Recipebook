@@ -1,5 +1,5 @@
 import mongoose from 'mongoose'
-import { verifyToken } from '../../../../lib/auth'
+import { verifyAdmin } from '../../../../lib/auth'
 import { logAPI } from '../../../../lib/logger'
 import dbConnect from '../../../../lib/dbConnect'
 import DishList from '../../../../models/DishList'
@@ -45,7 +45,7 @@ async function downloadImages(listId, cap = 150) {
 
 export default async function handler(req, res) {
     logAPI(req)
-    const decoded = await verifyToken(req, res)
+    const decoded = await verifyAdmin(req, res)
     if (!decoded) return
 
     if (req.method !== 'POST') {

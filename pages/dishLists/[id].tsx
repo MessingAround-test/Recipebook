@@ -4,7 +4,8 @@ import { Layout } from '../../components/Layout'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { useAuthGuard } from '../../lib/useAuthGuard'
-import { ArrowLeft, ClipboardPaste, Loader2, Search, Sparkles, MapPin, ExternalLink, ListChecks, Trash2, Compass } from 'lucide-react'
+import { useIsAdmin } from '../../lib/useIsAdmin'
+import { ArrowLeft, ClipboardPaste, Loader2, Search, Sparkles, MapPin, ExternalLink, ListChecks, Trash2, Compass, Lock } from 'lucide-react'
 import { PasteModal } from '../../components/dishLists/PasteModal'
 import { ItemEditModal } from '../../components/dishLists/ItemEditModal'
 import { DishListTable } from '../../components/dishLists/DishListTable'
@@ -13,6 +14,7 @@ import { needsLocationWork, hasPoint } from '../../lib/dishLists/locationStatus'
 
 export default function DishListDetail() {
     const isAuthed = useAuthGuard()
+    const isAdmin = useIsAdmin()
     const router = useRouter()
     const listId = typeof router.query.id === 'string' ? router.query.id : ''
 
@@ -233,6 +235,23 @@ export default function DishListDetail() {
         }
     }
 
+    const toggleSystem = async () => {
+        if (!list) return
+        const next = !list.isSystem
+        if (next && !confirm('Mark this as a system list? System lists are the app\'s official lists.')) return
+        const res = await fetch(`/api/dishLists/${listId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', edgetoken: token() },
+            body: JSON.stringify({ isSystem: next })
+        })
+        const data = await res.json()
+        if (data.success) {
+            setList(prev => prev ? { ...prev, isSystem: next } : prev)
+        } else {
+            alert(data.message || 'Could not update list')
+        }
+    }
+
     if (!isAuthed) return null
 
     return (
@@ -265,51 +284,69 @@ export default function DishListDetail() {
                         >
                             <Compass size={17} />
                         </button>
-                        <button
-                            onClick={deleteList}
-                            disabled={deleting}
-                            title="Delete list (recipes are kept)"
-                            aria-label="Delete list"
-                            className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-secondary transition-colors shrink-0 disabled:opacity-50"
-                        >
-                            {deleting ? <Loader2 size={17} className="animate-spin" /> : <Trash2 size={17} />}
-                        </button>
+                        {isAdmin && (
+                            <button
+                                onClick={deleteList}
+                                disabled={deleting}
+                                title="Delete list (recipes are kept)"
+                                aria-label="Delete list"
+                                className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-secondary transition-colors shrink-0 disabled:opacity-50"
+                            >
+                                {deleting ? <Loader2 size={17} className="animate-spin" /> : <Trash2 size={17} />}
+                            </button>
+                        )}
                     </div>
 
                     <div className="h-1.5 rounded-full bg-secondary overflow-hidden mt-3">
                         <div className="h-full bg-emerald-500 transition-all" style={{ width: `${items.length ? (cookedCount / items.length) * 100 : 0}%` }} />
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 mt-3">
-                        <Button size="sm" onClick={() => setPasteOpen(true)} className="rounded-xl">
-                            <ClipboardPaste size={14} /> Add dishes
-                        </Button>
-                        <Button size="sm" variant="secondary" onClick={runEnrich} disabled={enriching || items.length === 0} className="rounded-xl">
-                            {enriching ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                            {enriching ? `Blurbs & images${enrichRemaining != null ? ` (${enrichRemaining} left)` : ''}` : 'Blurbs & images'}
-                        </Button>
-                        <Button size="sm" variant="secondary" onClick={runGeocode} disabled={geocoding || items.length === 0} className="rounded-xl" title="Guess each dish's region/city and resolve map coordinates (slow)">
-                            {geocoding ? <Loader2 size={14} className="animate-spin" /> : <MapPin size={14} />}
-                            {geocoding ? `Locations${geocodeRemaining != null ? ` (${geocodeRemaining} left)` : '…'}` : 'Locations'}
-                        </Button>
-                        <label
-                            title="Dishes whose location has a problem, so they're not showing on the map"
-                            className={`inline-flex items-center gap-2 h-9 px-3 rounded-xl border text-xs font-semibold select-none transition-colors ${issueCount === 0
-                                ? 'opacity-40 cursor-not-allowed border-border bg-secondary text-muted-foreground'
-                                : filterIssues
-                                    ? 'cursor-pointer bg-amber-500/15 border-amber-500/50 text-amber-500'
-                                    : 'cursor-pointer bg-secondary border-border text-muted-foreground hover:text-amber-500 hover:border-amber-500/40'}`}
-                        >
-                            <input
-                                type="checkbox"
-                                checked={filterIssues}
-                                disabled={issueCount === 0}
-                                onChange={e => { const next = e.target.checked; setFilterIssues(next); if (next) setFilter('all') }}
-                                className={`h-3.5 w-3.5 rounded border-border accent-amber-500 ${issueCount === 0 ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                            />
-                            Location issues{issueCount > 0 ? ` (${issueCount})` : ''}
-                        </label>
-                    </div>
+                    {isAdmin && (
+                        <div className="flex flex-wrap items-center gap-2 mt-3">
+                            <Button size="sm" onClick={() => setPasteOpen(true)} className="rounded-xl">
+                                <ClipboardPaste size={14} /> Add dishes
+                            </Button>
+                            <Button size="sm" variant="secondary" onClick={runEnrich} disabled={enriching || items.length === 0} className="rounded-xl">
+                                {enriching ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                                {enriching ? `Blurbs & images${enrichRemaining != null ? ` (${enrichRemaining} left)` : ''}` : 'Blurbs & images'}
+                            </Button>
+                            <Button size="sm" variant="secondary" onClick={runGeocode} disabled={geocoding || items.length === 0} className="rounded-xl" title="Guess each dish's region/city and resolve map coordinates (slow)">
+                                {geocoding ? <Loader2 size={14} className="animate-spin" /> : <MapPin size={14} />}
+                                {geocoding ? `Locations${geocodeRemaining != null ? ` (${geocodeRemaining} left)` : '…'}` : 'Locations'}
+                            </Button>
+                            <label
+                                title="Dishes whose location has a problem, so they're not showing on the map"
+                                className={`inline-flex items-center gap-2 h-9 px-3 rounded-xl border text-xs font-semibold select-none transition-colors ${issueCount === 0
+                                    ? 'opacity-40 cursor-not-allowed border-border bg-secondary text-muted-foreground'
+                                    : filterIssues
+                                        ? 'cursor-pointer bg-amber-500/15 border-amber-500/50 text-amber-500'
+                                        : 'cursor-pointer bg-secondary border-border text-muted-foreground hover:text-amber-500 hover:border-amber-500/40'}`}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={filterIssues}
+                                    disabled={issueCount === 0}
+                                    onChange={e => { const next = e.target.checked; setFilterIssues(next); if (next) setFilter('all') }}
+                                    className={`h-3.5 w-3.5 rounded border-border accent-amber-500 ${issueCount === 0 ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                />
+                                Location issues{issueCount > 0 ? ` (${issueCount})` : ''}
+                            </label>
+                            <label
+                                title="Mark this list as one of the app's official system lists"
+                                className={`inline-flex items-center gap-2 h-9 px-3 rounded-xl border text-xs font-semibold select-none cursor-pointer transition-colors ${list?.isSystem
+                                    ? 'bg-accent/15 border-accent/50 text-accent'
+                                    : 'bg-secondary border-border text-muted-foreground hover:text-accent hover:border-accent/40'}`}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={!!list?.isSystem}
+                                    onChange={toggleSystem}
+                                    className="h-3.5 w-3.5 rounded border-border accent-accent cursor-pointer"
+                                />
+                                <Lock size={12} /> System list
+                            </label>
+                        </div>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-2 mt-3">
                         <div className="relative flex-1 min-w-[10rem]">
@@ -368,6 +405,7 @@ export default function DishListDetail() {
                             <DishListTable
                                 items={filtered}
                                 busyIds={busyIds}
+                                canEdit={isAdmin}
                                 onToggle={toggleCooked}
                                 onEdit={(item) => setEditItem(item)}
                             />

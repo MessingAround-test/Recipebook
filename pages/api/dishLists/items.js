@@ -37,7 +37,11 @@ export default async function handler(req, res) {
         const existing = await DishListItem.findById(itemId).select('location').lean()
         if (!existing) return res.status(404).json({ success: false, message: 'Item not found' })
 
-        const { set, unset, addToSet } = buildItemUpdate(req.body || {}, existing.location || {})
+        const { set, unset, addToSet } = buildItemUpdate(
+            req.body || {},
+            existing.location || {},
+            { isAdmin: decoded.role === 'admin' }
+        )
         const update = {}
         if (Object.keys(set).length > 0) update.$set = set
         if (Object.keys(unset).length > 0) update.$unset = unset

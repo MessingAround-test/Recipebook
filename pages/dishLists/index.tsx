@@ -3,12 +3,14 @@ import Router from 'next/router'
 import { Layout } from '../../components/Layout'
 import { Button } from '../../components/ui/button'
 import { useAuthGuard } from '../../lib/useAuthGuard'
+import { useIsAdmin } from '../../lib/useIsAdmin'
 import { Plus, Globe2, Loader2, UtensilsCrossed, Sparkles, Compass } from 'lucide-react'
 import { NewListModal } from '../../components/dishLists/NewListModal'
 import { DishListSummary } from '../../components/dishLists/types'
 
 export default function DishLists() {
     const isAuthed = useAuthGuard()
+    const isAdmin = useIsAdmin()
     const [lists, setLists] = useState<DishListSummary[]>([])
     const [loading, setLoading] = useState(true)
     const [newOpen, setNewOpen] = useState(false)
@@ -24,16 +26,8 @@ export default function DishLists() {
     const load = async () => {
         setLoading(true)
         try {
-            let data = await fetchLists()
-            // Seed the two starter lists on first visit (idempotent).
-            if (data.length === 0) {
-                await fetch('/api/dishLists/seed', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', edgetoken: token() },
-                    body: JSON.stringify({})
-                })
-                data = await fetchLists()
-            }
+            // Default system lists are seeded server-side.
+            const data = await fetchLists()
             setLists(data)
         } finally {
             setLoading(false)
@@ -59,9 +53,11 @@ export default function DishLists() {
                             <Button size="sm" variant="secondary" onClick={() => Router.push('/map?from=/dishLists')} className="rounded-xl">
                                 <Compass size={16} /> World map
                             </Button>
-                            <Button size="sm" onClick={() => setNewOpen(true)} className="rounded-xl">
-                                <Plus size={16} /> New list
-                            </Button>
+                            {isAdmin && (
+                                <Button size="sm" onClick={() => setNewOpen(true)} className="rounded-xl">
+                                    <Plus size={16} /> New list
+                                </Button>
+                            )}
                         </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">

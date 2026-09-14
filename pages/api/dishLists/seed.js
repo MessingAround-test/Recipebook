@@ -1,16 +1,12 @@
-import { verifyToken } from '../../../lib/auth'
+import { verifyAdmin } from '../../../lib/auth'
 import { logAPI } from '../../../lib/logger'
 import dbConnect from '../../../lib/dbConnect'
 import DishList from '../../../models/DishList'
-import { TASTEATLAS_PRESETS } from '../../../lib/dishLists/tasteAtlas'
-
-// The two starter lists requested up-front. Further presets can be added by
-// the user from the UI without touching this endpoint.
-const SEED_KEYS = ['best-dishes', 'best-side-dishes']
+import { ensureSystemLists } from '../../../lib/dishLists/systemLists'
 
 export default async function handler(req, res) {
     logAPI(req)
-    const decoded = await verifyToken(req, res)
+    const decoded = await verifyAdmin(req, res)
     if (!decoded) return
 
     if (req.method !== 'POST') {
@@ -19,23 +15,7 @@ export default async function handler(req, res) {
 
     try {
         await dbConnect()
-        const created = []
-        for (const key of SEED_KEYS) {
-            const preset = TASTEATLAS_PRESETS.find(p => p.key === key)
-            if (!preset) continue
-            const existing = await DishList.findOne({ sourceUrl: preset.url }).lean()
-            if (existing) continue
-            const list = await DishList.create({
-                name: preset.name,
-                description: preset.description,
-                sourceType: 'tasteatlas',
-                sourceUrl: preset.url,
-                dietaryFilters: preset.dietaryFilters,
-                isSystem: true,
-                createdBy: req.body?.createdBy
-            })
-            created.push(list)
-        }
+        const created = await ensureSystemLists(req.body?.createdBy)
         const data = await DishList.find({}).sort({ created_at: 1 }).lean()
         return res.status(200).json({ success: true, data, created: created.length })
     } catch (error) {

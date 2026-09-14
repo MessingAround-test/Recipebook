@@ -64,11 +64,16 @@ export default async function handler(req, res) {
         }
 
         if (req.method === 'PUT') {
+            if (decoded.role !== 'admin') {
+                return res.status(403).json({ success: false, message: 'Forbidden: Admin access only' })
+            }
             const update = {}
             if (typeof req.body?.name === 'string' && req.body.name.trim()) update.name = req.body.name.trim()
             if (req.body?.description !== undefined) update.description = String(req.body.description || '').trim()
             if (req.body?.sourceUrl !== undefined) update.sourceUrl = String(req.body.sourceUrl || '').trim()
             if (req.body?.dietaryFilters !== undefined) update.dietaryFilters = normalizeCriteria(req.body.dietaryFilters)
+            // Admins can mark a list as a system (official) list.
+            if (typeof req.body?.isSystem === 'boolean') update.isSystem = req.body.isSystem
             if (Object.keys(update).length === 0) {
                 return res.status(400).json({ success: false, message: 'No data provided to update' })
             }
@@ -77,6 +82,9 @@ export default async function handler(req, res) {
         }
 
         if (req.method === 'DELETE') {
+            if (decoded.role !== 'admin') {
+                return res.status(403).json({ success: false, message: 'Forbidden: Admin access only' })
+            }
             const items = await DishListItem.find({ listId }).select('_id recipeId').lean()
 
             // Recipes imported for this list are deliberately kept in /recipes.

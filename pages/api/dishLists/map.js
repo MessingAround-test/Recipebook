@@ -139,6 +139,10 @@ export default async function handler(req, res) {
         }
 
         if (req.method === 'POST') {
+            // Location generation is admin-only; users view the map read-only.
+            if (decoded.role !== 'admin') {
+                return res.status(403).json({ success: false, message: 'Forbidden: Admin access only' })
+            }
             const limit = Math.max(1, Math.min(50, Number(req.body?.limit) || GUESS_BATCH_SIZE))
             const source = req.body?.source === 'recipe' ? 'recipe' : 'dish'
             const itemIds = Array.isArray(req.body?.itemIds)

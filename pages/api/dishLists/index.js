@@ -4,6 +4,7 @@ import dbConnect from '../../../lib/dbConnect'
 import DishList from '../../../models/DishList'
 import DishListItem from '../../../models/DishListItem'
 import { normalizeCriteria } from '../../../lib/dishLists/criteria'
+import { ensureSystemLists } from '../../../lib/dishLists/systemLists'
 
 export default async function handler(req, res) {
     logAPI(req)
@@ -14,6 +15,8 @@ export default async function handler(req, res) {
         await dbConnect()
 
         if (req.method === 'GET') {
+            // The default "100 Best Dishes in the World" list is always present.
+            await ensureSystemLists().catch(() => { })
             const lists = await DishList.find({}).sort({ created_at: 1 }).lean()
             const counts = await DishListItem.aggregate([
                 {
@@ -34,6 +37,9 @@ export default async function handler(req, res) {
         }
 
         if (req.method === 'POST') {
+            if (decoded.role !== 'admin') {
+                return res.status(403).json({ success: false, message: 'Forbidden: Admin access only' })
+            }
             const name = (req.body?.name || '').trim()
             if (!name) return res.status(400).json({ success: false, message: 'A list name is required' })
 

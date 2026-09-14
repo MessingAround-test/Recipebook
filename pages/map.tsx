@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { Layout } from '../components/Layout'
 import { Button } from '../components/ui/button'
 import { useAuthGuard } from '../lib/useAuthGuard'
+import { useIsAdmin } from '../lib/useIsAdmin'
 import { ArrowLeft, Loader2, MapPin, Plus, Minus, Compass, UtensilsCrossed, Check, Maximize2, List, Wand2 } from 'lucide-react'
 import { buildViewportTiles, projectToPercent, tileZoomForScale } from '../lib/dishLists/mercator'
 import { hasRegionArea } from '../lib/dishLists/locationStatus'
@@ -132,6 +133,7 @@ const itemUrl = (p: MapPoint): string =>
 
 export default function WorldMap() {
     const isAuthed = useAuthGuard()
+    const isAdmin = useIsAdmin()
     const router = useRouter()
     const queryListId = typeof router.query.listId === 'string' ? router.query.listId : ''
     const fromParam = typeof router.query.from === 'string' ? router.query.from : ''
@@ -438,17 +440,19 @@ export default function WorldMap() {
                                 {stats.located} of {stats.total} located · {countryCount} countries
                             </p>
                         </div>
-                        <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={runGeocode}
-                            disabled={geocoding || loading}
-                            className="rounded-xl shrink-0"
-                            title="Guess each item's region/city and resolve map coordinates (slow)"
-                        >
-                            {geocoding ? <Loader2 size={14} className="animate-spin" /> : <MapPin size={14} />}
-                            {geocoding ? `Locations${geocodeRemaining != null ? ` (${geocodeRemaining} left)` : '…'}` : 'Locations'}
-                        </Button>
+                        {isAdmin && (
+                            <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={runGeocode}
+                                disabled={geocoding || loading}
+                                className="rounded-xl shrink-0"
+                                title="Guess each item's region/city and resolve map coordinates (slow)"
+                            >
+                                {geocoding ? <Loader2 size={14} className="animate-spin" /> : <MapPin size={14} />}
+                                {geocoding ? `Locations${geocodeRemaining != null ? ` (${geocodeRemaining} left)` : '…'}` : 'Locations'}
+                            </Button>
+                        )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 mt-3">
