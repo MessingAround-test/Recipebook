@@ -48,6 +48,12 @@ export default function DishListDetail() {
             if (data.success) {
                 setList(data.data.list)
                 setItems(data.data.items || [])
+                if (typeof window !== 'undefined' && data.data.list) {
+                    localStorage.setItem('lastDishList', JSON.stringify({
+                        id: String(data.data.list._id || listId),
+                        name: data.data.list.name
+                    }))
+                }
             }
         } finally {
             if (!silent) setLoading(false)

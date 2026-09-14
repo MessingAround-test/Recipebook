@@ -4,7 +4,7 @@ import { Layout } from '../components/Layout'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import { NUTRIENT_LABELS } from '../lib/dailyIntake'
 import { calculateHealthScore, DEFAULT_HEALTH_SCORE_CONFIG, HealthScoreConfig } from '../lib/healthScore'
-import { FiZap, FiActivity, FiShoppingCart, FiCalendar, FiArrowRight, FiPlus, FiCheckCircle, FiChevronRight, FiTrendingUp, FiSearch, FiX, FiCoffee, FiRefreshCw, FiSettings, FiGrid } from 'react-icons/fi'
+import { FiZap, FiActivity, FiShoppingCart, FiCalendar, FiArrowRight, FiPlus, FiCheckCircle, FiChevronRight, FiCompass, FiSearch, FiX, FiCoffee, FiRefreshCw, FiSettings, FiGrid } from 'react-icons/fi'
 import IngredientEditor from '../components/IngredientEditor'
 import { fileToBase64 } from '../lib/recipeImage'
 import { extractRecipeFromImage, saveRecipe, Ingredient } from '../lib/recipeExtraction'
@@ -60,7 +60,7 @@ export default function Dashboard() {
     const [planCoverage, setPlanCoverage] = useState<any>(null)
     const [shoppingLists, setShoppingLists] = useState<any[]>([])
     const [listItemsCount, setListItemsCount] = useState<number | null>(null)
-    const [trendDays, setTrendDays] = useState<any[]>([])
+    const [lastDishList, setLastDishList] = useState<{ _id: string; name: string; counts?: any } | null>(null)
     const [recipes, setRecipes] = useState<any[]>([])
     const [knownIngredients, setKnownIngredients] = useState<string[]>([])
     const [symptomLog, setSymptomLog] = useState<any>(null)
@@ -96,8 +96,6 @@ export default function Dashboard() {
 
         setLoading(true)
         const today = getLocalDateString(new Date())
-        const trendStart = new Date()
-        trendStart.setDate(trendStart.getDate() - 6)
 
         Promise.allSettled([
             fetch('/api/dailyIntake', { headers: { edgetoken: token } }).then(r => r.json()),
@@ -105,11 +103,11 @@ export default function Dashboard() {
             fetch('/api/dailyLog/recommendations', { headers: { edgetoken: token } }).then(r => r.json()),
             fetch(`/api/weeklyPlan?startDate=${today}`, { headers: { edgetoken: token } }).then(r => r.json()),
             fetch('/api/ShoppingList', { headers: { edgetoken: token } }).then(r => r.json()),
-            fetch(`/api/trends?startDate=${getLocalDateString(trendStart)}&endDate=${today}`, { headers: { edgetoken: token } }).then(r => r.json()),
+            fetch('/api/dishLists', { headers: { edgetoken: token } }).then(r => r.json()),
             fetch('/api/Recipe', { headers: { edgetoken: token } }).then(r => r.json()),
             fetch('/api/Ingredients/defaults', { headers: { edgetoken: token } }).then(r => r.json()),
             fetch(`/api/symptomLog?date=${today}`, { headers: { edgetoken: token } }).then(r => r.json()),
-        ]).then(([targetRes, logRes, recRes, planRes, listRes, trendRes, recipeRes, ingRes, symptomRes]) => {
+        ]).then(([targetRes, logRes, recRes, planRes, listRes, dishRes, recipeRes, ingRes, symptomRes]) => {
             if (targetRes.status === 'fulfilled' && targetRes.value.success) {
                 setTargets(targetRes.value.targets)
                 if (targetRes.value.healthScoreConfig) {
@@ -140,8 +138,22 @@ export default function Dashboard() {
                 lists.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                 setShoppingLists(lists)
             }
-            if (trendRes.status === 'fulfilled' && trendRes.value.success) {
-                setTrendDays(trendRes.value.days || [])
+            if (typeof window !== 'undefined') {
+                try {
+                    const stored = localStorage.getItem('lastDishList')
+                    const parsed = stored ? JSON.parse(stored) : null
+                    if (parsed?.id) {
+                        const summaries = dishRes.status === 'fulfilled' ? (dishRes.value.data || []) : []
+                        const match = summaries.find((l: any) => String(l._id) === String(parsed.id))
+                        setLastDishList(match
+                            ? { _id: String(match._id), name: match.name, counts: match.counts }
+                            : { _id: String(parsed.id), name: parsed.name || 'Dish list' })
+                    } else {
+                        setLastDishList(null)
+                    }
+                } catch {
+                    setLastDishList(null)
+                }
             }
             if (recipeRes.status === 'fulfilled' && recipeRes.value.res) {
                 setRecipes(recipeRes.value.res)
@@ -262,12 +274,6 @@ export default function Dashboard() {
     const caloriePct = calorieTarget > 0 ? Math.min((calories / calorieTarget) * 100, 100) : 0
 
     const scoreColor = dailyScore > 80 ? 'text-emerald-400' : dailyScore > 50 ? 'text-amber-400' : 'text-rose-400'
-
-    const trendAvg = useMemo(() => {
-        const withScore = trendDays.filter(d => Number(d.score) > 0)
-        const raw = withScore.length ? withScore.reduce((a, b) => a + Number(b.score), 0) / withScore.length : 0
-        return { raw, rounded: Math.round(raw), count: withScore.length }
-    }, [trendDays])
 
     const todayDayName = new Date().toLocaleDateString('en-AU', { weekday: 'long' })
     const todayMealsAll = weekPlan?.plannedRecipes?.filter((r: any) => r.day === getLocalDateString(new Date())) || []
@@ -681,6 +687,63 @@ export default function Dashboard() {
         </div>
     )
 
+    const lastDishTotal = lastDishList?.counts?.total || 0
+    const lastDishCooked = lastDishList?.counts?.cooked || 0
+    const lastDishPct = lastDishTotal > 0 ? Math.round((lastDishCooked / lastDishTotal) * 100) : 0
+
+    const dishListCard = (
+        <div className="bg-gradient-to-br from-amber-500/[0.24] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                    <IconChip className="bg-amber-500/15 text-amber-400"><FiCompass size={16} /></IconChip>
+                    <h3 className="text-sm font-black tracking-tight">Explore</h3>
+                </div>
+                <button
+                    onClick={() => Router.push('/dishLists')}
+                    className="text-[9px] font-bold uppercase tracking-widest text-amber-400 hover:text-amber-300 transition-colors inline-flex items-center gap-1"
+                >
+                    All <FiArrowRight size={11} />
+                </button>
+            </div>
+
+            {!lastDishList ? (
+                <button
+                    onClick={() => Router.push('/dishLists')}
+                    className="flex-1 w-full flex items-center justify-between p-4 bg-black/25 rounded-xl hover:bg-amber-500/15 transition-all text-left"
+                >
+                    <div className="flex items-center gap-3">
+                        <FiCompass size={18} className="text-amber-300" />
+                        <span className="text-sm font-semibold text-muted-foreground">Explore the world's best dishes</span>
+                    </div>
+                    <FiChevronRight size={16} className="text-muted-foreground shrink-0" />
+                </button>
+            ) : (
+                <button
+                    onClick={() => Router.push(`/dishLists/${lastDishList._id}`)}
+                    className="flex-1 w-full flex flex-col justify-between gap-3 p-4 bg-black/25 rounded-xl hover:bg-amber-500/15 transition-all text-left group"
+                >
+                    <div className="w-full min-w-0">
+                        <div className="text-[8px] font-bold uppercase tracking-widest text-amber-400 mb-1">Last Viewed</div>
+                        <div className="text-lg md:text-xl font-black truncate group-hover:text-amber-300 transition-colors">{lastDishList.name}</div>
+                        {lastDishList.counts && (
+                            <div className="flex items-center gap-2 mt-1.5 text-[10px] font-semibold text-muted-foreground">
+                                <span>{lastDishCooked}/{lastDishTotal} cooked</span>
+                                <span className="w-1 h-1 rounded-full bg-white/20" />
+                                <span className="text-amber-300 font-bold">{lastDishPct}%</span>
+                            </div>
+                        )}
+                    </div>
+                    <div className="w-full flex items-center gap-3">
+                        <div className="h-2 flex-1 rounded-full bg-white/10 overflow-hidden">
+                            <div className="h-full bg-amber-400 rounded-full transition-all" style={{ width: `${lastDishPct}%` }} />
+                        </div>
+                        <FiChevronRight size={18} className="text-muted-foreground group-hover:text-amber-300 shrink-0" />
+                    </div>
+                </button>
+            )}
+        </div>
+    )
+
     return (
         <Layout title="Dashboard" description="Your health, plans and lists at a glance">
             <div className="mx-0 sm:mx-0">
@@ -835,71 +898,8 @@ export default function Dashboard() {
                         </>
                     )}
 
-                    {/* ═══ MINI SCORE TREND ═══ */}
-                    <div className="bg-gradient-to-br from-teal-500/[0.24] via-transparent to-transparent rounded-2xl p-4 md:p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2.5">
-                                <IconChip className="bg-teal-500/15 text-teal-300"><FiTrendingUp size={16} /></IconChip>
-                                <h3 className="text-sm font-black tracking-tight">Score Trend</h3>
-                            </div>
-                            {loading && trendDays.length === 0 ? (
-                                <Skeleton className="h-4 w-20" />
-                            ) : (
-                                <span className="text-[10px] font-semibold text-muted-foreground">Last 7 days · avg <span className="text-teal-300 font-black">{trendAvg.rounded}%</span></span>
-                            )}
-                        </div>
-
-                        {loading && trendDays.length === 0 ? (
-                            <Skeleton className="h-20 md:h-24 w-full" />
-                        ) : trendDays.length === 0 ? (
-                            <p className="text-xs font-semibold text-muted-foreground py-6 text-center">No tracking data yet.</p>
-                        ) : (
-                            <div className="relative h-28 md:h-32">
-                                <div className="flex items-end gap-1.5 h-full">
-                                    {trendDays.map((d, idx) => {
-                                        const hasScore = Number(d.score) > 0
-                                        const score = Math.min(Math.max(Number(d.score) || 0, 0), 100)
-                                        const aboveAvg = hasScore && trendAvg.count > 0 && score >= trendAvg.raw
-                                        const isToday = idx === trendDays.length - 1
-                                        const dayLabel = new Date(`${d.date}T00:00:00`).toLocaleDateString('en-AU', { weekday: 'narrow' })
-                                        return (
-                                            <div key={d.date} className="flex-1 flex flex-col items-center h-full">
-                                                <div className="h-3.5 flex items-center shrink-0">
-                                                    <span className={`text-[8px] font-black leading-none ${!hasScore ? 'text-muted-foreground/40' : aboveAvg ? 'text-teal-300' : 'text-rose-300'}`}>
-                                                        {hasScore ? `${score}%` : '–'}
-                                                    </span>
-                                                </div>
-                                                <div className="w-full max-w-[20px] flex-1 relative">
-                                                    <div
-                                                        className={`absolute bottom-0 left-0 right-0 rounded-t-lg transition-all ${!hasScore
-                                                            ? 'bg-white/10'
-                                                            : aboveAvg
-                                                                ? 'bg-gradient-to-t from-teal-500/80 to-emerald-400/70'
-                                                                : 'bg-gradient-to-t from-rose-500/70 to-rose-400/50'}`}
-                                                        style={{ height: hasScore ? `${score}%` : '4px' }}
-                                                    />
-                                                </div>
-                                                <div className="h-3 flex items-center shrink-0">
-                                                    <span className={`text-[8px] font-bold uppercase ${isToday ? 'text-teal-300' : 'text-muted-foreground/60'}`}>{dayLabel}</span>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-
-                                {trendAvg.count > 0 && (
-                                    <div
-                                        className="pointer-events-none absolute inset-x-0 z-10"
-                                        style={{ top: `calc(14px + (100% - 26px) * ${(100 - trendAvg.raw) / 100})` }}
-                                    >
-                                        <div className="border-t border-dashed border-teal-300/50 relative">
-                                            <span className="absolute right-0 -top-2.5 text-[7px] font-black uppercase tracking-widest text-teal-300/70 bg-background/60 px-1">avg {trendAvg.rounded}%</span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                    {/* ═══ EXPLORE / DISH LISTS ═══ */}
+                    {dishListCard}
 
                     {/* ═══ DAILY TASKS (all done, moved down) ═══ */}
                     {allTasksDone && (
