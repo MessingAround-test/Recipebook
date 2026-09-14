@@ -18,4 +18,17 @@ describe('sanitizeRecipeLocation', () => {
         expect(sanitizeRecipeLocation({})).toBeUndefined()
         expect(sanitizeRecipeLocation(null)).toBeUndefined()
     })
+    test('does not coerce blank/boolean coordinates to zero', () => {
+        const blank = sanitizeRecipeLocation({ country: 'Türkiye', lat: '', lng: null })
+        expect(blank.lat).toBeUndefined()
+        expect(blank.lng).toBeUndefined()
+        const bool = sanitizeRecipeLocation({ country: 'Türkiye', lat: false, lng: false })
+        expect(bool.lat).toBeUndefined()
+        expect(bool.lng).toBeUndefined()
+    })
+    test('keeps real coordinates including a zero on one axis', () => {
+        const loc = sanitizeRecipeLocation({ country: 'Kenya', lat: 0, lng: 37 })
+        expect(loc.lat).toBe(0)
+        expect(loc.lng).toBe(37)
+    })
 })

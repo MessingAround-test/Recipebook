@@ -24,8 +24,17 @@ function buildSingleUpdate(body) {
         for (const key of LOCATION_KEYS) {
             if (body.location[key] === undefined) continue
             const value = body.location[key]
-            if (value === '' || value === null) unset[`location.${key}`] = ''
-            else set[`location.${key}`] = key === 'lat' || key === 'lng' ? Number(value) : String(value)
+            if (value === '' || value === null) {
+                unset[`location.${key}`] = ''
+            } else if (key === 'lat' || key === 'lng') {
+                // Only persist real numeric coordinates. Coercing null/''/false
+                // with Number() yields 0, which the map would plot off Africa.
+                const n = typeof value === 'number' ? value : (typeof value === 'string' && value.trim() ? Number(value) : NaN)
+                if (Number.isFinite(n)) set[`location.${key}`] = n
+                else unset[`location.${key}`] = ''
+            } else {
+                set[`location.${key}`] = String(value)
+            }
         }
         // A manual region/city edit (with an actual value) clears the
         // "couldn't find one" marker. Saving blanks leaves it as-is.

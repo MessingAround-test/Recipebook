@@ -43,8 +43,17 @@ const str = (value: unknown): string | undefined => {
 }
 
 const num = (value: unknown): number | undefined => {
-    const n = Number(value)
-    return Number.isFinite(n) ? n : undefined
+    // Only accept real numbers or non-empty numeric strings. `Number(null)`,
+    // `Number('')` and `Number(false)` are all 0 — coercing those would store a
+    // bogus (0,0) coordinate that the map would plot off West Africa.
+    if (typeof value === 'number') return Number.isFinite(value) ? value : undefined
+    if (typeof value === 'string') {
+        const trimmed = value.trim()
+        if (!trimmed) return undefined
+        const n = Number(trimmed)
+        return Number.isFinite(n) ? n : undefined
+    }
+    return undefined
 }
 
 export const sanitizeRecipeLocation = (input: unknown): RecipeLocation | undefined => {

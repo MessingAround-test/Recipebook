@@ -14,8 +14,17 @@ export interface ItemLocation {
 export const hasRegionArea = (loc?: ItemLocation | null): boolean =>
     Boolean((loc?.region || '').trim() || (loc?.city || '').trim())
 
+// `(0, 0)` is the sentinel a missing coordinate can be coerced to (Number('')
+// === 0, etc). It is a real spot in the Gulf of Guinea, so treat an exact
+// double-zero as "no point" — single-axis zeros (equator / prime meridian) stay
+// valid.
 export const hasPoint = (loc?: ItemLocation | null): boolean =>
-    Boolean(loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lng))
+    Boolean(
+        loc &&
+        Number.isFinite(loc.lat) &&
+        Number.isFinite(loc.lng) &&
+        !(loc.lat === 0 && loc.lng === 0)
+    )
 
 /** True when there is enough place info to attempt geocoding/refinement. */
 export const hasPlace = (loc?: ItemLocation | null): boolean =>
@@ -29,8 +38,8 @@ export const hasPlace = (loc?: ItemLocation | null): boolean =>
  *    failed (`regionSearchFailed`), the country pin is left alone so the
  *    worklist stops looping over it.
  */
-export const needsLocationWork = (loc?: ItemLocation | null): boolean =>
-    hasPlace(loc) && (
-        !hasPoint(loc) ||
-        (!hasRegionArea(loc) && loc?.regionSearchFailed !== true)
-    )
+export const needsLocationWork = (loc?: ItemLocation | null): boolean => {
+    if (!hasPlace(loc)) return false
+    if (!hasRegionArea(loc)) return loc?.regionSearchFailed !== true
+    return !hasPoint(loc)
+}
