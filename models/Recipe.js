@@ -61,13 +61,16 @@ const dishListRefSchema = new mongoose.Schema({
     listName: { type: String }
 }, { _id: false })
 
-// Optional geo data for a future "where is this dish from" world map.
+// Optional geo data for the "where is this dish from" world map.
 const recipeLocationSchema = new mongoose.Schema({
     country: { type: String },
     region: { type: String },
     city: { type: String },
     lat: { type: Number },
-    lng: { type: Number }
+    lng: { type: Number },
+    // Set when an origin search ran but found nothing confidently. Shown in the
+    // editor so it isn't silently retried every time the recipe is opened.
+    regionSearchFailed: { type: Boolean, default: false }
 }, { _id: false })
 
 const carbSideSchema = new mongoose.Schema({

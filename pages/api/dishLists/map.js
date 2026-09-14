@@ -45,9 +45,11 @@ const toRecipePlaceInput = (recipe) => ({
     city: recipe.location?.city
 })
 
-/** Recipes still need work when there are no coordinates or no region/city.
- *  Recipes with no location at all are included so they can be AI-generated. */
-const recipeNeedsWork = (location) => !hasPoint(location) || !hasRegionArea(location)
+/** Recipes still need work when there are no coordinates or no region/city,
+ *  unless an attempt has already been made and found nothing. Recipes with no
+ *  location at all are included so they can be AI-generated. */
+const recipeNeedsWork = (location) =>
+    location?.regionSearchFailed !== true && (!hasPoint(location) || !hasRegionArea(location))
 
 export default async function handler(req, res) {
     logAPI(req)
@@ -165,8 +167,10 @@ export default async function handler(req, res) {
                     const guess = guessById.get(String(recipe._id)) || null
                     const resolved = await geocodeRecipeOrigin(input, guess)
                     if (resolved) {
-                        await Recipe.updateOne({ _id: recipe._id }, { $set: locationPatch(resolved, { includeCountry: true }) })
+                        await Recipe.updateOne({ _id: recipe._id }, { $set: { ...locationPatch(resolved, { includeCountry: true }), 'location.regionSearchFailed': false } })
                         processed++
+                    } else {
+                        await Recipe.updateOne({ _id: recipe._id }, { $set: { 'location.regionSearchFailed': true } })
                     }
                     // Nominatim asks for ~1 request/second.
                     if (index < batch.length - 1) await sleep(1100)

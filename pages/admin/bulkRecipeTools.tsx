@@ -18,6 +18,7 @@ type RecipeRow = {
     carbAlreadyIn?: boolean
     image?: boolean
     hasLocation?: boolean
+    locationAttempted?: boolean
 }
 
 type OpKind = 'normalize' | 'prep' | 'timers' | 'carbside' | 'location' | 'image'
@@ -165,7 +166,8 @@ export default function BulkRecipeTools() {
                                 ...(data.hasTimers !== undefined ? { timersChecked: data.hasTimers } : {}),
                                 ...(data.hasCarb !== undefined ? { carbState: data.hasCarb ? 'analyzed' : 'pending' } : {}),
                                 ...(data.hasImage !== undefined ? { image: data.hasImage } : {}),
-                                ...(data.hasLocation !== undefined ? { hasLocation: data.hasLocation } : {})
+                                ...(data.hasLocation !== undefined ? { hasLocation: data.hasLocation } : {}),
+                                ...(data.locationAttempted !== undefined ? { locationAttempted: data.locationAttempted } : {})
                             }
                             : r))
                         stopped = true
@@ -316,7 +318,9 @@ export default function BulkRecipeTools() {
                                         <td className="px-3 py-2 text-center">
                                             {hasLocation(recipe)
                                                 ? <Check size={16} className="inline text-emerald-400" strokeWidth={3} />
-                                                : <span className="text-muted-foreground">—</span>}
+                                                : recipe.locationAttempted
+                                                    ? <span title="Origin search ran but found nothing confident" className="font-black text-amber-400">?</span>
+                                                    : <span className="text-muted-foreground">—</span>}
                                         </td>
                                         <td className="px-3 py-2 text-center">
                                             {hasImage(recipe)
@@ -351,7 +355,7 @@ export default function BulkRecipeTools() {
                 <p className="mt-3 text-xs text-muted-foreground">
                     Prep / Timing / Image ticks mean the recipe already has prep work / timers / AI art saved.
                     Carb side tick = the AI has decided for that recipe (green = needs a carb side, grey = decided it doesn't — click the header to select every recipe without a decision yet).
-                    Location tick = the recipe has a country/region/city saved (recipes that already have one are skipped by Generate Locations).
+                    Location tick = the recipe has a country/region/city saved (recipes that already have one are skipped by Generate Locations). A <span className="text-amber-400 font-black">?</span> means the search ran but found nothing confident, so it won't be retried automatically.
                     Extract ops overwrite existing data. Normalise rewrites ingredient names/units and moves prep words into notes.
                     Click a column heading to select all recipes missing that item.
                     Image generation uses the Pollinations anonymous tier (~15s per image) with Gemini fallback.

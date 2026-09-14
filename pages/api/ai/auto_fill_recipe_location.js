@@ -42,9 +42,15 @@ export default async function handler(req, res) {
                     region: existing.region,
                     city: existing.city,
                     lat: existing.lat,
-                    lng: existing.lng
+                    lng: existing.lng,
+                    regionSearchFailed: false
                 }
             })
+        }
+
+        // Already tried and found nothing — don't hammer the search again.
+        if (existing.regionSearchFailed === true) {
+            return res.status(200).json({ success: true, skipped: true, data: { regionSearchFailed: true } })
         }
 
         const resolved = await resolveRecipeLocation({
@@ -54,10 +60,11 @@ export default async function handler(req, res) {
             description: recipe.sourceNotes
         })
         if (!resolved) {
-            return res.status(200).json({ success: true, data: null })
+            await Recipe.updateOne({ _id: recipe._id }, { $set: { 'location.regionSearchFailed': true } })
+            return res.status(200).json({ success: true, data: { regionSearchFailed: true } })
         }
 
-        await Recipe.updateOne({ _id: recipe._id }, { $set: locationPatch(resolved, { includeCountry: true }) })
+        await Recipe.updateOne({ _id: recipe._id }, { $set: { ...locationPatch(resolved, { includeCountry: true }), 'location.regionSearchFailed': false } })
         return res.status(200).json({
             success: true,
             data: {
@@ -65,7 +72,8 @@ export default async function handler(req, res) {
                 region: resolved.region,
                 city: resolved.city,
                 lat: resolved.lat,
-                lng: resolved.lng
+                lng: resolved.lng,
+                regionSearchFailed: false
             }
         })
     } catch (error) {

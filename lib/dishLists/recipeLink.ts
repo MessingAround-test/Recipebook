@@ -32,6 +32,8 @@ export interface RecipeLocation {
     city?: string
     lat?: number
     lng?: number
+    // Set when an origin search ran but found nothing (editor only).
+    regionSearchFailed?: boolean
 }
 
 const str = (value: unknown): string | undefined => {
@@ -55,6 +57,11 @@ export const sanitizeRecipeLocation = (input: unknown): RecipeLocation | undefin
         lat: num(src.lat),
         lng: num(src.lng)
     }
+    // A manual region/city means the origin was found, so clear the marker.
+    // Otherwise carry the "we tried and found nothing" flag through so the
+    // editor can show it (and stop re-running the search).
+    if (loc.region || loc.city) loc.regionSearchFailed = false
+    else if (src.regionSearchFailed === true) loc.regionSearchFailed = true
     const hasValue = Object.values(loc).some(v => v !== undefined)
     return hasValue ? loc : undefined
 }

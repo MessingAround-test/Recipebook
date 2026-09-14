@@ -123,7 +123,7 @@ async function runOp(recipe, op) {
     if (op === 'location') {
         const existing = recipe.location || {};
         if (existing.country || existing.region || existing.city) {
-            return { message: 'Already has a location — skipped', hasLocation: true };
+            return { message: 'Already has a location — skipped', hasLocation: true, locationAttempted: false };
         }
         const input = {
             name: recipe.name,
@@ -133,11 +133,12 @@ async function runOp(recipe, op) {
         };
         const resolved = await resolveRecipeLocation(input);
         if (!resolved) {
-            return { message: 'No confident location found', hasLocation: false };
+            await Recipe.updateOne({ _id: recipe._id }, { $set: { 'location.regionSearchFailed': true } });
+            return { message: 'No confident location found — marked as attempted', hasLocation: false, locationAttempted: true };
         }
-        await Recipe.updateOne({ _id: recipe._id }, { $set: locationPatch(resolved, { includeCountry: true }) });
+        await Recipe.updateOne({ _id: recipe._id }, { $set: { ...locationPatch(resolved, { includeCountry: true }), 'location.regionSearchFailed': false } });
         const place = [resolved.city || resolved.region, resolved.country].filter(Boolean).join(', ');
-        return { message: place ? `Located in ${place}` : 'Located', hasLocation: true };
+        return { message: place ? `Located in ${place}` : 'Located', hasLocation: true, locationAttempted: false };
     }
 
     if (op === 'image') {
@@ -205,7 +206,8 @@ export default async function handler(req, res) {
                         { $ne: [{ $ifNull: ['$location.region', null] }, null] },
                         { $ne: [{ $ifNull: ['$location.city', null] }, null] },
                         { $ne: [{ $ifNull: ['$location.lat', null] }, null] }
-                    ] }, true, false] }
+                    ] }, true, false] },
+                    locationAttempted: { $eq: [{ $ifNull: ['$location.regionSearchFailed', false] }, true] }
                 } },
                 { $sort: { name: 1 } }
             ]);
@@ -235,7 +237,8 @@ export default async function handler(req, res) {
                 hasTimers: (fresh.cookingTimers || []).length > 0 || fresh.timersChecked === true,
                 hasCarb: fresh.carbSide?.state === 'analyzed',
                 hasImage: Boolean(fresh.hasImage),
-                hasLocation: Boolean(fresh.location && (fresh.location.country || fresh.location.region || fresh.location.city || Number.isFinite(fresh.location.lat)))
+                hasLocation: Boolean(fresh.location && (fresh.location.country || fresh.location.region || fresh.location.city || Number.isFinite(fresh.location.lat))),
+                locationAttempted: fresh.location?.regionSearchFailed === true
             });
         }
 

@@ -771,7 +771,7 @@ export default function RecipeDetail() {
         const missingMealTypes = !recipeMealTypes || recipeMealTypes.length === 0
         const missingServings = !recipeServings || recipeServings === 0
         const missingCarbType = !recipeCarbType
-        const missingLocation = !recipe?.location?.country && !recipe?.location?.region && !recipe?.location?.city
+        const missingLocation = !recipe?.location?.country && !recipe?.location?.region && !recipe?.location?.city && recipe?.location?.regionSearchFailed !== true
         if (!missingTime && !missingGenre && !missingMealTypes && !missingServings && !missingCarbType && !missingLocation) return
 
         const token = localStorage.getItem('Token') || ""
@@ -837,8 +837,9 @@ export default function RecipeDetail() {
                 })
                 const locData = await locRes.json()
                 if (locData.success && locData.data) {
+                    const located = Boolean(locData.data.country || locData.data.region || locData.data.city)
                     setRecipe((prev: any) => (prev ? { ...prev, location: locData.data } : prev))
-                    setAiFilledFields(prev => prev.includes('location') ? prev : [...prev, 'location'])
+                    if (located) setAiFilledFields(prev => prev.includes('location') ? prev : [...prev, 'location'])
                 }
             } catch (e) {
                 console.error('Auto-fill location failed:', e)
@@ -2070,11 +2071,15 @@ export default function RecipeDetail() {
             {recipeGenre && <span className={chipClass}>{recipeGenre}</span>}
             {recipeMealTypes && recipeMealTypes.map(type => <span key={type} className={chipClass}>{type}</span>)}
             {recipeCarbType && <span className={chipClass}>{recipeCarbType}</span>}
-            {recipe?.location && (recipe.location.city || recipe.location.region || recipe.location.country) && (
+            {recipe?.location && (recipe.location.city || recipe.location.region || recipe.location.country) ? (
                 <span className={chipClass}>
                     <Globe2 size={11} /> {[recipe.location.city || recipe.location.region, recipe.location.country].filter(Boolean).join(', ')}
                 </span>
-            )}
+            ) : recipe?.location?.regionSearchFailed ? (
+                <span className={chipClass} title="We searched for an origin but couldn't confidently find one — add it in the editor.">
+                    <Globe2 size={11} /> Origin unknown
+                </span>
+            ) : null}
             {isHidden && (
                 <span className={chipClass}>
                     <EyeOff size={11} /> Hidden

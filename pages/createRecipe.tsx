@@ -287,7 +287,7 @@ export default function CreateRecipe() {
     const [recipeServings, setRecipeServings] = useState<number | string>("")
     // Where the dish is from. lat/lng are filled by the geocoder (auto-fill /
     // bulk tools); editing the place text clears them so the pin is re-resolved.
-    const [recipeLocation, setRecipeLocation] = useState<{ country: string; region: string; city: string; lat?: number; lng?: number }>({ country: '', region: '', city: '' })
+    const [recipeLocation, setRecipeLocation] = useState<{ country: string; region: string; city: string; lat?: number; lng?: number; regionSearchFailed?: boolean }>({ country: '', region: '', city: '' })
     const [recipeSourceUrl, setRecipeSourceUrl] = useState("")
     // The Web-import link, kept controlled so a URL handed over from the
     // Explore search appears in the field (and can be edited/retried).
@@ -344,13 +344,14 @@ export default function CreateRecipe() {
     // Seed the location fields from a dish list item handed over via ?loc=.
     useEffect(() => {
         if (!itemLocation) return
-        if (!itemLocation.country && !itemLocation.region && !itemLocation.city) return
+        if (!itemLocation.country && !itemLocation.region && !itemLocation.city && itemLocation.regionSearchFailed !== true) return
         setRecipeLocation({
             country: itemLocation.country || '',
             region: itemLocation.region || '',
             city: itemLocation.city || '',
             lat: typeof itemLocation.lat === 'number' ? itemLocation.lat : undefined,
-            lng: typeof itemLocation.lng === 'number' ? itemLocation.lng : undefined
+            lng: typeof itemLocation.lng === 'number' ? itemLocation.lng : undefined,
+            regionSearchFailed: itemLocation.regionSearchFailed === true
         })
     }, [itemLocation])
 
@@ -654,17 +655,25 @@ export default function CreateRecipe() {
     }
 
     const updateLocationField = (field: 'country' | 'region' | 'city', value: string) => {
-        // Changing the place invalidates any stored coordinates.
-        setRecipeLocation(prev => ({ ...prev, [field]: value, lat: undefined, lng: undefined }))
+        // Changing the place invalidates any stored coordinates. Entering a
+        // place also clears the "we searched and found nothing" marker.
+        setRecipeLocation(prev => ({
+            ...prev,
+            [field]: value,
+            lat: undefined,
+            lng: undefined,
+            regionSearchFailed: value.trim() ? false : prev.regionSearchFailed
+        }))
     }
 
-    const locationPayload = (recipeLocation.country || recipeLocation.region || recipeLocation.city)
+    const locationPayload = (recipeLocation.country || recipeLocation.region || recipeLocation.city || recipeLocation.regionSearchFailed)
         ? {
             country: recipeLocation.country || undefined,
             region: recipeLocation.region || undefined,
             city: recipeLocation.city || undefined,
             lat: recipeLocation.lat,
-            lng: recipeLocation.lng
+            lng: recipeLocation.lng,
+            regionSearchFailed: recipeLocation.regionSearchFailed === true ? true : undefined
         }
         : undefined
 
@@ -1151,7 +1160,8 @@ export default function CreateRecipe() {
                             region: data.res.location?.region || '',
                             city: data.res.location?.city || '',
                             lat: data.res.location?.lat,
-                            lng: data.res.location?.lng
+                            lng: data.res.location?.lng,
+                            regionSearchFailed: data.res.location?.regionSearchFailed === true
                         })
                         setRecipeSourceUrl(data.res.sourceUrl || "")
                         setInstructions(data.res.instructions.map((i: any) => ({
@@ -1700,18 +1710,22 @@ export default function CreateRecipe() {
                                             type="text"
                                             value={recipeLocation.region}
                                             onChange={(e) => updateLocationField('region', e.target.value)}
-                                            placeholder="Region / state"
+                                            placeholder={recipeLocation.regionSearchFailed ? 'Not found' : 'Region / state'}
                                             className="input-modern"
                                         />
                                         <input
                                             type="text"
                                             value={recipeLocation.city}
                                             onChange={(e) => updateLocationField('city', e.target.value)}
-                                            placeholder="City"
+                                            placeholder={recipeLocation.regionSearchFailed ? 'Not found' : 'City'}
                                             className="input-modern"
                                         />
                                     </div>
-                                    <p className="ml-1 text-[11px] text-muted-foreground">Where the dish is from — powers the World Map pin. Left blank, it's AI-filled when the recipe is opened.</p>
+                                    {recipeLocation.regionSearchFailed && !recipeLocation.region.trim() && !recipeLocation.city.trim() ? (
+                                        <p className="ml-1 text-[11px] text-amber-500">We searched for an origin but couldn't confidently find one — enter a region/city to place it on the map.</p>
+                                    ) : (
+                                        <p className="ml-1 text-[11px] text-muted-foreground">Where the dish is from — powers the World Map pin. Left blank, it's AI-filled when the recipe is opened.</p>
+                                    )}
                                 </div>
                                 <div className="space-y-2 sm:col-span-2 lg:col-span-3">
                                     <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block ml-1">Meal occasions</label>
