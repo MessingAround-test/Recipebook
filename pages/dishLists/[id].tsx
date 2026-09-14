@@ -66,15 +66,19 @@ export default function DishListDetail() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthed, listId])
 
-    // Arriving from the map with ?country=... pre-filters the list to that
-    // country (and shows all dishes, not just uncooked, so the set is complete).
+    // Arriving from the map with ?country=... or ?continent=... pre-filters the
+    // list (and shows all dishes, not just uncooked, so the set is complete).
     useEffect(() => {
         const country = typeof router.query.country === 'string' ? router.query.country : ''
+        const continent = typeof router.query.continent === 'string' ? router.query.continent : ''
         if (country) {
             setFilterCountry(country)
             setFilter('all')
+        } else if (continent) {
+            setFilterContinent(continent)
+            setFilter('all')
         }
-    }, [router.query.country])
+    }, [router.query.country, router.query.continent])
 
     const countryOptions = useMemo(() => {
         const set = new Set<string>()

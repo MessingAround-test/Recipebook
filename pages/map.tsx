@@ -4,7 +4,7 @@ import { Layout } from '../components/Layout'
 import { Button } from '../components/ui/button'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import { useIsAdmin } from '../lib/useIsAdmin'
-import { ArrowLeft, Loader2, MapPin, Plus, Minus, Compass, UtensilsCrossed, Check, Maximize2, List, Wand2 } from 'lucide-react'
+import { ArrowLeft, Loader2, MapPin, Plus, Minus, Compass, UtensilsCrossed, Maximize2, List, Wand2, ExternalLink, ChefHat, CookingPot } from 'lucide-react'
 import { buildViewportTiles, projectToPercent, tileZoomForScale } from '../lib/dishLists/mercator'
 import { hasRegionArea, continentOf } from '../lib/dishLists/locationStatus'
 
@@ -156,6 +156,16 @@ const listUrl = (p: MapPoint): string =>
 /** Where a pin links to: the recipe page for recipes, its list for dishes. */
 const itemUrl = (p: MapPoint): string =>
     isRecipe(p) ? `/recipes/${p._id}` : listUrl(p)
+
+/** Detail view for a pin: the dish item page, or the recipe page for recipes. */
+const detailUrl = (p: MapPoint): string =>
+    isRecipe(p) ? `/recipes/${p._id}` : `/dishLists/items/${p._id}`
+
+/** First linked recipe of a dish (if any). */
+const firstRecipeUrl = (p: MapPoint): string | null => {
+    const ids = recipeIdsOf(p)
+    return ids.length ? `/recipes/${ids[0]}` : null
+}
 
 // Zoom thresholds for hierarchical clustering
 const ZOOM_CONTINENT = 1   // 100% - show continents
@@ -422,6 +432,35 @@ export default function WorldMap() {
         return { left: `${sx}px`, top: `${sy}px`, transform: `translate(${tx}, ${ty})` }
     }
 
+    // Cluster popups can get tall; keep them inside the map so the group
+    // header is never clipped off the top/bottom edge.
+    const clusterPopupStyle = (sx: number, sy: number): CSSProperties => {
+        const tx = sx < size * 0.2 ? '0%' : sx > size * 0.8 ? '-100%' : '-50%'
+        const below = sy < size * 0.35
+        const room = below ? size - sy - 16 : sy - 16
+        return {
+            left: `${sx}px`,
+            top: `${sy}px`,
+            transform: `translate(${tx}, ${below ? '16px' : 'calc(-100% - 16px)'})`,
+            maxHeight: `${Math.max(160, room)}px`
+        }
+    }
+
+    // "Show in list" target for a cluster: the active list when one is
+    // selected, otherwise the first dish's list — pre-filtered to the cluster.
+    const clusterListUrl = (m: Marker): string | null => {
+        const dish = m.points.find(p => !isRecipe(p))
+        if (!dish) return null
+        const active = listFilter && listFilter !== ALL_RECIPES && listFilter !== EVERYTHING ? listFilter : ''
+        const listId = active || dish.listId
+        const params = new URLSearchParams()
+        if (m.level === 'continent') params.set('continent', m.label)
+        else if (m.level === 'country') params.set('country', m.label)
+        else if (dish.country) params.set('country', dish.country)
+        const q = params.toString()
+        return `/dishLists/${listId}${q ? `?${q}` : ''}`
+    }
+
     const runGeocode = async () => {
         if (geocoding) return
         // Which worklists the active filter covers.
@@ -480,8 +519,8 @@ export default function WorldMap() {
 
     return (
         <Layout title="World view" description="Where every dish comes from" hideMobileToolbar>
-            <div className="flex flex-col min-h-[calc(100vh-8rem)]">
-                <header className="shrink-0 px-4 sm:px-8 py-3 bg-background/80 backdrop-blur-xl shadow-sm">
+            <div className="flex flex-col min-h-[calc(100vh-4rem)] sm:min-h-[calc(100vh-8rem)]">
+                <header className="shrink-0 px-3 sm:px-8 py-2 sm:py-3 bg-background/80 backdrop-blur-xl shadow-sm">
                     <div className="flex items-center gap-3">
                         <button onClick={goBack} className="p-2 -ml-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary">
                             <ArrowLeft size={18} />
@@ -509,7 +548,7 @@ export default function WorldMap() {
                         )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-3">
                         <select
                             value={listFilter}
                             onChange={e => { setListFilter(e.target.value); setSelectedKey(null) }}
@@ -544,14 +583,14 @@ export default function WorldMap() {
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] font-semibold text-muted-foreground mt-2">
-                        <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Not cooked</span>
-                        <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Mixed</span>
-                        <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Cooked</span>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] font-semibold text-muted-foreground mt-1 sm:mt-2">
+                        <span className="inline-flex items-center gap-1.5 text-rose-500" title="Not cooked"><ChefHat size={14} /></span>
+                        <span className="inline-flex items-center gap-1.5 text-amber-500" title="Mixed"><CookingPot size={14} /></span>
+                        <span className="inline-flex items-center gap-1.5 text-emerald-500" title="Cooked"><ChefHat size={14} /></span>
                     </div>
                 </header>
 
-                <div className="flex-1 flex items-center justify-center px-4 py-4">
+                <div className="flex-1 flex items-center justify-center px-2 py-1 sm:px-4 sm:py-4">
                     {loading ? (
                         <div className="flex flex-col items-center justify-center gap-4">
                             <Loader2 className="animate-spin text-accent" size={30} />
@@ -574,7 +613,7 @@ export default function WorldMap() {
                             onPointerCancel={endPointer}
                             onClick={() => { if (!draggedRef.current) setSelectedKey(null) }}
                             className="relative aspect-square rounded-2xl overflow-hidden border border-border bg-[#d5dbe0] shadow-xl select-none cursor-grab active:cursor-grabbing"
-                            style={{ width: 'min(92vw, 72vh, 880px)', touchAction: 'none' }}
+                            style={{ width: 'min(96vw, 72vh, 880px)', touchAction: 'none' }}
                         >
                             {/* Tiles */}
                             {tiles.map(t => (
@@ -646,6 +685,7 @@ export default function WorldMap() {
                             {/* Click popup */}
                             {showPopup && selected && (() => {
                                 const { x, y } = toScreen(selected.lat, selected.lng)
+                                const listHref = clusterListUrl(selected)
 
                                 // Single dish (zoomed in, has a city/region)
                                 if (selected.kind === 'dish') {
@@ -666,7 +706,7 @@ export default function WorldMap() {
                                             <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
                                                 {p.category && <span className="uppercase tracking-wide font-bold">{p.category}</span>}
                                                 <span className={`inline-flex items-center gap-0.5 font-semibold ${p.cooked ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                    {p.cooked && <Check size={9} />} {p.cooked ? 'Cooked' : 'Not cooked'}
+                                                    <ChefHat size={11} />
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/60">
@@ -699,46 +739,50 @@ export default function WorldMap() {
                                 return (
                                     <div
                                         data-no-zoom
-                                        className="absolute z-30 w-72 max-w-[80vw] rounded-2xl bg-card border border-border shadow-2xl p-3"
-                                        style={{ ...popupStyle(x, y), touchAction: 'auto' }}
+                                        className="absolute z-30 w-72 max-w-[80vw] rounded-2xl bg-card border border-border shadow-2xl p-3 flex flex-col"
+                                        style={{ ...clusterPopupStyle(x, y), touchAction: 'auto' }}
                                         onPointerDown={(e) => e.stopPropagation()}
                                         onClick={(e) => e.stopPropagation()}
                                     >
-                                        <h3 className="text-base font-black text-center leading-tight">{selected.label}</h3>
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-center mt-0.5">
-                                            {selected.points.length} item{selected.points.length === 1 ? '' : 's'}
-                                        </p>
-                                        {!isRecipe(selected.points[0]) && new Set(selected.points.map(p => p.listId)).size === 1 && (
-                                            <a href={listUrl(selected.points[0])} className="mt-2 w-full inline-flex items-center justify-center gap-1 px-2 h-8 rounded-lg bg-accent text-accent-foreground text-xs font-bold hover:opacity-90 transition-opacity">
-                                                <List size={13} /> View in list
-                                            </a>
-                                        )}
-                                        <div className="mt-2.5 max-h-60 overflow-y-auto -mr-1 pr-1 divide-y divide-border/60">
+                                        <div className="relative shrink-0">
+                                            <h3 className="text-base font-black text-center leading-tight">{selected.label}</h3>
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-center mt-0.5">
+                                                {selected.points.length} item{selected.points.length === 1 ? '' : 's'}
+                                            </p>
+                                            {listHref && (
+                                                <a href={listHref} title="Show in list" className="absolute top-0 right-0 p-1.5 rounded-lg bg-secondary/50 text-muted-foreground hover:text-accent hover:bg-secondary transition-colors">
+                                                    <List size={14} />
+                                                </a>
+                                            )}
+                                        </div>
+                                        <div className="mt-2.5 max-h-44 md:max-h-60 overflow-y-auto -mr-1 pr-1 divide-y divide-border/60 min-h-0">
                                             {selected.points.map(p => (
                                                 <div key={p._id} className="flex items-center gap-2.5 py-2">
-                                                    {thumbUrl(p) ? (
-                                                        <img src={thumbUrl(p) as string} alt="" loading="lazy" className="w-10 h-10 rounded-lg object-cover bg-secondary shrink-0" />
-                                                    ) : (
-                                                        <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground shrink-0"><UtensilsCrossed size={14} /></div>
-                                                    )}
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className={`text-xs font-bold leading-tight truncate ${p.cooked ? 'text-muted-foreground' : ''}`}>{p.name}</div>
-                                                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                                                            {hasRegionArea(p) && <span className="truncate">{p.city || p.region}</span>}
-                                                            <span className={`inline-flex items-center gap-0.5 font-semibold ${p.cooked ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                                {p.cooked && <Check size={9} />} {p.cooked ? 'Cooked' : 'Not cooked'}
-                                                            </span>
+                                                    <a href={detailUrl(p)} className="min-w-0 flex-1 flex items-center gap-2.5 group">
+                                                        {thumbUrl(p) ? (
+                                                            <img src={thumbUrl(p) as string} alt="" loading="lazy" className="w-10 h-10 rounded-lg object-cover bg-secondary shrink-0" />
+                                                        ) : (
+                                                            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground shrink-0"><UtensilsCrossed size={14} /></div>
+                                                        )}
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className={`text-xs font-bold leading-tight truncate group-hover:text-accent transition-colors ${p.cooked ? 'text-muted-foreground' : ''}`}>{p.name}</div>
+                                                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                                                {hasRegionArea(p) && <span className="truncate">{p.city || p.region}</span>}
+                                                                <span className={`inline-flex items-center gap-0.5 font-semibold ${p.cooked ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                    <ChefHat size={11} />
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                    </div>
+                                                    </a>
                                                     <div className="flex items-center gap-0.5 shrink-0">
                                                         {isRecipe(p) ? (
                                                             <a href={itemUrl(p)} title="Open recipe" className="p-1.5 rounded-lg text-accent hover:bg-secondary transition-colors"><UtensilsCrossed size={14} /></a>
                                                         ) : (
                                                             <>
-                                                                {recipeIdsOf(p).length > 0 && (
-                                                                    <a href={`/recipes?ids=${recipeIdsOf(p).join(',')}`} title="Show recipes" className="p-1.5 rounded-lg text-accent hover:bg-secondary transition-colors"><UtensilsCrossed size={14} /></a>
+                                                                {firstRecipeUrl(p) && (
+                                                                    <a href={firstRecipeUrl(p) as string} title="Open recipe" className="p-1.5 rounded-lg text-accent hover:bg-secondary transition-colors"><UtensilsCrossed size={14} /></a>
                                                                 )}
-                                                                <a href={listUrl(p)} title="View in list" className="p-1.5 rounded-lg text-muted-foreground hover:text-accent hover:bg-secondary transition-colors"><List size={14} /></a>
+                                                                <a href={`/dishLists/items/${p._id}`} title="Open item" className="p-1.5 rounded-lg text-muted-foreground hover:text-accent hover:bg-secondary transition-colors"><ExternalLink size={14} /></a>
                                                             </>
                                                         )}
                                                     </div>
