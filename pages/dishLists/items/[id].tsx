@@ -433,124 +433,99 @@ export default function PreRecipe() {
                             <p className="text-[11px] text-muted-foreground leading-snug">Three different methods — pick one to begin. Your dietary requirements above apply to whichever you choose.</p>
                         </div>
 
-                        {/* Option A — import from a website */}
-                        <div className="border-b border-border">
-                            <button
-                                type="button"
-                                onClick={() => setOpenOption(openOption === 'source' ? null : 'source')}
-                                className="w-full p-4 sm:p-5 flex items-start gap-3 text-left"
-                            >
-                                <span className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center border ${openOption === 'source' ? 'bg-accent text-accent-foreground border-accent' : 'bg-secondary text-muted-foreground border-border'}`}><Search size={16} /></span>
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <h3 className="text-sm font-black">Import from a website</h3>
-                                        <ChevronRight size={14} className={`ml-auto text-muted-foreground transition-transform ${openOption === 'source' ? 'rotate-90' : ''}`} />
+                        {/* Three methods, side by side */}
+                        <div className="p-3 sm:p-5">
+                            <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                                {([
+                                    { value: 'source', Icon: Search, title: 'Import from a website', blurb: `We search the web for “${query || item.name}” and you pick a page to import.` },
+                                    { value: 'notes', Icon: NotebookPen, title: 'Paste recipe text', blurb: 'Copy ingredients & steps from anywhere — AI tidies it up.' },
+                                    { value: 'ai', Icon: Sparkles, title: 'Generate with AI', blurb: 'AI builds a traditional recipe, then remixes it to your dietary requirements.' }
+                                ] as const).map(({ value, Icon, title, blurb }) => {
+                                    const active = openOption === value
+                                    return (
+                                        <button
+                                            key={value}
+                                            type="button"
+                                            aria-pressed={active}
+                                            onClick={() => setOpenOption(active ? null : value)}
+                                            className={`flex flex-col items-center gap-2 rounded-2xl border p-3 sm:p-4 text-center transition-colors ${active ? 'border-accent bg-accent/10 ring-1 ring-accent' : 'border-border bg-secondary/40 hover:border-accent/60'}`}
+                                        >
+                                            <span className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center border ${active ? 'bg-accent text-accent-foreground border-accent' : 'bg-background text-muted-foreground border-border'}`}><Icon size={17} /></span>
+                                            <span className="text-xs sm:text-sm font-black leading-tight">{title}</span>
+                                            <span className="text-[10px] sm:text-[11px] text-muted-foreground leading-snug">{blurb}</span>
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
+                        {openOption === 'source' && (
+                            <div className="px-4 sm:px-5 pb-5 border-t border-border pt-4">
+                                <p className="text-xs text-muted-foreground mb-3">
+                                    We searched the web for “{query || item.name}”. Pick a page to import, then review it in the editor.
+                                </p>
+                                {searching ? (
+                                    <div className="flex items-center gap-2 py-6 text-muted-foreground text-sm">
+                                        <Loader2 className="animate-spin" size={16} /> Searching…
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-0.5">We search the web for “{query || item.name}” and you pick a page to import.</p>
-                                </div>
-                            </button>
-                            {openOption === 'source' && (
-                                <div className="px-4 sm:px-5 pb-5">
-                                    <p className="text-xs text-muted-foreground mt-0.5 mb-3">
-                                        We searched the web for “{query || item.name}”. Pick a page to import, then review it in the editor.
-                                    </p>
-                                    {searching ? (
-                                        <div className="flex items-center gap-2 py-6 text-muted-foreground text-sm">
-                                            <Loader2 className="animate-spin" size={16} /> Searching…
-                                        </div>
-                                    ) : results.length === 0 ? (
-                                        <p className="text-xs text-muted-foreground py-3">No results — paste a recipe URL below, or use one of the other options.</p>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {results.map(r => (
-                                                <div key={r.url} className="flex items-start gap-3 p-3 rounded-xl bg-secondary border border-border">
-                                                    <Search size={14} className="text-muted-foreground mt-0.5 shrink-0" />
-                                                    <div className="min-w-0 flex-1">
-                                                        <a href={r.url} target="_blank" rel="noreferrer" className="text-sm font-bold hover:text-accent inline-flex items-center gap-1">
-                                                            {r.title} <ExternalLink size={11} />
-                                                        </a>
-                                                        <p className="text-[11px] text-muted-foreground truncate">{r.url}</p>
-                                                        {r.snippet && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{r.snippet}</p>}
-                                                    </div>
-                                                    <Button size="sm" onClick={() => useSource(r.url)} className="shrink-0">
-                                                        Use this <ChevronRight size={13} />
-                                                    </Button>
+                                ) : results.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground py-3">No results — paste a recipe URL below, or use one of the other options.</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {results.map(r => (
+                                            <div key={r.url} className="flex items-start gap-3 p-3 rounded-xl bg-secondary border border-border">
+                                                <Search size={14} className="text-muted-foreground mt-0.5 shrink-0" />
+                                                <div className="min-w-0 flex-1">
+                                                    <a href={r.url} target="_blank" rel="noreferrer" className="text-sm font-bold hover:text-accent inline-flex items-center gap-1">
+                                                        {r.title} <ExternalLink size={11} />
+                                                    </a>
+                                                    <p className="text-[11px] text-muted-foreground truncate">{r.url}</p>
+                                                    {r.snippet && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{r.snippet}</p>}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                    <div className="flex gap-2 mt-3">
-                                        <input
-                                            value={manualUrl}
-                                            onChange={e => setManualUrl(e.target.value)}
-                                            placeholder="Or paste a recipe URL…"
-                                            className="flex-1 h-10 rounded-xl bg-secondary border border-border px-3 text-sm focus:outline-none focus:border-accent"
-                                        />
-                                        <Button variant="secondary" disabled={!manualUrl.trim()} onClick={useManualUrl}>Import</Button>
+                                                <Button size="sm" onClick={() => useSource(r.url)} className="shrink-0">
+                                                    Use this <ChevronRight size={13} />
+                                                </Button>
+                                            </div>
+                                        ))}
                                     </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Option B — paste recipe text */}
-                        <div className="border-b border-border">
-                            <button
-                                type="button"
-                                onClick={() => setOpenOption(openOption === 'notes' ? null : 'notes')}
-                                className="w-full p-4 sm:p-5 flex items-start gap-3 text-left"
-                            >
-                                <span className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center border ${openOption === 'notes' ? 'bg-accent text-accent-foreground border-accent' : 'bg-secondary text-muted-foreground border-border'}`}><NotebookPen size={16} /></span>
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="text-sm font-black">Paste recipe text</h3>
-                                        <ChevronRight size={14} className={`ml-auto text-muted-foreground transition-transform ${openOption === 'notes' ? 'rotate-90' : ''}`} />
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-0.5">Copy ingredients &amp; steps from anywhere — AI tidies it up.</p>
-                                </div>
-                            </button>
-                            {openOption === 'notes' && (
-                                <div className="px-4 sm:px-5 pb-5">
-                                    <p className="text-xs text-muted-foreground mt-0.5 mb-3">Copy the ingredients and method from anywhere — AI tidies it up. Great when no good source exists.</p>
-                                    <textarea
-                                        value={notes}
-                                        onChange={e => setNotes(e.target.value)}
-                                        placeholder="Paste ingredients and steps here…"
-                                        className="w-full min-h-[120px] rounded-xl bg-secondary border border-border p-3 text-sm resize-y focus:outline-none focus:border-accent"
+                                )}
+                                <div className="flex gap-2 mt-3">
+                                    <input
+                                        value={manualUrl}
+                                        onChange={e => setManualUrl(e.target.value)}
+                                        placeholder="Or paste a recipe URL…"
+                                        className="flex-1 h-10 rounded-xl bg-secondary border border-border px-3 text-sm focus:outline-none focus:border-accent"
                                     />
-                                    <Button className="mt-2" disabled={!notes.trim()} onClick={useNotes}>
-                                        <Sparkles size={14} /> Extract with AI
-                                    </Button>
+                                    <Button variant="secondary" disabled={!manualUrl.trim()} onClick={useManualUrl}>Import</Button>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
-                        {/* Option C — generate with AI (then remix to dietaries) */}
-                        <div>
-                            <button
-                                type="button"
-                                onClick={() => setOpenOption(openOption === 'ai' ? null : 'ai')}
-                                className="w-full p-4 sm:p-5 flex items-start gap-3 text-left"
-                            >
-                                <span className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center border ${openOption === 'ai' ? 'bg-accent text-accent-foreground border-accent' : 'bg-secondary text-muted-foreground border-border'}`}><Sparkles size={16} /></span>
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="text-sm font-black">Generate with AI</h3>
-                                        <ChevronRight size={14} className={`ml-auto text-muted-foreground transition-transform ${openOption === 'ai' ? 'rotate-90' : ''}`} />
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-0.5">AI builds a traditional recipe, then remixes it to your dietary requirements.</p>
-                                </div>
-                            </button>
-                            {openOption === 'ai' && (
-                                <div className="px-4 sm:px-5 pb-5 space-y-3">
-                                    <p className="text-xs text-muted-foreground">
-                                        We&apos;ll open a dedicated remix flow: generate a traditional base recipe for “{item.name}”, then adapt it step by step. Your dietary needs are applied automatically.
-                                    </p>
-                                    <Button onClick={startRemixFlow} className="w-full">
-                                        <><Sparkles size={14} /> Start remix flow</>
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
+                        {openOption === 'notes' && (
+                            <div className="px-4 sm:px-5 pb-5 border-t border-border pt-4">
+                                <p className="text-xs text-muted-foreground mb-3">Copy the ingredients and method from anywhere — AI tidies it up. Great when no good source exists.</p>
+                                <textarea
+                                    value={notes}
+                                    onChange={e => setNotes(e.target.value)}
+                                    placeholder="Paste ingredients and steps here…"
+                                    className="w-full min-h-[120px] rounded-xl bg-secondary border border-border p-3 text-sm resize-y focus:outline-none focus:border-accent"
+                                />
+                                <Button className="mt-2" disabled={!notes.trim()} onClick={useNotes}>
+                                    <Sparkles size={14} /> Extract with AI
+                                </Button>
+                            </div>
+                        )}
+
+                        {openOption === 'ai' && (
+                            <div className="px-4 sm:px-5 pb-5 border-t border-border pt-4 space-y-3">
+                                <p className="text-xs text-muted-foreground">
+                                    We&apos;ll open a dedicated remix flow: generate a traditional base recipe for “{item.name}”, then adapt it step by step. Your dietary needs are applied automatically.
+                                </p>
+                                <Button onClick={startRemixFlow} className="w-full">
+                                    <><Sparkles size={14} /> Start remix flow</>
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
