@@ -852,7 +852,7 @@ export default function CreateRecipe() {
                         body: JSON.stringify({ recipeId: created._id })
                     }).catch(() => {})
                 }
-                Router.push(listId ? `/dishLists/${listId}` : "/recipes")
+                Router.push(created?._id ? `/recipes/${created._id}` : (listId ? `/dishLists/${listId}` : "/recipes"))
             }
         } catch (error: any) {
             console.error("Error saving recipe:", error)
