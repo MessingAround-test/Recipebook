@@ -11,6 +11,7 @@ import { buildViewportTiles, projectToPercent, tileZoomForScale } from '../../..
 import { DishListItem } from '../../../components/dishLists/types'
 import { RecipeSourceCandidate } from '../../../components/dishLists/types'
 import { CRITERIA_OPTIONS, criterionLabel, criteriaFromUser, criteriaInstruction, expandImpliedCriteria, collapseImpliedCriteria } from '../../../lib/dishLists/criteria'
+import { buildRemixRecipeFromScrape } from '../../../lib/dishLists/recipeFromScrape'
 
 interface ListInfo {
     _id: string
@@ -78,6 +79,11 @@ export default function PreRecipe() {
 
     const [results, setResults] = useState<RecipeSourceCandidate[]>([])
     const [searching, setSearching] = useState(false)
+    // True when the diet-filtered search came up empty and these results are the
+    // unfiltered fallback — every one can be imported as-is or remixed to diet.
+    const [relaxed, setRelaxed] = useState(false)
+    // URL currently being scraped for the "Import & remix" path.
+    const [importingUrl, setImportingUrl] = useState<string | null>(null)
     const [openOption, setOpenOption] = useState<null | 'source' | 'notes' | 'ai'>(null)
     const [query, setQuery] = useState('')
 
@@ -147,10 +153,11 @@ export default function PreRecipe() {
             if (seq !== searchSeq.current) return
             if (data.success) {
                 setResults(data.data.results || [])
+                setRelaxed(data.data.relaxed === true)
                 setQuery(data.data.query || '')
             }
         } catch {
-            if (seq === searchSeq.current) setResults([])
+            if (seq === searchSeq.current) { setResults([]); setRelaxed(false) }
         } finally {
             if (seq === searchSeq.current) setSearching(false)
         }
@@ -206,6 +213,51 @@ export default function PreRecipe() {
         }
         try { sessionStorage.setItem('remixDraft', JSON.stringify(draft)) } catch { /* ignore */ }
         Router.push('/remixRecipe')
+    }
+
+    /**
+     * Imports a web source and hands it to the remix flow as the base recipe,
+     * so a source that doesn't meet the dietary filters gets adapted before
+     * review. Used for the relaxed (unfiltered) fallback results.
+     */
+    const useSourceAndRemix = async (url: string) => {
+        if (!item || importingUrl) return
+        setImportingUrl(url)
+        try {
+            const res = await fetch(`/api/recipeSiteExtract/auto?url=${encodeURIComponent(url)}`, {
+                headers: { edgetoken: token() }
+            })
+            const data = await res.json()
+            if (!data.success) {
+                alert(data.message || 'Could not import this site. Try importing it directly instead.')
+                return
+            }
+            const recipe = await buildRemixRecipeFromScrape(data.data, item.name)
+            if (!recipe) {
+                alert('Could not extract a usable recipe from this site. Try the direct import or another source.')
+                return
+            }
+            const draft = {
+                name: recipe.name || item.name,
+                notes: '',
+                criteria: collapseImpliedCriteria(selectedCriteria),
+                recipe,
+                context: {
+                    listId: item.listId,
+                    itemId: item._id,
+                    listName: list?.name || '',
+                    loc: locationParam,
+                    sourceUrl: url,
+                    sourceNotes: recipe.sourceNotes || ''
+                }
+            }
+            try { sessionStorage.setItem('remixDraft', JSON.stringify(draft)) } catch { /* ignore */ }
+            Router.push('/remixRecipe')
+        } catch {
+            alert('An error occurred during import.')
+        } finally {
+            setImportingUrl(null)
+        }
     }
 
     const toggleProfile = () => {
@@ -464,6 +516,13 @@ export default function PreRecipe() {
                                 <p className="text-xs text-muted-foreground mb-3">
                                     We searched the web for “{query || item.name}”. Pick a page to import, then review it in the editor.
                                 </p>
+                                {relaxed && (
+                                    <div className="mb-3 rounded-xl border border-amber-400/50 bg-amber-400/10 p-3">
+                                        <p className="text-xs text-amber-700 dark:text-amber-300">
+                                            No sources matched your dietary requirements, so these aren&apos;t filtered to your diet. Import one as-is, or use <span className="font-bold">Remix</span> to adapt it to {selectedCriteria.length ? selectedCriteria.map(criterionLabel).join(', ') : 'your requirements'} before saving.
+                                        </p>
+                                    </div>
+                                )}
                                 {searching ? (
                                     <div className="flex items-center gap-2 py-6 text-muted-foreground text-sm">
                                         <Loader2 className="animate-spin" size={16} /> Searching…
@@ -482,9 +541,20 @@ export default function PreRecipe() {
                                                     <p className="text-[11px] text-muted-foreground truncate">{r.url}</p>
                                                     {r.snippet && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{r.snippet}</p>}
                                                 </div>
-                                                <Button size="sm" onClick={() => useSource(r.url)} className="shrink-0">
-                                                    Use this <ChevronRight size={13} />
-                                                </Button>
+                                                {relaxed ? (
+                                                    <div className="flex flex-col gap-1.5 shrink-0">
+                                                        <Button size="sm" variant="secondary" onClick={() => useSource(r.url)} disabled={!!importingUrl}>
+                                                            Import
+                                                        </Button>
+                                                        <Button size="sm" onClick={() => useSourceAndRemix(r.url)} disabled={!!importingUrl}>
+                                                            {importingUrl === r.url ? <Loader2 className="animate-spin" size={13} /> : <Sparkles size={13} />} Remix
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <Button size="sm" onClick={() => useSource(r.url)} className="shrink-0">
+                                                        Use this <ChevronRight size={13} />
+                                                    </Button>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -496,7 +566,12 @@ export default function PreRecipe() {
                                         placeholder="Or paste a recipe URL…"
                                         className="flex-1 h-10 rounded-xl bg-secondary border border-border px-3 text-sm focus:outline-none focus:border-accent"
                                     />
-                                    <Button variant="secondary" disabled={!manualUrl.trim()} onClick={useManualUrl}>Import</Button>
+                                    <Button variant="secondary" disabled={!manualUrl.trim() || !!importingUrl} onClick={useManualUrl}>Import</Button>
+                                    {relaxed && (
+                                        <Button disabled={!manualUrl.trim() || !!importingUrl} onClick={() => { const u = manualUrl.trim(); if (u) useSourceAndRemix(u) }}>
+                                            {importingUrl === manualUrl.trim() ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />} Remix
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         )}

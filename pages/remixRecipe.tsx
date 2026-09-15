@@ -12,7 +12,7 @@ interface RemixDraft {
     notes?: string
     criteria?: string[]
     recipe?: any
-    context?: { listId?: string; itemId?: string; listName?: string; loc?: string }
+    context?: { listId?: string; itemId?: string; listName?: string; loc?: string; sourceUrl?: string; sourceNotes?: string }
 }
 
 const STEPS = ['Base recipe', 'Remix & review', 'Finish']
@@ -291,8 +291,8 @@ export default function RemixRecipe() {
         // Only tag the saved title when the remix actually adapted the recipe.
         const labels = (draftRef.current?.criteria || []).map(criterionLabel)
         const name = baseDiffs.length > 0 ? applyDietaryNameTag(recipe.name, labels) : recipe.name
-        try { sessionStorage.setItem('dishGeneratedRecipe', JSON.stringify({ ...recipe, name })) } catch { /* ignore */ }
         const ctx = draftRef.current?.context || {}
+        try { sessionStorage.setItem('dishGeneratedRecipe', JSON.stringify({ ...recipe, name, sourceUrl: ctx.sourceUrl, sourceNotes: ctx.sourceNotes })) } catch { /* ignore */ }
         const params = new URLSearchParams({ genImport: '1' })
         if (ctx.listId) params.set('listId', ctx.listId)
         if (ctx.itemId) params.set('itemId', ctx.itemId)

@@ -1120,6 +1120,8 @@ export default function CreateRecipe() {
             if (Array.isArray(r.mealTypes) && r.mealTypes.length) setRecipeMealTypes(r.mealTypes)
             if (r.carbType) setRecipeCarbType(r.carbType)
             if (r.servings) setRecipeServings(r.servings)
+            if (r.sourceUrl) setRecipeSourceUrl(r.sourceUrl)
+            if (r.sourceNotes) setSourceNotes(r.sourceNotes)
             setCreationMethod('manual')
             setFormPhase(r.name ? 'builder' : 'name')
         } catch {

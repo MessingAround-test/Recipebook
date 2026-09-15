@@ -133,7 +133,7 @@ export default function Recipes() {
             }
             return true
         })
-        .sort((a, b) => (b.timesCooked || 0) - (a.timesCooked || 0))
+        .sort((a, b) => (b.rating || 0) - (a.rating || 0) || (b.timesCooked || 0) - (a.timesCooked || 0))
 
     const deleteRecipe = async (id: string) => {
         const token = localStorage.getItem('Token')

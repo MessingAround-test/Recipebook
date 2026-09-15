@@ -29,9 +29,19 @@ export default async function handler(req, res) {
         }
 
         const query = buildSearchQuery(name, criteria, req.body?.extra)
-        const results = await searchRecipeSources(query, { criteria })
+        let results = await searchRecipeSources(query, { criteria })
+        let relaxed = false
 
-        return res.status(200).json({ success: true, data: { query, criteria, results } })
+        // Nothing came back for the chosen diets. Rather than a dead end, retry
+        // without any dietary filters so the user still gets sources — the UI
+        // offers to remix a non-conforming pick back to their requirements.
+        if (results.length === 0 && criteria.length > 0) {
+            const fallbackQuery = buildSearchQuery(name, [], req.body?.extra)
+            results = await searchRecipeSources(fallbackQuery)
+            relaxed = results.length > 0
+        }
+
+        return res.status(200).json({ success: true, data: { query, criteria, results, relaxed } })
     } catch (error) {
         console.error('API Error in /api/dishLists/searchSource:', error)
         return res.status(500).json({ success: false, message: 'Internal Server Error: ' + error.message })

@@ -23,12 +23,12 @@ import { playAlarm, requestNotificationPermission, sendNotification } from '../.
 
 const PRICE_THRESHOLDS = { cheap: 15, expensive: 35 }
 
-const RATING_LABELS: Record<number, string> = {
-    1: 'Not for us',
-    2: 'Just okay',
-    3: 'Solid',
-    4: 'Really good',
-    5: 'A keeper'
+const ratingLabel = (value: number): string => {
+    if (value <= 1.5) return 'Not for us'
+    if (value <= 2.5) return 'Just okay'
+    if (value <= 3.5) return 'Solid'
+    if (value <= 4.5) return 'Really good'
+    return 'A keeper'
 }
 
 const timeLabelMap: Record<string, { label: string }> = {
@@ -2968,7 +2968,7 @@ export default function RecipeDetail() {
                         <div className="mb-4 flex flex-wrap items-center gap-3">
                             <StarRating value={rating} onChange={saveRating} size={26} />
                             <span className="text-sm font-semibold text-muted-foreground">
-                                {rating ? RATING_LABELS[rating] : 'Not rated yet'}
+                                {rating ? ratingLabel(rating) : 'Not rated yet'}
                             </span>
                         </div>
 
@@ -4585,7 +4585,7 @@ export default function RecipeDetail() {
                             <div className="flex flex-col items-center gap-2">
                                 <StarRating value={finishRating} onChange={setFinishRating} size={34} />
                                 <span className="h-4 text-xs font-semibold text-muted-foreground">
-                                    {RATING_LABELS[finishRating] || 'Tap to rate'}
+                                    {finishRating ? ratingLabel(finishRating) : 'Tap to rate'}
                                 </span>
                             </div>
 
