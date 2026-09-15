@@ -13,6 +13,7 @@ import { safeToObject } from "../../../lib/utils";
 import { determineCategory } from '../../../lib/categoryDetermination';
 import { callGroqChat } from '../../../lib/ai';
 import { sanitizeDishListRefs, sanitizeRecipeLocation } from '../../../lib/dishLists/recipeLink';
+import { sanitizeRating } from '../../../lib/recipeRating';
 
 
 async function convertIngredients(originalObject) {
@@ -104,6 +105,7 @@ export default async function handler(req, res) {
         if (req.body.mealTypes !== undefined) updateData.mealTypes = req.body.mealTypes;
         if (req.body.priceCategory !== undefined) updateData.priceCategory = req.body.priceCategory;
         if (req.body.timesCooked !== undefined) updateData.timesCooked = req.body.timesCooked;
+        if (req.body.rating !== undefined) updateData.rating = sanitizeRating(req.body.rating);
         if (req.body.hidden !== undefined) updateData.hidden = req.body.hidden;
         if (req.body.feedback !== undefined) updateData.feedback = req.body.feedback;
         if (req.body.carbType !== undefined) updateData.carbType = req.body.carbType;

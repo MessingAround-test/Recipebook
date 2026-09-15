@@ -119,6 +119,7 @@ const RecipeSchema = new mongoose.Schema(
         carbSide: carbSideSchema,
         priceCategory: { type: String, enum: ['cheap', 'medium', 'expensive'], required: false },
         timesCooked: { type: Number, default: 0 },
+        rating: { type: Number, min: 1, max: 5 },
         hidden: { type: Boolean, default: false },
         feedback: { type: String, required: false },
         sourceNotes: { type: String, required: false },

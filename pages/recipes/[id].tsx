@@ -3,7 +3,7 @@ import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
 import { formatQuantityDisplay } from '../../lib/fractionFormat'
 import { renderFractions } from '../../components/Fraction'
 import { Button } from '../../components/ui/button'
-import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Users, Download, Info, Hourglass, Flame, Scale, Globe2 } from 'lucide-react'
+import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Users, Download, Info, Hourglass, Flame, Scale, Globe2, Camera } from 'lucide-react'
 import { calculateRecipeWeight, formatWeight, rescaleDisplayAmount } from '../../lib/conversion'
 import { isImperialDisplay, convertForDisplay, formatWeightImperial } from '../../lib/unitDisplay'
 import { buildFlowItems, computePhaseInsertPoints, fillCarbPhaseText, recommendCarbOption, resolveCarbSlot, resolveCarbTiming, resolveVariant } from '../../lib/carbSideOps'
@@ -18,9 +18,18 @@ import Modal from 'react-modal'
 import ExportRecipeModal from '../../components/ExportRecipeModal'
 import ScaleRecipeModal, { ScaleIngredientOption } from '../../components/ScaleRecipeModal'
 import { getColorForName } from '../../lib/colors'
+import StarRating from '../../components/StarRating'
 import { playAlarm, requestNotificationPermission, sendNotification } from '../../lib/alarm'
 
 const PRICE_THRESHOLDS = { cheap: 15, expensive: 35 }
+
+const RATING_LABELS: Record<number, string> = {
+    1: 'Not for us',
+    2: 'Just okay',
+    3: 'Solid',
+    4: 'Really good',
+    5: 'A keeper'
+}
 
 const timeLabelMap: Record<string, { label: string }> = {
     short: { label: 'Quick' },
@@ -254,9 +263,16 @@ export default function RecipeDetail() {
     const [approxCost, setApproxCost] = useState<number | null>(null)
     const [aiFilledFields, setAiFilledFields] = useState<string[]>([])
     const [timesCooked, setTimesCooked] = useState(0)
+    const [rating, setRating] = useState(0)
     const [isHidden, setIsHidden] = useState(false)
     const [feedback, setFeedback] = useState("")
     const [isSavingFeedback, setIsSavingFeedback] = useState(false)
+    const [showReflection, setShowReflection] = useState(false)
+    const [finishRating, setFinishRating] = useState(0)
+    const [finishFeedback, setFinishFeedback] = useState("")
+    const [reflectionImage, setReflectionImage] = useState<string | null>(null)
+    const [isSubmittingReflection, setIsSubmittingReflection] = useState(false)
+    const reflectionFileRef = useRef<HTMLInputElement>(null)
     const [isCalculatingCost, setIsCalculatingCost] = useState(false)
     const [recipeServings, setRecipeServings] = useState<number>(0)
     const [scaleFactor, setScaleFactor] = useState<number>(1)
@@ -712,6 +728,7 @@ export default function RecipeDetail() {
         setRecipeCarbType(data.res.carbType || '')
         setRecipePriceCategory(data.res.priceCategory || '')
         setTimesCooked(data.res.timesCooked || 0)
+        setRating(data.res.rating || 0)
         setIsHidden(!!data.res.hidden)
         setFeedback(data.res.feedback || "")
         setRecipeServings(data.res.servings || 0)
@@ -889,41 +906,60 @@ export default function RecipeDetail() {
         })
     }
 
+    const readImageAsDataUrl = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader()
+            reader.readAsDataURL(file)
+            reader.onload = async () => {
+                let base64String = reader.result
+                if (file.size > 1024 * 1024) {
+                    base64String = await compressImage(reader.result)
+                }
+                resolve(base64String as string)
+            }
+            reader.onerror = reject
+        })
+    }
+
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0]
         if (file) {
             try {
-                const reader = new FileReader()
-                reader.readAsDataURL(file)
-                reader.onload = async () => {
-                    let base64String = reader.result
-                    if (file.size > 1024 * 1024) {
-                        base64String = await compressImage(reader.result)
-                    }
+                const base64String = await readImageAsDataUrl(file)
+                try {
+                    const response = await fetch(`/api/Recipe/${encodeURIComponent(String(id))}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'edgetoken': localStorage.getItem('Token') || ""
+                        },
+                        body: JSON.stringify({ image: base64String }),
+                    })
 
-                    try {
-                        const response = await fetch(`/api/Recipe/${encodeURIComponent(String(id))}`, {
-                            method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'edgetoken': localStorage.getItem('Token') || ""
-                            },
-                            body: JSON.stringify({ image: base64String }),
-                        })
-
-                        if (response.ok) {
-                            window.location.reload()
-                        } else {
-                            console.error('Failed to update the image')
-                        }
-                    } catch (error) {
-                        console.error('Error updating image:', error)
+                    if (response.ok) {
+                        window.location.reload()
+                    } else {
+                        console.error('Failed to update the image')
                     }
+                } catch (error) {
+                    console.error('Error updating image:', error)
                 }
             } catch (error) {
                 console.error('Error converting file to Base64:', error)
             }
         }
+    }
+
+    const handleReflectionFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0]
+        if (!file) return
+        try {
+            const base64String = await readImageAsDataUrl(file)
+            setReflectionImage(base64String)
+        } catch (error) {
+            console.error('Error reading reflection image:', error)
+        }
+        event.target.value = ''
     }
 
     // Shopping list helpers
@@ -1041,6 +1077,20 @@ export default function RecipeDetail() {
             console.error("Failed to save feedback")
         }
         setIsSavingFeedback(false)
+    }
+
+    const saveRating = async (value: number) => {
+        setRating(value)
+        const token = localStorage.getItem('Token') || ""
+        try {
+            await fetch(`/api/Recipe/${String(id)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': token },
+                body: JSON.stringify({ rating: value || null })
+            })
+        } catch (e) {
+            console.error("Failed to save rating")
+        }
     }
 
     const toggleHidden = async () => {
@@ -1457,6 +1507,46 @@ export default function RecipeDetail() {
         setCarbModalOpen(false)
         setScaleFactor(1)
         setScaleModalOpen(false)
+        setShowReflection(false)
+        setFinishRating(0)
+        setFinishFeedback("")
+        setReflectionImage(null)
+        setIsSubmittingReflection(false)
+    }
+
+    const openReflection = () => {
+        setFinishRating(rating)
+        setFinishFeedback(feedback)
+        setReflectionImage(null)
+        setFinishConfirm(false)
+        setShowReflection(true)
+    }
+
+    const submitReflection = async () => {
+        setIsSubmittingReflection(true)
+        const token = localStorage.getItem('Token') || ""
+        const nextTimesCooked = timesCooked + 1
+        const body: any = {
+            timesCooked: nextTimesCooked,
+            rating: finishRating || null,
+            feedback: finishFeedback
+        }
+        if (reflectionImage) body.image = reflectionImage
+        try {
+            await fetch(`/api/Recipe/${String(id)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': token },
+                body: JSON.stringify(body)
+            })
+            setTimesCooked(nextTimesCooked)
+            setRating(finishRating)
+            setFeedback(finishFeedback)
+            if (reflectionImage) setImageData(reflectionImage)
+        } catch (e) {
+            console.error("Failed to save cooking reflection")
+        }
+        setIsSubmittingReflection(false)
+        closeCooking()
     }
 
     // ---------- Carb side (Start Cooking) ----------
@@ -2236,7 +2326,10 @@ export default function RecipeDetail() {
 
                     <div className="recipe-band px-4 sm:px-8 pt-4 pb-3">
                         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight">{recipeName}</h1>
+                            <div className="min-w-0">
+                                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight">{recipeName}</h1>
+                                <StarRating value={rating} onChange={saveRating} size={18} className="mt-1.5" />
+                            </div>
                             {(totalTimeEstimate > 0 || recipeServings > 0) && (
                                 <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm sm:text-base font-semibold text-foreground/90">
                                     {totalTimeEstimate > 0 && (
@@ -2872,6 +2965,13 @@ export default function RecipeDetail() {
                             </div>
                         </div>
 
+                        <div className="mb-4 flex flex-wrap items-center gap-3">
+                            <StarRating value={rating} onChange={saveRating} size={26} />
+                            <span className="text-sm font-semibold text-muted-foreground">
+                                {rating ? RATING_LABELS[rating] : 'Not rated yet'}
+                            </span>
+                        </div>
+
                         <div className="space-y-2">
                             <textarea
                                 value={feedback}
@@ -3192,7 +3292,7 @@ export default function RecipeDetail() {
                 )}
 
                 {/* Cooking Mode Overlay */}
-                {isCookingMode && (() => {
+                {isCookingMode && !showReflection && (() => {
                     const clampedCurrent = Math.min(currentFlow, Math.max(0, flowItems.length - 1))
                     const current = flowItems[clampedCurrent]
                     const currentStepIdx = current ? current.stepIndex : 0
@@ -3249,7 +3349,7 @@ export default function RecipeDetail() {
                         }
                         if (isLast) {
                             if (runningTimerCount > 0 || customTimers.length > 0) setFinishConfirm(true)
-                            else closeCooking()
+                            else openReflection()
                             return
                         }
                         setDoneFlow(prev => new Set([...Array.from(prev), clampedCurrent]))
@@ -4462,13 +4562,106 @@ export default function RecipeDetail() {
                     )
                 })()}
 
+            {/* Final reflection step — shown after Finish, inside the cooking
+                overlay's UI. Rating, optional note/photo, then Submit marks the
+                recipe cooked; Skip exits without changing anything. */}
+            {isCookingMode && showReflection && (
+                <div className="cooking-mode-overlay">
+                    <header className="cooking-mode-header">
+                        <div className="cooking-header-center">
+                            <div className="cooking-header-title">Finish cooking</div>
+                        </div>
+                    </header>
+                    <div className="flex-1 min-h-0 overflow-y-auto px-4 py-6 sm:py-10">
+                        <div className="mx-auto w-full max-w-md space-y-6">
+                            <div className="text-center">
+                                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15">
+                                    <ChefHat className="text-emerald-400" size={26} />
+                                </div>
+                                <h2 className="text-xl font-bold tracking-tight">How did it turn out?</h2>
+                                <p className="mt-1 text-sm text-muted-foreground">Rate this cook, then finish up — or skip.</p>
+                            </div>
+
+                            <div className="flex flex-col items-center gap-2">
+                                <StarRating value={finishRating} onChange={setFinishRating} size={34} />
+                                <span className="h-4 text-xs font-semibold text-muted-foreground">
+                                    {RATING_LABELS[finishRating] || 'Tap to rate'}
+                                </span>
+                            </div>
+
+                            <div>
+                                <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Notes</label>
+                                <textarea
+                                    value={finishFeedback}
+                                    onChange={(e) => setFinishFeedback(e.target.value)}
+                                    placeholder="How did it turn out? Any tweaks for next time?"
+                                    className="w-full min-h-[110px] rounded-xl bg-secondary px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-accent/40 transition-shadow resize-none placeholder:text-muted-foreground/50"
+                                />
+                            </div>
+
+                            {!imageData && (
+                                <div>
+                                    <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Photo</label>
+                                    {reflectionImage ? (
+                                        <div className="relative overflow-hidden rounded-xl border border-border">
+                                            <img src={reflectionImage} alt="Recipe photo" className="h-40 w-full object-cover" />
+                                            <button
+                                                type="button"
+                                                onClick={() => setReflectionImage(null)}
+                                                className="absolute right-2 top-2 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm hover:bg-black/80"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => reflectionFileRef.current?.click()}
+                                            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border px-4 py-4 text-sm font-semibold text-muted-foreground transition-colors hover:border-accent hover:text-accent"
+                                        >
+                                            <Camera size={18} /> Add a photo
+                                        </button>
+                                    )}
+                                    <input
+                                        ref={reflectionFileRef}
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={handleReflectionFileChange}
+                                    />
+                                </div>
+                            )}
+
+                            <div className="flex flex-col gap-2">
+                                <Button
+                                    className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl flex items-center justify-center gap-2"
+                                    disabled={isSubmittingReflection}
+                                    onClick={submitReflection}
+                                >
+                                    <Check size={18} strokeWidth={3} />
+                                    {isSubmittingReflection ? 'Saving…' : 'Finish & mark cooked'}
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    className="w-full h-11 rounded-xl text-muted-foreground"
+                                    disabled={isSubmittingReflection}
+                                    onClick={closeCooking}
+                                >
+                                    Skip
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Finish Cooking Confirmation */}
             {finishConfirm && (
                 <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
                     <div className="bg-card border border-border/40 rounded-2xl p-5 max-w-sm mx-4 shadow-xl">
                         <h3 className="text-lg font-bold mb-2">Finish Cooking?</h3>
                         <p className="text-sm text-foreground/60 mb-4">
-                            This will clear all timers, completed steps, and reset everything.
+                            This will clear all timers and completed steps. You'll still get a chance to rate this cook.
                         </p>
                         <div className="flex gap-3">
                             <Button
@@ -4480,12 +4673,9 @@ export default function RecipeDetail() {
                             </Button>
                             <Button
                                 className="flex-1 h-11 bg-emerald-500 hover:bg-emerald-600 text-white"
-                                onClick={() => {
-                                    setFinishConfirm(false)
-                                    closeCooking()
-                                }}
+                                onClick={() => openReflection()}
                             >
-                                Finish & Reset
+                                Finish
                             </Button>
                         </div>
                     </div>

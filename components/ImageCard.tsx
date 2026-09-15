@@ -2,6 +2,7 @@ import React from 'react'
 import { useRouter } from 'next/router'
 import { Button } from './ui/button'
 import { Flame, DollarSign, Clock, Utensils, Trash2, Eye, EyeOff } from 'lucide-react'
+import StarRating from './StarRating'
 import { getColorForName } from '../lib/colors'
 
 export interface Recipe {
@@ -16,6 +17,7 @@ export interface Recipe {
     mealTypes?: string[]
     approxCost?: number
     timesCooked?: number
+    rating?: number
     hidden?: boolean
     instructions?: Array<{ time?: number }>
     prepWork?: Array<{ timeEstimate?: number; optional?: boolean }>
@@ -159,6 +161,10 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
                     <h3 className="text-sm font-bold leading-tight line-clamp-2 tracking-tight text-white">
                         {recipe.name}
                     </h3>
+
+                    {recipe.rating ? (
+                        <StarRating value={recipe.rating} readOnly size={11} />
+                    ) : null}
 
                     {isRecipesPage && (timeTag || extraTagLabels.length > 0) && (
                         <div className="flex items-center gap-1.5 flex-wrap">
