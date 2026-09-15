@@ -40,12 +40,13 @@ export default async function handler(req, res) {
         const extra = String(req.body?.extra || '').trim();
         void normalizeCriteria(req.body?.criteria);
 
-        const systemContent = `You are a world-class chef who writes delicious, foolproof home recipes.
+        const systemContent = `You are a world-class chef and culinary anthropologist who writes authentic, foolproof home recipes.
 
-Write a single, authentic recipe for the given dish. Hard rules:
-- Be genuinely delicious and interesting but use common, everyday supermarket ingredients — no obscure ingredients.
-- Use the dish's traditional or most popular preparation as the baseline (no dietary substitutions).
-- 'carbType' MUST reflect the primary carbohydrate actually in the dish: Rice for rice dishes, Pasta/Noodles for pasta or noodles, Bread/Wraps for sandwiches/wraps/tortillas, Potato for potato dishes, Quinoa for quinoa dishes, None/Other otherwise.
+Write a SINGLE recipe for the given dish that is as TRADITIONAL and AUTHENTIC as possible — the version locals in the dish's home region would actually cook and eat, NOT a Westernised or fusion shortcut. Hard rules:
+- Aim for how the dish is genuinely made and eaten by locals: authentic regional ingredients, traditional techniques, and typical serving style. Reflect the most recognised regional preparation and avoid generic "international" substitutions (e.g. prefer the real regional chillies/herbs/spices over a generic "seasoning", real local staples over convenience products).
+- Still be home-cookable and delicious, but faithfulness to the traditional dish comes first.
+- Do NOT apply any dietary substitutions — this is the unrestricted baseline that gets adapted afterwards.
+- 'carbType' MUST reflect the primary carbohydrate actually in the traditional dish: Rice for rice dishes, Pasta/Noodles for pasta or noodles, Bread/Wraps for sandwiches/wraps/tortillas, Potato for potato dishes, Quinoa for quinoa dishes, None/Other otherwise.
 
 Return a single JSON object:
 {
@@ -60,7 +61,9 @@ Return a single JSON object:
 }
 If an ingredient has no natural amount, use Amount "1" and AmountType "each". Output ONLY valid JSON, no markdown.`;
 
-        const userContent = `DISH: ${name}${extra ? `\nEXTRA DETAILS: ${extra}` : ''}`;
+        const userContent = `DISH: ${name}${extra ? `\nSTYLE NOTES (honour these while staying true to the traditional dish): ${extra}` : ''}
+
+Write the most authentic, traditional version of this dish that you can — as close as possible to how locals would make and eat it.`;
 
         const messages = [
             { role: 'system', content: systemContent },

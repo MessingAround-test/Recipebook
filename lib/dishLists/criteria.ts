@@ -106,6 +106,24 @@ export const expandImpliedCriteria = (criteria: string[] = []): string[] => {
 }
 
 /**
+ * Inverse of {@link expandImpliedCriteria}: given a set that may contain
+ * implied preferences, keep only the broadest actual preference. e.g.
+ * pescetarian + vegetarian + vegan collapses to just pescetarian. Used when
+ * handing the user's *real* dietary requirement to the remix flow, so we don't
+ * also force the implied stricter diets.
+ */
+export const collapseImpliedCriteria = (criteria: string[] = []): string[] => {
+    const set = new Set(normalizeCriteria(criteria))
+    if (set.has('pescetarian')) {
+        set.delete('vegetarian')
+        set.delete('vegan')
+    } else if (set.has('vegetarian')) {
+        set.delete('vegan')
+    }
+    return Array.from(set)
+}
+
+/**
  * Turns the selected criteria into the shared dietary-rules sentence used by
  * the planner AI, so recipe extraction can adapt/substitute accordingly.
  * Returns '' when nothing is selected.
@@ -117,4 +135,19 @@ export const criteriaInstruction = (criteria: string[] = []): string => {
     const restrictions = norm.filter(c => !PREFERENCE_VALUES.includes(c))
     const text = buildDietaryConstraints({ dietary_preference: preference, dietary_restrictions: restrictions })
     return text === 'No dietary restrictions.' ? '' : text
+}
+
+/**
+ * Builds a short, editable natural-language phrase describing the chosen
+ * dietary requirements, for pre-filling the Generate-with-AI prompt box
+ * (e.g. "Make it vegan and gluten-free."). Returns '' when nothing is chosen.
+ */
+export const dietaryPromptPhrase = (criteria: string[] = []): string => {
+    const labels = normalizeCriteria(criteria).map(criterionLabel)
+    if (labels.length === 0) return ''
+    const lower = labels.map(l => l.toLowerCase())
+    if (lower.length === 1) return `Make it ${lower[0]}.`
+    const head = lower.slice(0, -1).join(', ')
+    const tail = lower[lower.length - 1]
+    return `Make it ${head} and ${tail}.`
 }
