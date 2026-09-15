@@ -271,6 +271,7 @@ export default function RecipeDetail() {
     const [finishRating, setFinishRating] = useState(0)
     const [finishFeedback, setFinishFeedback] = useState("")
     const [reflectionImage, setReflectionImage] = useState<string | null>(null)
+    const [finishHide, setFinishHide] = useState(false)
     const [isSubmittingReflection, setIsSubmittingReflection] = useState(false)
     const reflectionFileRef = useRef<HTMLInputElement>(null)
     const [isCalculatingCost, setIsCalculatingCost] = useState(false)
@@ -1511,6 +1512,7 @@ export default function RecipeDetail() {
         setFinishRating(0)
         setFinishFeedback("")
         setReflectionImage(null)
+        setFinishHide(false)
         setIsSubmittingReflection(false)
     }
 
@@ -1518,6 +1520,7 @@ export default function RecipeDetail() {
         setFinishRating(rating)
         setFinishFeedback(feedback)
         setReflectionImage(null)
+        setFinishHide(false)
         setFinishConfirm(false)
         setShowReflection(true)
     }
@@ -1532,6 +1535,7 @@ export default function RecipeDetail() {
             feedback: finishFeedback
         }
         if (reflectionImage) body.image = reflectionImage
+        if (finishHide) body.hidden = true
         try {
             await fetch(`/api/Recipe/${String(id)}`, {
                 method: 'PUT',
@@ -1542,6 +1546,7 @@ export default function RecipeDetail() {
             setRating(finishRating)
             setFeedback(finishFeedback)
             if (reflectionImage) setImageData(reflectionImage)
+            if (finishHide) setIsHidden(true)
         } catch (e) {
             console.error("Failed to save cooking reflection")
         }
@@ -4631,6 +4636,19 @@ export default function RecipeDetail() {
                                     />
                                 </div>
                             )}
+
+                            <label className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors ${finishHide ? 'border-amber-500/50 bg-amber-500/10' : 'border-border hover:border-amber-500/30'}`}>
+                                <input
+                                    type="checkbox"
+                                    checked={finishHide}
+                                    onChange={(e) => setFinishHide(e.target.checked)}
+                                    className="mt-0.5 h-4 w-4 shrink-0 accent-amber-500"
+                                />
+                                <span className="min-w-0">
+                                    <span className={`block text-sm font-semibold ${finishHide ? 'text-amber-400' : 'text-foreground'}`}>I wouldn't cook this again</span>
+                                    <span className="block text-xs text-muted-foreground">Hides it from your recipes list</span>
+                                </span>
+                            </label>
 
                             <div className="flex flex-col gap-2">
                                 <Button
