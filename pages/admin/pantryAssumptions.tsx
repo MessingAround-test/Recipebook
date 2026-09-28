@@ -165,7 +165,8 @@ export default function AdminPantryAssumptions() {
                 <p className="mt-3 text-xs text-muted-foreground">
                     Name rules match with word boundaries, so <em>rice</em> also matches <em>basmati rice</em>. Priority breaks ties
                     (higher wins), then the most specific value. Rules are checked before recent purchases, followed by category rules.
-                    Built-in rules are deactivated rather than deleted.
+                    Recent purchases use a 4-week window, except Fresh Produce (1 week → Maybe). Built-in rules are deactivated rather
+                    than deleted.
                 </p>
             </div>
         </Layout>

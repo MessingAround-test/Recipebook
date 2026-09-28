@@ -4,6 +4,7 @@ const {
     containsPhrase,
     matchesNameRule,
     isRecentlyPurchased,
+    recentWindowForCategory,
     stampPlanningFields,
     PLANNING_BUCKETS,
     PLANNING_BUCKET_ORDER,
@@ -99,6 +100,33 @@ describe('resolvePlanningBucket', () => {
         expect(resolvePlanningBucket('tahini', { rules })).toBe(PLANNING_BUCKETS.PROBABLY);
         expect(resolvePlanningBucket('honey', { rules })).toBe(PLANNING_BUCKETS.TO_CHECK);
     });
+
+    test('fresh produce bought in the last week lands in Maybe', () => {
+        const recent = new Map([['broccoli', Date.now() - 2 * 24 * 60 * 60 * 1000]]);
+        expect(resolvePlanningBucket('broccoli', { category: 'Fresh Produce', recentNames: recent })).toBe(PLANNING_BUCKETS.MAYBE);
+    });
+
+    test('fresh produce bought over a week ago falls through to To check', () => {
+        const recent = new Map([['broccoli', Date.now() - 10 * 24 * 60 * 60 * 1000]]);
+        expect(resolvePlanningBucket('broccoli', { category: 'Fresh Produce', recentNames: recent })).toBe(PLANNING_BUCKETS.TO_CHECK);
+    });
+
+    test('non-produce still uses the default 4-week window', () => {
+        const recent = new Map([['tahini', Date.now() - 10 * 24 * 60 * 60 * 1000]]);
+        expect(resolvePlanningBucket('tahini', { recentNames: recent })).toBe(PLANNING_BUCKETS.PROBABLY);
+    });
+});
+
+describe('recentWindowForCategory', () => {
+    test('returns a week/Maybe window for fresh produce', () => {
+        expect(recentWindowForCategory('Fresh Produce')).toEqual({ days: 7, bucket: PLANNING_BUCKETS.MAYBE });
+        expect(recentWindowForCategory('fresh produce')).toEqual({ days: 7, bucket: PLANNING_BUCKETS.MAYBE });
+    });
+
+    test('returns null for categories without an override', () => {
+        expect(recentWindowForCategory('Dairy and Eggs')).toBeNull();
+        expect(recentWindowForCategory(null)).toBeNull();
+    });
 });
 
 describe('isRecentlyPurchased', () => {
@@ -107,6 +135,12 @@ describe('isRecentlyPurchased', () => {
         expect(isRecentlyPurchased('chicken breast', recent)).toBe(true);
         expect(isRecentlyPurchased('chicken breast fillets', recent)).toBe(true);
         expect(isRecentlyPurchased('beef mince', recent)).toBe(false);
+    });
+
+    test('respects the supplied day window when dates are provided', () => {
+        const recent = new Map([['milk', Date.now() - 10 * 24 * 60 * 60 * 1000]]);
+        expect(isRecentlyPurchased('milk', recent, 28)).toBe(true);
+        expect(isRecentlyPurchased('milk', recent, 7)).toBe(false);
     });
 });
 

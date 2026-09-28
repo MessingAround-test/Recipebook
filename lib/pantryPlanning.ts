@@ -23,6 +23,19 @@ export const PLANNING_BUCKET_ORDER = [
 // How recently an item must have been bought to count as "still in the pantry".
 export const RECENT_PURCHASE_WINDOW_DAYS = 28;
 
+// Some categories have sharper expiry than the default window. Fresh produce
+// bought in the last week lands in "Maybe"; older than that it falls through
+// to "To check". Keyed by lowercased broad category.
+export const CATEGORY_RECENT_WINDOWS = {
+    'fresh produce': { days: 7, bucket: PLANNING_BUCKETS.MAYBE },
+};
+
+/** Recent-window rule for a broad category, or null to use the default. */
+export function recentWindowForCategory(category: any): { days: number; bucket: string } | null {
+    const key = normalizeName(category);
+    return key && CATEGORY_RECENT_WINDOWS[key] ? CATEGORY_RECENT_WINDOWS[key] : null;
+}
+
 // Default rules. Seeded into the PantryAssumption collection on first use and
 // freely editable/extendsible via the admin screen.
 //   - "Almost certainly have": seasonings and cooking basics most kitchens keep.
@@ -105,24 +118,53 @@ function pickBestRule(rules: any[]) {
     })[0] || null;
 }
 
-export function isRecentlyPurchased(normalizedName: string, recentNames: Set<string>): boolean {
-    if (!recentNames || recentNames.size === 0 || !normalizedName) return false;
-    const recents = Array.from(recentNames) as string[];
+export function isRecentlyPurchased(normalizedName: string, recentNames: any, withinDays?: number): boolean {
+    const days = typeof withinDays === 'number' ? withinDays : RECENT_PURCHASE_WINDOW_DAYS;
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    const recents = toRecentEntries(recentNames);
+    if (recents.length === 0 || !normalizedName) return false;
     for (let i = 0; i < recents.length; i++) {
         const recent = recents[i];
-        if (!recent) continue;
-        if (recent === normalizedName) return true;
-        if (normalizedName.length >= 4 && containsPhrase(normalizedName, recent)) return true;
-        if (recent.length >= 4 && containsPhrase(recent, normalizedName)) return true;
+        if (!recent.name || recent.at < cutoff) continue;
+        if (recent.name === normalizedName) return true;
+        if (normalizedName.length >= 4 && containsPhrase(normalizedName, recent.name)) return true;
+        if (recent.name.length >= 4 && containsPhrase(recent.name, normalizedName)) return true;
     }
     return false;
+}
+
+/**
+ * Normalises the "recent purchases" input into [{ name, at }] entries.
+ * Accepts either a Map<name, timestamp-ms> or a Set<string> (treated as
+ * "bought just now") for backwards compatibility and easy testing.
+ */
+function toRecentEntries(recentNames: any): { name: string; at: number }[] {
+    if (!recentNames) return [];
+    if (typeof recentNames.entries === 'function') {
+        const out: { name: string; at: number }[] = [];
+        const iter = recentNames.entries();
+        let next = iter.next();
+        while (!next.done) {
+            const [name, at] = next.value;
+            out.push({ name, at: typeof at === 'number' ? at : Date.now() });
+            next = iter.next();
+        }
+        return out;
+    }
+    if (typeof recentNames.forEach === 'function') {
+        const out: { name: string; at: number }[] = [];
+        recentNames.forEach((value: any, name: string) => out.push({ name, at: Date.now() }));
+        return out;
+    }
+    return [];
 }
 
 /**
  * Resolves the planning bucket for a single item.
  * Precedence:
  *   1. explicit name rule (Almost certainly have / Probably)
- *   2. bought within the recent window -> Probably
+ *   2. bought within the recent window -> Probably (or the category's bucket,
+ *      e.g. Fresh Produce within the last week -> Maybe)
  *   3. explicit category rule (Maybe)
  *   4. To check
  */
@@ -141,8 +183,11 @@ export function resolvePlanningBucket(name: any, opts: any = {}) {
     const nameRule = pickBestRule(nameRules);
     if (nameRule) return nameRule.bucket;
 
-    if (isRecentlyPurchased(normalized, recentNames)) {
-        return PLANNING_BUCKETS.PROBABLY;
+    // Category-aware recency: fresh produce is only "still around" for a week.
+    const window = recentWindowForCategory(category);
+    const withinDays = window ? window.days : RECENT_PURCHASE_WINDOW_DAYS;
+    if (isRecentlyPurchased(normalized, recentNames, withinDays)) {
+        return window ? window.bucket : PLANNING_BUCKETS.PROBABLY;
     }
 
     const categoryRules = (rules || []).filter(
@@ -158,30 +203,33 @@ export function resolvePlanningBucket(name: any, opts: any = {}) {
 // `models` is passed in ({ ShoppingList, ShoppingListItem, PantryAssumption })
 // so this module stays unit-testable without a database.
 
-export async function getRecentlyPurchasedNames(models: any, userId: any, currentListId: any): Promise<Set<string>> {
+export async function getRecentlyPurchasedNames(models: any, userId: any, currentListId: any): Promise<Map<string, number>> {
     const { ShoppingList, ShoppingListItem } = models || {};
-    const names = new Set<string>();
-    if (!ShoppingList || !ShoppingListItem || !userId) return names;
+    const purchases = new Map<string, number>();
+    if (!ShoppingList || !ShoppingListItem || !userId) return purchases;
 
     const since = new Date(Date.now() - RECENT_PURCHASE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
     const lists = await ShoppingList.find({ createdBy: userId }).select('_id').lean();
     const ids = lists
         .map((l: any) => String(l._id))
         .filter((id: string) => id !== String(currentListId == null ? '' : currentListId));
-    if (ids.length === 0) return names;
+    if (ids.length === 0) return purchases;
 
     const items = await ShoppingListItem.find({
         complete: true,
         deleted: { $ne: true },
         updated_at: { $gte: since },
         shoppingListId: { $in: ids },
-    }).select('name').lean();
+    }).select('name updated_at').lean();
 
     items.forEach((item: any) => {
         const normalized = normalizeName(item.name);
-        if (normalized) names.add(normalized);
+        if (!normalized) return;
+        const at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+        const prev = purchases.get(normalized);
+        if (prev === undefined || at > prev) purchases.set(normalized, at);
     });
-    return names;
+    return purchases;
 }
 
 export async function loadPantryAssumptions(models: any): Promise<any[]> {
@@ -197,7 +245,7 @@ export async function loadPantryAssumptions(models: any): Promise<any[]> {
 export async function buildPlanningContext(models: any, userId: any, currentListId: any) {
     const [dbRules, recentNames] = await Promise.all([
         loadPantryAssumptions(models),
-        userId ? getRecentlyPurchasedNames(models, userId, currentListId) : Promise.resolve(new Set<string>()),
+        userId ? getRecentlyPurchasedNames(models, userId, currentListId) : Promise.resolve(new Map<string, number>()),
     ]);
     return {
         rules: dbRules && dbRules.length > 0 ? dbRules : SEED_PANTRY_ASSUMPTIONS,
