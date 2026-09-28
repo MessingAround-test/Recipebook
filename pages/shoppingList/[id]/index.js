@@ -12,10 +12,11 @@ import ToggleList from '../../../components/ToggleList'
 import { getGroceryStoreProducts } from '../../../lib/commonAPIs'
 import { groupByKeys } from '../../../lib/grouping'
 import { getColorForCategory, getLightColorForCategory } from '../../../lib/colors'
-import { Info, Settings, RotateCcw, Plus, Check, Copy, ClipboardCheck, Leaf, Egg, CakeSlice, Beef, Package, Wheat, FlaskConical, Popcorn, CupSoda, Snowflake, Trash2, User, Heart, Globe, UtensilsCrossed, Home as HomeIcon, ShoppingBag, CircleDot } from 'lucide-react'
+import { Info, Settings, RotateCcw, Plus, Check, Copy, ClipboardCheck, Leaf, Egg, CakeSlice, Beef, Package, Wheat, FlaskConical, Popcorn, CupSoda, Snowflake, Trash2, User, Heart, Globe, UtensilsCrossed, Home as HomeIcon, ShoppingBag, CircleDot, BadgeCheck, ThumbsUp, HelpCircle, Search } from 'lucide-react'
 import WoolworthsOrderEditor from '../../../components/WoolworthsOrderEditor'
 import EditShoppingItemOverlay from '../../../components/EditShoppingItemOverlay'
 import { compareByWoolworthsOrder, compareGroupsByWoolworthsOrder, getStoredOrder } from '../../../lib/woolworthsOrder'
+import { PLANNING_BUCKET_ORDER } from '../../../lib/pantryPlanning'
 
 const FRIENDLY_NAMES = {
     'Fresh Produce': 'Fresh Produce',
@@ -47,6 +48,11 @@ const FRIENDLY_NAMES = {
     'Panetta': 'Panetta',
     'category_simple': 'Simple Category',
     'category': 'Broad Category',
+    'planning': 'Planning',
+    'Almost certainly have': 'Almost Certainly Have',
+    'Probably': 'Probably',
+    'Maybe': 'Maybe',
+    'To check': 'To Check',
     'supplier': 'Supplier',
     'recipe_name': 'Recipe',
     'price_category': 'Price',
@@ -83,6 +89,19 @@ const CATEGORY_ICONS = {
     'IGA': ShoppingBag,
     'Panetta': ShoppingBag,
     'Other (No Match)': CircleDot,
+    'Almost certainly have': BadgeCheck,
+    'Probably': ThumbsUp,
+    'Maybe': HelpCircle,
+    'To check': Search,
+};
+
+// Short, glanceable glyphs for the planning buckets — shown in the quick-jump
+// bubbles so "have it" vs "need to check" is obvious at a glance.
+const PLANNING_BUCKET_GLYPHS = {
+    'Almost certainly have': '!',
+    'Probably': '~',
+    'Maybe': '?',
+    'To check': '✓',
 };
 
 export default function Home() {
@@ -112,7 +131,7 @@ export default function Home() {
     const [sortMode, setSortMode] = useState('alphabetical')
     const [isOrderEditorOpen, setIsOrderEditorOpen] = useState(false)
     const [editingItem, setEditingItem] = useState(null)
-    const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type", "category_simple", "recipe_name"]
+    const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type", "category_simple", "planning", "recipe_name"]
 
     useEffect(() => {
         const savedStrategy = localStorage.getItem('shoppingList_pricingStrategy');
@@ -484,14 +503,32 @@ export default function Home() {
     };
 
     function sortFunction(a, b) {
-        if (sortMode === 'woolworths_smart') {
-            return compareGroupsByWoolworthsOrder(a, b, getStoredOrder());
-        }
         const aIsComplete = a.includes("complete=true");
         const bIsComplete = b.includes("complete=true");
         if (aIsComplete && !bIsComplete) return 1;
         if (!aIsComplete && bIsComplete) return -1;
+
+        if (activeFilters.includes("planning")) {
+            const aBucket = extractPlanningBucket(a);
+            const bBucket = extractPlanningBucket(b);
+            const aIdx = PLANNING_BUCKET_ORDER.indexOf(aBucket);
+            const bIdx = PLANNING_BUCKET_ORDER.indexOf(bBucket);
+            if (aIdx !== bIdx) {
+                const aRank = aIdx === -1 ? PLANNING_BUCKET_ORDER.length : aIdx;
+                const bRank = bIdx === -1 ? PLANNING_BUCKET_ORDER.length : bIdx;
+                return aRank - bRank;
+            }
+        }
+
+        if (sortMode === 'woolworths_smart') {
+            return compareGroupsByWoolworthsOrder(a, b, getStoredOrder());
+        }
         return a.localeCompare(b);
+    }
+
+    function extractPlanningBucket(group) {
+        const part = group.split('|').find(p => p.startsWith('planning='));
+        return part ? part.slice('planning='.length) : '';
     }
 
     function ingredientSortFunction(a, b) {
@@ -718,10 +755,13 @@ export default function Home() {
                 const isCompleted = group.includes('complete=true');
                 const color = isCompleted ? '#047857' : parts.reduce((f, p) => f || getColorForCategory(p), null) || 'var(--accent)';
                 const Icon = isCompleted ? Check : CATEGORY_ICONS[parts[0]];
+                const glyph = !isCompleted && activeFilters.includes('planning') && PLANNING_BUCKET_GLYPHS[parts[0]]
+                    ? PLANNING_BUCKET_GLYPHS[parts[0]]
+                    : null;
                 const label = parts.map(p => FRIENDLY_NAMES[p] || p).join(' & ') || (isCompleted ? 'Done' : 'Other');
-                return { group, color, Icon, label };
+                return { group, color, Icon, glyph, label };
             });
-    }, [sortedGroups]);
+    }, [sortedGroups, activeFilters]);
 
     const scrollToGroup = (group) => {
         const el = document.querySelector(`[data-group="${CSS.escape(group)}"]`);
@@ -745,7 +785,7 @@ export default function Home() {
             {categoryNavItems.length > 2 && (
                 <div className="fixed bottom-[4.5rem] left-0 right-0 sm:hidden z-[50] pointer-events-none">
                     <div className="flex justify-center gap-2.5 px-3 py-2 pointer-events-auto">
-                        {categoryNavItems.map(({ group, color, Icon, label }) => (
+                        {categoryNavItems.map(({ group, color, Icon, glyph, label }) => (
                             <button
                                 key={group}
                                 onClick={() => scrollToGroup(group)}
@@ -753,7 +793,13 @@ export default function Home() {
                                 style={{ background: color, boxShadow: `0 2px 8px ${color}60` }}
                                 title={label}
                             >
-                                {Icon ? <Icon size={15} strokeWidth={2.5} className="text-white" /> : <span className="text-white text-[10px] font-bold">{label[0]}</span>}
+                                {glyph ? (
+                                    <span className="text-white text-[15px] font-black leading-none">{glyph}</span>
+                                ) : Icon ? (
+                                    <Icon size={15} strokeWidth={2.5} className="text-white" />
+                                ) : (
+                                    <span className="text-white text-[10px] font-bold">{label[0]}</span>
+                                )}
                             </button>
                         ))}
                     </div>

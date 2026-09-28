@@ -6,7 +6,9 @@ import ShoppingListItem from '../../../models/ShoppingListItem'
 import ShoppingList from '../../../models/ShoppingList'
 import Ingredient from '../../../models/Ingredients'
 import IngredientConversion from '../../../models/IngredientConversion'
+import PantryAssumption from '../../../models/PantryAssumption'
 import { getShorthandForMeasure, addCalculatedFields } from '../../../lib/conversion'
+import { buildPlanningContext, stampPlanningFields } from '../../../lib/pantryPlanning'
 import { logAPI } from "../../../lib/logger";
 import { safeToObject } from "../../../lib/utils";
 
@@ -67,7 +69,13 @@ export default async function handler(req, res) {
                         const nameB = b.name.toLowerCase();
                         return nameA.localeCompare(nameB);
                     });
-                    return res.status(200).json({ res: dataRes })
+                    const planningContext = await buildPlanningContext(
+                        { ShoppingList, ShoppingListItem, PantryAssumption },
+                        userData._id,
+                        req.query.shoppingListId
+                    );
+                    const plannedRes = stampPlanningFields(dataRes, planningContext);
+                    return res.status(200).json({ res: plannedRes })
                 }
             }
         } catch (error) {

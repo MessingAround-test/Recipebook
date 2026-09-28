@@ -34,6 +34,11 @@ function IngredientCard({
 
     const isGroup = ingredient.isGroup ?? (ingredient.items && ingredient.items.length > 1);
 
+    // "From recipe: X" notes are redundant on a standalone item — the recipe is
+    // already implied. They're still useful when expanded on a grouped sub-item,
+    // where we show the recipe each entry came from.
+    const showNote = !!ingredient.note && !(!isGroup && /^from recipe:/i.test(String(ingredient.note).trim()));
+
     const bestOption = useMemo(() => {
         if (!ingredient.options || ingredient.options.length === 0) return undefined;
         let filtered = ingredient.options;
@@ -113,7 +118,7 @@ function IngredientCard({
                         }}>
                             {isMinimal && <span className="mr-3 opacity-60 text-primary">•</span>}
                             {ingredient.name}
-                            {ingredient.note && (
+                            {showNote && (
                                 <span className="opacity-60 font-medium" style={{ fontSize: '0.72rem', marginLeft: '0.35rem', wordBreak: 'break-word' }}>
                                     [ {ingredient.note} ]
                                 </span>

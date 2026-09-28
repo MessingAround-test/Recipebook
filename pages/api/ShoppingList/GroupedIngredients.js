@@ -1,9 +1,13 @@
 import dbConnect from '../../../lib/dbConnect'
 import ShoppingListItem from '../../../models/ShoppingListItem'
+import ShoppingList from '../../../models/ShoppingList'
 import IngredientConversion from '../../../models/IngredientConversion'
+import PantryAssumption from '../../../models/PantryAssumption'
+import User from '../../../models/User'
 import { verifyToken } from "../../../lib/auth.ts";
 import { logAPI } from '../../../lib/logger.ts';
 import { normalizeToGrams, getShorthandForMeasure, resolveUnitKey, addCalculatedFields } from '../../../lib/conversion'
+import { buildPlanningContext, stampPlanningFields } from '../../../lib/pantryPlanning'
 
 export default async function handler(req, res) {
     logAPI(req)
@@ -154,7 +158,16 @@ export default async function handler(req, res) {
 
         const finalizedResult = addCalculatedFields(result);
 
-        return res.status(200).json({ success: true, res: finalizedResult });
+        // Stamp pantry "planning" buckets (uses the signed-in user's own lists).
+        const userData = await User.findById(decoded.id).select('_id').lean();
+        const planningContext = await buildPlanningContext(
+            { ShoppingList, ShoppingListItem, PantryAssumption },
+            userData && userData._id,
+            shoppingListId
+        );
+        const plannedResult = stampPlanningFields(finalizedResult, planningContext);
+
+        return res.status(200).json({ success: true, res: plannedResult });
     } catch (error) {
         console.error("GroupedIngredients API failed:", error);
         return res.status(500).json({ success: false, message: error.message });
