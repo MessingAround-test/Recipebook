@@ -2,9 +2,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import Router from 'next/router'
 import { Layout } from '../components/Layout'
 import { useAuthGuard } from '../lib/useAuthGuard'
-import { NUTRIENT_LABELS } from '../lib/dailyIntake'
 import { calculateHealthScore, DEFAULT_HEALTH_SCORE_CONFIG, HealthScoreConfig } from '../lib/healthScore'
-import { FiZap, FiActivity, FiShoppingCart, FiCalendar, FiArrowRight, FiPlus, FiCheckCircle, FiChevronRight, FiCompass, FiSearch, FiX, FiCoffee, FiRefreshCw, FiSettings, FiGrid } from 'react-icons/fi'
+import { FiShoppingCart, FiCalendar, FiPlus, FiChevronRight, FiCompass, FiSearch, FiX, FiSettings, FiGrid } from 'react-icons/fi'
 import IngredientEditor from '../components/IngredientEditor'
 import { fileToBase64 } from '../lib/recipeImage'
 import { extractRecipeFromImage, saveRecipe, Ingredient } from '../lib/recipeExtraction'
@@ -14,6 +13,12 @@ import { getDailySuggestionFromCoverage } from '../lib/dailySuggestions'
 import TodayNutritionModal from '../components/TodayNutritionModal'
 import PlanDayCoverageModal from '../components/PlanDayCoverageModal'
 import RoundOutModal from '../components/RoundOutModal'
+import DashboardCard from '../components/dashboard/DashboardCard'
+import ListRow from '../components/dashboard/ListRow'
+import TodaySummary from '../components/dashboard/TodaySummary'
+import dashStyles from '../styles/Dashboard.module.css'
+
+const MEAL_EMOJI: Record<string, string> = { Breakfast: '🍳', Lunch: '🥗', Snack: '🍎', Dinner: '🍽️' }
 
 const getLocalDateString = (d: Date) => {
     const year = d.getFullYear()
@@ -55,7 +60,6 @@ export default function Dashboard() {
     const [targets, setTargets] = useState<any>(null)
     const [healthScoreConfig, setHealthScoreConfig] = useState<HealthScoreConfig>(DEFAULT_HEALTH_SCORE_CONFIG)
     const [todayLog, setTodayLog] = useState<any>(null)
-    const [recommendations, setRecommendations] = useState<any>(null)
     const [weekPlan, setWeekPlan] = useState<any>(null)
     const [planCoverage, setPlanCoverage] = useState<any>(null)
     const [shoppingLists, setShoppingLists] = useState<any[]>([])
@@ -100,14 +104,13 @@ export default function Dashboard() {
         Promise.allSettled([
             fetch('/api/dailyIntake', { headers: { edgetoken: token } }).then(r => r.json()),
             fetch(`/api/dailyLog?date=${today}`, { headers: { edgetoken: token } }).then(r => r.json()),
-            fetch('/api/dailyLog/recommendations', { headers: { edgetoken: token } }).then(r => r.json()),
             fetch(`/api/weeklyPlan?startDate=${today}`, { headers: { edgetoken: token } }).then(r => r.json()),
             fetch('/api/ShoppingList', { headers: { edgetoken: token } }).then(r => r.json()),
             fetch('/api/dishLists', { headers: { edgetoken: token } }).then(r => r.json()),
             fetch('/api/Recipe', { headers: { edgetoken: token } }).then(r => r.json()),
             fetch('/api/Ingredients/defaults', { headers: { edgetoken: token } }).then(r => r.json()),
             fetch(`/api/symptomLog?date=${today}`, { headers: { edgetoken: token } }).then(r => r.json()),
-        ]).then(([targetRes, logRes, recRes, planRes, listRes, dishRes, recipeRes, ingRes, symptomRes]) => {
+        ]).then(([targetRes, logRes, planRes, listRes, dishRes, recipeRes, ingRes, symptomRes]) => {
             if (targetRes.status === 'fulfilled' && targetRes.value.success) {
                 setTargets(targetRes.value.targets)
                 if (targetRes.value.healthScoreConfig) {
@@ -116,9 +119,6 @@ export default function Dashboard() {
             }
             if (logRes.status === 'fulfilled' && logRes.value.success) {
                 setTodayLog(logRes.value.log)
-            }
-            if (recRes.status === 'fulfilled' && recRes.value.success) {
-                setRecommendations(recRes.value)
             }
             if (planRes.status === 'fulfilled' && planRes.value.success && planRes.value.plan) {
                 setWeekPlan(planRes.value.plan)
@@ -275,7 +275,6 @@ export default function Dashboard() {
 
     const scoreColor = dailyScore > 80 ? 'text-emerald-400' : dailyScore > 50 ? 'text-amber-400' : 'text-rose-400'
 
-    const todayDayName = new Date().toLocaleDateString('en-AU', { weekday: 'long' })
     const todayMealsAll = weekPlan?.plannedRecipes?.filter((r: any) => r.day === getLocalDateString(new Date())) || []
     const todayMeals = useMemo(() => {
         const now = new Date()
@@ -284,12 +283,6 @@ export default function Dashboard() {
             .filter((r: any) => MEAL_HIDE_AFTER[r.mealType] == null || mins < MEAL_HIDE_AFTER[r.mealType])
             .sort((a: any, b: any) => (MEAL_TIMES[a.mealType] ?? 0) - (MEAL_TIMES[b.mealType] ?? 0))
     }, [todayMealsAll])
-    const plannedCount = weekPlan?.plannedRecipes?.length || 0
-    const everydayCount = weekPlan?.everydayItems?.length || 0
-    const hasWeekPlan = plannedCount > 0 || everydayCount > 0
-
-    const deficient = recommendations?.deficientNutrient
-    const nutrientInfo = deficient ? NUTRIENT_LABELS[deficient as keyof typeof NUTRIENT_LABELS] : null
 
     // ── Quick-log helpers ──
     const combinedOptions = useMemo(() => {
@@ -471,220 +464,41 @@ export default function Dashboard() {
         }
     }
 
-    const macroCell = (key: string) => {
-        const label = NUTRIENT_LABELS[key as keyof typeof NUTRIENT_LABELS]?.label || key
-        const unit = NUTRIENT_LABELS[key as keyof typeof NUTRIENT_LABELS]?.unit || ''
-        const consumed = Math.round(totals[key] || 0)
-        const target = targets?.[key] || 0
-        const pct = target > 0 ? Math.min((consumed / target) * 100, 100) : 0
-        return (
-            <div className="bg-white/[0.04] rounded-xl px-2 py-2.5 text-center">
-                <div className="text-sm font-black leading-none">
-                    {consumed}<span className="text-[10px] font-bold text-muted-foreground/70 ml-0.5">{unit}</span>
-                </div>
-                <div className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground mt-1">{label}</div>
-                <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mt-1.5">
-                    <div className="h-full bg-emerald-400/80 rounded-full" style={{ width: `${pct}%` }} />
-                </div>
-            </div>
-        )
-    }
-
     // ── Dashboard cards ──
     const hasTodayData = ((todayLog?.items || []).length > 0) || dailyTasks.some(t => t.done)
 
-    const weekPlanCard = hasWeekPlan && (
-        <div className="bg-gradient-to-br from-orange-500/[0.28] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                    <IconChip className="bg-orange-500/20 text-orange-400" onClick={() => setShowPlanCoverage(true)}><FiCalendar size={16} /></IconChip>
-                    <h3 className="text-sm font-black tracking-tight">This Week</h3>
-                </div>
-                <button
-                    onClick={() => Router.push('/weeklyPlanner')}
-                    className="text-[9px] font-bold uppercase tracking-widest text-orange-400 hover:text-orange-300 transition-colors inline-flex items-center gap-1"
-                >
-                    Plan <FiArrowRight size={11} />
-                </button>
+    const mealsCard = (
+        <DashboardCard
+            title="Today's Meals"
+            icon={<FiCalendar size={16} />}
+            accent="orange"
+            onIconClick={() => setShowPlanCoverage(true)}
+            iconTitle="Estimated day coverage"
+            action={{ label: 'Plan', onClick: () => Router.push('/weeklyPlanner') }}
+            bodyClassName="gap-2"
+        >
+            <p className="mb-1 border-l-2 border-orange-400/50 pl-3 text-sm font-semibold leading-snug text-white/95">
+                {planSuggestion ? planSuggestion.message : 'Balanced day, enjoy.'}
+            </p>
+            <div className="space-y-0.5">
+                {todayMeals.slice(0, 4).map((r: any, idx: number) => (
+                    <ListRow
+                        key={idx}
+                        leading={MEAL_EMOJI[r.mealType] || '🍽️'}
+                        title={r.recipe_name}
+                        subtitle={r.isLeftover ? 'Leftover' : undefined}
+                        trailing={<span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{r.mealType}</span>}
+                        onClick={r.recipe_id ? () => Router.push(`/recipes/${r.recipe_id}`) : undefined}
+                    />
+                ))}
             </div>
-
-            {loading && !weekPlan ? (
-                <div className="space-y-2 flex-1">
-                    <Skeleton className="h-10" />
-                    <Skeleton className="h-12" />
-                </div>
-            ) : (
-                <>
-                    <blockquote className="mb-4 border-l-2 border-white/30 pl-3">
-                        <p className="text-sm md:text-base font-semibold leading-snug text-white/95">
-                            {planSuggestion ? planSuggestion.message : 'Balanced day, enjoy.'}
-                        </p>
-                    </blockquote>
-
-                    {todayMealsAll.length > 0 ? (
-                        <div className="flex-1 space-y-1">
-                            <div className="text-[9px] font-bold uppercase tracking-widest text-orange-200/60 mb-1">{todayDayName}</div>
-                            {todayMeals.slice(0, 3).map((r: any, idx: number) => {
-                                const inner = (
-                                    <>
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
-                                            <span className="text-xs font-semibold truncate">{r.recipe_name}</span>
-                                        </div>
-                                        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">{r.mealType}{r.isLeftover ? ' • L' : ''}</span>
-                                    </>
-                                )
-                                return r.recipe_id ? (
-                                    <button
-                                        key={idx}
-                                        onClick={() => Router.push(`/recipes/${r.recipe_id}`)}
-                                        className="w-full flex items-center justify-between gap-2 py-1.5 px-1 -mx-1 text-left rounded-lg hover:bg-white/[0.05] transition-colors group"
-                                    >
-                                        {inner}
-                                    </button>
-                                ) : (
-                                    <div key={idx} className="flex items-center justify-between gap-2 py-1.5 px-1 -mx-1">
-                                        {inner}
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    ) : (
-                        <div className="flex-1 flex items-center text-xs font-semibold text-muted-foreground">
-                            Nothing scheduled for {todayDayName} yet.
-                        </div>
-                    )}
-                </>
-            )}
-        </div>
+        </DashboardCard>
     )
 
-    const dailyTasksCard = !allTasksDone && (
+    const dailyTasksCard = allTasksDone ? (
+        <DailyTasksCard tasks={dailyTasks} allDone={allTasksDone} toggle={toggleDailyTask} compact onGo={handleTaskGo} />
+    ) : (
         <DailyTasksCard tasks={dailyTasks} allDone={allTasksDone} toggle={toggleDailyTask} onGo={handleTaskGo} />
-    )
-
-    const intakeCard = (
-        <div className="bg-gradient-to-br from-emerald-500/[0.26] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-                <IconChip className="bg-emerald-500/15 text-emerald-400" onClick={() => setShowNutrition(true)}><FiActivity size={16} /></IconChip>
-                <h3 className="text-sm font-black tracking-tight">Today's Intake</h3>
-                <button
-                    onClick={() => setShowRoundOut(true)}
-                    aria-label="Round out today's intake"
-                    title="Round out today's intake with quick foods"
-                    className="shrink-0 w-8 h-8 rounded-md bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-colors active:scale-90 flex items-center justify-center"
-                >
-                    <FiZap size={14} />
-                </button>
-            </div>
-            <div className="flex items-center gap-2">
-                <div className="flex flex-col items-center">
-                    <div className={`text-xl md:text-2xl font-black leading-none ${dailyScore ? scoreColor : 'text-muted-foreground'}`}>{dailyScore || '--'}%</div>
-                    <div className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground mt-0.5">Score</div>
-                </div>
-                <button
-                    onClick={openLog}
-                    aria-label="Log Food"
-                    className="shrink-0 p-2 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/25 active:scale-95"
-                >
-                    <FiPlus size={16} />
-                </button>
-            </div>
-            </div>
-
-            {loading && !targets ? (
-                <div className="space-y-2 flex-1">
-                    <Skeleton className="h-8 w-full" />
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        <Skeleton className="h-12" />
-                        <Skeleton className="h-12" />
-                        <Skeleton className="h-12" />
-                        <Skeleton className="h-12" />
-                    </div>
-                </div>
-            ) : (
-                <>
-                    <div className="text-2xl md:text-3xl font-black leading-none mb-1">
-                        {calories.toLocaleString()}
-                        <span className="text-sm font-bold text-muted-foreground"> / {calorieTarget.toLocaleString()} kcal</span>
-                    </div>
-                    <div className="h-2 w-full bg-black/25 rounded-full overflow-hidden mt-3 mb-5">
-                        <div className={`h-full rounded-full transition-all duration-700 ${caloriePct >= 100 ? 'bg-amber-400' : 'bg-emerald-400'}`} style={{ width: `${caloriePct}%` }} />
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-1 items-stretch">
-                        {macroCell('protein_g')}
-                        {macroCell('carbohydrates_g')}
-                        {macroCell('fat_g')}
-                        {macroCell('fiber_g')}
-                    </div>
-                </>
-            )}
-        </div>
-    )
-
-    const nutritionCard = (
-        <div className="bg-gradient-to-br from-violet-500/[0.26] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                    <IconChip className="bg-violet-500/15 text-violet-300"><FiZap size={16} /></IconChip>
-                    <h3 className="text-sm font-black tracking-tight">Nutrition Insights</h3>
-                </div>
-                {deficient && recommendations.currentWeeklyPct != null && (
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-violet-200/60 bg-black/25 px-2.5 py-1 rounded-full">{recommendations.currentWeeklyPct}% of target</span>
-                )}
-            </div>
-
-            {loading && !recommendations ? (
-                <div className="space-y-2 flex-1">
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-12" />
-                    <Skeleton className="h-12" />
-                </div>
-            ) : !deficient ? (
-                <div className="flex items-center gap-2.5 py-4 flex-1">
-                    <FiCheckCircle size={20} className="text-emerald-400 shrink-0" />
-                    <p className="text-sm font-semibold text-emerald-300">{recommendations?.message || "You're meeting all your targets!"}</p>
-                </div>
-            ) : (
-                <>
-                    <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                        Lowest nutrient: <span className="text-white font-bold capitalize">{nutrientInfo?.label || deficient}</span>. Try adding:
-                    </p>
-                    <div className="space-y-1.5 flex-1">
-                        {(recommendations.recommendations || []).slice(0, 3).map((rec: any) => {
-                            const boost = Math.round(((rec.value || 0) / (targets?.[deficient] || 1)) * 100)
-                            return (
-                                <button
-                                    key={rec.name}
-                                    onClick={() => Router.push('/ingredientResearch')}
-                                    className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 bg-black/25 rounded-xl hover:bg-violet-500/15 transition-all text-left group"
-                                >
-                                    <div className="min-w-0">
-                                        <div className="text-sm font-bold capitalize truncate">{rec.name} <span className="text-muted-foreground/60 font-medium">/100g</span></div>
-                                        <div className="text-[10px] font-bold text-violet-300">+{Math.max(boost, 1)}% {nutrientInfo?.label}</div>
-                                    </div>
-                                    <FiChevronRight size={16} className="text-muted-foreground group-hover:text-violet-300 shrink-0" />
-                                </button>
-                            )
-                        })}
-                        {(recommendations.recipeRecommendations || []).length > 0 && (
-                            <button
-                                onClick={() => Router.push(`/recipes/${recommendations.recipeRecommendations[0].id}`)}
-                                className="w-full flex items-center gap-3 px-3.5 py-2.5 bg-black/25 rounded-xl hover:bg-violet-500/15 transition-all text-left group"
-                            >
-                                {recommendations.recipeRecommendations[0].image && <img src={recommendations.recipeRecommendations[0].image} alt={recommendations.recipeRecommendations[0].name} className="w-9 h-9 rounded-lg object-cover shrink-0" />}
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-bold truncate group-hover:text-violet-300 transition-colors">{recommendations.recipeRecommendations[0].name}</div>
-                                    <div className="text-[10px] font-bold text-violet-300">Try this recipe</div>
-                                </div>
-                                <FiArrowRight size={16} className="text-muted-foreground group-hover:text-violet-300 shrink-0" />
-                            </button>
-                        )}
-                    </div>
-                </>
-            )}
-        </div>
     )
 
     const lastDishTotal = lastDishList?.counts?.total || 0
@@ -692,238 +506,147 @@ export default function Dashboard() {
     const lastDishPct = lastDishTotal > 0 ? Math.round((lastDishCooked / lastDishTotal) * 100) : 0
 
     const dishListCard = (
-        <div className="bg-gradient-to-br from-amber-500/[0.24] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                    <IconChip className="bg-amber-500/15 text-amber-400"><FiCompass size={16} /></IconChip>
-                    <h3 className="text-sm font-black tracking-tight">Explore</h3>
-                </div>
-                <button
-                    onClick={() => Router.push('/dishLists')}
-                    className="text-[9px] font-bold uppercase tracking-widest text-amber-400 hover:text-amber-300 transition-colors inline-flex items-center gap-1"
-                >
-                    All <FiArrowRight size={11} />
-                </button>
-            </div>
-
+        <DashboardCard
+            title="Explore"
+            icon={<FiCompass size={16} />}
+            accent="amber"
+            action={{ label: 'All', onClick: () => Router.push('/dishLists') }}
+        >
             {!lastDishList ? (
                 <button
+                    type="button"
                     onClick={() => Router.push('/dishLists')}
-                    className="flex-1 w-full flex items-center justify-between p-4 bg-black/25 rounded-xl hover:bg-amber-500/15 transition-all text-left"
+                    className="mt-1 flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-white/10 bg-black/20 px-4 py-3.5 text-left transition-colors hover:bg-white/[0.05]"
                 >
-                    <div className="flex items-center gap-3">
-                        <FiCompass size={18} className="text-amber-300" />
-                        <span className="text-sm font-semibold text-muted-foreground">Explore the world's best dishes</span>
-                    </div>
-                    <FiChevronRight size={16} className="text-muted-foreground shrink-0" />
+                    <span className="flex min-w-0 items-center gap-2.5">
+                        <FiCompass size={17} className="shrink-0 text-amber-300" />
+                        <span className="truncate text-sm font-semibold text-muted-foreground">Explore the world's best dishes</span>
+                    </span>
+                    <FiChevronRight size={16} className="shrink-0 text-muted-foreground" />
                 </button>
             ) : (
                 <button
+                    type="button"
                     onClick={() => Router.push(`/dishLists/${lastDishList._id}`)}
-                    className="flex-1 w-full flex flex-col justify-between gap-3 p-4 bg-black/25 rounded-xl hover:bg-amber-500/15 transition-all text-left group"
+                    className="mt-1 flex w-full flex-col gap-3 rounded-xl bg-black/20 p-4 text-left transition-colors hover:bg-amber-500/10"
                 >
                     <div className="w-full min-w-0">
-                        <div className="text-[8px] font-bold uppercase tracking-widest text-amber-400 mb-1">Last Viewed</div>
-                        <div className="text-lg md:text-xl font-black truncate group-hover:text-amber-300 transition-colors">{lastDishList.name}</div>
+                        <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-amber-400">Last Viewed</div>
+                        <div className="truncate text-lg font-black transition-colors md:text-xl">{lastDishList.name}</div>
                         {lastDishList.counts && (
-                            <div className="flex items-center gap-2 mt-1.5 text-[10px] font-semibold text-muted-foreground">
+                            <div className="mt-1.5 flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
                                 <span>{lastDishCooked}/{lastDishTotal} cooked</span>
-                                <span className="w-1 h-1 rounded-full bg-white/20" />
-                                <span className="text-amber-300 font-bold">{lastDishPct}%</span>
+                                <span className="h-1 w-1 rounded-full bg-white/20" />
+                                <span className="font-bold text-amber-300">{lastDishPct}%</span>
                             </div>
                         )}
                     </div>
-                    <div className="w-full flex items-center gap-3">
-                        <div className="h-2 flex-1 rounded-full bg-white/10 overflow-hidden">
-                            <div className="h-full bg-amber-400 rounded-full transition-all" style={{ width: `${lastDishPct}%` }} />
+                    <div className="flex w-full items-center gap-3">
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+                            <div className="h-full rounded-full bg-amber-400 transition-all" style={{ width: `${lastDishPct}%` }} />
                         </div>
-                        <FiChevronRight size={18} className="text-muted-foreground group-hover:text-amber-300 shrink-0" />
+                        <FiChevronRight size={18} className="shrink-0 text-muted-foreground" />
                     </div>
                 </button>
             )}
-        </div>
+        </DashboardCard>
+    )
+
+    const shoppingCard = (
+        <DashboardCard
+            title="Shopping List"
+            icon={<FiShoppingCart size={16} />}
+            accent="sky"
+            action={{ label: 'All', onClick: () => Router.push('/shoppingList') }}
+        >
+            {loading && !latestList ? (
+                <div className="space-y-2">
+                    <Skeleton className="h-14" />
+                    <Skeleton className="h-8" />
+                </div>
+            ) : !latestList ? (
+                <button
+                    type="button"
+                    onClick={() => Router.push('/shoppingList/create')}
+                    className="mt-1 flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-white/10 bg-black/20 px-4 py-3.5 text-left transition-colors hover:bg-white/[0.05]"
+                >
+                    <span className="flex min-w-0 items-center gap-2.5">
+                        <FiShoppingCart size={17} className="shrink-0 text-sky-300" />
+                        <span className="truncate text-sm font-semibold text-muted-foreground">No active list</span>
+                    </span>
+                    <FiChevronRight size={16} className="shrink-0 text-muted-foreground" />
+                </button>
+            ) : (
+                <ListRow
+                    leading={<FiShoppingCart size={16} className="text-sky-300" />}
+                    title={latestList.name}
+                    meta={
+                        <>
+                            <span>{new Date(latestList.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
+                            <span className="h-1 w-1 rounded-full bg-white/20" />
+                            <span>{listItemsCount != null ? `${listItemsCount} items` : '—'}</span>
+                            {latestList.cost != null && (
+                                <>
+                                    <span className="h-1 w-1 rounded-full bg-white/20" />
+                                    <span className="font-bold text-sky-300">${Number(latestList.cost).toFixed(2)}</span>
+                                </>
+                            )}
+                        </>
+                    }
+                    onClick={() => Router.push(`/shoppingList/${latestList._id}`)}
+                />
+            )}
+        </DashboardCard>
     )
 
     return (
         <Layout title="Dashboard" description="Your health, plans and lists at a glance">
-            <div className="mx-0 sm:mx-0">
-                <div className="mx-auto max-w-6xl px-3 md:px-4 pt-1 pb-3 md:pt-2 md:pb-8 space-y-3 md:space-y-6">
-                    {/* ═══ HEADER ═══ */}
-                    <div className="flex items-center justify-between gap-2 min-w-0">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400 shrink-0">Dashboard</p>
-                            <span className="w-1.5 h-1.5 rounded-full bg-white/20 shrink-0" />
-                            <h1 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white truncate">
-                                {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
-                            </h1>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0 sm:hidden">
-                            <IconChip className="bg-white/[0.06] text-muted-foreground" onClick={() => Router.push('/tools')}><FiGrid size={16} /></IconChip>
-                            <IconChip className="bg-white/[0.06] text-muted-foreground" onClick={() => Router.push('/profile')}><FiSettings size={16} /></IconChip>
-                        </div>
-                    </div>
-
-                    {/* ═══ DAILY TASKS + INTAKE (top when today has data) ═══ */}
-                    {hasTodayData ? (
-                        <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
-                                {dailyTasksCard && <div className="flex min-w-0">{dailyTasksCard}</div>}
-                                <div className={`flex min-w-0 ${dailyTasksCard ? '' : 'md:col-span-2'}`}>{intakeCard}</div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
-                                {weekPlanCard && <div className="flex min-w-0">{weekPlanCard}</div>}
-                                <div className={`flex min-w-0 ${weekPlanCard ? '' : 'md:col-span-2'}`}>
-                                    <div className="bg-gradient-to-br from-sky-500/[0.26] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col flex-1 min-w-0">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="flex items-center gap-2.5">
-                                                <IconChip className="bg-sky-500/15 text-sky-400"><FiShoppingCart size={16} /></IconChip>
-                                                <h3 className="text-sm font-black tracking-tight">Shopping List</h3>
-                                            </div>
-                                            <button
-                                                onClick={() => Router.push('/shoppingList')}
-                                                className="text-[9px] font-bold uppercase tracking-widest text-sky-400 hover:text-sky-300 transition-colors inline-flex items-center gap-1"
-                                            >
-                                                All <FiArrowRight size={11} />
-                                            </button>
-                                        </div>
-
-                                        {loading && !latestList ? (
-                                            <div className="space-y-2 flex-1">
-                                                <Skeleton className="h-14" />
-                                                <Skeleton className="h-8" />
-                                            </div>
-                                        ) : !latestList ? (
-                                            <button
-                                                onClick={() => Router.push('/shoppingList/create')}
-                                                className="flex-1 w-full flex items-center justify-between p-4 bg-black/25 rounded-xl hover:bg-sky-500/15 transition-all text-left"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <FiShoppingCart size={18} className="text-sky-300" />
-                                                    <span className="text-sm font-semibold text-muted-foreground">No active list</span>
-                                                </div>
-                                                <FiChevronRight size={16} className="text-muted-foreground shrink-0" />
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => Router.push(`/shoppingList/${latestList._id}`)}
-                                                className="flex-1 w-full flex items-center justify-between gap-3 p-4 bg-black/25 rounded-xl hover:bg-sky-500/15 transition-all text-left group"
-                                            >
-                                                <div className="min-w-0">
-                                                    <div className="text-[8px] font-bold uppercase tracking-widest text-sky-400 mb-1">Most Recent</div>
-                                                    <div className="text-lg md:text-xl font-black truncate group-hover:text-sky-300 transition-colors">{latestList.name}</div>
-                                                    <div className="flex items-center gap-2 mt-1.5 text-[10px] font-semibold text-muted-foreground">
-                                                        <span>{new Date(latestList.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
-                                                        <span className="w-1 h-1 rounded-full bg-white/20" />
-                                                        <span>{listItemsCount != null ? `${listItemsCount} items` : '—'}</span>
-                                                        {latestList.cost != null && (
-                                                            <>
-                                                                <span className="w-1 h-1 rounded-full bg-white/20" />
-                                                                <span className="text-sky-300 font-bold">${Number(latestList.cost).toFixed(2)}</span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <FiChevronRight size={20} className="text-muted-foreground group-hover:text-sky-300 shrink-0" />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
-                                {weekPlanCard && <div className={`flex min-w-0 ${dailyTasksCard ? '' : 'md:col-span-2'}`}>{weekPlanCard}</div>}
-                                {dailyTasksCard && <div className={`flex min-w-0 ${weekPlanCard ? '' : 'md:col-span-2'}`}>{dailyTasksCard}</div>}
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
-                                <div className="flex min-w-0">{intakeCard}</div>
-                                <div className="flex min-w-0">
-                                    <div className="bg-gradient-to-br from-sky-500/[0.26] via-transparent to-transparent rounded-2xl p-4 md:p-6 flex flex-col flex-1 min-w-0">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="flex items-center gap-2.5">
-                                                <IconChip className="bg-sky-500/15 text-sky-400"><FiShoppingCart size={16} /></IconChip>
-                                                <h3 className="text-sm font-black tracking-tight">Shopping List</h3>
-                                            </div>
-                                            <button
-                                                onClick={() => Router.push('/shoppingList')}
-                                                className="text-[9px] font-bold uppercase tracking-widest text-sky-400 hover:text-sky-300 transition-colors inline-flex items-center gap-1"
-                                            >
-                                                All <FiArrowRight size={11} />
-                                            </button>
-                                        </div>
-
-                                        {loading && !latestList ? (
-                                            <div className="space-y-2 flex-1">
-                                                <Skeleton className="h-14" />
-                                                <Skeleton className="h-8" />
-                                            </div>
-                                        ) : !latestList ? (
-                                            <button
-                                                onClick={() => Router.push('/shoppingList/create')}
-                                                className="flex-1 w-full flex items-center justify-between p-4 bg-black/25 rounded-xl hover:bg-sky-500/15 transition-all text-left"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <FiShoppingCart size={18} className="text-sky-300" />
-                                                    <span className="text-sm font-semibold text-muted-foreground">No active list</span>
-                                                </div>
-                                                <FiChevronRight size={16} className="text-muted-foreground shrink-0" />
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => Router.push(`/shoppingList/${latestList._id}`)}
-                                                className="flex-1 w-full flex items-center justify-between gap-3 p-4 bg-black/25 rounded-xl hover:bg-sky-500/15 transition-all text-left group"
-                                            >
-                                                <div className="min-w-0">
-                                                    <div className="text-[8px] font-bold uppercase tracking-widest text-sky-400 mb-1">Most Recent</div>
-                                                    <div className="text-lg md:text-xl font-black truncate group-hover:text-sky-300 transition-colors">{latestList.name}</div>
-                                                    <div className="flex items-center gap-2 mt-1.5 text-[10px] font-semibold text-muted-foreground">
-                                                        <span>{new Date(latestList.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
-                                                        <span className="w-1 h-1 rounded-full bg-white/20" />
-                                                        <span>{listItemsCount != null ? `${listItemsCount} items` : '—'}</span>
-                                                        {latestList.cost != null && (
-                                                            <>
-                                                                <span className="w-1 h-1 rounded-full bg-white/20" />
-                                                                <span className="text-sky-300 font-bold">${Number(latestList.cost).toFixed(2)}</span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <FiChevronRight size={20} className="text-muted-foreground group-hover:text-sky-300 shrink-0" />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    )}
-
-                    {/* ═══ EXPLORE / DISH LISTS ═══ */}
-                    {dishListCard}
-
-                    {/* ═══ DAILY TASKS (all done, moved down) ═══ */}
-                    {allTasksDone && (
-                        <DailyTasksCard tasks={dailyTasks} allDone={allTasksDone} toggle={toggleDailyTask} compact onGo={handleTaskGo} />
-                    )}
-
-                    {/* ═══ NUTRITION INSIGHTS ═══ */}
-                    {nutritionCard}
-
-                    {/* ═══ WEEK PLAN (empty, at bottom) ═══ */}
-                    {!loading && !hasWeekPlan && (
-                        <div className="bg-white/[0.05] rounded-2xl p-3 md:p-4 opacity-75">
+            <div className={dashStyles.shell}>
+                <TodaySummary
+                    dateLabel={new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    loading={loading}
+                    hasData={hasTodayData}
+                    score={dailyScore}
+                    scoreColor={scoreColor}
+                    calories={calories}
+                    calorieTarget={calorieTarget}
+                    caloriePct={caloriePct}
+                    totals={totals}
+                    targets={targets}
+                    onLog={openLog}
+                    onRoundOut={() => setShowRoundOut(true)}
+                    onShowNutrition={() => setShowNutrition(true)}
+                    headerExtra={
+                        <div className="flex items-center gap-2 sm:hidden">
                             <button
-                                onClick={() => Router.push('/weeklyPlanner')}
-                                className="w-full flex items-center justify-between gap-2 text-left"
+                                type="button"
+                                onClick={() => Router.push('/tools')}
+                                aria-label="Tools"
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-muted-foreground transition-all hover:text-white active:scale-90"
                             >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                    <FiCalendar size={16} className="text-orange-300 shrink-0" />
-                                    <span className="text-xs font-semibold text-muted-foreground truncate">No meals planned for this week</span>
-                                </div>
-                                <FiChevronRight size={16} className="text-muted-foreground shrink-0" />
+                                <FiGrid size={16} />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => Router.push('/profile')}
+                                aria-label="Profile"
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-muted-foreground transition-all hover:text-white active:scale-90"
+                            >
+                                <FiSettings size={16} />
                             </button>
                         </div>
-                    )}
+                    }
+                />
+
+                <div className={dashStyles.columns}>
+                    <div className={dashStyles.mainCol}>
+                        {todayMealsAll.length > 0 && mealsCard}
+                        {dailyTasksCard}
+                    </div>
+                    <div className={dashStyles.sideCol}>
+                        {shoppingCard}
+                        {dishListCard}
+                    </div>
                 </div>
             </div>
 

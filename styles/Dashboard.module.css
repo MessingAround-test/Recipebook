@@ -1,0 +1,67 @@
+.shell {
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: 0.25rem 0.75rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.columns {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mainCol,
+.sideCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .shell {
+    padding: 0.5rem 1rem 2rem;
+    gap: 1.5rem;
+  }
+
+  .columns,
+  .mainCol,
+  .sideCol {
+    gap: 1.5rem;
+  }
+}
+
+/* Desktop: fluid main column beside a fixed-width sidebar, all flexbox. */
+@media (min-width: 1024px) {
+  .columns {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .mainCol {
+    flex: 1 1 0;
+  }
+
+  .sideCol {
+    flex: 0 0 22rem;
+  }
+}
+
+/* Relax the global "flatten every radius on mobile" rule inside the dashboard. */
+@media (max-width: 768px) {
+  .shell :global(.rounded-lg) {
+    border-radius: 0.5rem !important;
+  }
+
+  .shell :global(.rounded-xl) {
+    border-radius: 0.75rem !important;
+  }
+
+  .shell :global(.rounded-2xl) {
+    border-radius: 1rem !important;
+  }
+}

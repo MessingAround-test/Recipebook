@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 
 export type TaskDetect = 'symptoms' | 'exercise' | 'foodNames'
 
@@ -85,16 +85,14 @@ function symptomMatches(def: DailyTaskDef, symptomLog: any): boolean {
 export function useDailyTasks(date: string, todayLog: any, symptomLog: any) {
     const storageKey = `dailyTasks.${date}`
 
-    const [manualProgress, setManualProgress] = useState<Record<string, number>>(() => {
-        if (typeof window === 'undefined') return {}
-        try {
-            return JSON.parse(localStorage.getItem(storageKey) || '{}')
-        } catch {
-            return {}
-        }
-    })
+    const [manualProgress, setManualProgress] = useState<Record<string, number>>({})
+
+    // Tasks the user explicitly un-marked this session. Prevents the symptom-log
+    // sync below from re-ticking them off a stale/auto-generated symptom entry.
+    const cleared = useRef<Set<string>>(new Set())
 
     useEffect(() => {
+        cleared.current = new Set()
         if (typeof window === 'undefined') return
         try {
             setManualProgress(JSON.parse(localStorage.getItem(storageKey) || '{}'))
@@ -112,6 +110,7 @@ export function useDailyTasks(date: string, todayLog: any, symptomLog: any) {
         const updated: Record<string, number> = {}
         DEFAULT_DAILY_TASKS.forEach(def => {
             if (!def.symptomName || !symptomNames.has(def.symptomName.toLowerCase())) return
+            if (cleared.current.has(def.id)) return
             const target = def.target || 1
             if ((manualProgress[def.id] || 0) < target) {
                 updated[def.id] = target
@@ -134,6 +133,8 @@ export function useDailyTasks(date: string, todayLog: any, symptomLog: any) {
             const target = def?.target || 1
             const cur = prev[id] || 0
             const next = cur >= target ? 0 : cur + 1
+            if (next === 0) cleared.current.add(id)
+            else cleared.current.delete(id)
             const updated = { ...prev, [id]: next }
             if (typeof window !== 'undefined') {
                 try {
@@ -148,7 +149,11 @@ export function useDailyTasks(date: string, todayLog: any, symptomLog: any) {
 
     const tasks: DailyTaskState[] = useMemo(() => {
         return DEFAULT_DAILY_TASKS.map(def => {
-            const autoDone = detectTaskDone(def, todayLog, symptomLog) || symptomMatches(def, symptomLog)
+            // An explicit un-mark wins over the symptom-derived status, so the
+            // stamp un-inks immediately instead of re-inking from the stale
+            // auto symptom written when it was first marked.
+            const symptomDone = !cleared.current.has(def.id) && symptomMatches(def, symptomLog)
+            const autoDone = detectTaskDone(def, todayLog, symptomLog) || symptomDone
             const target = def.target || 1
             const count = manualProgress[def.id] || 0
             const manual = count > 0
