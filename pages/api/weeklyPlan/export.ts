@@ -73,7 +73,7 @@ export default async function handler(req, res) {
                                 deleted: false,
                                 recipe_id: recipe._id.toString(),
                                 recipe_name: recipe.name,
-                                note: 'Pantry item'
+                                note: ''
                             });
                         }
                         expanded = true;
@@ -91,7 +91,7 @@ export default async function handler(req, res) {
                         complete: false,
                         createdBy: userId,
                         deleted: false,
-                        note: 'Pantry item'
+                        note: ''
                     });
                 }
             }
@@ -122,7 +122,7 @@ export default async function handler(req, res) {
                             deleted: false,
                             recipe_id: recipe._id.toString(),
                             recipe_name: recipe.name,
-                            note: pRecipe.day ? `For ${pRecipe.day}` : ''
+                            note: ''
                         });
                     }
                 }

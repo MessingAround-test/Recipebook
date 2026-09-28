@@ -9,6 +9,13 @@ import CardListModal from './CardListModal';
 import IngredientCardProduct from './IngredientCardProduct';
 import Skeleton from './Skeleton';
 
+// Notes that carry no useful information for the shopper:
+//  - "Pantry item" — an import artefact from the weekly planner; always hidden.
+//  - "From recipe: X" / "For Monday" — redundant on a standalone item (the
+//    recipe is implied), but useful when expanded on a grouped sub-item.
+const isAlwaysNoiseNote = (note) => /^pantry item$/i.test(String(note || '').trim());
+const isGroupOnlyNote = (note) => /^(from recipe:|for \w+day$)/i.test(String(note || '').trim());
+
 function IngredientCard({ 
     ingredient, 
     variant = 'default',
@@ -34,10 +41,12 @@ function IngredientCard({
 
     const isGroup = ingredient.isGroup ?? (ingredient.items && ingredient.items.length > 1);
 
-    // "From recipe: X" notes are redundant on a standalone item — the recipe is
-    // already implied. They're still useful when expanded on a grouped sub-item,
-    // where we show the recipe each entry came from.
-    const showNote = !!ingredient.note && !(!isGroup && /^from recipe:/i.test(String(ingredient.note).trim()));
+    // Notes that carry no useful information for the shopper:
+    //  - "Pantry item" — an import artefact from the weekly planner; always hidden.
+    //  - "From recipe: X" / "For Monday" — redundant on a standalone item (the
+    //    recipe is implied), but useful when expanded on a grouped sub-item.
+    const noteText = String(ingredient.note || '').trim();
+    const showNote = !!ingredient.note && !isAlwaysNoiseNote(noteText) && !(isGroupOnlyNote(noteText) && !isGroup);
 
     const bestOption = useMemo(() => {
         if (!ingredient.options || ingredient.options.length === 0) return undefined;
@@ -174,7 +183,7 @@ function IngredientCard({
                                             )}
                                         </button>
                                         <span className="mobile-text-large shrink-0">{renderFractions(`${formatQuantityDisplay(item.quantity)} ${item.quantity_type_shorthand || item.quantity_type || 'each'}`)}</span>
-                                        {item.note && <span className="italic opacity-60 text-xs truncate min-w-0">{item.note}</span>}
+                                        {item.note && !isAlwaysNoiseNote(item.note) && <span className="italic opacity-60 text-xs truncate min-w-0">{item.note}</span>}
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                         <span className="font-mono opacity-80">{item.compositionPercentage}%</span>
