@@ -11,10 +11,11 @@ import Skeleton from './Skeleton';
 
 // Notes that carry no useful information for the shopper:
 //  - "Pantry item" — an import artefact from the weekly planner; always hidden.
-//  - "From recipe: X" / "For Monday" — redundant on a standalone item (the
-//    recipe is implied), but useful when expanded on a grouped sub-item.
+//  - "From recipe: X" / "For Monday" / "For 2026-10-01" — redundant on a
+//    standalone item (the recipe is implied), but useful when expanded on a
+//    grouped sub-item.
 const isAlwaysNoiseNote = (note) => /^pantry item$/i.test(String(note || '').trim());
-const isGroupOnlyNote = (note) => /^(from recipe:|for \w+day$)/i.test(String(note || '').trim());
+const isGroupOnlyNote = (note) => /^(from recipe:|for\s+\S+$)/i.test(String(note || '').trim());
 
 function IngredientCard({ 
     ingredient, 
