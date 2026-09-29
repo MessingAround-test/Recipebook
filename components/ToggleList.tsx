@@ -6,6 +6,7 @@ const ToggleList = ({ inputList, onUpdateList, value, text = "Select Option", ma
     const [activeItems, setActiveItems] = useState<string[]>(value || []);
     const [isOpen, setIsOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const [firstSelectDone, setFirstSelectDone] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -21,7 +22,19 @@ const ToggleList = ({ inputList, onUpdateList, value, text = "Select Option", ma
         }
     }, [value]);
 
+    useEffect(() => {
+        if (isOpen) {
+            setFirstSelectDone(false);
+        }
+    }, [isOpen]);
+
     const toggleItem = (item: string) => {
+        if (!firstSelectDone) {
+            setActiveItems([item]);
+            onUpdateList([item]);
+            setFirstSelectDone(true);
+            return;
+        }
         const updatedItems = [...activeItems];
         const index = updatedItems.indexOf(item);
         if (index === -1) {

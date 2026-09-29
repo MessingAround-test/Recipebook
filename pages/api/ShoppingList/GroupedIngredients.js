@@ -6,7 +6,7 @@ import PantryAssumption from '../../../models/PantryAssumption'
 import User from '../../../models/User'
 import { verifyToken } from "../../../lib/auth.ts";
 import { logAPI } from '../../../lib/logger.ts';
-import { normalizeToGrams, getShorthandForMeasure, resolveUnitKey, addCalculatedFields } from '../../../lib/conversion'
+import { normalizeToGrams, getShorthandForMeasure, resolveUnitKey, addCalculatedFields, pluralizeName } from '../../../lib/conversion'
 import { buildPlanningContext, stampPlanningFields } from '../../../lib/pantryPlanning'
 
 export default async function handler(req, res) {
@@ -127,10 +127,10 @@ export default async function handler(req, res) {
                 quantity_unit = "gram";
 
                 if (group.totalEach > 0 && group.gramsPerEach > 0) {
-                    totalString += ` or ${group.totalEach.toFixed(1)} ${group.name}${group.totalEach > 1 ? 's' : ''}`;
+                    totalString += ` or ${group.totalEach.toFixed(1)} ${pluralizeName(group.name, group.totalEach)}`;
                 }
             } else if (group.totalEach > 0) {
-                totalString = `${group.totalEach.toFixed(1)} ${group.name}${group.totalEach > 1 ? 's' : ''}`;
+                totalString = `${group.totalEach.toFixed(1)} ${pluralizeName(group.name, group.totalEach)}`;
                 quantity = group.totalEach;
                 quantity_type = "each";
                 quantity_unit = "each";
