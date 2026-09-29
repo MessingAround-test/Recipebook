@@ -4,37 +4,13 @@ import { logAPI } from '../../../lib/logger'
 import dbConnect from '../../../lib/dbConnect'
 import DishList from '../../../models/DishList'
 import DishListItem from '../../../models/DishListItem'
+import DishListItemCooked from '../../../models/DishListItemCooked'
 import DishListImage from '../../../models/DishListImage'
 import Recipe from '../../../models/Recipe'
+import User from '../../../models/User'
 import { dishListImageUrl } from '../../../lib/dishListImageServer'
 import { normalizeCriteria } from '../../../lib/dishLists/criteria'
-
-/** Marks linked items cooked when their recipe has been cooked at least once. */
-async function applyCookedSync(items) {
-    const recipeIds = items
-        .filter(i => i.recipeId)
-        .map(i => i.recipeId)
-    if (recipeIds.length === 0) return items
-
-    const recipes = await Recipe.find({ _id: { $in: recipeIds } }).select('timesCooked').lean()
-    const cookedById = new Map(recipes.map(r => [String(r._id), (r.timesCooked || 0) > 0]))
-
-    const toSync = []
-    const decorated = items.map(item => {
-        const cookedFromRecipe = item.recipeId ? cookedById.get(String(item.recipeId)) : false
-        if (cookedFromRecipe && !item.cooked) {
-            item.cooked = true
-            item.cookedAt = item.cookedAt || new Date()
-            toSync.push(item._id)
-        }
-        return item
-    })
-
-    if (toSync.length > 0) {
-        await DishListItem.updateMany({ _id: { $in: toSync } }, { $set: { cooked: true, cookedAt: new Date() } }).catch(() => { })
-    }
-    return decorated
-}
+import { cookedItemIdsForUser } from '../../../lib/dishLists/cookedState'
 
 export default async function handler(req, res) {
     logAPI(req)
@@ -54,9 +30,12 @@ export default async function handler(req, res) {
             if (!list) return res.status(404).json({ success: false, message: 'List not found' })
 
             let items = await DishListItem.find({ listId }).sort({ rank: 1, name: 1 }).lean()
-            items = await applyCookedSync(items)
+            const user = await User.findById(decoded.id).select('email').lean()
+            const cookedSet = await cookedItemIdsForUser(items, decoded.id, user?.email)
             items = items.map(item => ({
                 ...item,
+                cooked: cookedSet.has(String(item._id)),
+                cookedAt: undefined,
                 image: item.hasImage ? dishListImageUrl(item._id, 'thumb') : undefined
             }))
 
@@ -102,6 +81,7 @@ export default async function handler(req, res) {
 
             if (items.length > 0) {
                 await DishListImage.deleteMany({ itemId: { $in: items.map(i => i._id) } }).catch(() => { })
+                await DishListItemCooked.deleteMany({ itemId: { $in: items.map(i => i._id) } }).catch(() => { })
             }
             await DishListItem.deleteMany({ listId })
             await DishList.findByIdAndDelete(listId)

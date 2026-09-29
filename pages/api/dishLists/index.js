@@ -3,8 +3,10 @@ import { logAPI } from '../../../lib/logger'
 import dbConnect from '../../../lib/dbConnect'
 import DishList from '../../../models/DishList'
 import DishListItem from '../../../models/DishListItem'
+import User from '../../../models/User'
 import { normalizeCriteria } from '../../../lib/dishLists/criteria'
 import { ensureSystemLists } from '../../../lib/dishLists/systemLists'
+import { cookedItemIdsForUser } from '../../../lib/dishLists/cookedState'
 
 export default async function handler(req, res) {
     logAPI(req)
@@ -18,19 +20,23 @@ export default async function handler(req, res) {
             // The default "100 Best Dishes in the World" list is always present.
             await ensureSystemLists().catch(() => { })
             const lists = await DishList.find({}).sort({ created_at: 1 }).lean()
-            const counts = await DishListItem.aggregate([
-                {
-                    $group: {
-                        _id: '$listId',
-                        total: { $sum: 1 },
-                        cooked: { $sum: { $cond: ['$cooked', 1, 0] } },
-                        imported: { $sum: { $cond: [{ $eq: ['$importStatus', 'linked'] }, 1, 0] } }
-                    }
-                }
-            ])
-            const byId = new Map(counts.map(c => [String(c._id), c]))
+            const items = await DishListItem.find({}).select('listId recipeId recipeIds importStatus').lean()
+
+            // Cooked is per-user; total/imported are shared.
+            const user = await User.findById(decoded.id).select('email').lean()
+            const cookedSet = await cookedItemIdsForUser(items, decoded.id, user?.email)
+
+            const counts = new Map(lists.map(l => [String(l._id), { total: 0, cooked: 0, imported: 0 }]))
+            for (const item of items) {
+                const c = counts.get(String(item.listId))
+                if (!c) continue
+                c.total += 1
+                if (item.importStatus === 'linked') c.imported += 1
+                if (cookedSet.has(String(item._id))) c.cooked += 1
+            }
+
             const data = lists.map(l => {
-                const c = byId.get(String(l._id)) || { total: 0, cooked: 0, imported: 0 }
+                const c = counts.get(String(l._id)) || { total: 0, cooked: 0, imported: 0 }
                 return { ...l, counts: { total: c.total, cooked: c.cooked, imported: c.imported } }
             })
             return res.status(200).json({ success: true, data })

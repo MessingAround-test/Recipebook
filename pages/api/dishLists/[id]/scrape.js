@@ -94,7 +94,6 @@ export default async function handler(req, res) {
                         $setOnInsert: {
                             listId,
                             slug: item.slug,
-                            cooked: false,
                             importStatus: 'none'
                         }
                     },

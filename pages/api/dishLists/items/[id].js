@@ -6,6 +6,7 @@ import DishList from '../../../../models/DishList'
 import DishListItem from '../../../../models/DishListItem'
 import Recipe from '../../../../models/Recipe'
 import User from '../../../../models/User'
+import { cookedItemIdsForUser } from '../../../../lib/dishLists/cookedState'
 
 /** Single dish-list item with its list + (optional) linked recipe summary. */
 export default async function handler(req, res) {
@@ -28,6 +29,7 @@ export default async function handler(req, res) {
         if (!item) return res.status(404).json({ success: false, message: 'Item not found' })
 
         const list = await DishList.findById(item.listId).select('name dietaryFilters sourceUrl').lean()
+        const user = await User.findById(decoded.id).select('email').lean()
 
         const recipeIds = (Array.isArray(item.recipeIds) && item.recipeIds.length
             ? item.recipeIds
@@ -40,7 +42,6 @@ export default async function handler(req, res) {
             // see every recipe linked to the dish.
             const recipeQuery = { _id: { $in: recipeIds } }
             if (decoded.role !== 'admin') {
-                const user = await User.findById(decoded.id).select('email').lean()
                 recipeQuery.creator_email = user?.email || '__no_such_user__'
             }
             const docs = await Recipe.find(recipeQuery).select('name hasImage timesCooked').lean()
@@ -52,11 +53,16 @@ export default async function handler(req, res) {
             }))
         }
 
+        // Tick-off state is per user.
+        const cookedSet = await cookedItemIdsForUser([item], decoded.id, user?.email)
+
         return res.status(200).json({
             success: true,
             data: {
                 item: {
                     ...item,
+                    cooked: cookedSet.has(String(item._id)),
+                    cookedAt: undefined,
                     image: item.hasImage ? `/api/dishLists/items/${item._id}/image?q=full` : undefined
                 },
                 list: list ? { _id: list._id, name: list.name, dietaryFilters: list.dietaryFilters || [], sourceUrl: list.sourceUrl } : null,

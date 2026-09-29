@@ -37,10 +37,7 @@ const DishListItemSchema = new mongoose.Schema(
         // TasteAtlas dish page + optional authentic-recipe page
         sourceUrl: { type: String, required: false },
         recipeSourceUrl: { type: String, required: false },
-        // Tick-off state. `cooked` is manual; the API also auto-derives it
-        // from the linked recipe's timesCooked >= 1.
-        cooked: { type: Boolean, default: false },
-        cookedAt: { type: Date, required: false },
+        // Tick-off state is per-user and lives in DishListItemCooked.
         notes: { type: String, required: false },
         // A dish can have several recipes (e.g. different takes/versions).
         // `recipeId` is kept as the most-recently linked one for compatibility.

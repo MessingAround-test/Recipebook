@@ -17,6 +17,7 @@ import {
     GUESS_BATCH_SIZE
 } from '../../../lib/dishLists/geocode'
 import { needsLocationWork, hasPoint, hasRegionArea, hasPlace } from '../../../lib/dishLists/locationStatus'
+import { cookedItemIdsForUser } from '../../../lib/dishLists/cookedState'
 
 // Geocoding is intentionally slow (Nominatim ~1 req/s), so give the function
 // room to finish a batch on serverless hosts.
@@ -71,6 +72,7 @@ export default async function handler(req, res) {
                 Recipe.countDocuments(recipeQuery)
             ])
             const listNames = new Map(lists.map(l => [String(l._id), l.name]))
+            const cookedSet = await cookedItemIdsForUser(items, decoded.id, userData?.email)
 
             const points = items
                 .filter(item => hasPoint(item.location))
@@ -84,7 +86,7 @@ export default async function handler(req, res) {
                     city: item.location?.city,
                     lat: item.location.lat,
                     lng: item.location.lng,
-                    cooked: item.cooked === true,
+                    cooked: cookedSet.has(String(item._id)),
                     listId: item.listId,
                     listName: listNames.get(String(item.listId)) || '',
                     recipeId: item.recipeId,

@@ -94,10 +94,11 @@ describe('buildItemUpdate role restrictions', () => {
         expect(addToSet).toEqual({})
     })
 
-    test('non-admins can still mark a dish cooked', () => {
-        const { set } = buildItemUpdate({ cooked: true, notes: 'ignored' }, existing, { isAdmin: false })
-        expect(set.cooked).toBe(true)
-        expect(set.notes).toBeUndefined()
+    test('cooked is not handled here (per-user, managed by the API)', () => {
+        const { set, unset } = buildItemUpdate({ cooked: true, itemId: 'x' }, existing, { isAdmin: false })
+        expect(set.cooked).toBeUndefined()
+        expect(set.cookedAt).toBeUndefined()
+        expect(unset.cookedAt).toBeUndefined()
     })
 
     test('non-admins can still link a recipe', () => {
