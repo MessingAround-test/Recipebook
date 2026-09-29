@@ -18,7 +18,8 @@ import {
     Loader2,
     Trash2,
     EyeOff,
-    Compass
+    Compass,
+    Globe2
 } from 'lucide-react'
 import { FilterSheet } from '../../components/recipes/FilterSheet'
 
@@ -187,6 +188,7 @@ export default function Recipes() {
                                 <ChefHat className="text-accent" size={20} />
                                 Your Recipes
                             </h1>
+                            {recipes.length > 0 && (
                             <div className="flex items-center gap-2">
                                 {userData && (
                                     <div className="relative">
@@ -219,9 +221,11 @@ export default function Recipes() {
                                     </div>
                                 )}
                             </div>
+                            )}
                         </div>
 
                         {/* Search Bar Group */}
+                        {recipes.length > 0 && (
                         <div className="flex items-center gap-2">
                             <div className="relative flex-1 group">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-accent" size={18} />
@@ -274,11 +278,12 @@ export default function Recipes() {
                                 <Compass size={18} />
                             </Button>
                         </div>
+                        )}
                     </div>
                 </header>
 
                  {/* Active Filter Chips (Scrollable Row) */}
-                {hasActiveFilters && (
+                {recipes.length > 0 && hasActiveFilters && (
                     <div className="flex items-center gap-2 py-4 overflow-x-auto no-scrollbar">
                          {filterTime.map(t => (
                             <button key={t} onClick={() => setFilterTime(prev => prev.filter(i => i !== t))} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-1 shadow-sm">
@@ -317,7 +322,7 @@ export default function Recipes() {
                 )}
 
                 {/* Dish-linked filter banner */}
-                {idFilter.length > 0 && (
+                {recipes.length > 0 && idFilter.length > 0 && (
                     <div className="flex items-center gap-2 py-3">
                         <span className="px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-2">
                             <ChefHat size={12} /> Showing recipes for this dish
@@ -332,19 +337,39 @@ export default function Recipes() {
                 )}
 
                 {/* Results Info */}
-                <div className="flex items-center justify-between py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                    <span>{filteredRecipes.length} Recipes</span>
-                    <div className="flex items-center gap-1 hover:text-foreground cursor-pointer transition-colors">
-                        <ArrowUpDown size={10} />
-                        Sort
+                {recipes.length > 0 && (
+                    <div className="flex items-center justify-between py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        <span>{filteredRecipes.length} Recipes</span>
+                        <div className="flex items-center gap-1 hover:text-foreground cursor-pointer transition-colors">
+                            <ArrowUpDown size={10} />
+                            Sort
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Grid */}
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-24 gap-4">
                         <Loader2 className="animate-spin text-accent" size={32} />
                         <p className="text-sm font-medium text-muted-foreground">Fetching your cookbook...</p>
+                    </div>
+                ) : recipes.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-24 text-center px-6 border border-dashed border-border/10 rounded-3xl bg-secondary/50 shadow-inner">
+                        <div className="w-20 h-20 bg-secondary/50 rounded-full flex items-center justify-center mb-6 text-4xl">
+                            🍳
+                        </div>
+                        <h2 className="text-xl font-bold mb-2">Your cookbook is empty</h2>
+                        <p className="text-sm text-muted-foreground max-w-[340px] mb-6">
+                            Explore dish lists to find dishes from around the world. Tap one, then use its recipe creation flow to save your first recipe.
+                        </p>
+                        <div className="flex flex-wrap items-center justify-center gap-2">
+                            <Button onClick={() => redirect('/dishLists')} className="rounded-xl">
+                                <Globe2 size={16} /> Explore dish lists
+                            </Button>
+                            <Button onClick={() => redirect('/createRecipe')} variant="outline" className="rounded-xl">
+                                <Plus size={16} /> Create one manually
+                            </Button>
+                        </div>
                     </div>
                 ) : filteredRecipes.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-24 text-center px-6 border border-dashed border-border/10 rounded-3xl bg-secondary/50 shadow-inner">
