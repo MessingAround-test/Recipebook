@@ -2,7 +2,7 @@ import dbConnect from '../../lib/dbConnect'
 import User from '../../models/User'
 import Recipe from '../../models/Recipe'
 import { saveRecipeImages, recipeImageUrl } from '../../lib/recipeImageServer'
-import { verifyToken } from "../../lib/auth.ts";
+import { verifyToken, requireFeature } from "../../lib/auth.ts";
 import { logAPI } from '../../lib/logger.ts';
 import { sanitizeDishListRefs, sanitizeRecipeLocation } from '../../lib/dishLists/recipeLink'
 
@@ -10,6 +10,7 @@ export default async function handler(req, res) {
   logAPI(req)
   const decoded = await verifyToken(req, res);
   if (!decoded) return;
+  if (!(await requireFeature(req, res, decoded, 'recipes'))) return;
 
   try {
     await dbConnect()

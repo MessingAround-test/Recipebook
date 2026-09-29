@@ -1,4 +1,4 @@
-import { verifyToken } from '../../../../../lib/auth'
+import { verifyToken, requireFeature } from '../../../../../lib/auth'
 import dbConnect from '../../../../../lib/dbConnect'
 import { getDishListImage } from '../../../../../lib/dishListImageServer'
 import { logAPI } from '../../../../../lib/logger'
@@ -15,6 +15,7 @@ export default async function handler(req, res) {
     logAPI(req)
     const decoded = await verifyToken(req, res)
     if (!decoded) return
+    if (!(await requireFeature(req, res, decoded, 'worldList'))) return
 
     const { id } = req.query
     const quality = req.query.q === 'full' ? 'full' : 'thumb'

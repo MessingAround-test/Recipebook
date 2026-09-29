@@ -1,13 +1,14 @@
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
 import ShoppingList from '../../../models/ShoppingList'
-import { verifyToken } from "../../../lib/auth.ts";
+import { verifyToken, requireFeature } from "../../../lib/auth.ts";
 import { logAPI } from '../../../lib/logger.ts';
 
 export default async function handler(req, res) {
   logAPI(req)
   const decoded = await verifyToken(req, res);
   if (!decoded) return;
+  if (!(await requireFeature(req, res, decoded, 'shoppingList'))) return;
 
   const id = req.query.id
   try {

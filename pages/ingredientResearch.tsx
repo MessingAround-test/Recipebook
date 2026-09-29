@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react'
 import { Layout } from '../components/Layout'
 import Router from 'next/router'
 import IngredientResearchComponent from '../components/IngredientResearchComponent'
+import { useFeatureGuard } from '../lib/useFeatureGuard'
 
 export default function Home() {
+    const isAllowed = useFeatureGuard('ingredients')
     const [userData, setUserData] = useState<any>({})
 
     useEffect(() => {
@@ -20,6 +22,8 @@ export default function Home() {
         }
         getUserDetails()
     }, [])
+
+    if (!isAllowed) return null
 
     return (
         <Layout title="Ingredients">

@@ -4,14 +4,37 @@ import Link from 'next/link'
 import styles from '../styles/Toolbar.module.css'
 import { HiOutlineCog } from 'react-icons/hi'
 import { useRouter } from 'next/router'
+import { useUser } from '../lib/UserContext'
+
+interface NavItem {
+    href: string
+    label: string
+    icon: React.ReactNode
+    /** Feature required to see/reach this link; undefined = always visible. */
+    feature?: string
+    hideMobile?: boolean
+}
 
 export function Toolbar({ hideMobile = false }: { hideMobile?: boolean }) {
     const router = useRouter();
+    const { hasFeature } = useUser();
 
     const isActive = (path: string) => {
         if (path === '/') return router.pathname === '/';
         return router.pathname.startsWith(path);
     };
+
+    const items: NavItem[] = [
+        { href: '/', label: 'Home', icon: <MdHome size={30} /> },
+        { href: '/recipes', label: 'Recipes', icon: <MdOutlineMenuBook size={30} />, feature: 'recipes' },
+        { href: '/shoppingList', label: 'List', icon: <MdShoppingCart size={30} />, feature: 'shoppingList' },
+        { href: '/dailyTracker', label: 'Health', icon: <MdTimeline size={30} />, feature: 'healthTracker' },
+        { href: '/quickTools', label: 'Quick Tools', icon: <MdBuild size={30} />, feature: 'quickTools' },
+        { href: '/tools', label: 'Tools', icon: <MdApps size={30} />, hideMobile: true },
+        { href: '/profile', label: 'Settings', icon: <HiOutlineCog size={30} />, hideMobile: true },
+    ];
+
+    const visibleItems = items.filter(item => !item.feature || hasFeature(item.feature));
 
     return (
         <header className={`${styles.Container} ${hideMobile ? styles.hide_mobile : ''}`}>
@@ -19,48 +42,17 @@ export function Toolbar({ hideMobile = false }: { hideMobile?: boolean }) {
                 <Link href="/" className={styles.brand}>BRYNS GARBAGE</Link>
 
                 <ul className={styles.nav_links}>
-                    <li className={styles.nav_item}>
-                        <Link href="/" className={`${styles.nav_link} ${isActive('/') ? styles.active : ''}`}>
-                            <div className={styles.icon_wrapper}><MdHome size={30} /></div>
-                            <span className={styles.nav_label}>Home</span>
-                        </Link>
-                    </li>
-                    <li className={styles.nav_item}>
-                        <Link href="/recipes" className={`${styles.nav_link} ${isActive('/recipes') ? styles.active : ''}`}>
-                            <div className={styles.icon_wrapper}><MdOutlineMenuBook size={30} /></div>
-                            <span className={styles.nav_label}>Recipes</span>
-                        </Link>
-                    </li>
-                    <li className={styles.nav_item}>
-                        <Link href="/shoppingList" className={`${styles.nav_link} ${isActive('/shoppingList') ? styles.active : ''}`}>
-                            <div className={styles.icon_wrapper}><MdShoppingCart size={30} /></div>
-                            <span className={styles.nav_label}>List</span>
-                        </Link>
-                    </li>
-                    <li className={styles.nav_item}>
-                        <Link href="/dailyTracker" className={`${styles.nav_link} ${isActive('/dailyTracker') ? styles.active : ''}`}>
-                            <div className={styles.icon_wrapper}><MdTimeline size={30} /></div>
-                            <span className={styles.nav_label}>Health</span>
-                        </Link>
-                    </li>
-                    <li className={styles.nav_item}>
-                        <Link href="/quickTools" className={`${styles.nav_link} ${isActive('/quickTools') ? styles.active : ''}`}>
-                            <div className={styles.icon_wrapper}><MdBuild size={30} /></div>
-                            <span className={styles.nav_label}>Quick Tools</span>
-                        </Link>
-                    </li>
-                    <li className={`${styles.nav_item} ${styles.hide_mobile}`}>
-                        <Link href="/tools" className={`${styles.nav_link} ${isActive('/tools') ? styles.active : ''}`}>
-                            <div className={styles.icon_wrapper}><MdApps size={30} /></div>
-                            <span className={styles.nav_label}>Tools</span>
-                        </Link>
-                    </li>
-                    <li className={`${styles.nav_item} ${styles.hide_mobile}`}>
-                        <Link href="/profile" className={`${styles.nav_link} ${isActive('/profile') ? styles.active : ''}`}>
-                            <div className={styles.icon_wrapper}><HiOutlineCog size={30} /></div>
-                            <span className={styles.nav_label}>Settings</span>
-                        </Link>
-                    </li>
+                    {visibleItems.map(item => (
+                        <li
+                            key={item.href}
+                            className={`${styles.nav_item} ${item.hideMobile ? styles.hide_mobile : ''}`}
+                        >
+                            <Link href={item.href} className={`${styles.nav_link} ${isActive(item.href) ? styles.active : ''}`}>
+                                <div className={styles.icon_wrapper}>{item.icon}</div>
+                                <span className={styles.nav_label}>{item.label}</span>
+                            </Link>
+                        </li>
+                    ))}
                 </ul>
             </nav>
         </header>

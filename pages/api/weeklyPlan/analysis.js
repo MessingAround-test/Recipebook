@@ -3,7 +3,7 @@ import Recipe from '../../../models/Recipe';
 import { recipeImageUrl } from '../../../lib/recipeImageServer';
 import User from '../../../models/User';
 import IngredientConversion from '../../../models/IngredientConversion';
-import { verifyToken } from '../../../lib/auth';
+import { verifyToken, requireFeature } from '../../../lib/auth';
 import { calculateDailyIntake, NUTRIENT_LABELS } from '../../../lib/dailyIntake';
 import { normalizeToGrams } from '../../../lib/conversion';
 import { mergeHealthScoreConfig, getNutrientWeight } from '../../../lib/healthScore';
@@ -17,6 +17,7 @@ export default async function handler(req, res) {
 
     const decoded = await verifyToken(req, res);
     if (!decoded) return;
+    if (!(await requireFeature(req, res, decoded, 'weeklyPlanner'))) return;
 
     await dbConnect();
 

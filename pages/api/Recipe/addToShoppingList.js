@@ -1,4 +1,4 @@
-import { verifyToken } from "../../../lib/auth.ts";
+import { verifyToken, requireFeatures } from "../../../lib/auth.ts";
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
 import Recipe from '../../../models/Recipe'
@@ -15,6 +15,7 @@ export default async function handler(req, res) {
     logAPI(req);
     const decoded = await verifyToken(req, res);
     if (!decoded) return;
+    if (!(await requireFeatures(req, res, decoded, ['recipes', 'shoppingList']))) return;
 
     if (req.method !== "POST") {
         return res.status(405).json({ success: false, message: "Method Not Allowed" });

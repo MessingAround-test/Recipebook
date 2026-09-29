@@ -32,6 +32,11 @@ async function createUser(body) {
             passwordHash: hashval,
             approved: approved,
             role: role,
+            // New accounts start with no features enabled and must complete
+            // onboarding. `null` (as opposed to a missing field) distinguishes
+            // them from legacy accounts, which are grandfathered as all-on.
+            features: {},
+            features_onboarded_at: null,
         });
         return { success: true, data: res, message: "Success" }
     } catch (error) {

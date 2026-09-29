@@ -3,7 +3,7 @@ import Router, { useRouter } from 'next/router'
 import { Layout } from '../../components/Layout'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
-import { useAuthGuard } from '../../lib/useAuthGuard'
+import { useFeatureGuard } from '../../lib/useFeatureGuard'
 import { useIsAdmin } from '../../lib/useIsAdmin'
 import { ArrowLeft, ClipboardPaste, Loader2, Search, Sparkles, MapPin, ExternalLink, ListChecks, Trash2, Compass, Lock } from 'lucide-react'
 import { PasteModal } from '../../components/dishLists/PasteModal'
@@ -13,7 +13,7 @@ import { DishListItem, DishListSummary } from '../../components/dishLists/types'
 import { needsLocationWork, hasPoint, continentOf } from '../../lib/dishLists/locationStatus'
 
 export default function DishListDetail() {
-    const isAuthed = useAuthGuard()
+    const isAuthed = useFeatureGuard('worldList')
     const isAdmin = useIsAdmin()
     const router = useRouter()
     const listId = typeof router.query.id === 'string' ? router.query.id : ''

@@ -1,4 +1,4 @@
-import { verifyToken } from '../../../lib/auth';
+import { verifyToken, requireFeature } from '../../../lib/auth';
 import { logAPI } from '../../../lib/logger';
 import { normalizeCriteria, criteriaInstruction } from '../../../lib/dishLists/criteria';
 import { callGroqChat } from '../../../lib/ai';
@@ -48,6 +48,7 @@ export default async function handler(req, res) {
 
     const decoded = await verifyToken(req, res);
     if (!decoded) return;
+    if (!(await requireFeature(req, res, decoded, 'recipes'))) return;
 
     try {
         const recipe = req.body?.recipe;

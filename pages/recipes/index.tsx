@@ -5,7 +5,7 @@ import { Layout } from '../../components/Layout'
 import ImageCard, { Recipe } from '../../components/ImageCard'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
-import { useAuthGuard } from '../../lib/useAuthGuard'
+import { useFeatureGuard } from '../../lib/useFeatureGuard'
 import { 
     Search, 
     SlidersHorizontal, 
@@ -31,7 +31,7 @@ interface UserData {
 }
 
 export default function Recipes() {
-    const isAuthed = useAuthGuard()
+    const isAuthed = useFeatureGuard('recipes')
     const router = useRouter()
     const [userData, setUserData] = useState<UserData | null>(null)
     const [recipes, setRecipes] = useState<Recipe[]>([])

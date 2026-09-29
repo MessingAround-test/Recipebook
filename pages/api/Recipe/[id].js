@@ -1,5 +1,5 @@
 
-import { verifyToken } from "../../../lib/auth.ts";
+import { verifyToken, requireFeature } from "../../../lib/auth.ts";
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
 import mongoose from 'mongoose'
@@ -41,6 +41,7 @@ export default async function handler(req, res) {
 
   const decoded = await verifyToken(req, res);
   if (!decoded) return;
+  if (!(await requireFeature(req, res, decoded, 'recipes'))) return;
 
   if (req.method === "GET") {
 

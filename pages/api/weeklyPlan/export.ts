@@ -6,13 +6,14 @@ import ShoppingListItem from '../../../models/ShoppingListItem';
 import IngredientConversion from '../../../models/IngredientConversion';
 import { determineCategory } from '../../../lib/categoryDetermination';
 import { callGroqChat } from '../../../lib/ai';
-import { verifyToken } from '../../../lib/auth';
+import { verifyToken, requireFeatures } from '../../../lib/auth';
 import { logAPI } from '../../../lib/logger';
 import mongoose from 'mongoose';
 
 export default async function handler(req, res) {
     const decoded = await verifyToken(req, res);
     if (!decoded) return;
+    if (!(await requireFeatures(req, res, decoded, ['weeklyPlanner', 'shoppingList']))) return;
     logAPI(req);
 
     if (req.method !== 'POST') {

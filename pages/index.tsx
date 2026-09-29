@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import Router from 'next/router'
 import { Layout } from '../components/Layout'
 import { useAuthGuard } from '../lib/useAuthGuard'
+import { useUser } from '../lib/UserContext'
 import { calculateHealthScore, DEFAULT_HEALTH_SCORE_CONFIG, HealthScoreConfig } from '../lib/healthScore'
 import { FiShoppingCart, FiCalendar, FiPlus, FiChevronRight, FiCompass, FiSearch, FiX, FiSettings, FiGrid } from 'react-icons/fi'
 import IngredientEditor from '../components/IngredientEditor'
@@ -55,6 +56,7 @@ const IconChip = ({ className = '', children, onClick }: { className?: string; c
 
 export default function Dashboard() {
     const isAuthed = useAuthGuard()
+    const { features, ready } = useUser()
 
     const [loading, setLoading] = useState(true)
     const [targets, setTargets] = useState<any>(null)
@@ -100,50 +102,65 @@ export default function Dashboard() {
 
         setLoading(true)
         const today = getLocalDateString(new Date())
+        const f = features
 
-        Promise.allSettled([
-            fetch('/api/dailyIntake', { headers: { edgetoken: token } }).then(r => r.json()),
-            fetch(`/api/dailyLog?date=${today}`, { headers: { edgetoken: token } }).then(r => r.json()),
-            fetch(`/api/weeklyPlan?startDate=${today}`, { headers: { edgetoken: token } }).then(r => r.json()),
-            fetch('/api/ShoppingList', { headers: { edgetoken: token } }).then(r => r.json()),
-            fetch('/api/dishLists', { headers: { edgetoken: token } }).then(r => r.json()),
-            fetch('/api/Recipe', { headers: { edgetoken: token } }).then(r => r.json()),
-            fetch('/api/Ingredients/defaults', { headers: { edgetoken: token } }).then(r => r.json()),
-            fetch(`/api/symptomLog?date=${today}`, { headers: { edgetoken: token } }).then(r => r.json()),
-        ]).then(([targetRes, logRes, planRes, listRes, dishRes, recipeRes, ingRes, symptomRes]) => {
-            if (targetRes.status === 'fulfilled' && targetRes.value.success) {
-                setTargets(targetRes.value.targets)
-                if (targetRes.value.healthScoreConfig) {
-                    setHealthScoreConfig(targetRes.value.healthScoreConfig)
+        try {
+            // Only load what the enabled features actually need. The health
+            // summary needs dailyIntake/log/symptom data; the daily-tasks widget
+            // needs the log + symptom data too, so those are shared.
+            const needHealth = f.healthTracker
+            const needTasks = f.dailyTasks
+            const jobs: Record<string, Promise<any>> = {
+                ingredients: fetch('/api/Ingredients/defaults', { headers: { edgetoken: token } }).then(r => r.json()),
+            }
+            if (needHealth) jobs.target = fetch('/api/dailyIntake', { headers: { edgetoken: token } }).then(r => r.json())
+            if (needHealth || needTasks) {
+                jobs.log = fetch(`/api/dailyLog?date=${today}`, { headers: { edgetoken: token } }).then(r => r.json())
+                jobs.symptoms = fetch(`/api/symptomLog?date=${today}`, { headers: { edgetoken: token } }).then(r => r.json())
+            }
+            if (f.weeklyPlanner) jobs.plan = fetch(`/api/weeklyPlan?startDate=${today}`, { headers: { edgetoken: token } }).then(r => r.json())
+            if (f.shoppingList) jobs.list = fetch('/api/ShoppingList', { headers: { edgetoken: token } }).then(r => r.json())
+            if (f.worldList) jobs.dish = fetch('/api/dishLists', { headers: { edgetoken: token } }).then(r => r.json())
+            if (f.recipes) jobs.recipe = fetch('/api/Recipe', { headers: { edgetoken: token } }).then(r => r.json())
+
+            const results: Record<string, any> = {}
+            await Promise.all(Object.entries(jobs).map(async ([key, promise]) => {
+                try { results[key] = await promise } catch { /* ignore individual failures */ }
+            }))
+
+            if (results.target?.success) {
+                setTargets(results.target.targets)
+                if (results.target.healthScoreConfig) {
+                    setHealthScoreConfig(results.target.healthScoreConfig)
                 }
             }
-            if (logRes.status === 'fulfilled' && logRes.value.success) {
-                setTodayLog(logRes.value.log)
+            if (results.log?.success) {
+                setTodayLog(results.log.log)
             }
-            if (planRes.status === 'fulfilled' && planRes.value.success && planRes.value.plan) {
-                setWeekPlan(planRes.value.plan)
+            if (results.plan?.success && results.plan.plan) {
+                setWeekPlan(results.plan.plan)
                 // Estimated intake for today if we ate everything planned (the
                 // same data the "(i)" modal shows). Feeds the plan-card advice.
                 fetch('/api/weeklyPlan/dayCoverage', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', edgetoken: token },
-                    body: JSON.stringify({ plan: planRes.value.plan, day: today })
+                    body: JSON.stringify({ plan: results.plan.plan, day: today })
                 })
                     .then(r => r.json())
                     .then(d => { if (d.success) setPlanCoverage(d) })
                     .catch(() => {})
             }
-            if (listRes.status === 'fulfilled') {
-                const lists = (listRes.value.res || []).filter((l: any) => l.complete !== true)
+            if (results.list) {
+                const lists = (results.list.res || []).filter((l: any) => l.complete !== true)
                 lists.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                 setShoppingLists(lists)
             }
-            if (typeof window !== 'undefined') {
+            if (f.worldList && typeof window !== 'undefined') {
                 try {
                     const stored = localStorage.getItem('lastDishList')
                     const parsed = stored ? JSON.parse(stored) : null
                     if (parsed?.id) {
-                        const summaries = dishRes.status === 'fulfilled' ? (dishRes.value.data || []) : []
+                        const summaries = results.dish?.data || []
                         const match = summaries.find((l: any) => String(l._id) === String(parsed.id))
                         setLastDishList(match
                             ? { _id: String(match._id), name: match.name, counts: match.counts }
@@ -155,17 +172,19 @@ export default function Dashboard() {
                     setLastDishList(null)
                 }
             }
-            if (recipeRes.status === 'fulfilled' && recipeRes.value.res) {
-                setRecipes(recipeRes.value.res)
+            if (results.recipe?.res) {
+                setRecipes(results.recipe.res)
             }
-            if (ingRes.status === 'fulfilled' && ingRes.value.success) {
-                setKnownIngredients(ingRes.value.data || [])
+            if (results.ingredients?.success) {
+                setKnownIngredients(results.ingredients.data || [])
             }
-            if (symptomRes.status === 'fulfilled' && symptomRes.value.success) {
-                setSymptomLog(symptomRes.value.log)
+            if (results.symptoms?.success) {
+                setSymptomLog(results.symptoms.log)
             }
-        }).finally(() => setLoading(false))
-    }, [])
+        } finally {
+            setLoading(false)
+        }
+    }, [features])
 
     const refreshIntake = useCallback(async () => {
         const token = localStorage.getItem('Token')
@@ -186,8 +205,8 @@ export default function Dashboard() {
     }, [loadData])
 
     useEffect(() => {
-        if (isAuthed) loadData()
-    }, [isAuthed, loadData])
+        if (isAuthed && ready) loadData()
+    }, [isAuthed, ready, loadData])
 
     const latestList = shoppingLists[0] || null
 
@@ -207,6 +226,7 @@ export default function Dashboard() {
     }, [dailyTasks])
 
     useEffect(() => {
+        if (!features.dailyTasks) return
         if (typeof window === 'undefined') return
         if (!symptomLog || !symptomLog.symptoms) return
         const token = localStorage.getItem('Token')
@@ -241,7 +261,7 @@ export default function Dashboard() {
             .then(r => r.json())
             .then(data => { if (data.success) setSymptomLog(data.log) })
             .catch(() => {})
-    }, [doneTaskSymptoms, symptomLog])
+    }, [doneTaskSymptoms, symptomLog, features.dailyTasks])
 
     useEffect(() => {
         if (!latestList) return
@@ -337,10 +357,12 @@ export default function Dashboard() {
     }
 
     const handleTaskGo = useCallback((action: string) => {
-        if (action === 'symptoms') Router.push('/dailyTracker?view=symptoms')
-        else if (action === 'exercise') Router.push('/dailyTracker?view=stats')
-        else if (action === 'quicklog') openLog()
-    }, [])
+        if (action === 'symptoms' || action === 'exercise') {
+            // This widget can be on while the tracker page is off; don't link there.
+            if (!features.healthTracker) return
+            Router.push(action === 'symptoms' ? '/dailyTracker?view=symptoms' : '/dailyTracker?view=stats')
+        } else if (action === 'quicklog') openLog()
+    }, [features.healthTracker])
 
     const handlePhotoExtract = async () => {
         if (!photoImage || photoExtracting) return
@@ -616,6 +638,7 @@ export default function Dashboard() {
                     onLog={openLog}
                     onRoundOut={() => setShowRoundOut(true)}
                     onShowNutrition={() => setShowNutrition(true)}
+                    showMetrics={features.healthTracker}
                     headerExtra={
                         <div className="flex items-center gap-2 sm:hidden">
                             <button
@@ -640,12 +663,12 @@ export default function Dashboard() {
 
                 <div className={dashStyles.columns}>
                     <div className={dashStyles.mainCol}>
-                        {todayMealsAll.length > 0 && mealsCard}
-                        {dailyTasksCard}
+                        {features.weeklyPlanner && todayMealsAll.length > 0 && mealsCard}
+                        {features.dailyTasks && dailyTasksCard}
                     </div>
                     <div className={dashStyles.sideCol}>
-                        {shoppingCard}
-                        {dishListCard}
+                        {features.shoppingList && shoppingCard}
+                        {features.worldList && dishListCard}
                     </div>
                 </div>
             </div>

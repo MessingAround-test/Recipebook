@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Layout } from '../components/Layout'
-import { useAuthGuard } from '../lib/useAuthGuard'
+import { useFeatureGuard } from '../lib/useFeatureGuard'
 import { useQuickTimers } from '../lib/useQuickTimers'
 import QuickTimerCard from '../components/quickTools/QuickTimerCard'
 import QuickTimerCreator from '../components/quickTools/QuickTimerCreator'
@@ -66,7 +66,7 @@ interface GridItem {
 const STATUS_RANK: Record<string, number> = { overdue: 0, active: 1, paused: 2, pending: 3, completed: 4 }
 
 export default function QuickTools() {
-    const isAuthed = useAuthGuard()
+    const isAuthed = useFeatureGuard('quickTools')
     const {
         timers,
         nowMs,

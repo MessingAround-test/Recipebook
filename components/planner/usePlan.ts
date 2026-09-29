@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAuthGuard } from '../../lib/useAuthGuard';
+import { useFeatureGuard } from '../../lib/useFeatureGuard';
 import { CURRENT_PLAN_VERSION } from '../../lib/planVersion';
 import { getDateRange, addDays, todayStr, daysBetween, parseFlexibleDate } from '../../lib/dateUtils';
 import { fetchPlan, postPlan, postPlanKeepAlive, fetchAnalysis, postExport, fetchRecipes, suggestForDay, generateRecipeForDay } from './dataLayer';
@@ -11,7 +11,7 @@ import { saveRecipe } from '../../lib/recipeExtraction';
 const emptyPlan = (): Plan => ({ defaultServings: 2, plannedRecipes: [], everydayItems: [], numDays: 7, pantryPlacements: {} });
 
 export function usePlan() {
-    const isAuthed = useAuthGuard();
+    const isAuthed = useFeatureGuard('weeklyPlanner');
 
     const [startDate, setStartDate] = useState(() => todayStr());
     const [numDays, setNumDays] = useState(7);

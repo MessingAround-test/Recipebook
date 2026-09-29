@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Router from 'next/router'
 import { Layout } from '../components/Layout'
 import { Button } from '../components/ui/button'
-import { useAuthGuard } from '../lib/useAuthGuard'
+import { useFeatureGuard } from '../lib/useFeatureGuard'
 import { Check, Loader2, ArrowLeft, Sparkles, ChevronRight, ListChecks, AlertCircle } from 'lucide-react'
 import { criterionLabel } from '../lib/dishLists/criteria'
 import { applyDietaryNameTag } from '../lib/recipeRemix'
@@ -59,7 +59,7 @@ function RemixProgress({ progress, label }: { progress: number; label?: string }
 }
 
 export default function RemixRecipe() {
-    const isAuthed = useAuthGuard()
+    const isAuthed = useFeatureGuard('recipes')
     const token = () => localStorage.getItem('Token') || ''
 
     const [draft, setDraft] = useState<RemixDraft | null>(null)

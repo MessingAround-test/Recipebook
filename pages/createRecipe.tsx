@@ -5,7 +5,7 @@ import { fileToBase64 } from '../lib/recipeImage'
 import { parseRecipeImport, mapRecipeFileToEditor } from '../lib/recipeFile'
 import { quantity_unit_conversions, getShorthandForMeasure } from '../lib/conversion'
 import { extractRecipeFromImage, extractRecipeFromNotes, saveRecipe, normalizeIngredientsForSave, formatImportedIngredients, Ingredient, getEachUnitIngredientNames, warmIngredientConversions } from '../lib/recipeExtraction'
-import { useAuthGuard } from '../lib/useAuthGuard'
+import { useFeatureGuard } from '../lib/useFeatureGuard'
 import RecipeIngredientInput from '../components/RecipeIngredientInput'
 import {
     Camera, Globe, Share2, NotebookPen, Pencil, ChevronLeft, ChevronDown, ShoppingBasket,
@@ -267,7 +267,7 @@ function StepRow({ instruction, index, dragging = false, onDragStart, onDragMove
 }
 
 export default function CreateRecipe() {
-    const isAuthed = useAuthGuard()
+    const isAuthed = useFeatureGuard('recipes')
     const [ingreds, setIngreds] = useState<Ingredient[]>([])
     const [instructions, setInstructions] = useState<Instruction[]>([])
     const [popIngredient, setPopIngredient] = useState<Ingredient | null>(null)

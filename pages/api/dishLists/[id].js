@@ -1,5 +1,5 @@
 import mongoose from 'mongoose'
-import { verifyToken } from '../../../lib/auth'
+import { verifyToken, requireFeature } from '../../../lib/auth'
 import { logAPI } from '../../../lib/logger'
 import dbConnect from '../../../lib/dbConnect'
 import DishList from '../../../models/DishList'
@@ -16,6 +16,7 @@ export default async function handler(req, res) {
     logAPI(req)
     const decoded = await verifyToken(req, res)
     if (!decoded) return
+    if (!(await requireFeature(req, res, decoded, 'worldList'))) return
 
     const listId = req.query.id
     if (!mongoose.Types.ObjectId.isValid(listId)) {

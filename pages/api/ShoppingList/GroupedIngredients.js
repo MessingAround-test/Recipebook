@@ -4,7 +4,7 @@ import ShoppingList from '../../../models/ShoppingList'
 import IngredientConversion from '../../../models/IngredientConversion'
 import PantryAssumption from '../../../models/PantryAssumption'
 import User from '../../../models/User'
-import { verifyToken } from "../../../lib/auth.ts";
+import { verifyToken, requireFeature } from "../../../lib/auth.ts";
 import { logAPI } from '../../../lib/logger.ts';
 import { normalizeToGrams, getShorthandForMeasure, resolveUnitKey, addCalculatedFields, pluralizeName } from '../../../lib/conversion'
 import { buildPlanningContext, stampPlanningFields } from '../../../lib/pantryPlanning'
@@ -13,6 +13,7 @@ export default async function handler(req, res) {
     logAPI(req)
     const decoded = await verifyToken(req, res);
     if (!decoded) return;
+    if (!(await requireFeature(req, res, decoded, 'shoppingList'))) return;
 
     const { shoppingListId } = req.query;
     if (!shoppingListId) {

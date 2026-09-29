@@ -6,11 +6,11 @@ import { useEffect, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import Router from 'next/router'
 import ImageCard from '../../components/ImageCard'
-import { useAuthGuard } from '../../lib/useAuthGuard'
+import { useFeatureGuard } from '../../lib/useFeatureGuard'
 import { CheckCircle, History } from 'lucide-react'
 
 export default function Home() {
-    useAuthGuard()
+    useFeatureGuard('shoppingList')
     const [userData, setUserData] = useState<any>({})
     const [recipes, setRecipes] = useState<any[]>([])
     const [completedRecipes, setCompletedRecipes] = useState<any[]>([])

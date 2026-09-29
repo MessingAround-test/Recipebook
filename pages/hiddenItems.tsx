@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Router from 'next/router'
 import { Layout } from '../components/Layout'
-import { useAuthGuard } from '../lib/useAuthGuard'
+import { useFeatureGuard } from '../lib/useFeatureGuard'
 import { PageHeader } from '../components/PageHeader'
 import { Button } from '../components/ui/button'
 import SearchableDropdown from '../components/SearchableDropdown'
@@ -30,7 +30,7 @@ type StatusFilter = 'all' | 'visible' | 'hidden'
 const EXAMPLE_TERMS = ['watermelon', 'kombucha', 'banana', 'avocado']
 
 export default function HiddenItemsPage() {
-    const isAuthed = useAuthGuard()
+    const isAuthed = useFeatureGuard('ingredients')
 
     const [patterns, setPatterns] = useState<string[]>([])
     const [availableIngredients, setAvailableIngredients] = useState<string[]>([])

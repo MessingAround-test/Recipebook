@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerE
 import { useRouter } from 'next/router'
 import { Layout } from '../components/Layout'
 import { Button } from '../components/ui/button'
-import { useAuthGuard } from '../lib/useAuthGuard'
+import { useFeatureGuard } from '../lib/useFeatureGuard'
 import { useIsAdmin } from '../lib/useIsAdmin'
 import { ArrowLeft, Loader2, MapPin, Plus, Minus, Compass, UtensilsCrossed, Maximize2, List, Wand2, ExternalLink, ChefHat, CookingPot } from 'lucide-react'
 import { buildViewportTiles, projectToPercent, tileZoomForScale } from '../lib/dishLists/mercator'
@@ -191,7 +191,7 @@ const clusterKey = (p: MapPoint, level: ClusterLevel): string => {
 }
 
 export default function WorldMap() {
-    const isAuthed = useAuthGuard()
+    const isAuthed = useFeatureGuard('worldList')
     const isAdmin = useIsAdmin()
     const router = useRouter()
     const queryListId = typeof router.query.listId === 'string' ? router.query.listId : ''

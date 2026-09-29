@@ -2,6 +2,7 @@ import dbConnect from '../../lib/dbConnect'
 import User from '../../models/User'
 import { verifyToken } from "../../lib/auth.ts";
 import { logAPI } from '../../lib/logger.ts';
+import { FEATURES_ADMIN_ONLY, sanitizeFeatures } from '../../lib/features';
 
 export default async function handler(req, res) {
   logAPI(req)
@@ -32,6 +33,17 @@ export default async function handler(req, res) {
             delete req.body.role;
             delete req.body.approved;
         }
+
+        // Feature access: only store known keys with boolean values.
+        if (req.body.features !== undefined) {
+            req.body.features = sanitizeFeatures(req.body.features);
+        }
+        // Once locked down, only admins may change feature access.
+        if (FEATURES_ADMIN_ONLY && decoded.role !== 'admin') {
+            delete req.body.features;
+            delete req.body.features_onboarded_at;
+        }
+
         delete req.body.passwordHash;
         delete req.body.password;
         delete req.body.__v;

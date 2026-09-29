@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react'
 import Router from 'next/router'
 import { Layout } from '../../components/Layout'
 import { Button } from '../../components/ui/button'
-import { useAuthGuard } from '../../lib/useAuthGuard'
+import { useFeatureGuard } from '../../lib/useFeatureGuard'
 import { useIsAdmin } from '../../lib/useIsAdmin'
 import { Plus, Globe2, Loader2, UtensilsCrossed, Sparkles, Compass } from 'lucide-react'
 import { NewListModal } from '../../components/dishLists/NewListModal'
 import { DishListSummary } from '../../components/dishLists/types'
 
 export default function DishLists() {
-    const isAuthed = useAuthGuard()
+    const isAuthed = useFeatureGuard('worldList')
     const isAdmin = useIsAdmin()
     const [lists, setLists] = useState<DishListSummary[]>([])
     const [loading, setLoading] = useState(true)

@@ -6,9 +6,11 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { MdVisibility, MdVisibilityOff, MdErrorOutline, MdCheckCircleOutline } from 'react-icons/md'
+import { useUser } from '../lib/UserContext'
 
 export default function Login() {
     const router = useRouter()
+    const { refresh } = useUser()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
@@ -36,6 +38,9 @@ export default function Login() {
                 // Cookie lets <img>/<link> navigations authenticate (proxy.js maps
                 // it onto the edgetoken header for API routes).
                 document.cookie = `edgetoken=${encodeURIComponent(data.data.token)}; path=/; max-age=31536000; SameSite=Lax`
+                // Load the user into context so guards/nav know we're authed
+                // (and whether onboarding is still required).
+                await refresh()
                 router.push('/')
             } else {
                 setError(typeof data.message === 'string' ? data.message : 'Incorrect email or password.')

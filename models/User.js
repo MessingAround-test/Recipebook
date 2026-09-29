@@ -19,6 +19,12 @@ const UserSchema = new mongoose.Schema(
     target_weight_kg: { type: Number },
     weekly_goal_kg: { type: Number },
     health_score_config: { type: mongoose.Schema.Types.Mixed },
+    // Per-user feature access: { recipes: true, shoppingList: false, ... }.
+    // No schema default: absence (undefined) marks a pre-feature legacy account,
+    // while signup explicitly writes {} so new users are distinguishable.
+    features: { type: mongoose.Schema.Types.Mixed },
+    // null => user has not completed feature onboarding yet; undefined => legacy
+    features_onboarded_at: { type: Date },
     carbHistory: [new mongoose.Schema({
         type: { type: String, required: true },
         variant: String,
@@ -29,4 +35,7 @@ const UserSchema = new mongoose.Schema(
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 )
 
-export default mongoose.models.User || mongoose.model('User', UserSchema)
+// Force re-registration so schema changes (e.g. per-user features) take effect
+// on hot-reload instead of reusing a stale cached model.
+delete mongoose.models.User
+export default mongoose.model('User', UserSchema)

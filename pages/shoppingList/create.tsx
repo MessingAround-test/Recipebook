@@ -4,10 +4,10 @@ import { PageHeader } from '../../components/PageHeader'
 import { useEffect, useState } from 'react'
 import Router, { useRouter } from 'next/router'
 import GenericForm from '../../components/GenericForm'
-import { useAuthGuard } from '../../lib/useAuthGuard'
+import { useFeatureGuard } from '../../lib/useFeatureGuard'
 
 export default function Home() {
-    useAuthGuard()
+    useFeatureGuard('shoppingList')
     const router = useRouter()
     const { id } = router.query
     const [loading, setLoading] = useState(false)

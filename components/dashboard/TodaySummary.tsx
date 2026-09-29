@@ -20,6 +20,8 @@ export interface TodaySummaryProps {
     onRoundOut: () => void
     onShowNutrition: () => void
     headerExtra?: ReactNode
+    /** When false the health metrics/actions are hidden (e.g. tracker disabled). */
+    showMetrics?: boolean
 }
 
 function ScoreRing({ score, hasData, scoreColor }: { score: number; hasData: boolean; scoreColor: string }) {
@@ -90,6 +92,7 @@ export default function TodaySummary({
     onRoundOut,
     onShowNutrition,
     headerExtra,
+    showMetrics = true,
 }: TodaySummaryProps) {
     return (
         <section className="flex flex-col rounded-2xl border border-emerald-500/15 bg-gradient-to-br from-emerald-500/[0.14] via-card/40 to-card/40 p-4 md:p-6">
@@ -101,28 +104,32 @@ export default function TodaySummary({
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                     {headerExtra}
-                    <button
-                        type="button"
-                        onClick={onShowNutrition}
-                        aria-label="Nutrition breakdown"
-                        title="Nutrition breakdown"
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-muted-foreground transition-all hover:text-white active:scale-90"
-                    >
-                        <FiActivity size={16} />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onRoundOut}
-                        aria-label="Round out today's intake"
-                        title="Round out today's intake with quick foods"
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 transition-all hover:border-emerald-500/40 active:scale-90"
-                    >
-                        <FiZap size={15} />
-                    </button>
+                    {showMetrics && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={onShowNutrition}
+                                aria-label="Nutrition breakdown"
+                                title="Nutrition breakdown"
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-muted-foreground transition-all hover:text-white active:scale-90"
+                            >
+                                <FiActivity size={16} />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onRoundOut}
+                                aria-label="Round out today's intake"
+                                title="Round out today's intake with quick foods"
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 transition-all hover:border-emerald-500/40 active:scale-90"
+                            >
+                                <FiZap size={15} />
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
-            {loading && !targets ? (
+            {showMetrics && (loading && !targets ? (
                 <div className="mt-4 space-y-3">
                     <div className="h-20 w-full animate-pulse rounded-xl bg-white/[0.04]" />
                     <div className="flex gap-2">
@@ -164,7 +171,7 @@ export default function TodaySummary({
                         <FiPlus size={18} /> Log food
                     </button>
                 </>
-            )}
+            ))}
         </section>
     )
 }

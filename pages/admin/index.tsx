@@ -22,6 +22,7 @@ export default function AdminDashboard() {
         { name: "Pantry Assumptions", _id: "/admin/pantryAssumptions", image: "/avo.ico" },
         { name: "Migrate Recipe Images", _id: "/admin/migrateImages", image: "/avo.ico" },
         { name: "Settings", _id: "/admin/settings", image: "/avo.ico" },
+        { name: "User Access", _id: "/admin/users", image: "/avo.ico" },
         { name: "One Off Extracts", _id: "/oneOffExtracts", image: "/forklift_oragami.png" }
     ])
 

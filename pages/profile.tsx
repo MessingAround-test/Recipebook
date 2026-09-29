@@ -8,6 +8,8 @@ import { PageHeader } from '../components/PageHeader'
 import { useRouter } from 'next/router'
 import { MdLogout, MdArrowForward, MdMonitorHeart } from 'react-icons/md'
 import { NUTRIENT_LABELS } from '../lib/dailyIntake'
+import { FEATURES, FEATURES_ADMIN_ONLY, resolveFeatures, sanitizeFeatures } from '../lib/features'
+import { useUser } from '../lib/UserContext'
 import {
     calculateHealthScore,
     DEFAULT_HEALTH_SCORE_CONFIG,
@@ -27,7 +29,10 @@ const getLocalDateString = (d: Date) => {
 export default function Profile() {
     const isAuthed = useAuthGuard()
     const router = useRouter()
+    const { user, isAdmin, refresh: refreshUser } = useUser()
     const [userData, setUserData] = useState<Record<string, string>>({})
+    const [featureDraft, setFeatureDraft] = useState<Record<string, boolean>>({})
+    const [savingFeatures, setSavingFeatures] = useState(false)
 
     const [theme, setTheme] = useState(() => {
         if (typeof window !== 'undefined') {
@@ -125,6 +130,28 @@ export default function Profile() {
         }
     }
 
+    async function saveFeatures() {
+        const token = localStorage.getItem('Token')
+        if (!token || savingFeatures) return
+        setSavingFeatures(true)
+        try {
+            const res = await fetch("/api/UserDetails", {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': token },
+                body: JSON.stringify({ features: sanitizeFeatures(featureDraft) })
+            })
+            const data = await res.json()
+            if (data.success === false || data.success === undefined) {
+                alert(data.message || "Failed to save features")
+            } else {
+                await refreshUser()
+                alert("App features updated")
+            }
+        } finally {
+            setSavingFeatures(false)
+        }
+    }
+
     async function saveHealthScoreConfig() {
         const token = localStorage.getItem('Token')
         if (!token) return
@@ -191,6 +218,10 @@ export default function Profile() {
             loadHealthScoreData()
         }
     }, [isAuthed])
+
+    useEffect(() => {
+        if (user) setFeatureDraft(resolveFeatures(user))
+    }, [user])
 
     if (!isAuthed) return null
 
@@ -344,16 +375,54 @@ export default function Profile() {
                         <Button
                             variant="outline"
                             className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
-                            onClick={() => {
+                            onClick={async () => {
                                 if (confirm('Are you sure you want to logout?')) {
                                     localStorage.removeItem('Token')
                                     document.cookie = 'edgetoken=; path=/; max-age=0; SameSite=Lax'
+                                    await refreshUser()
                                     router.push('/login')
                                 }
                             }}
                         >
                             <MdLogout className="mr-2" size={20} />
                             Logout from Account
+                        </Button>
+                    </div>
+                </div>
+
+                {/* App Features */}
+                <div className="glass-card mt-8 border-sky-500/20">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-sky-500 mb-2">App Features</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                        Choose which parts of the app are enabled for your account. Disabled areas are hidden from
+                        navigation and won&apos;t load on your dashboard.
+                    </p>
+                    <div className="space-y-3">
+                        {FEATURES.map((feature) => {
+                            const enabled = featureDraft[feature.key] === true
+                            return (
+                                <div key={feature.key} className="flex flex-wrap items-center justify-between gap-3 p-4 bg-muted/20 rounded-lg border border-border/20 transition-colors">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-semibold text-foreground">{feature.label}</p>
+                                        <p className="text-sm text-muted-foreground">{feature.description}</p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        className="toggle toggle-emerald"
+                                        checked={enabled}
+                                        disabled={FEATURES_ADMIN_ONLY && !isAdmin}
+                                        onChange={(e) => setFeatureDraft(prev => ({ ...prev, [feature.key]: e.target.checked }))}
+                                    />
+                                </div>
+                            )
+                        })}
+                    </div>
+                    {FEATURES_ADMIN_ONLY && !isAdmin && (
+                        <p className="text-xs text-amber-400 mt-3">Feature access is managed by an administrator.</p>
+                    )}
+                    <div className="mt-6">
+                        <Button type="button" onClick={saveFeatures} disabled={savingFeatures || (FEATURES_ADMIN_ONLY && !isAdmin)}>
+                            {savingFeatures ? 'Saving…' : 'Save App Features'}
                         </Button>
                     </div>
                 </div>

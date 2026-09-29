@@ -1,4 +1,4 @@
-import { verifyToken } from "../../../lib/auth.ts";
+import { verifyToken, requireFeature } from "../../../lib/auth.ts";
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
 import ShoppingListItem from '../../../models/ShoppingListItem'
@@ -32,6 +32,7 @@ export default async function handler(req, res) {
     logAPI(req)
     const decoded = await verifyToken(req, res);
     if (!decoded) return;
+    if (!(await requireFeature(req, res, decoded, 'shoppingList'))) return;
 
     if (req.method === "GET") {
         try {

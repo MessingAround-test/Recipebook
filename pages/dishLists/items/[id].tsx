@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Router, { useRouter } from 'next/router'
 import { Layout } from '../../../components/Layout'
 import { Button } from '../../../components/ui/button'
-import { useAuthGuard } from '../../../lib/useAuthGuard'
+import { useFeatureGuard } from '../../../lib/useFeatureGuard'
 import {
     ArrowLeft, Loader2, MapPin, Star, ExternalLink, Search, NotebookPen,
     UtensilsCrossed, Check, Sparkles, ListChecks, ChevronRight, Wand2
@@ -68,7 +68,7 @@ function MiniMap({ lat, lng, className }: { lat: number; lng: number; className?
 }
 
 export default function PreRecipe() {
-    const isAuthed = useAuthGuard()
+    const isAuthed = useFeatureGuard('worldList')
     const router = useRouter()
     const itemId = typeof router.query.id === 'string' ? router.query.id : ''
 

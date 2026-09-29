@@ -4,7 +4,7 @@ import React from 'react'
 import { Layout } from '../../components/Layout'
 import ImageCard, { Recipe } from '../../components/ImageCard'
 import { Button } from '../../components/ui/button'
-import { useAuthGuard } from '../../lib/useAuthGuard'
+import { useFeatureGuard } from '../../lib/useFeatureGuard'
 import {
     QuizAnswers,
     QuizRecipe,
@@ -89,7 +89,7 @@ function TimeNumberInput({ value, onCommit, label }: { value: number; onCommit: 
 }
 
 export default function RecipeQuiz() {
-    const isAuthed = useAuthGuard()
+    const isAuthed = useFeatureGuard('recipes')
     const [recipes, setRecipes] = useState<QuizRecipe[]>([])
     const [loading, setLoading] = useState(true)
     const [mode, setMode] = useState<'quiz' | 'results'>('quiz')

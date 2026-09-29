@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Router from 'next/router'
 import { Layout } from '../components/Layout'
 import { useAuthGuard } from '../lib/useAuthGuard'
+import { useUser } from '../lib/UserContext'
 import styles from '../styles/Home.module.css'
 
 interface NavPage {
@@ -9,22 +10,25 @@ interface NavPage {
     _id: string
     image: string
     adminOnly: boolean
+    /** Feature required to show this page; undefined = always visible. */
+    feature?: string
 }
 
 export default function Tools() {
     const isAuthed = useAuthGuard()
+    const { hasFeature } = useUser()
     const [userRole, setUserRole] = useState<string | null>(null)
 
     const [allPages] = useState<NavPage[]>([
-        { name: "Quick Tools", _id: "/quickTools", image: "", adminOnly: false },
-        { name: "Explore", _id: "/dishLists", image: "", adminOnly: false },
-        { name: "World Map", _id: "/map", image: "", adminOnly: false },
-        { name: "Recipes", _id: "/recipes", image: "/recipes_v2_oragami.png", adminOnly: false },
-        { name: "Shopping List", _id: "/shoppingList", image: "/shop_list_oragami.png", adminOnly: false },
-        { name: "Health Tracker", _id: "/dailyTracker", image: "/health_tracker_oragami.png", adminOnly: false },
-        { name: "Weekly Planner", _id: "/weeklyPlanner", image: "/weekly_planner_oragami.png", adminOnly: false },
-        { name: "Ingredients", _id: "/ingredientResearch", image: "/ingredients_oragami.png", adminOnly: false },
-        { name: "Hidden Items", _id: "/hiddenItems", image: "", adminOnly: false },
+        { name: "Quick Tools", _id: "/quickTools", image: "", adminOnly: false, feature: "quickTools" },
+        { name: "Explore", _id: "/dishLists", image: "", adminOnly: false, feature: "worldList" },
+        { name: "World Map", _id: "/map", image: "", adminOnly: false, feature: "worldList" },
+        { name: "Recipes", _id: "/recipes", image: "/recipes_v2_oragami.png", adminOnly: false, feature: "recipes" },
+        { name: "Shopping List", _id: "/shoppingList", image: "/shop_list_oragami.png", adminOnly: false, feature: "shoppingList" },
+        { name: "Health Tracker", _id: "/dailyTracker", image: "/health_tracker_oragami.png", adminOnly: false, feature: "healthTracker" },
+        { name: "Weekly Planner", _id: "/weeklyPlanner", image: "/weekly_planner_oragami.png", adminOnly: false, feature: "weeklyPlanner" },
+        { name: "Ingredients", _id: "/ingredientResearch", image: "/ingredients_oragami.png", adminOnly: false, feature: "ingredients" },
+        { name: "Hidden Items", _id: "/hiddenItems", image: "", adminOnly: false, feature: "ingredients" },
         { name: "DB Inspector", _id: "/admin/dbInspector", image: "/db_inspector_oragami.png", adminOnly: true },
         { name: "Admin", _id: "/admin", image: "/admin_oragami.png", adminOnly: true }
     ])
@@ -74,7 +78,10 @@ export default function Tools() {
 
     if (!isAuthed) return null
 
-    const visiblePages = allPages.filter(page => !page.adminOnly || userRole === 'admin')
+    const visiblePages = allPages.filter(page =>
+        (!page.adminOnly || userRole === 'admin') &&
+        (!page.feature || hasFeature(page.feature))
+    )
 
     return (
         <Layout title="Tools" description="All tools and management">
