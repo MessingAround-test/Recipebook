@@ -5,6 +5,7 @@ const {
     matchesNameRule,
     isRecentlyPurchased,
     recentWindowForCategory,
+    recentBucketForCategory,
     stampPlanningFields,
     PLANNING_BUCKETS,
     PLANNING_BUCKET_ORDER,
@@ -114,6 +115,30 @@ describe('resolvePlanningBucket', () => {
     test('non-produce still uses the default 4-week window', () => {
         const recent = new Map([['tahini', Date.now() - 10 * 24 * 60 * 60 * 1000]]);
         expect(resolvePlanningBucket('tahini', { recentNames: recent })).toBe(PLANNING_BUCKETS.PROBABLY);
+    });
+
+    test('snacks bought in a prior week are capped at Probably, not Almost', () => {
+        // "salt and vinegar chips" matches the salt & vinegar name rules, but
+        // the Snacks category caps a prior-week purchase to Probably.
+        const recent = new Map([['salt and vinegar chips', Date.now() - 10 * 24 * 60 * 60 * 1000]]);
+        expect(resolvePlanningBucket('salt and vinegar chips', { category: 'Snacks', recentNames: recent })).toBe(PLANNING_BUCKETS.PROBABLY);
+    });
+
+    test('snacks not recently bought are not capped by the recency rule', () => {
+        const recent = new Map([['something else', Date.now()]]);
+        expect(resolvePlanningBucket('salt and vinegar chips', { category: 'Snacks', recentNames: recent })).toBe(PLANNING_BUCKETS.ALMOST);
+    });
+});
+
+describe('recentBucketForCategory', () => {
+    test('caps recently-bought snacks at Probably', () => {
+        expect(recentBucketForCategory('Snacks')).toBe(PLANNING_BUCKETS.PROBABLY);
+        expect(recentBucketForCategory('snacks')).toBe(PLANNING_BUCKETS.PROBABLY);
+    });
+
+    test('returns null for uncapped categories', () => {
+        expect(recentBucketForCategory('Fresh Produce')).toBeNull();
+        expect(recentBucketForCategory(null)).toBeNull();
     });
 });
 

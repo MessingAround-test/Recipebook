@@ -30,10 +30,27 @@ export const CATEGORY_RECENT_WINDOWS = {
     'fresh produce': { days: 7, bucket: PLANNING_BUCKETS.MAYBE },
 };
 
+/**
+ * Categories whose confidence is capped when the item was bought in a prior
+ * week. Snacks are treated as "Probably" (not "Almost certainly have") even
+ * when a name rule like "salt" or "vinegar" would otherwise promote them —
+ * snack cravings move and odds are we don't still have them. Keyed by
+ * lowercased broad category.
+ */
+export const CATEGORY_RECENT_BUCKETS = {
+    'snacks': PLANNING_BUCKETS.PROBABLY,
+};
+
 /** Recent-window rule for a broad category, or null to use the default. */
 export function recentWindowForCategory(category: any): { days: number; bucket: string } | null {
     const key = normalizeName(category);
     return key && CATEGORY_RECENT_WINDOWS[key] ? CATEGORY_RECENT_WINDOWS[key] : null;
+}
+
+/** Bucket cap for a recently-bought category, or null when uncapped. */
+export function recentBucketForCategory(category: any): string | null {
+    const key = normalizeName(category);
+    return key && CATEGORY_RECENT_BUCKETS[key] ? CATEGORY_RECENT_BUCKETS[key] : null;
 }
 
 // Default rules. Seeded into the PantryAssumption collection on first use and
@@ -162,6 +179,8 @@ function toRecentEntries(recentNames: any): { name: string; at: number }[] {
 /**
  * Resolves the planning bucket for a single item.
  * Precedence:
+ *   0. category cap for recently-bought categories (e.g. Snacks -> Probably),
+ *      which overrides the name rules below
  *   1. explicit name rule (Almost certainly have / Probably)
  *   2. bought within the recent window -> Probably (or the category's bucket,
  *      e.g. Fresh Produce within the last week -> Maybe)
@@ -176,12 +195,17 @@ export function resolvePlanningBucket(name: any, opts: any = {}) {
     } = opts;
 
     const normalized = normalizeName(name);
+    const recentlyBought = isRecentlyPurchased(normalized, recentNames, RECENT_PURCHASE_WINDOW_DAYS);
+
+    // Recently-bought categories with a confidence cap (e.g. snacks) can't be
+    // "Almost certainly have", even if a name rule would place them there.
+    const cap = recentlyBought ? recentBucketForCategory(category) : null;
 
     const nameRules = (rules || []).filter(
         (r: any) => r && r.type === 'name' && r.active !== false && matchesNameRule(r, normalized)
     );
     const nameRule = pickBestRule(nameRules);
-    if (nameRule) return nameRule.bucket;
+    if (nameRule && !cap) return nameRule.bucket;
 
     // Category-aware recency: fresh produce is only "still around" for a week.
     const window = recentWindowForCategory(category);
@@ -190,11 +214,15 @@ export function resolvePlanningBucket(name: any, opts: any = {}) {
         return window ? window.bucket : PLANNING_BUCKETS.PROBABLY;
     }
 
+    if (nameRule) return nameRule.bucket;
+
     const categoryRules = (rules || []).filter(
         (r: any) => r && r.type === 'category' && r.active !== false && matchesCategoryRule(r, category)
     );
     const categoryRule = pickBestRule(categoryRules);
     if (categoryRule) return categoryRule.bucket;
+
+    if (cap) return cap;
 
     return PLANNING_BUCKETS.TO_CHECK;
 }
