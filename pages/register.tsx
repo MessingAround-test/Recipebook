@@ -1,102 +1,133 @@
 import { useState, FormEvent } from 'react'
-import Router from 'next/router'
-import Head from 'next/head'
+import { useRouter } from 'next/router'
+import Link from 'next/link'
+import { AuthShell } from '../components/AuthShell'
 import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Label } from '../components/ui/label'
+import { MdVisibility, MdVisibilityOff, MdErrorOutline } from 'react-icons/md'
 
 export default function Register() {
+    const router = useRouter()
     const [username, setUsername] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [showPassword, setShowPassword] = useState(false)
+    const [error, setError] = useState('')
+    const [loading, setLoading] = useState(false)
 
     const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
-        const res = await fetch("/api/signup", {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password, username })
-        })
-        const data = await res.json()
-        if (data.success === false) {
-            alert(data.message)
-        } else if (data.success === true) {
-            localStorage.setItem('Token', data.data.token)
-            document.cookie = `edgetoken=${encodeURIComponent(data.data.token)}; path=/; max-age=31536000; SameSite=Lax`
-            Router.push('/login')
+        setError('')
+        setLoading(true)
+        try {
+            const res = await fetch("/api/signup", {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password, username })
+            })
+            const data = await res.json()
+            if (data.success === true) {
+                router.push('/login?registered=1')
+            } else {
+                setError(typeof data.message === 'string' ? data.message : 'Could not create your account.')
+                setLoading(false)
+            }
+        } catch {
+            setError('Something went wrong. Please try again.')
+            setLoading(false)
         }
     }
 
-    const redirect = (page: string) => {
-        Router.push(page)
-    }
-
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-            <Head>
-                <title>Register | Bryns Garbage</title>
-                <link rel="icon" href="/avo.ico" />
-            </Head>
+        <AuthShell title="Create your account" subtitle="Start organising your recipes and nutrition.">
+            <form onSubmit={onSubmit} className="space-y-4">
+                {error && (
+                    <div className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-3 text-sm text-rose-400">
+                        <MdErrorOutline className="mt-0.5 shrink-0" size={16} />
+                        <span>{error}</span>
+                    </div>
+                )}
 
-            <main className="flex justify-center items-center w-full">
-                <div className="receipt w-full max-w-[380px] p-8">
-                    <h2 className="text-center font-bold uppercase mb-4 border-b-2 border-dashed border-black pb-2 text-black">Sign Up</h2>
-
-                    <form onSubmit={onSubmit}>
-                        <div className="mb-4">
-                            <label className="label-paper">Username</label>
-                            <input
-                                name="username"
-                                id="username"
-                                type="text"
-                                placeholder="Enter username"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="input-paper"
-                                required
-                            />
-                        </div>
-
-                        <div className="mb-4">
-                            <label className="label-paper">Email address</label>
-                            <input
-                                name="email"
-                                id="email"
-                                type="email"
-                                placeholder="Enter email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="input-paper"
-                                required
-                            />
-                        </div>
-
-                        <div className="mb-6">
-                            <label className="label-paper">Password</label>
-                            <input
-                                name="password"
-                                id="password"
-                                type="password"
-                                placeholder="Password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="input-paper"
-                                required
-                            />
-                        </div>
-
-                        <div className="flex flex-col gap-2 mt-4">
-                            <Button type="submit" className="w-full font-bold uppercase">
-                                Create Account
-                            </Button>
-                            <Button variant="outline" className="w-full text-black border-black hover:bg-black hover:text-white mt-2" type="button" onClick={() => redirect("/login")}>
-                                Return to Login
-                            </Button>
-                        </div>
-                    </form>
+                <div className="space-y-2">
+                    <Label htmlFor="username" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                        Username
+                    </Label>
+                    <Input
+                        id="username"
+                        name="username"
+                        type="text"
+                        autoComplete="username"
+                        placeholder="Chef Bryn"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="h-12"
+                        required
+                    />
                 </div>
-            </main>
-        </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                        Email
+                    </Label>
+                    <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="h-12"
+                        required
+                    />
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="password" className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                        Password
+                    </Label>
+                    <div className="relative">
+                        <Input
+                            id="password"
+                            name="password"
+                            type={showPassword ? 'text' : 'password'}
+                            autoComplete="new-password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="h-12 pr-11"
+                            required
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword((v) => !v)}
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            className="absolute right-1 top-1 flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-emerald-400"
+                        >
+                            {showPassword ? <MdVisibilityOff size={18} /> : <MdVisibility size={18} />}
+                        </button>
+                    </div>
+                </div>
+
+                <Button
+                    type="submit"
+                    disabled={loading}
+                    className="h-12 w-full bg-emerald-500 text-xs font-black uppercase tracking-[0.2em] text-black shadow-lg shadow-emerald-500/25 hover:bg-emerald-400 disabled:opacity-60"
+                >
+                    {loading ? 'Creating account…' : 'Create Account'}
+                </Button>
+
+                <p className="pt-2 text-center text-sm text-muted-foreground">
+                    Already have an account?{' '}
+                    <Link href="/login" className="font-bold text-emerald-400 transition-colors hover:text-emerald-300">
+                        Sign in
+                    </Link>
+                </p>
+            </form>
+        </AuthShell>
     )
 }

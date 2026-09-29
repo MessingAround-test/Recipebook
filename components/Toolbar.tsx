@@ -1,5 +1,4 @@
 import React from "react"
-import { AiFillPlusCircle } from "react-icons/ai"
 import { MdOutlineMenuBook, MdBuild, MdShoppingCart, MdHome, MdTimeline, MdApps } from 'react-icons/md'
 import Link from 'next/link'
 import styles from '../styles/Toolbar.module.css'
