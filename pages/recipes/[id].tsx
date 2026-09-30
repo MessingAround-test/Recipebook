@@ -2283,12 +2283,13 @@ export default function RecipeDetail() {
                 </span>
             )}
             {sourceUrl && remixedFromRef && (
-                <span
-                    title={`Remixed from a recipe (${remixedFromRef})`}
-                    className={chipClass}
+                <a
+                    href={`/recipes/${remixedFromRef}`}
+                    title="Open the original recipe this was remixed from"
+                    className={`${chipClass} hover:opacity-80 transition-opacity`}
                 >
                     <RefreshCw size={11} /> Remix of original
-                </span>
+                </a>
             )}
             {sourceUrl && !remixedFromRef && (
                 <a

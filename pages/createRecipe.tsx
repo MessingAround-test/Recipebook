@@ -12,6 +12,7 @@ import {
      ListOrdered, SlidersHorizontal, Check, Loader2, Trash2, Images, GripVertical, MoreHorizontal, Wand2, FileJson, RefreshCw
 } from 'lucide-react'
 import { normalizePrepWords } from '../lib/recipeNormalize'
+import { parseRemixSourceRef } from '../lib/recipeRemix'
 import { renderStepText, isLongStep, findIngredientSpans, PILL_MAX } from '../components/stepText'
 import IngredientPopover from '../components/IngredientPopover'
 import PillRow from '../components/PillRow'
@@ -1959,11 +1960,15 @@ export default function CreateRecipe() {
                                 <div className="space-y-2 sm:col-span-2">
                                     <div className="flex items-center justify-between ml-1">
                                         <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Source link</label>
-                                        {recipeSourceUrl && (
-                                            <a href={recipeSourceUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-accent hover:underline">
-                                                Open ↗
-                                            </a>
-                                        )}
+                                        {recipeSourceUrl && (() => {
+                                            // A remix:// reference isn't navigable — it points
+                                            // at the parent recipe in the system instead.
+                                            const remixedFrom = parseRemixSourceRef(recipeSourceUrl)
+                                            if (remixedFrom) {
+                                                return <a href={`/recipes/${remixedFrom}`} title="Open the original recipe this was remixed from" className="text-[10px] font-bold text-accent hover:underline">Open original ↗</a>
+                                            }
+                                            return <a href={recipeSourceUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-accent hover:underline">Open ↗</a>
+                                        })()}
                                     </div>
                                     <input
                                         type="url"
