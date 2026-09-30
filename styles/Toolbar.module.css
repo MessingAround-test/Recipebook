@@ -39,7 +39,7 @@
   text-decoration: none;
   color: var(--foreground);
   letter-spacing: -0.03em;
-  background: linear-gradient(135deg, var(--accent) 0%, #34d399 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, #d99f54 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -117,7 +117,7 @@
 .nav_link.active::before {
   background: var(--accent-muted);
   border-color: color-mix(in oklch, var(--accent) 45%, transparent);
-  box-shadow: 0 8px 20px -10px color-mix(in oklch, var(--accent) 75%, transparent);
+  box-shadow: 0 8px 20px -10px color-mix(in oklch, var(--accent) 50%, transparent);
   opacity: 1;
 }
 
@@ -190,7 +190,7 @@
     height: 3px;
     border-radius: 999px;
     background: var(--accent);
-    box-shadow: 0 0 10px color-mix(in oklch, var(--accent) 70%, transparent);
+    box-shadow: 0 0 8px color-mix(in oklch, var(--accent) 45%, transparent);
   }
 
   .nav_label {

@@ -8,7 +8,9 @@
 
 @media (max-width: 768px) {
     .container {
-        padding: 0.75rem 0 5rem 0;
+        /* Hairline horizontal inset shared with the dashboard shell — the
+           one edge gap every page uses on phones. */
+        padding: 0.75rem var(--edge-pad) 5rem 0;
     }
 
     /* Recipe pages drop the global bottom taskbar — no padding needed */
@@ -38,6 +40,17 @@
     gap: 1.5rem;
 }
 
+/* Phones: the footer copyright is clutter above the bottom taskbar. */
+@media (max-width: 768px) {
+    .main {
+        gap: 1rem;
+    }
+
+    .footer {
+        display: none;
+    }
+}
+
 /* Card Grid for Home Page */
 .card_grid {
     display: grid;
@@ -48,7 +61,7 @@
 
 /* Modern Card Style */
 .paperCard {
-    background: var(--bg-card);
+    background: var(--card);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -67,7 +80,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at top right, rgba(16, 185, 129, 0.1), transparent);
+    background: radial-gradient(circle at top right, rgba(200, 116, 63, 0.12), transparent);
     opacity: 0;
     transition: opacity 0.4s ease;
 }
@@ -181,6 +194,6 @@
     height: 3rem;
     border-radius: 50%;
     background: var(--accent);
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 0 20px rgba(200, 116, 63, 0.4);
     animation: lds_circle 2.4s cubic-bezier(0, 0.2, 0.8, 1) infinite;
 }

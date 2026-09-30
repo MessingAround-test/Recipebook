@@ -4,7 +4,7 @@ import { Layout } from '../components/Layout'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import { useUser } from '../lib/UserContext'
 import { calculateHealthScore, DEFAULT_HEALTH_SCORE_CONFIG, HealthScoreConfig } from '../lib/healthScore'
-import { FiShoppingCart, FiCalendar, FiPlus, FiChevronRight, FiCompass, FiSearch, FiX, FiSettings, FiGrid } from 'react-icons/fi'
+import { FiShoppingCart, FiCalendar, FiPlus, FiChevronLeft, FiChevronRight, FiCompass, FiClock, FiSearch, FiX, FiSettings, FiGrid } from 'react-icons/fi'
 import IngredientEditor from '../components/IngredientEditor'
 import { fileToBase64 } from '../lib/recipeImage'
 import { extractRecipeFromImage, saveRecipe, Ingredient } from '../lib/recipeExtraction'
@@ -17,9 +17,14 @@ import RoundOutModal from '../components/RoundOutModal'
 import DashboardCard from '../components/dashboard/DashboardCard'
 import ListRow from '../components/dashboard/ListRow'
 import TodaySummary from '../components/dashboard/TodaySummary'
+import PathTiles from '../components/dashboard/PathTiles'
+import { getMealSlot, selectSuggestedMeals, SLOT_LABELS, SLOT_EMOJI } from '../lib/mealSuggestion'
+import { getPreset } from '../lib/dishLists/presets'
 import dashStyles from '../styles/Dashboard.module.css'
 
 const MEAL_EMOJI: Record<string, string> = { Breakfast: '🍳', Lunch: '🥗', Snack: '🍎', Dinner: '🍽️' }
+
+const RECIPE_TIME_LABEL: Record<string, string> = { short: 'Quick', medium: 'Medium', long: 'Slow cook' }
 
 const getLocalDateString = (d: Date) => {
     const year = d.getFullYear()
@@ -36,7 +41,7 @@ const MEAL_TIMES: Record<string, number> = { Breakfast: 480, Lunch: 750, Snack: 
 const MEAL_HIDE_AFTER: Record<string, number> = { Breakfast: 660, Lunch: 900, Dinner: 1320 }
 
 const Skeleton = ({ className = '' }: { className?: string }) => (
-    <div className={`animate-pulse bg-white/[0.04] rounded-xl ${className}`} />
+    <div className={`animate-pulse bg-foreground/[0.05] rounded-xl ${className}`} />
 )
 
 const IconChip = ({ className = '', children, onClick }: { className?: string; children: React.ReactNode; onClick?: () => void }) =>
@@ -70,6 +75,12 @@ export default function Dashboard() {
     const [recipes, setRecipes] = useState<any[]>([])
     const [knownIngredients, setKnownIngredients] = useState<string[]>([])
     const [symptomLog, setSymptomLog] = useState<any>(null)
+    // Dashboard meal suggestion: clock tick + carousel position + the seeded
+    // "100 Best Dishes" list id (used for the no-recipes getting-started CTA).
+    // `now` stays null until mounted so SSR/hydration can't disagree on time.
+    const [now, setNow] = useState<Date | null>(null)
+    const [suggestIndex, setSuggestIndex] = useState(0)
+    const [bestDishListId, setBestDishListId] = useState<string | null>(null)
 
     // Quick-log state
     const [showNutrition, setShowNutrition] = useState(false)
@@ -156,6 +167,11 @@ export default function Dashboard() {
                 setShoppingLists(lists)
             }
             if (f.worldList && typeof window !== 'undefined') {
+                // Deep-link target for the "get your first recipe" explore CTA.
+                const bestPreset = getPreset('best-dishes')
+                const best = (results.dish?.data || []).find((l: any) =>
+                    (bestPreset && l.sourceUrl === bestPreset.url) || (bestPreset && l.name === bestPreset.name))
+                setBestDishListId(best ? String(best._id) : null)
                 try {
                     const stored = localStorage.getItem('lastDishList')
                     const parsed = stored ? JSON.parse(stored) : null
@@ -293,7 +309,7 @@ export default function Dashboard() {
     const calorieTarget = targets?.energy_kcal || 0
     const caloriePct = calorieTarget > 0 ? Math.min((calories / calorieTarget) * 100, 100) : 0
 
-    const scoreColor = dailyScore > 80 ? 'text-emerald-400' : dailyScore > 50 ? 'text-amber-400' : 'text-rose-400'
+    const scoreColor = dailyScore > 80 ? 'text-olive' : dailyScore > 50 ? 'text-butter' : 'text-berry'
 
     const todayMealsAll = weekPlan?.plannedRecipes?.filter((r: any) => r.day === getLocalDateString(new Date())) || []
     const todayMeals = useMemo(() => {
@@ -303,6 +319,23 @@ export default function Dashboard() {
             .filter((r: any) => MEAL_HIDE_AFTER[r.mealType] == null || mins < MEAL_HIDE_AFTER[r.mealType])
             .sort((a: any, b: any) => (MEAL_TIMES[a.mealType] ?? 0) - (MEAL_TIMES[b.mealType] ?? 0))
     }, [todayMealsAll])
+
+    // Keep the meal suggestion in step with the clock (slot windows flip
+    // between breakfast/lunch/snack/dinner through the day).
+    useEffect(() => {
+        setNow(new Date())
+        const id = setInterval(() => setNow(new Date()), 60_000)
+        return () => clearInterval(id)
+    }, [])
+
+    const mealSlot = getMealSlot(now ?? new Date())
+    const suggestedMeals = useMemo(() => selectSuggestedMeals(recipes, mealSlot), [recipes, mealSlot])
+    // New data or a new slot restarts the carousel at the top.
+    useEffect(() => { setSuggestIndex(0) }, [mealSlot, recipes])
+    const suggestPos = suggestedMeals.length
+        ? ((suggestIndex % suggestedMeals.length) + suggestedMeals.length) % suggestedMeals.length
+        : 0
+    const suggestedMeal = suggestedMeals[suggestPos] || null
 
     // ── Quick-log helpers ──
     const combinedOptions = useMemo(() => {
@@ -493,19 +526,21 @@ export default function Dashboard() {
         <DashboardCard
             title="Today's Meals"
             icon={<FiCalendar size={16} />}
-            accent="orange"
+            accent="terracotta"
             onIconClick={() => setShowPlanCoverage(true)}
             iconTitle="Estimated day coverage"
             action={{ label: 'Plan', onClick: () => Router.push('/weeklyPlanner') }}
             bodyClassName="gap-2"
         >
-            <p className="mb-1 border-l-2 border-orange-400/50 pl-3 text-sm font-semibold leading-snug text-white/95">
+            <p className="mb-1 border-l-2 border-terracotta/50 pl-3 text-[13px] font-semibold leading-snug text-foreground md:text-sm">
                 {planSuggestion ? planSuggestion.message : 'Balanced day, enjoy.'}
             </p>
             <div className="space-y-0.5">
                 {todayMeals.slice(0, 4).map((r: any, idx: number) => (
                     <ListRow
                         key={idx}
+                        /* Mobile: only the next meal — the rest live behind "N more planned". */
+                        className={idx > 0 ? 'hidden md:flex' : undefined}
                         leading={MEAL_EMOJI[r.mealType] || '🍽️'}
                         title={r.recipe_name}
                         subtitle={r.isLeftover ? 'Leftover' : undefined}
@@ -513,6 +548,16 @@ export default function Dashboard() {
                         onClick={r.recipe_id ? () => Router.push(`/recipes/${r.recipe_id}`) : undefined}
                     />
                 ))}
+                {todayMeals.length > 1 && (
+                    <button
+                        type="button"
+                        onClick={() => Router.push('/weeklyPlanner')}
+                        className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground md:hidden"
+                    >
+                        <span>{todayMeals.length - 1} more planned today</span>
+                        <FiChevronRight size={14} />
+                    </button>
+                )}
             </div>
         </DashboardCard>
     )
@@ -531,17 +576,18 @@ export default function Dashboard() {
         <DashboardCard
             title="Explore"
             icon={<FiCompass size={16} />}
-            accent="amber"
-            action={{ label: 'All', onClick: () => Router.push('/dishLists') }}
+            accent="butter"
+            action={{ label: 'All', onClick: () => Router.push('/dishLists'), hideMobile: true }}
+            className={dashStyles.sideExplore}
         >
             {!lastDishList ? (
                 <button
                     type="button"
                     onClick={() => Router.push('/dishLists')}
-                    className="mt-1 flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-white/10 bg-black/20 px-4 py-3.5 text-left transition-colors hover:bg-white/[0.05]"
+                    className="flex w-full flex-1 items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-muted/40 px-4 py-3.5 text-left transition-colors hover:bg-muted/60"
                 >
                     <span className="flex min-w-0 items-center gap-2.5">
-                        <FiCompass size={17} className="shrink-0 text-amber-300" />
+                        <FiCompass size={17} className="shrink-0 text-butter" />
                         <span className="truncate text-sm font-semibold text-muted-foreground">Explore the world's best dishes</span>
                     </span>
                     <FiChevronRight size={16} className="shrink-0 text-muted-foreground" />
@@ -550,36 +596,51 @@ export default function Dashboard() {
                 <button
                     type="button"
                     onClick={() => Router.push(`/dishLists/${lastDishList._id}`)}
-                    className="mt-1 flex w-full flex-col gap-3 rounded-xl bg-black/20 p-4 text-left transition-colors hover:bg-amber-500/10"
+                    className="flex w-full flex-1 flex-col justify-center gap-1.5 rounded-xl bg-muted/40 p-3 text-left transition-colors hover:bg-butter/10 md:gap-3 md:p-4"
                 >
                     <div className="w-full min-w-0">
-                        <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-amber-400">Last Viewed</div>
-                        <div className="truncate text-lg font-black transition-colors md:text-xl">{lastDishList.name}</div>
+                        <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-butter">Last Viewed</div>
+                        <div className="truncate text-[13px] font-black leading-tight transition-colors md:text-xl">{lastDishList.name}</div>
                         {lastDishList.counts && (
-                            <div className="mt-1.5 flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
+                            <div className="mt-1 flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
                                 <span>{lastDishCooked}/{lastDishTotal} cooked</span>
-                                <span className="h-1 w-1 rounded-full bg-white/20" />
-                                <span className="font-bold text-amber-300">{lastDishPct}%</span>
+                                <span className="h-1 w-1 rounded-full bg-foreground/20" />
+                                <span className="font-bold text-butter">{lastDishPct}%</span>
                             </div>
                         )}
                     </div>
-                    <div className="flex w-full items-center gap-3">
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
-                            <div className="h-full rounded-full bg-amber-400 transition-all" style={{ width: `${lastDishPct}%` }} />
+                    <div className="flex w-full items-center gap-2 md:gap-3">
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10 md:h-2">
+                            <div className="h-full rounded-full bg-butter transition-all" style={{ width: `${lastDishPct}%` }} />
                         </div>
-                        <FiChevronRight size={18} className="shrink-0 text-muted-foreground" />
+                        <FiChevronRight size={16} className="shrink-0 text-muted-foreground" />
                     </div>
                 </button>
             )}
         </DashboardCard>
     )
 
+    const shoppingMeta = latestList && (
+        <>
+            <span>{new Date(latestList.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
+            <span className="h-1 w-1 rounded-full bg-foreground/20" />
+            <span>{listItemsCount != null ? `${listItemsCount} items` : '—'}</span>
+            {latestList.cost != null && (
+                <>
+                    <span className="h-1 w-1 rounded-full bg-foreground/20" />
+                    <span className="font-bold text-water">${Number(latestList.cost).toFixed(2)}</span>
+                </>
+            )}
+        </>
+    )
+
     const shoppingCard = (
         <DashboardCard
             title="Shopping List"
             icon={<FiShoppingCart size={16} />}
-            accent="sky"
-            action={{ label: 'All', onClick: () => Router.push('/shoppingList') }}
+            accent="water"
+            action={{ label: 'All', onClick: () => Router.push('/shoppingList'), hideMobile: true }}
+            className={dashStyles.sideShop}
         >
             {loading && !latestList ? (
                 <div className="space-y-2">
@@ -590,34 +651,128 @@ export default function Dashboard() {
                 <button
                     type="button"
                     onClick={() => Router.push('/shoppingList/create')}
-                    className="mt-1 flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-white/10 bg-black/20 px-4 py-3.5 text-left transition-colors hover:bg-white/[0.05]"
+                    className="flex w-full flex-1 items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-muted/40 px-4 py-3.5 text-left transition-colors hover:bg-muted/60"
                 >
                     <span className="flex min-w-0 items-center gap-2.5">
-                        <FiShoppingCart size={17} className="shrink-0 text-sky-300" />
+                        <FiShoppingCart size={17} className="shrink-0 text-water" />
                         <span className="truncate text-sm font-semibold text-muted-foreground">No active list</span>
                     </span>
                     <FiChevronRight size={16} className="shrink-0 text-muted-foreground" />
                 </button>
             ) : (
-                <ListRow
-                    leading={<FiShoppingCart size={16} className="text-sky-300" />}
-                    title={latestList.name}
-                    meta={
-                        <>
-                            <span>{new Date(latestList.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
-                            <span className="h-1 w-1 rounded-full bg-white/20" />
-                            <span>{listItemsCount != null ? `${listItemsCount} items` : '—'}</span>
-                            {latestList.cost != null && (
-                                <>
-                                    <span className="h-1 w-1 rounded-full bg-white/20" />
-                                    <span className="font-bold text-sky-300">${Number(latestList.cost).toFixed(2)}</span>
-                                </>
-                            )}
-                        </>
-                    }
-                    onClick={() => Router.push(`/shoppingList/${latestList._id}`)}
-                />
+                <>
+                    {/* Phone: compact, vertically centred row beside Explore in the 2-up pair.
+                        No leading icon, no date — items + cost only. */}
+                    <div className="flex flex-1 items-center md:hidden">
+                        <button
+                            type="button"
+                            onClick={() => Router.push(`/shoppingList/${latestList._id}`)}
+                            className="flex w-full min-w-0 items-center gap-1 rounded-xl px-1 py-1.5 text-left transition-all hover:bg-muted/60 active:scale-[0.99]"
+                        >
+                            <span className="min-w-0 flex-1">
+                                <span className="block truncate text-[13px] font-black leading-tight">{latestList.name}</span>
+                                <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+                                    <span>{listItemsCount != null ? `${listItemsCount} items` : '—'}</span>
+                                    {latestList.cost != null && (
+                                        <>
+                                            <span className="h-1 w-1 rounded-full bg-foreground/20" />
+                                            <span className="font-bold text-water">${Number(latestList.cost).toFixed(2)}</span>
+                                        </>
+                                    )}
+                                </span>
+                            </span>
+                            <FiChevronRight size={14} className="shrink-0 text-muted-foreground" />
+                        </button>
+                    </div>
+                    <div className="hidden md:block">
+                        <ListRow
+                            leading={<FiShoppingCart size={16} className="text-water" />}
+                            title={latestList.name}
+                            meta={shoppingMeta}
+                            onClick={() => Router.push(`/shoppingList/${latestList._id}`)}
+                        />
+                    </div>
+                </>
             )}
+        </DashboardCard>
+    )
+
+    const suggestionCard = (
+        <DashboardCard
+            title={now ? `${SLOT_LABELS[mealSlot]} idea` : 'Meal idea'}
+            icon={<FiClock size={16} />}
+            accent="berry"
+            action={{ label: 'All', onClick: () => Router.push('/recipes'), hideMobile: true }}
+            className={dashStyles.sideSuggest}
+        >
+            {loading && recipes.length === 0 ? (
+                <div className="space-y-2">
+                    <Skeleton className="h-14" />
+                    <Skeleton className="h-8" />
+                </div>
+            ) : recipes.length === 0 ? (
+                <button
+                    type="button"
+                    onClick={() => Router.push(bestDishListId ? `/dishLists/${bestDishListId}` : features.worldList ? '/dishLists' : '/recipes')}
+                    className="mt-1 flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-muted/40 px-4 py-3.5 text-left transition-colors hover:bg-muted/60"
+                >
+                    <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="shrink-0 text-base">🏆</span>
+                        <span className="min-w-0">
+                            <span className="block truncate text-xs font-semibold text-muted-foreground">No recipes yet — get one from the</span>
+                            <span className="block truncate text-sm font-black text-berry">100 Best Dishes in the World</span>
+                        </span>
+                    </span>
+                    <FiChevronRight size={16} className="shrink-0 text-muted-foreground" />
+                </button>
+            ) : suggestedMeal ? (
+                <>
+                    <ListRow
+                        leading={suggestedMeal.image
+                            ? <img src={suggestedMeal.image} alt="" className="h-full w-full object-cover" />
+                            : SLOT_EMOJI[mealSlot]}
+                        title={suggestedMeal.name}
+                        subtitle={(suggestedMeal.mealTypes || []).length
+                            ? (suggestedMeal.mealTypes || []).join(' · ')
+                            : suggestedMeal.genre || ''}
+                        meta={
+                            <>
+                                {suggestedMeal.time && <span>{RECIPE_TIME_LABEL[suggestedMeal.time] || suggestedMeal.time}</span>}
+                                {suggestedMeal.rating != null && (
+                                    <>
+                                        <span className="h-1 w-1 rounded-full bg-foreground/20" />
+                                        <span className="font-bold text-berry">★ {Number(suggestedMeal.rating).toFixed(1)}</span>
+                                    </>
+                                )}
+                            </>
+                        }
+                        onClick={() => Router.push(`/recipes/${suggestedMeal._id}`)}
+                    />
+                    {suggestedMeals.length > 1 && (
+                        <div className="mt-1 flex items-center justify-between gap-2 px-1">
+                            <button
+                                type="button"
+                                onClick={() => setSuggestIndex(suggestPos - 1)}
+                                aria-label="Previous suggestion"
+                                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-berry transition-colors hover:bg-berry/10 active:scale-95"
+                            >
+                                <FiChevronLeft size={14} /> Back
+                            </button>
+                            <span className="text-[10px] font-bold tabular-nums text-muted-foreground">
+                                {suggestPos + 1}/{suggestedMeals.length}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setSuggestIndex(suggestPos + 1)}
+                                aria-label="Next suggestion"
+                                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-berry transition-colors hover:bg-berry/10 active:scale-95"
+                            >
+                                Next <FiChevronRight size={14} />
+                            </button>
+                        </div>
+                    )}
+                </>
+            ) : null}
         </DashboardCard>
     )
 
@@ -640,20 +795,20 @@ export default function Dashboard() {
                     onShowNutrition={() => setShowNutrition(true)}
                     showMetrics={features.healthTracker}
                     headerExtra={
-                        <div className="flex items-center gap-2 sm:hidden">
+                        <div className="flex items-center gap-2 md:hidden">
                             <button
                                 type="button"
                                 onClick={() => Router.push('/tools')}
                                 aria-label="Tools"
-                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-muted-foreground transition-all hover:text-white active:scale-90"
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-foreground/[0.06] text-muted-foreground transition-all hover:text-foreground active:scale-90"
                             >
                                 <FiGrid size={16} />
                             </button>
                             <button
                                 type="button"
                                 onClick={() => Router.push('/profile')}
-                                aria-label="Profile"
-                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-muted-foreground transition-all hover:text-white active:scale-90"
+                                aria-label="Settings"
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-foreground/[0.06] text-muted-foreground transition-all hover:text-foreground active:scale-90"
                             >
                                 <FiSettings size={16} />
                             </button>
@@ -661,13 +816,16 @@ export default function Dashboard() {
                     }
                 />
 
+                <PathTiles features={features} />
+
                 <div className={dashStyles.columns}>
                     <div className={dashStyles.mainCol}>
                         {features.weeklyPlanner && todayMealsAll.length > 0 && mealsCard}
                         {features.dailyTasks && dailyTasksCard}
                     </div>
-                    <div className={dashStyles.sideCol}>
+                    <div className={`${dashStyles.sideCol}${features.shoppingList && features.worldList ? ` ${dashStyles.sideColDuo}` : ''}`}>
                         {features.shoppingList && shoppingCard}
+                        {features.recipes && suggestionCard}
                         {features.worldList && dishListCard}
                     </div>
                 </div>
@@ -677,13 +835,13 @@ export default function Dashboard() {
             {isLoggingOpen && (
                 <div className="fixed inset-0 z-[100] flex items-start md:items-center justify-center md:p-8">
                     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={closeLog} />
-                    <div className="relative w-full md:max-w-lg bg-background border-b md:border border-white/10 rounded-b-2xl md:rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+2.5rem)]">
-                        <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-background/95 backdrop-blur-md border-b border-white/5">
+                    <div className="relative w-full md:max-w-lg bg-card border-b md:border border-border rounded-b-2xl md:rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+2.5rem)]">
+                        <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-card backdrop-blur-md border-b border-border">
                             <div className="flex items-center gap-2.5">
-                                <IconChip className="bg-emerald-500/15 text-emerald-400"><FiPlus size={16} /></IconChip>
+                                <IconChip className="bg-terracotta/15 text-terracotta"><FiPlus size={16} /></IconChip>
                                 <h2 className="text-sm font-black tracking-tight">Log Food</h2>
                             </div>
-                            <button onClick={closeLog} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                            <button onClick={closeLog} className="p-2 hover:bg-foreground/10 rounded-full transition-colors">
                                 <FiX size={20} />
                             </button>
                         </div>
@@ -692,12 +850,12 @@ export default function Dashboard() {
                             {logView === 'photo' ? (
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-400">Photo</div>
-                                        <button onClick={() => setLogView('list')} className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-white shrink-0">Back</button>
+                                        <div className="text-[9px] font-bold uppercase tracking-widest text-terracotta">Photo</div>
+                                        <button onClick={() => setLogView('list')} className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground shrink-0">Back</button>
                                     </div>
 
                                     {photoImage ? (
-                                        <label className="block w-full border-2 border-dashed border-white/10 rounded-2xl overflow-hidden cursor-pointer hover:border-emerald-500/40 transition-all group relative">
+                                        <label className="block w-full border-2 border-dashed border-border rounded-2xl overflow-hidden cursor-pointer hover:border-terracotta/40 transition-all group relative">
                                             <input
                                                 accept="image/*"
                                                 type="file"
@@ -711,7 +869,7 @@ export default function Dashboard() {
                                         </label>
                                     ) : (
                                         <div className="grid grid-cols-2 gap-3">
-                                            <label className="block border-2 border-dashed border-white/10 rounded-2xl p-5 text-center cursor-pointer hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all group">
+                                            <label className="block border-2 border-dashed border-border rounded-2xl p-5 text-center cursor-pointer hover:bg-terracotta/10 hover:border-terracotta/40 transition-all group">
                                                 <input
                                                     accept="image/*"
                                                     capture="environment"
@@ -722,7 +880,7 @@ export default function Dashboard() {
                                                 <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">📸</div>
                                                 <span className="text-xs font-bold block">Camera</span>
                                             </label>
-                                            <label className="block border-2 border-dashed border-white/10 rounded-2xl p-5 text-center cursor-pointer hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all group">
+                                            <label className="block border-2 border-dashed border-border rounded-2xl p-5 text-center cursor-pointer hover:bg-terracotta/10 hover:border-terracotta/40 transition-all group">
                                                 <input
                                                     accept="image/*"
                                                     type="file"
@@ -742,19 +900,19 @@ export default function Dashboard() {
                                             value={photoNotes}
                                             onChange={e => setPhotoNotes(e.target.value)}
                                             placeholder="e.g. Make it vegetarian..."
-                                            className="w-full bg-white/[0.04] rounded-xl px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                            className="w-full bg-foreground/[0.05] rounded-xl px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-terracotta/40"
                                         />
                                     </div>
 
                                     <button
                                         onClick={handlePhotoExtract}
                                         disabled={!photoImage || photoExtracting}
-                                        className="w-full py-3.5 rounded-xl bg-emerald-500 text-black text-sm font-black hover:bg-emerald-400 transition-all disabled:opacity-60 flex flex-col items-center justify-center gap-1 shadow-lg shadow-emerald-500/25"
+                                        className="w-full py-3.5 rounded-xl bg-terracotta text-primary-foreground text-sm font-black hover:bg-terracotta/85 transition-all disabled:opacity-60 flex flex-col items-center justify-center gap-1 shadow-lg shadow-terracotta/20"
                                     >
                                         {photoExtracting ? (
                                             <>
                                                 <span className="flex items-center gap-2"><FiPlus size={16} /> Analyzing photo...</span>
-                                                {photoStatus && <span className="text-[10px] font-bold text-black/60 animate-pulse uppercase tracking-wider">{photoStatus}</span>}
+                                                {photoStatus && <span className="text-[10px] font-bold text-primary-foreground/60 animate-pulse uppercase tracking-wider">{photoStatus}</span>}
                                             </>
                                         ) : (
                                             'Extract from Photo'
@@ -764,8 +922,8 @@ export default function Dashboard() {
                             ) : logView === 'validate' ? (
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-400">Confirm Ingredients</div>
-                                        <button onClick={() => setLogView('photo')} className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-white shrink-0">Back</button>
+                                        <div className="text-[9px] font-bold uppercase tracking-widest text-terracotta">Confirm Ingredients</div>
+                                        <button onClick={() => setLogView('photo')} className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground shrink-0">Back</button>
                                     </div>
 
                                     <div>
@@ -775,7 +933,7 @@ export default function Dashboard() {
                                             value={draftName}
                                             onChange={e => setDraftName(e.target.value)}
                                             placeholder="Dish name"
-                                            className="w-full bg-white/[0.04] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                            className="w-full bg-foreground/[0.05] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-terracotta/40"
                                         />
                                     </div>
 
@@ -786,18 +944,18 @@ export default function Dashboard() {
                                             min={1}
                                             value={draftServings}
                                             onChange={e => setDraftServings(Math.max(Number(e.target.value) || 1, 1))}
-                                            className="w-full bg-white/[0.04] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                            className="w-full bg-foreground/[0.05] rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-terracotta/40"
                                         />
                                     </div>
 
-                                    <div className="bg-white/[0.03] rounded-xl p-3">
+                                    <div className="bg-foreground/[0.04] rounded-xl p-3">
                                         <IngredientEditor ingredients={draftIngredients} onChange={setDraftIngredients} />
                                     </div>
 
                                     <button
                                         onClick={handleCreateAndLog}
                                         disabled={!draftName.trim() || draftIngredients.length === 0 || isCreating}
-                                        className="w-full py-3.5 rounded-xl bg-emerald-500 text-black text-sm font-black hover:bg-emerald-400 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25"
+                                        className="w-full py-3.5 rounded-xl bg-terracotta text-primary-foreground text-sm font-black hover:bg-terracotta/85 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-terracotta/20"
                                     >
                                         <FiPlus size={16} /> {isCreating ? 'Creating & logging...' : 'Create & Log Food'}
                                     </button>
@@ -808,12 +966,12 @@ export default function Dashboard() {
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
                                         <div className="min-w-0">
-                                            <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-400 mb-0.5">Recipe</div>
+                                            <div className="text-[9px] font-bold uppercase tracking-widest text-terracotta mb-0.5">Recipe</div>
                                             <div className="text-base font-black truncate">{logSelection.label}</div>
                                         </div>
-                                        <button onClick={() => setLogSelection(null)} className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-white shrink-0">Change</button>
+                                        <button onClick={() => setLogSelection(null)} className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground shrink-0">Change</button>
                                     </div>
-                                    <div className="flex items-center justify-between gap-3 bg-white/[0.03] rounded-xl p-4">
+                                    <div className="flex items-center justify-between gap-3 bg-foreground/[0.04] rounded-xl p-4">
                                         <div>
                                             <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Servings to Log</div>
                                             <div className="text-xs text-muted-foreground mt-0.5">of {logSelection.data?.servings || 1} total</div>
@@ -823,13 +981,13 @@ export default function Dashboard() {
                                             min={1}
                                             value={servingsToLog}
                                             onChange={e => setServingsToLog(Math.max(Number(e.target.value) || 1, 1))}
-                                            className="w-20 bg-black/30 rounded-xl px-3 py-2.5 text-center text-lg font-black outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                            className="w-20 bg-foreground/5 rounded-xl px-3 py-2.5 text-center text-lg font-black outline-none focus:ring-2 focus:ring-terracotta/40"
                                         />
                                     </div>
                                     <button
                                         onClick={handleLogRecipe}
                                         disabled={logging}
-                                        className="w-full py-3.5 rounded-xl bg-emerald-500 text-black text-sm font-black hover:bg-emerald-400 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25"
+                                        className="w-full py-3.5 rounded-xl bg-terracotta text-primary-foreground text-sm font-black hover:bg-terracotta/85 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-terracotta/20"
                                     >
                                         <FiPlus size={16} /> {logging ? 'Logging...' : `Log ${servingsToLog} Serving${servingsToLog !== 1 ? 's' : ''}`}
                                     </button>
@@ -839,10 +997,10 @@ export default function Dashboard() {
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
                                         <div className="min-w-0">
-                                            <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-400 mb-0.5">Ingredient</div>
+                                            <div className="text-[9px] font-bold uppercase tracking-widest text-terracotta mb-0.5">Ingredient</div>
                                             <div className="text-base font-black capitalize truncate">{logSelection.label}</div>
                                         </div>
-                                        <button onClick={() => setLogSelection(null)} className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-white shrink-0">Change</button>
+                                        <button onClick={() => setLogSelection(null)} className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground shrink-0">Change</button>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <input
@@ -850,12 +1008,12 @@ export default function Dashboard() {
                                             min={1}
                                             value={ingredientQty}
                                             onChange={e => setIngredientQty(Math.max(Number(e.target.value) || 0, 0))}
-                                            className="flex-1 bg-white/[0.04] rounded-xl px-4 py-3 text-lg font-black outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                            className="flex-1 bg-foreground/[0.05] rounded-xl px-4 py-3 text-lg font-black outline-none focus:ring-2 focus:ring-terracotta/40"
                                         />
                                         <select
                                             value={ingredientUnit}
                                             onChange={e => setIngredientUnit(e.target.value)}
-                                            className="bg-white/[0.04] rounded-xl px-3 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                            className="bg-foreground/[0.05] rounded-xl px-3 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-terracotta/40"
                                         >
                                             {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                                         </select>
@@ -863,7 +1021,7 @@ export default function Dashboard() {
                                     <button
                                         onClick={handleLogIngredient}
                                         disabled={logging}
-                                        className="w-full py-3.5 rounded-xl bg-emerald-500 text-black text-sm font-black hover:bg-emerald-400 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25"
+                                        className="w-full py-3.5 rounded-xl bg-terracotta text-primary-foreground text-sm font-black hover:bg-terracotta/85 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-terracotta/20"
                                     >
                                         <FiPlus size={16} /> {logging ? 'Logging...' : `Log ${ingredientQty} ${ingredientUnit}`}
                                     </button>
@@ -874,9 +1032,9 @@ export default function Dashboard() {
                                 <div className="space-y-4">
                                     <button
                                         onClick={() => setLogView('photo')}
-                                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-white/[0.04] hover:bg-emerald-500/10 transition-all text-left border border-dashed border-white/10"
+                                        className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-foreground/[0.05] hover:bg-terracotta/10 transition-all text-left border border-dashed border-border"
                                     >
-                                        <div className="w-8 h-8 rounded-lg bg-black/30 flex items-center justify-center text-base shrink-0">📷</div>
+                                        <div className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-base shrink-0">📷</div>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm font-bold">Take a photo or add from gallery</div>
                                             <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">AI identifies the dish & ingredients</div>
@@ -892,7 +1050,7 @@ export default function Dashboard() {
                                             value={logSearch}
                                             onChange={e => setLogSearch(e.target.value)}
                                             placeholder="Search recipes or ingredients..."
-                                            className="w-full bg-white/[0.04] rounded-xl pl-10 pr-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                            className="w-full bg-foreground/[0.05] rounded-xl pl-10 pr-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-terracotta/40"
                                         />
                                     </div>
 
@@ -902,9 +1060,9 @@ export default function Dashboard() {
                                                 <button
                                                     key={`${opt.type}-${opt.value}`}
                                                     onClick={() => setLogSelection(opt)}
-                                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] hover:bg-emerald-500/10 transition-all text-left"
+                                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-foreground/[0.04] hover:bg-terracotta/10 transition-all text-left"
                                                 >
-                                                    <div className="w-8 h-8 rounded-lg bg-black/30 flex items-center justify-center text-base shrink-0">
+                                                    <div className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center text-base shrink-0">
                                                         {opt.type === 'recipe' ? (opt.data?.image ? <img src={opt.data.image} alt="" className="w-8 h-8 rounded-lg object-cover" /> : '🍲') : (opt.emoji || '🥗')}
                                                     </div>
                                                     <div className="flex-1 min-w-0">

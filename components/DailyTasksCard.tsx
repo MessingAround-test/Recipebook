@@ -13,24 +13,35 @@ const TASK_ICONS: Record<string, LucideIcon> = {
     symptoms: Stethoscope,
 }
 
-// Ink colour per task — matches the thing being marked.
+/* Warm kitchen ink per task — RGB-triplet tokens (globals.css), so the
+   stamps tint softly in both themes. Matches the thing being marked. */
 const TASK_INK: Record<string, string> = {
-    vitamins: '#a78bfa', // violet
-    water: '#38bdf8',    // sky
-    fruit: '#fb7185',    // rose
-    veggies: '#34d399',  // emerald
-    exercise: '#fb923c', // orange
-    symptoms: '#e879f9', // fuchsia
+    vitamins: 'var(--butter)',
+    water: 'var(--water)',
+    fruit: 'var(--berry)',
+    veggies: 'var(--olive)',
+    exercise: 'var(--terracotta)',
+    symptoms: 'var(--plum)',
 }
-const DEFAULT_INK = '#a78bfa'
+const DEFAULT_INK = 'var(--butter)'
 
-const rgba = (hex: string, alpha: number) => {
-    const h = hex.replace('#', '')
-    const r = parseInt(h.substring(0, 2), 16)
-    const g = parseInt(h.substring(2, 4), 16)
-    const b = parseInt(h.substring(4, 6), 16)
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
+const inkColor = (ink: string, alpha = 1) => `rgb(${ink} / ${alpha})`
+
+/* Small fixed tilts so the row reads hand-stamped, not grid-perfect. */
+const TILTS = ['-2.5deg', '1.5deg', '-1deg', '2.5deg', '-2deg', '1deg']
+
+/* SVG goo filter — blur + alpha contrast melts blob, liquid fill and
+   droplets into one wet ink body. Rendered once, referenced by CSS. */
+const GooDefs = () => (
+    <svg aria-hidden="true" focusable="false" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
+        <defs>
+            <filter id="stamp-goo" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+                <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -10" />
+            </filter>
+        </defs>
+    </svg>
+)
 
 export default function DailyTasksCard({ tasks, allDone, toggle, compact = false, onGo }: {
     tasks: DailyTaskState[]
@@ -45,14 +56,14 @@ export default function DailyTasksCard({ tasks, allDone, toggle, compact = false
 
     if (compact && !expanded) {
         return (
-            <div className="bg-card/50 border border-white/[0.06] rounded-2xl">
-                <button onClick={() => setExpanded(true)} className="w-full flex items-center justify-between gap-3 p-3.5 text-left">
+            <div className="flex flex-col rounded-2xl bg-card shadow-sm">
+                <button onClick={() => setExpanded(true)} className="w-full flex items-center justify-between gap-3 p-3 md:p-3.5 text-left">
                     <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
+                        <div className="hidden h-8 w-8 rounded-xl bg-olive/15 text-olive md:flex items-center justify-center shrink-0">
                             <FiCheck size={15} />
                         </div>
                         <div className="min-w-0">
-                            <div className="text-xs font-black text-emerald-300">All tasks complete</div>
+                            <div className="text-xs font-black text-olive">All tasks stamped</div>
                             <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">{doneCount}/{tasks.length} done</div>
                         </div>
                     </div>
@@ -60,7 +71,7 @@ export default function DailyTasksCard({ tasks, allDone, toggle, compact = false
                         {tasks.map(t => {
                             const Icon = TASK_ICONS[t.id] || Pill
                             const ink = TASK_INK[t.id] || DEFAULT_INK
-                            return <Icon key={t.id} className="h-4 w-4" style={{ color: t.done ? ink : rgba(ink, 0.45) }} />
+                            return <Icon key={t.id} className="h-4 w-4" style={{ color: t.done ? inkColor(ink) : inkColor(ink, 0.4) }} />
                         })}
                     </div>
                 </button>
@@ -69,70 +80,68 @@ export default function DailyTasksCard({ tasks, allDone, toggle, compact = false
     }
 
     return (
-        <div className="bg-card/50 border border-white/[0.06] rounded-2xl p-4 md:p-5 flex flex-col flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/15 text-amber-400">
+        <div className="flex flex-col flex-1 min-w-0 rounded-2xl bg-card p-3 shadow-sm md:p-5">
+            <GooDefs />
+
+            <div className="mb-3 flex items-center justify-between md:mb-4">
+                <div className="flex min-w-0 items-center gap-2.5">
+                    <div className="hidden h-8 w-8 rounded-xl items-center justify-center shrink-0 bg-butter/15 text-butter md:flex">
                         <FiCheck size={15} />
                     </div>
-                    <h3 className="text-sm font-black tracking-tight">Daily Tasks</h3>
+                    <h3 className="truncate text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground md:text-sm md:font-black md:tracking-tight md:text-foreground">
+                        Daily Tasks
+                    </h3>
+                    <span className="text-[11px] font-black tabular-nums text-muted-foreground md:hidden">
+                        {doneCount}/{tasks.length}
+                    </span>
                 </div>
-                <span className="text-[11px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300">
+                <span className="hidden text-[11px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-butter/15 text-butter md:inline-flex">
                     {doneCount}/{tasks.length}
                 </span>
             </div>
 
-            <div className="flex justify-between gap-x-1 gap-y-3 flex-1">
-                {sorted.map((t) => {
+            <div className="flex justify-between gap-x-1 gap-y-2 flex-1 md:gap-y-3">
+                {sorted.map((t, idx) => {
                     const Icon = TASK_ICONS[t.id] || Pill
                     const ink = TASK_INK[t.id] || DEFAULT_INK
                     const pct = t.target > 1 ? Math.min(Math.round((t.count / t.target) * 100), 100) : 0
-
-                    const stampStyle = t.done
-                        ? {
-                            borderColor: rgba(ink, 0.9),
-                            background: `radial-gradient(circle at 35% 30%, ${rgba(ink, 0.6)}, ${rgba(ink, 0.28)})`,
-                            boxShadow: `0 0 14px ${rgba(ink, 0.35)}, inset 0 0 12px ${rgba(ink, 0.45)}`,
-                        }
-                        : t.target > 1
-                            ? {
-                                borderColor: rgba(ink, 0.4),
-                                background: `conic-gradient(${rgba(ink, 0.55)} ${pct}%, rgba(255,255,255,0.04) 0)`,
-                            }
-                            : {
-                                borderColor: rgba(ink, 0.4),
-                                background: 'rgba(255,255,255,0.03)',
-                            }
+                    /* Liquid height inside the stamp — 0 stays empty, done is
+                       covered by the full blob anyway. */
+                    const fill = t.target > 1 && pct > 0 ? `${Math.min(8 + pct * 0.74, 82)}%` : '0%'
 
                     return (
-                        <div key={t.id} className="flex flex-col items-center gap-1 flex-1 min-w-0 md:flex-none md:w-16">
+                        <div key={t.id} className="stamp">
                             <button
+                                type="button"
                                 onClick={() => toggle(t.id)}
                                 disabled={!t.allowManual}
                                 title={t.title}
-                                className={`relative w-10 h-10 md:w-14 md:h-14 rounded-full flex items-center justify-center border-2 transition-all ${t.done ? 'border-solid' : 'border-dashed'} ${t.allowManual ? 'hover:scale-105 active:scale-95 cursor-pointer' : 'cursor-default'}`}
-                                style={stampStyle}
+                                aria-pressed={t.done}
+                                className={`stampHit${t.done ? ' isDone' : ''}${t.allowManual ? ' isClickable' : ''}`}
+                                style={{ '--ink': ink, '--tilt': TILTS[idx % TILTS.length], '--fill': fill } as React.CSSProperties}
                             >
-                                <Icon
-                                    className={`relative z-10 h-5 w-5 md:h-7 md:w-7 transition-all duration-300 ${t.done ? 'opacity-100' : 'opacity-70'}`}
-                                    strokeWidth={t.done ? 2.5 : 2}
-                                    style={{
-                                        color: t.done ? ink : rgba(ink, 0.75),
-                                        transform: t.done ? 'rotate(-8deg) scale(1.05)' : 'none',
-                                        filter: t.done ? `drop-shadow(0 0 4px ${rgba(ink, 0.7)})` : 'none',
-                                    }}
-                                />
-                            </button>
-                            <span className={`text-[10px] md:text-[11px] font-bold text-center leading-tight w-full px-0.5 truncate ${t.done ? 'text-muted-foreground' : ''}`}>{t.label}</span>
-                            {t.target > 1 && (
-                                <span className="text-[10px] font-black -mt-0.5" style={{ color: t.done ? ink : rgba(ink, 0.75) }}>
-                                    {t.count}/{t.target}
+                                <span className="stampSlot" aria-hidden="true" />
+                                <span className="stampInk" aria-hidden="true">
+                                    <span className="stampBlob" />
+                                    {t.target > 1 && <span className="stampFill" />}
+                                    <span className="stampDrop stampDropA" />
+                                    <span className="stampDrop stampDropB" />
                                 </span>
-                            )}
+                                <span className="stampIconWrap" aria-hidden="true">
+                                    <Icon className="stampIcon" strokeWidth={t.done ? 2.5 : 2} />
+                                </span>
+                                <span className="stampSheen" aria-hidden="true" />
+                            </button>
+                            <span className={`text-[10px] md:text-[11px] font-bold text-center leading-tight w-full px-0.5 truncate ${t.done ? 'text-muted-foreground' : ''}`}>
+                                {t.label}
+                                {t.target > 1 && (
+                                    <span className="ml-1 opacity-70">{t.count}/{t.target}</span>
+                                )}
+                            </span>
                             {t.action && onGo && (
                                 <button
                                     onClick={() => onGo(t.action!)}
-                                    className="mt-0.5 px-2 py-1 min-h-[28px] rounded-full bg-white/[0.06] border border-white/10 text-[10px] md:text-[11px] font-black uppercase tracking-widest text-muted-foreground hover:text-white hover:bg-white/[0.1] hover:border-white/20 transition-all"
+                                    className="hidden mt-0.5 px-2 py-1 min-h-[28px] rounded-full bg-foreground/[0.06] text-[10px] md:text-[11px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-all md:inline-flex"
                                 >
                                     {t.cta || 'Go'}
                                 </button>
@@ -143,12 +152,14 @@ export default function DailyTasksCard({ tasks, allDone, toggle, compact = false
             </div>
 
             {compact && (
-                <button onClick={() => setExpanded(false)} className="mt-2 self-center inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-widest text-muted-foreground hover:text-white">
+                <button onClick={() => setExpanded(false)} className="mt-2 self-center inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground">
                     <FiChevronUp size={12} /> Collapse
                 </button>
             )}
 
-            <p className="text-[10px] text-muted-foreground mt-3">Tap a stamp to mark it done · water: 4× · auto-tracks from your logs</p>
+            <p className="hidden text-[10px] text-muted-foreground mt-3 md:block">
+                Tap a stamp to press it · water: 4× · auto-tracks from your logs
+            </p>
         </div>
     )
 }

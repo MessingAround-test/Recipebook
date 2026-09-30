@@ -41,6 +41,17 @@ module.exports = {
                     DEFAULT: 'var(--card)',
                     foreground: 'var(--card-foreground)',
                 },
+                /* Soft kitchen accents — RGB-triplet vars (globals.css) so
+                   tint utilities like bg-terracotta/15 work in both themes. */
+                terracotta: 'rgb(var(--terracotta) / <alpha-value>)',
+                butter: 'rgb(var(--butter) / <alpha-value>)',
+                olive: 'rgb(var(--olive) / <alpha-value>)',
+                berry: 'rgb(var(--berry) / <alpha-value>)',
+                plum: 'rgb(var(--plum) / <alpha-value>)',
+                water: 'rgb(var(--water) / <alpha-value>)',
+            },
+            fontFamily: {
+                cursive: ['var(--font-cursive)', 'Segoe Script', 'cursive'],
             },
             borderRadius: {
                 lg: 'var(--radius)',

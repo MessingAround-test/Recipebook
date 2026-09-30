@@ -2,14 +2,15 @@ import { ReactNode } from 'react'
 import { FiArrowRight } from 'react-icons/fi'
 import { cn } from '../../lib/utils'
 
-export type DashboardAccent = 'emerald' | 'orange' | 'violet' | 'amber' | 'sky'
+export type DashboardAccent = 'olive' | 'terracotta' | 'plum' | 'butter' | 'water' | 'berry'
 
 const ACCENTS: Record<DashboardAccent, { chip: string; action: string }> = {
-    emerald: { chip: 'bg-emerald-500/15 text-emerald-400', action: 'text-emerald-400 hover:text-emerald-300' },
-    orange: { chip: 'bg-orange-500/15 text-orange-400', action: 'text-orange-400 hover:text-orange-300' },
-    violet: { chip: 'bg-violet-500/15 text-violet-300', action: 'text-violet-300 hover:text-violet-200' },
-    amber: { chip: 'bg-amber-500/15 text-amber-400', action: 'text-amber-400 hover:text-amber-300' },
-    sky: { chip: 'bg-sky-500/15 text-sky-400', action: 'text-sky-400 hover:text-sky-300' },
+    olive: { chip: 'bg-olive/15 text-olive', action: 'text-olive' },
+    terracotta: { chip: 'bg-terracotta/15 text-terracotta', action: 'text-terracotta' },
+    plum: { chip: 'bg-plum/15 text-plum', action: 'text-plum' },
+    butter: { chip: 'bg-butter/15 text-butter', action: 'text-butter' },
+    water: { chip: 'bg-water/15 text-water', action: 'text-water' },
+    berry: { chip: 'bg-berry/15 text-berry', action: 'text-berry' },
 }
 
 export interface DashboardCardProps {
@@ -18,7 +19,7 @@ export interface DashboardCardProps {
     accent?: DashboardAccent
     onIconClick?: () => void
     iconTitle?: string
-    action?: { label: string; onClick: () => void }
+    action?: { label: string; onClick: () => void; hideMobile?: boolean }
     headerRight?: ReactNode
     children: ReactNode
     className?: string
@@ -28,7 +29,7 @@ export interface DashboardCardProps {
 export default function DashboardCard({
     title,
     icon,
-    accent = 'emerald',
+    accent = 'olive',
     onIconClick,
     iconTitle,
     action,
@@ -37,21 +38,23 @@ export default function DashboardCard({
     className,
     bodyClassName,
 }: DashboardCardProps) {
-    const tone = ACCENTS[accent] || ACCENTS.emerald
+    const tone = ACCENTS[accent] || ACCENTS.olive
     const chipClasses = cn(
-        'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all',
+        'hidden h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all md:flex',
         tone.chip,
-        onIconClick && 'cursor-pointer hover:brightness-125 active:scale-90'
+        onIconClick && 'cursor-pointer hover:brightness-110 active:scale-90'
     )
 
     return (
         <section
             className={cn(
-                'flex min-w-0 flex-1 flex-col rounded-2xl border border-white/[0.06] bg-card/50 p-4 md:p-5',
+                /* Mobile: soft card surface (kept a touch quieter than desktop —
+                   no icon chips, tighter padding) so sections read as blocks. */
+                'flex min-w-0 flex-1 flex-col rounded-2xl bg-card p-3.5 shadow-sm md:p-5',
                 className
             )}
         >
-            <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="mb-2 flex items-center justify-between gap-3 md:mb-4">
                 <div className="flex min-w-0 items-center gap-2.5">
                     {onIconClick ? (
                         <button
@@ -66,7 +69,9 @@ export default function DashboardCard({
                     ) : (
                         <span className={chipClasses}>{icon}</span>
                     )}
-                    <h3 className="truncate text-sm font-black tracking-tight">{title}</h3>
+                    <h3 className="truncate text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground md:text-sm md:font-black md:tracking-tight md:text-foreground">
+                        {title}
+                    </h3>
                 </div>
                 {headerRight ? (
                     <div className="flex shrink-0 items-center gap-2">{headerRight}</div>
@@ -75,7 +80,8 @@ export default function DashboardCard({
                         type="button"
                         onClick={action.onClick}
                         className={cn(
-                            'inline-flex shrink-0 items-center gap-1 text-[11px] font-bold uppercase tracking-widest transition-colors',
+                            'shrink-0 items-center gap-1 text-[11px] font-bold uppercase tracking-widest transition-opacity hover:opacity-70',
+                            action.hideMobile ? 'hidden md:inline-flex' : 'inline-flex',
                             tone.action
                         )}
                     >

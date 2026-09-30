@@ -16,7 +16,7 @@ export default function ListRow({ leading, title, subtitle, meta, trailing, onCl
     const content = (
         <>
             {leading != null && (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/[0.06] text-base">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted/70 text-base">
                     {leading}
                 </span>
             )}
@@ -46,7 +46,7 @@ export default function ListRow({ leading, title, subtitle, meta, trailing, onCl
             <button
                 type="button"
                 onClick={onClick}
-                className={cn(base, 'group/row hover:bg-white/[0.05] active:scale-[0.99]', className)}
+                className={cn(base, 'group/row hover:bg-muted/60 active:scale-[0.99]', className)}
             >
                 {content}
             </button>

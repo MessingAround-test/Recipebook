@@ -1,37 +1,170 @@
+/* Homepage shell — mobile first. The single horizontal inset on phones is
+   --edge-pad (hairline) so every block runs edge to edge together. */
 .shell {
   width: 100%;
   max-width: 72rem;
   margin-inline: auto;
-  padding: 0.25rem 0.75rem 0.75rem;
+  padding: 0.25rem var(--edge-pad) 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
+  overflow-x: clip;
 }
 
 .columns {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
-.mainCol,
+/* Side column: a single stack by default; on phones it becomes a 2-up grid
+   so Shopping List and Explore share a line (only when both are on). */
 .sideCol {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  min-width: 0;
+}
+
+/* Phone duo: Shopping | Explore stay paired on row 1 while the meal
+   suggestion spans full width beneath them (explicit placement so the DOM
+   order Shopping → Suggestion → Explore still yields that picture). Rows
+   collapse naturally when a card isn't rendered. */
+@media (max-width: 767px) {
+  .sideColDuo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .sideColDuo .sideShop {
+    grid-area: 1 / 1 / 2 / 2;
+  }
+
+  .sideColDuo .sideExplore {
+    grid-area: 1 / 2 / 2 / 3;
+  }
+
+  .sideColDuo .sideSuggest {
+    grid-area: 2 / 1 / 3 / 3;
+  }
+}
+
+.mainCol {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
   min-width: 0;
+}
+
+/* ── Path tiles — thumb-sized tinted cards; snap-scrolled on phones ── */
+.tiles {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--edge-pad);
+  scrollbar-width: none;
+}
+
+.tiles::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile: the bottom taskbar already covers every tile path — hide them so
+   the phone feed stays one calm column (hero → stamps → meals → lists). */
+@media (max-width: 767px) {
+  .tiles {
+    display: none;
+  }
+}
+
+.tile {
+  flex: 0 0 auto;
+  width: 8.75rem;
+  min-height: 4.25rem;
+  scroll-snap-align: start;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  border: 0;
+  border-radius: 1.25rem;
+  background: rgb(var(--tile) / 0.13);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: background-color 0.25s ease, transform 0.25s ease;
+}
+
+.tile:hover {
+  background: rgb(var(--tile) / 0.21);
+}
+
+.tile:active {
+  transform: scale(0.97);
+}
+
+.tileIcon {
+  flex-shrink: 0;
+  width: 2.2rem;
+  height: 2.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(var(--tile));
+  border-radius: 44% 56% 52% 48% / 52% 46% 54% 48%;
+  background: rgb(var(--tile) / 0.22);
+}
+
+.tileText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tileTitle {
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.tileSub {
+  margin-top: 0.15rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (min-width: 768px) {
   .shell {
     padding: 0.5rem 1rem 2rem;
     gap: 1.5rem;
+    max-width: 76rem;
   }
 
   .columns,
   .mainCol,
   .sideCol {
     gap: 1.5rem;
+  }
+
+  /* Tiles stop scrolling and share the row. */
+  .tiles {
+    overflow-x: visible;
+    flex-wrap: wrap;
+  }
+
+  .tile {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 9.5rem;
   }
 }
 
@@ -48,6 +181,18 @@
 
   .sideCol {
     flex: 0 0 22rem;
+  }
+}
+
+/* Very large screens: widen the shell, keep the fixed side column. */
+@media (min-width: 1440px) {
+  .shell {
+    max-width: 80rem;
+    gap: 1.75rem;
+  }
+
+  .sideCol {
+    flex-basis: 24rem;
   }
 }
 

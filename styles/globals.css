@@ -3,10 +3,12 @@
 @tailwind utilities;
 
 :root {
-  --accent: #10b981;
-  --accent-hover: #059669;
-  --accent-muted: rgba(16, 185, 129, 0.1);
+  --accent: #c8743f;
+  --accent-hover: #b25f30;
+  --accent-muted: rgba(200, 116, 63, 0.12);
   --glass-blur: blur(16px);
+  /* The one horizontal inset mobile content uses — hairline, edge-to-edge feel */
+  --edge-pad: 0.375rem;
 }
 
 html {
@@ -111,7 +113,7 @@ a {
 
 .glass-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 40px -20px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 20px 40px -20px rgba(200, 116, 63, 0.2);
   border-color: var(--accent);
 }
 
@@ -216,7 +218,7 @@ a {
 .btn-modern:hover {
   background: var(--accent-hover);
   transform: scale(1.03);
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 20px rgba(200, 116, 63, 0.4);
 }
 
 .btn-modern.btn-outline {
@@ -322,41 +324,50 @@ a {
 
 @layer base {
   :root {
-    --background: oklch(0.12 0.02 240); /* Deep Midnight Slate */
-    --foreground: oklch(0.98 0.01 240); /* Crisp light text */
-    --card: oklch(0.17 0.03 240); /* Subtle liftoff for dark cards */
-    --card-foreground: oklch(0.98 0.01 240);
-    --popover: oklch(0.17 0.03 240);
-    --popover-foreground: oklch(0.98 0.01 240);
-    --primary: oklch(0.98 0.01 240);
-    --primary-foreground: oklch(0.12 0.02 240);
-    --secondary: oklch(0.22 0.03 240);
-    --secondary-foreground: oklch(0.98 0.01 240);
-    --muted: oklch(0.22 0.03 240);
-    --muted-foreground: oklch(0.7 0.02 240);
-    --accent: oklch(0.3 0.03 240);
-    --accent-foreground: oklch(0.98 0.01 240);
+    --background: oklch(0.17 0.012 70); /* Warm evening kitchen */
+    --foreground: oklch(0.96 0.012 85); /* Soft cream text */
+    --card: oklch(0.22 0.014 70); /* Subtle liftoff, warm timber */
+    --card-foreground: oklch(0.96 0.012 85);
+    --popover: oklch(0.22 0.014 70);
+    --popover-foreground: oklch(0.96 0.012 85);
+    --primary: oklch(0.96 0.012 85);
+    --primary-foreground: oklch(0.2 0.02 70);
+    --secondary: oklch(0.27 0.016 70);
+    --secondary-foreground: oklch(0.96 0.012 85);
+    --muted: oklch(0.27 0.016 70);
+    --muted-foreground: oklch(0.73 0.018 75);
+    --accent: oklch(0.32 0.045 60);
+    --accent-foreground: oklch(0.96 0.012 85);
     --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 6%); /* Softened from 10% */
-    --input: oklch(1 0 0 / 8%); /* Softened from 15% */
-    --ring: oklch(1 0 0 / 20%); /* Softened from solid light */
-    --glass-border: oklch(1 0 0 / 8%); /* New variable */
-    --chart-1: oklch(0.809 0.105 251.813);
-    --chart-2: oklch(0.623 0.214 259.815);
-    --chart-3: oklch(0.546 0.245 262.881);
-    --chart-4: oklch(0.488 0.243 264.376);
-    --chart-5: oklch(0.424 0.199 265.638);
+    --border: oklch(0.97 0.015 85 / 7%); /* Cream-tinted hairline */
+    --input: oklch(0.97 0.015 85 / 9%);
+    --ring: oklch(0.97 0.015 85 / 24%);
+    --glass-border: oklch(0.97 0.015 85 / 9%);
+    --chart-1: oklch(0.72 0.11 55);  /* terracotta */
+    --chart-2: oklch(0.75 0.12 105); /* olive */
+    --chart-3: oklch(0.82 0.11 85);  /* honey */
+    --chart-4: oklch(0.62 0.12 25);  /* brick */
+    --chart-5: oklch(0.68 0.09 150); /* sage */
     --radius: 0.625rem;
 
+    /* Soft kitchen accents (RGB triplets) — drive the theme-reactive tint
+       utilities (bg-terracotta/15 and friends) and the daily-task inks. */
+    --terracotta: 200 116 63;
+    --butter: 217 159 84;
+    --olive: 138 164 102;
+    --berry: 214 118 128;
+    --plum: 192 132 190;
+    --water: 118 164 190;
+
     /* Cooking Mode Variables - Dark */
-    --cooking-bg: oklch(0.1 0.02 240);
-    --cooking-text: oklch(0.98 0.01 240);
-    --cooking-text-muted: oklch(0.98 0.01 240 / 62%);
-    --cooking-text-faint: oklch(0.98 0.01 240 / 38%);
-    --cooking-border: oklch(1 0 0 / 10%);
-    --cooking-card-bg: oklch(0.14 0.03 240);
-    --cooking-faint: oklch(1 0 0 / 6%);
-    --cooking-hover: oklch(1 0 0 / 10%);
+    --cooking-bg: oklch(0.13 0.015 70);
+    --cooking-text: oklch(0.96 0.012 85);
+    --cooking-text-muted: oklch(0.96 0.012 85 / 62%);
+    --cooking-text-faint: oklch(0.96 0.012 85 / 38%);
+    --cooking-border: oklch(0.97 0.015 85 / 10%);
+    --cooking-card-bg: oklch(0.18 0.016 70);
+    --cooking-faint: oklch(0.97 0.015 85 / 6%);
+    --cooking-hover: oklch(0.97 0.015 85 / 10%);
     --cooking-accent: #fbbf24;
     --cooking-accent-contrast: #1c1917;
     --cooking-accent-soft: rgba(251, 191, 36, 0.12);
@@ -371,31 +382,39 @@ a {
   }
 
   .light {
-    --background: oklch(0.88 0.02 240); /* Slate background */
-    --foreground: oklch(0.1 0.03 240); /* High contrast dark text */
-    --card: oklch(0.82 0.03 240); /* Substantial slate-gray cards */
-    --card-foreground: oklch(0.1 0.03 240);
-    --popover: oklch(0.82 0.03 240);
-    --popover-foreground: oklch(0.1 0.03 240);
-    --primary: oklch(0.1 0.03 240);
-    --primary-foreground: oklch(1 0 0);
-    --secondary: oklch(0.78 0.03 240);
-    --secondary-foreground: oklch(0.1 0.03 240);
-    --muted: oklch(0.78 0.03 240);
-    --muted-foreground: oklch(0.35 0.03 240);
-    --accent: oklch(0.78 0.03 240);
-    --accent-foreground: oklch(0.1 0.03 240);
+    --background: oklch(0.92 0.014 80); /* Warm latte "kitchen table" */
+    --foreground: oklch(0.25 0.03 60); /* Warm dark brown text */
+    --card: oklch(0.975 0.008 90); /* Cream paper cards on top */
+    --card-foreground: oklch(0.25 0.03 60);
+    --popover: oklch(0.975 0.008 90);
+    --popover-foreground: oklch(0.25 0.03 60);
+    --primary: oklch(0.25 0.03 60);
+    --primary-foreground: oklch(0.98 0.005 90);
+    --secondary: oklch(0.87 0.018 80);
+    --secondary-foreground: oklch(0.25 0.03 60);
+    --muted: oklch(0.87 0.018 80);
+    --muted-foreground: oklch(0.46 0.03 65);
+    --accent: oklch(0.75 0.09 60);
+    --accent-foreground: oklch(0.25 0.03 60);
     --destructive: oklch(0.58 0.22 27);
-    --border: oklch(0.7 0.03 240 / 30%); /* Softened */
-    --input: oklch(0.7 0.03 240 / 40%);
-    --ring: oklch(0.1 0.03 240 / 50%);
-    --glass-border: oklch(0 0 0 / 10%); /* New variable */
+    --border: oklch(0.5 0.04 60 / 16%); /* Softened warm hairline */
+    --input: oklch(0.5 0.04 60 / 20%);
+    --ring: oklch(0.5 0.04 60 / 35%);
+    --glass-border: oklch(0.35 0.03 60 / 12%);
+
+    /* Soft kitchen accents — deepened for the cream-paper theme */
+    --terracotta: 176 88 46;
+    --butter: 168 118 44;
+    --olive: 96 122 62;
+    --berry: 176 74 88;
+    --plum: 148 84 148;
+    --water: 62 120 150;
 
     /* Cooking Mode Variables - Light */
-    --cooking-bg: oklch(0.95 0.01 240);
-    --cooking-text: oklch(0.1 0.03 240);
-    --cooking-text-muted: oklch(0.1 0.03 240 / 65%);
-    --cooking-text-faint: oklch(0.1 0.03 240 / 45%);
+    --cooking-bg: oklch(0.96 0.01 85);
+    --cooking-text: oklch(0.25 0.03 60);
+    --cooking-text-muted: oklch(0.25 0.03 60 / 65%);
+    --cooking-text-faint: oklch(0.25 0.03 60 / 45%);
     --cooking-border: oklch(0 0 0 / 10%);
     --cooking-card-bg: oklch(1 0 0);
     --cooking-faint: oklch(0 0 0 / 5%);
@@ -2950,6 +2969,230 @@ a {
 
   .cook-bubble-ring-fill,
   .cook-bubble-label {
+    transition: none;
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════
+   KITCHEN STAMPS — gooey, wet, hand-stamped daily-task markers.
+
+   Markup lives in components/DailyTasksCard.tsx:
+     .stamp > .stampHit (--ink, --tilt, --fill)
+       ├── .stampSlot                              dashed album slot (undone)
+       ├── .stampInk                               gooey ink body (SVG #stamp-goo)
+       │     ├── .stampBlob                        the pressed stamp (done)
+       │     ├── .stampFill                        rising liquid (multi-count)
+       │     └── .stampDrop.stampDropA / .stampDropB   flicked ink (done)
+       ├── .stampIconWrap > .stampIcon             icon, floats on the ink
+       └── .stampSheen                             wet highlight (done)
+   ═════════════════════════════════════════════════════════════════════ */
+
+.font-cursive {
+  font-family: var(--font-cursive), 'Segoe Script', cursive;
+}
+
+.stamp {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.stampHit {
+  position: relative;
+  width: 3.1rem;
+  height: 3.1rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  transform: rotate(var(--tilt, 0deg));
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (min-width: 768px) {
+  .stampHit {
+    width: 3.9rem;
+    height: 3.9rem;
+  }
+}
+
+.stampHit.isClickable {
+  cursor: pointer;
+}
+
+.stampHit.isClickable:active {
+  transform: rotate(var(--tilt, 0deg)) scale(0.9);
+}
+
+.stampHit:focus-visible {
+  outline: 2px solid rgb(var(--ink) / 0.65);
+  outline-offset: 3px;
+}
+
+/* The dashed "album slot" waiting to be stamped into (undone state). */
+.stampSlot {
+  position: absolute;
+  inset: 0;
+  border: 2px dashed rgb(var(--ink) / 0.45);
+  background: rgb(var(--ink) / 0.08);
+  border-radius: 42% 58% 55% 45% / 48% 42% 58% 52%;
+  animation: stamp-morph 7s ease-in-out infinite;
+  transition: opacity 0.35s ease, border-color 0.25s ease, background-color 0.25s ease;
+}
+
+.isDone .stampSlot {
+  opacity: 0;
+}
+
+.stampHit.isClickable:hover .stampSlot {
+  border-color: rgb(var(--ink) / 0.8);
+  background-color: rgb(var(--ink) / 0.14);
+}
+
+/* Gooey ink body — blob, liquid fill and droplets melt together
+   through the #stamp-goo SVG filter (blur + alpha contrast). */
+.stampInk {
+  position: absolute;
+  inset: 0;
+  filter: url(#stamp-goo);
+  transform-origin: 50% 62%;
+}
+
+.isDone .stampInk {
+  animation: stamp-press 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.stampBlob,
+.stampDrop {
+  position: absolute;
+  background: color-mix(in oklab, rgb(var(--ink)) 62%, var(--card) 38%);
+}
+
+.stampBlob {
+  inset: 0;
+  border-radius: 42% 58% 55% 45% / 48% 42% 58% 52%;
+  animation: stamp-morph 7s ease-in-out infinite;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+
+.isDone .stampBlob {
+  opacity: 1;
+}
+
+/* Rising liquid for multi-count tasks (e.g. water 4×). Height is driven
+   by --fill (a % of the button) set inline from the count. */
+.stampFill {
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  bottom: 8%;
+  height: var(--fill, 0%);
+  border-radius: 38% 62% 50% 50% / 55% 55% 45% 45%;
+  background: color-mix(in oklab, rgb(var(--ink)) 45%, var(--card) 55%);
+  transition: height 0.6s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+/* Satellite droplets — ink flicked off the press when stamped. */
+.stampDrop {
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.2);
+  transition: opacity 0.4s ease 0.1s, transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s;
+}
+
+.isDone .stampDrop {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.stampDropA {
+  width: 26%;
+  height: 26%;
+  top: -8%;
+  right: 0;
+}
+
+.stampDropB {
+  width: 15%;
+  height: 15%;
+  bottom: 1%;
+  left: -4%;
+}
+
+/* Wet highlight sitting on top of the pressed ink. */
+.stampSheen {
+  position: absolute;
+  left: 16%;
+  top: 10%;
+  width: 38%;
+  height: 30%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 35% 30%, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.06) 68%, transparent);
+  opacity: 0;
+  transform: rotate(-14deg) scale(0.7);
+  transition: opacity 0.45s ease 0.05s, transform 0.45s ease 0.05s;
+  pointer-events: none;
+}
+
+.isDone .stampSheen {
+  opacity: 1;
+  transform: rotate(-14deg) scale(1);
+}
+
+/* Icon floats above the ink. */
+.stampIconWrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.stampIcon {
+  width: 40%;
+  height: 40%;
+  color: rgb(var(--ink) / 0.75);
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s ease;
+}
+
+.isDone .stampIcon {
+  color: rgb(var(--ink));
+  transform: rotate(-9deg) scale(1.14);
+}
+
+@keyframes stamp-morph {
+  0%, 100% { border-radius: 42% 58% 55% 45% / 48% 42% 58% 52%; }
+  33% { border-radius: 55% 45% 42% 58% / 45% 58% 42% 55%; }
+  66% { border-radius: 48% 52% 58% 42% / 55% 45% 52% 48%; }
+}
+
+@keyframes stamp-press {
+  0% { transform: scale(1.02); }
+  35% { transform: scale(0.8) rotate(-3deg); }
+  70% { transform: scale(1.07) rotate(1.5deg); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stampBlob,
+  .stampSlot,
+  .stampInk {
+    animation: none;
+  }
+
+  .stampFill,
+  .stampIcon,
+  .stampDrop,
+  .stampSheen,
+  .stampHit {
     transition: none;
   }
 }

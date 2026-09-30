@@ -4,9 +4,10 @@ import { saveRecipe } from '../lib/recipeExtraction';
 import { formatShortDate } from '../lib/dateUtils';
 import DayNutrientCoverage from './planner/DayNutrientCoverage';
 
-// Distinct colours, one per suggestion, so projected increases are easy to tell apart.
-const SUGGEST_COLORS = ['#38bdf8', '#fb923c', '#a78bfa', '#f472b6'];
-const GENERATED_COLOR = '#c084fc';
+// Distinct soft kitchen inks, one per suggestion, so projected increases
+// are easy to tell apart. rgb(var(--x)) keeps them theme-reactive.
+const SUGGEST_COLORS = ['rgb(var(--terracotta))', 'rgb(var(--olive))', 'rgb(var(--butter))', 'rgb(var(--plum))'];
+const GENERATED_COLOR = 'rgb(var(--plum))';
 
 type Suggestion = {
     type: 'pantry' | 'recipe';
@@ -197,11 +198,11 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-[#121214] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl">
+            <div className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl">
                 {/* Header */}
-                <div className="p-4 border-b border-white/10 flex flex-wrap items-center justify-between gap-3">
+                <div className="p-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-lg font-black tracking-widest uppercase flex items-center gap-2 min-w-0">
-                        <FiZap className="text-emerald-400 shrink-0" /> Round Out Today
+                        <FiZap className="text-olive shrink-0" /> Round Out Today
                         <span className="text-sm font-bold text-muted-foreground normal-case tracking-normal truncate">{formatShortDate(date)}</span>
                     </h2>
                     <div className="flex items-center gap-2 shrink-0">
@@ -209,12 +210,12 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
                             onClick={() => setExcludeMeat(v => !v)}
                             title={excludeMeat ? 'All suggestions are meat-free (tap to include meat)' : 'Meat allowed (tap to exclude meat)'}
                             className={`flex items-center gap-1 px-2.5 py-1 min-h-[36px] rounded-full text-[9px] font-black uppercase tracking-widest border transition-colors ${excludeMeat
-                                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                                : 'bg-white/5 text-muted-foreground border-white/10 hover:text-white'}`}
+                                ? 'bg-olive/15 text-olive border-olive/30'
+                                : 'bg-foreground/5 text-muted-foreground border-transparent hover:text-foreground'}`}
                         >
                             <FiZap size={10} /> {excludeMeat ? 'No meat' : 'Meat ok'}
                         </button>
-                        <button onClick={onClose} className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center text-muted-foreground hover:text-white transition-colors">
+                        <button onClick={onClose} className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
                             <FiX size={20} />
                         </button>
                     </div>
@@ -222,14 +223,14 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
 
                 <div className="p-4 flex-1 overflow-y-auto custom-scrollbar space-y-5">
                     {error && (
-                        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300 font-bold">
+                        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive font-bold">
                             {error}
                         </div>
                     )}
 
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-12 gap-3">
-                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500"></div>
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-olive"></div>
                             <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Scanning today's intake…</p>
                         </div>
                     ) : data && (
@@ -244,18 +245,18 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
                                 maxItems={8}
                             />
                             {lowNutrients.length > 0 && (
-                                <p className="text-[10px] text-amber-400/90 font-bold -mt-3">
+                                <p className="text-[10px] text-butter font-bold -mt-3">
                                     {lowNutrients.length} {lowNutrients.length === 1 ? 'nutrient' : 'nutrients'} low right now.
                                 </p>
                             )}
 
                             {/* Suggestions */}
                             <section>
-                                <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-400 mb-2 flex items-center gap-1.5">
+                                <h3 className="text-[10px] font-black uppercase tracking-widest text-olive mb-2 flex items-center gap-1.5">
                                     <FiZap size={12} /> Quick ways to round it out
                                 </h3>
                                 {recommendations.length === 0 ? (
-                                    <div className="rounded-xl border border-dashed border-white/10 p-4 text-center text-[11px] text-muted-foreground italic">
+                                    <div className="rounded-xl border border-dashed border-border p-4 text-center text-[11px] text-muted-foreground italic">
                                         No matches found — try generating a 5-minute recipe below.
                                     </div>
                                 ) : (
@@ -271,9 +272,11 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
                                                     key={key}
                                                     className="flex items-start justify-between gap-2 rounded-lg border p-2.5 transition-all"
                                                     style={{
-                                                        borderColor: previewing ? color : (s.type === 'pantry' ? 'rgba(251,191,36,0.2)' : 'rgba(255,255,255,0.1)'),
-                                                        backgroundColor: previewing ? `${color}14` : (s.type === 'pantry' ? 'rgba(251,191,36,0.05)' : 'rgba(255,255,255,0.03)'),
-                                                        boxShadow: previewing ? `0 0 0 1px ${color}55` : 'none'
+                                                        borderColor: previewing ? color : (s.type === 'pantry' ? 'rgb(var(--butter) / 0.35)' : 'var(--border)'),
+                                                        backgroundColor: previewing
+                                                            ? `color-mix(in srgb, ${color} 10%, transparent)`
+                                                            : (s.type === 'pantry' ? 'rgb(var(--butter) / 0.08)' : 'rgb(var(--foreground) / 0.04)'),
+                                                        boxShadow: previewing ? `0 0 0 1px ${color}` : 'none'
                                                     }}
                                                 >
                                                     <div className="min-w-0">
@@ -281,21 +284,21 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
                                                             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
                                                             <span className="truncate">{s.type === 'pantry' ? s.pantryName : s.recipe?.name}</span>
                                                             {s.type === 'pantry' ? (
-                                                                <span className="shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                                                <span className="shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-butter/20 text-butter border border-butter/40">
                                                                     {s.quantity || 100}g
                                                                 </span>
                                                             ) : (
-                                                                <span className="shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                                                <span className="shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-olive/20 text-olive border border-olive/40">
                                                                     {s.mealSlot}
                                                                 </span>
                                                             )}
                                                             {s.type === 'recipe' && (s.recipe?.time === 'short' || (s.recipe?.ingredientCount || 0) <= 6) && (
-                                                                <span className="shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                                                                <span className="shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-water/20 text-water border border-water/40">
                                                                     Easy
                                                                 </span>
                                                             )}
                                                             {isBest && (
-                                                                <span className="shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300 border border-yellow-500/40">
+                                                                <span className="shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-butter/25 text-butter border border-butter/50">
                                                                     ★ Best
                                                                 </span>
                                                             )}
@@ -317,10 +320,10 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
                                                             onClick={() => handleAdd(s)}
                                                             disabled={added}
                                                             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-colors ${added
-                                                                ? 'bg-emerald-500/20 text-emerald-300'
+                                                                ? 'bg-olive/20 text-olive'
                                                                 : s.type === 'pantry'
-                                                                    ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300'
-                                                                    : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300'}`}
+                                                                    ? 'bg-butter/20 hover:bg-butter/30 text-butter'
+                                                                    : 'bg-olive/20 hover:bg-olive/30 text-olive'}`}
                                                         >
                                                             {added ? <FiCheck size={11} /> : <FiPlus size={11} />}
                                                             {added ? 'Logged' : 'Log it'}
@@ -329,8 +332,8 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
                                                             onClick={() => setPreviewIdx(previewing ? null : idx)}
                                                             className="flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors"
                                                             style={{
-                                                                backgroundColor: previewing ? `${color}22` : 'rgba(255,255,255,0.05)',
-                                                                color: previewing ? color : '#a1a1aa'
+                                                                backgroundColor: previewing ? `color-mix(in srgb, ${color} 15%, transparent)` : 'rgb(var(--foreground) / 0.06)',
+                                                                color: previewing ? color : 'var(--muted-foreground)'
                                                             }}
                                                         >
                                                             {previewing ? <FiEyeOff size={10} /> : <FiEye size={10} />}
@@ -347,8 +350,8 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
                     )}
 
                     {/* Generate a 5-minute recipe */}
-                    <section className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-3">
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-3 flex items-center gap-1.5">
+                    <section className="rounded-xl border border-plum/25 bg-plum/10 p-3">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-plum mb-3 flex items-center gap-1.5">
                             ✨ Don't like the picks? Generate a 5-minute recipe
                         </h3>
                         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -358,13 +361,13 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
                                     value={requirement}
                                     onChange={(e) => setRequirement(e.target.value)}
                                     placeholder="Extra requirement (optional) — e.g. high protein, no onion…"
-                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder:text-muted-foreground/50 focus:outline-none focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/20 transition-colors"
+                                    className="w-full bg-foreground/5 border border-border rounded-lg px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-plum/50 focus:ring-1 focus:ring-plum/25 transition-colors"
                                 />
                             </div>
                             <button
                                 onClick={handleGenerate}
                                 disabled={generating}
-                                className="shrink-0 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg font-black text-xs bg-purple-500 hover:bg-purple-600 text-white transition-colors disabled:opacity-50"
+                                className="shrink-0 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg font-black text-xs bg-plum/20 hover:bg-plum/30 border border-plum/40 text-plum transition-colors disabled:opacity-50"
                             >
                                 {generating && !generatedRecipe ? (
                                     <>
@@ -380,16 +383,18 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
                             <div
                                 className="mt-3 rounded-lg border p-3 transition-all"
                                 style={{
-                                    borderColor: previewIsGenerated ? GENERATED_COLOR : 'rgba(192,132,252,0.3)',
-                                    backgroundColor: previewIsGenerated ? `${GENERATED_COLOR}14` : 'rgba(168,85,247,0.1)',
-                                    boxShadow: previewIsGenerated ? `0 0 0 1px ${GENERATED_COLOR}55` : 'none'
+                                    borderColor: previewIsGenerated ? GENERATED_COLOR : 'rgb(var(--plum) / 0.35)',
+                                    backgroundColor: previewIsGenerated
+                                        ? `color-mix(in srgb, ${GENERATED_COLOR} 10%, transparent)`
+                                        : 'rgb(var(--plum) / 0.08)',
+                                    boxShadow: previewIsGenerated ? `0 0 0 1px ${GENERATED_COLOR}` : 'none'
                                 }}
                             >
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-1.5 text-sm font-black flex-wrap">
                                             <span className="truncate">{generatedRecipe.name}</span>
-                                            <span className="shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-purple-500/30 text-purple-200 border border-purple-500/40">
+                                            <span className="shrink-0 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-plum/30 text-plum border border-plum/40">
                                                 {generatedRecipe.suggestedSlot}
                                             </span>
                                         </div>
@@ -414,8 +419,8 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
                                         onClick={() => setPreviewIdx(previewIsGenerated ? null : 'generated')}
                                         className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors"
                                         style={{
-                                            backgroundColor: previewIsGenerated ? `${GENERATED_COLOR}22` : 'rgba(255,255,255,0.05)',
-                                            color: previewIsGenerated ? GENERATED_COLOR : '#a1a1aa'
+                                            backgroundColor: previewIsGenerated ? `color-mix(in srgb, ${GENERATED_COLOR} 15%, transparent)` : 'rgb(var(--foreground) / 0.06)',
+                                            color: previewIsGenerated ? GENERATED_COLOR : 'var(--muted-foreground)'
                                         }}
                                     >
                                         {previewIsGenerated ? <FiEyeOff size={10} /> : <FiEye size={10} />}
@@ -426,8 +431,8 @@ export default function RoundOutModal({ open, onClose, date, onLogged }: Props) 
                                     onClick={handleSaveGenerated}
                                     disabled={generating || generatedLogged}
                                     className={`mt-3 w-full rounded-lg text-[11px] font-black uppercase tracking-widest py-2 transition-colors disabled:opacity-50 ${generatedLogged
-                                        ? 'bg-emerald-500/20 text-emerald-300'
-                                        : 'bg-purple-500 hover:bg-purple-600 text-white'}`}
+                                        ? 'bg-olive/20 text-olive'
+                                        : 'bg-plum/20 hover:bg-plum/30 border border-plum/40 text-plum'}`}
                                 >
                                     {generatedLogged ? <span className="flex items-center justify-center gap-1"><FiCheck size={11} /> Logged to today</span> : 'Save & log to today'}
                                 </button>
