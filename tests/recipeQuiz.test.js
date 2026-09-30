@@ -5,6 +5,8 @@ const {
     shuffleMatches,
     answerCount,
     formatTimeRange,
+    weekCarbCounts,
+    recipeMatchesPlannerSlot,
     TIME_MAX_MINUTES,
     DEFAULT_ANSWERS,
     CLASSIC_THRESHOLD
@@ -145,6 +147,74 @@ describe('filterRecipes', () => {
         ];
         const result = filterRecipes(recipes, { ...DEFAULT_ANSWERS, people: 6 });
         expect(result).toHaveLength(2);
+    });
+
+    test('carb match keeps matching recipes', () => {
+        const recipes = [
+            baseRecipe({ _id: 'a', carbType: 'Rice' }),
+            baseRecipe({ _id: 'b', carbType: 'Pasta/Noodles' })
+        ];
+        const result = filterRecipes(recipes, { ...DEFAULT_ANSWERS, carbType: 'Rice' });
+        expect(result.map(r => r._id)).toEqual(['a']);
+    });
+
+    test('carb match treats missing and Uncategorized carbType as wildcard', () => {
+        const recipes = [
+            baseRecipe({ _id: 'a', carbType: null }),
+            baseRecipe({ _id: 'b', carbType: 'Uncategorized' }),
+            baseRecipe({ _id: 'c', carbType: 'Potato' })
+        ];
+        const result = filterRecipes(recipes, { ...DEFAULT_ANSWERS, carbType: 'Rice' });
+        expect(result.map(r => r._id)).toEqual(['a', 'b']);
+    });
+});
+
+describe('weekCarbCounts', () => {
+    it('counts planned blocks by carbType excluding leftovers', () => {
+        const items = [
+            { carbType: 'Rice' },
+            { carbType: 'Rice' },
+            { carbType: 'Pasta/Noodles' },
+            { isLeftover: true, carbType: 'Rice' },
+            {}
+        ];
+        const counts = weekCarbCounts(items);
+        expect(counts.Rice).toBe(2);
+        expect(counts['Pasta/Noodles']).toBe(1);
+        expect(counts.Uncategorized).toBe(1);
+    });
+
+    it('handles null/undefined input and empty lists', () => {
+        expect(weekCarbCounts(null)).toEqual({});
+        expect(weekCarbCounts([])).toEqual({});
+    });
+});
+
+describe('recipeMatchesPlannerSlot', () => {
+    test('null slot matches everything', () => {
+        expect(recipeMatchesPlannerSlot({ mealTypes: ['Main'] }, null)).toBe(true);
+    });
+
+    test('Meal → Dinner mapping matches the Browse modal convention', () => {
+        expect(recipeMatchesPlannerSlot({ mealTypes: ['Main', 'Entree'] }, 'Dinner')).toBe(true);
+        expect(recipeMatchesPlannerSlot({ mealTypes: ['Breakfast'] }, 'Dinner')).toBe(false);
+        expect(recipeMatchesPlannerSlot({ mealTypes: ['Dessert'] }, 'Dinner')).toBe(false);
+        expect(recipeMatchesPlannerSlot({ mealTypes: ['Snack'] }, 'Snack')).toBe(true);
+    });
+
+    test('recipes without mealTypes are wildcards', () => {
+        expect(recipeMatchesPlannerSlot({ mealTypes: [] }, 'Lunch')).toBe(true);
+        expect(recipeMatchesPlannerSlot({ mealTypes: null }, 'Lunch')).toBe(true);
+        expect(recipeMatchesPlannerSlot({}, 'Lunch')).toBe(true);
+    });
+
+    test('General-primary recipes are wildcards', () => {
+        expect(recipeMatchesPlannerSlot({ mealTypes: ['General'] }, 'Dinner')).toBe(true);
+    });
+
+    test('non-first mealTypes do not count (primary only, like Browse)', () => {
+        expect(recipeMatchesPlannerSlot({ mealTypes: ['Dessert', 'Main'] }, 'Dinner')).toBe(false);
+        expect(recipeMatchesPlannerSlot({ mealTypes: ['Main', 'Dessert'] }, 'Dessert')).toBe(false);
     });
 });
 

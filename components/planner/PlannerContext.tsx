@@ -27,6 +27,13 @@ export interface PlannerApi {
     onRangeKeyDown: (e: any) => void;
     handleSave: () => void;
     handleExport: () => void;
+    runExport: (cutoffDay?: string | null, cutoffMeal?: string | null) => Promise<void>;
+    showExportModal: boolean;
+    closeExportModal: () => void;
+    addQuizRecipe: (recipe: any, day: string, mealType: string) => void;
+    openDayQuiz: (day: string) => void;
+    closeDayQuiz: () => void;
+    quizDay: string | null;
     addEverydayItem: (recipeId: string) => void;
     updateEverydayQty: (idx: number, qty: number) => void;
     addEverydayIngredient: (name: string) => void;
@@ -53,6 +60,8 @@ export interface PlannerApi {
     confirmModalRecipes: () => void;
     browseTarget: { day: string | null; mealType: string | null; pantry?: boolean } | null;
     removePlannedRecipe: (id: string) => void;
+    scalePlannedRecipe: (id: string, servings: number) => void;
+    doublePlannedRecipe: (id: string) => void;
     addAverageMeal: () => void;
     mergeTwoItems: (a: string, b: string) => void;
     splitRecipe: (id: string, amount?: number) => void;

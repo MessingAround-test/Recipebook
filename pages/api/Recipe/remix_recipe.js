@@ -122,9 +122,10 @@ Output ONLY valid JSON, no markdown.`;
 Adapt the provided recipe. Hard rules:
 - Keep the dish's identity — substitute, don't reinvent.
 - 'carbType' MUST reflect the primary carbohydrate actually in the adapted dish: Rice for rice dishes, Pasta/Noodles for pasta or noodles, Bread/Wraps for sandwiches/wraps/tortillas, Potato for potato dishes, Quinoa for quinoa dishes, None/Other otherwise.
+- Ingredient amounts MUST be scaled to the recipe's 'servings' count: every quantity is the TOTAL needed to serve 'servings' people. When you ADD an ingredient that isn't in the base recipe (new or as a substitute), calculate its amount for 'servings' servings (e.g. roughly 1 clove of garlic per 2 servings, a handful of greens per serving) — never give a single-serving measure or a whole-pack quantity.
 ${adaptationBlock}`;
 
-        const userContent = `BASE RECIPE:\n${baseJson}\n\n${dietary ? `Dietary requirement to apply: ${dietary}` : ''}${notes ? `\nUser notes: ${notes}` : ''}`;
+        const userContent = `BASE RECIPE (serves ${recipe.servings || 4}):\n${baseJson}\n\n${dietary ? `Dietary requirement to apply: ${dietary}` : ''}${notes ? `\nUser notes: ${notes}` : ''}`;
 
         const messages = [
             { role: 'system', content: systemContent },

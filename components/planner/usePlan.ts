@@ -3,7 +3,7 @@ import { useFeatureGuard } from '../../lib/useFeatureGuard';
 import { CURRENT_PLAN_VERSION } from '../../lib/planVersion';
 import { getDateRange, addDays, todayStr, daysBetween, parseFlexibleDate } from '../../lib/dateUtils';
 import { fetchPlan, postPlan, postPlanKeepAlive, fetchAnalysis, postExport, fetchRecipes, suggestForDay, generateRecipeForDay } from './dataLayer';
-import { Plan, PlanAnalysis, Recipe, SaveStatus, BrowseTarget, DaySuggestion, DaySuggestionResponse, GeneratedRecipe } from './types';
+import { Plan, PlanAnalysis, Recipe, SaveStatus, BrowseTarget, DaySuggestion, DaySuggestionResponse, GeneratedRecipe, PlannedRecipeItem } from './types';
 import { MAX_DAYS } from './types';
 import { makeKey, newTempId } from './utils';
 import { saveRecipe } from '../../lib/recipeExtraction';
@@ -48,6 +48,10 @@ export function usePlan() {
 
     // Combine zone holds the first dropped item, waiting for a second
     const [combinePendingId, setCombinePendingId] = useState<string | null>(null);
+
+    // Export cutoff modal + day-fill quiz
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [quizDay, setQuizDay] = useState<string | null>(null);
 
     // Editable date-range fields (typed text + tick to apply)
     const [draftStart, setDraftStart] = useState(startDate);
@@ -272,13 +276,16 @@ export function usePlan() {
         }
     }, [planWithRange, planContentSnapshot]);
 
-    const handleExport = useCallback(async () => {
+    // Actual export run. `cutoffDay`/`cutoffMeal` describe the "I have
+    // ingredients up to..." boundary; nulls mean export the whole plan.
+    const runExport = useCallback(async (cutoffDay: string | null = null, cutoffMeal: string | null = null) => {
         setExporting(true);
         try {
             // Flush any pending autosave first, since export reads from the DB
             await handleSave();
-            const data = await postExport(loadedStartRef.current);
+            const data = await postExport(loadedStartRef.current, cutoffDay, cutoffMeal);
             if (data.success) {
+                setShowExportModal(false);
                 alert(`Successfully exported ${data.addedCount} items to a new Shopping List!`);
             } else {
                 alert("Failed to export: " + data.message);
@@ -289,6 +296,14 @@ export function usePlan() {
         }
         setExporting(false);
     }, [handleSave]);
+
+    const handleExport = useCallback(() => {
+        setShowExportModal(true);
+    }, []);
+
+    const closeExportModal = useCallback(() => {
+        if (!exporting) setShowExportModal(false);
+    }, [exporting]);
 
     // --- Pantry Pool ---
     const addEverydayItem = useCallback((recipeId: string) => {
@@ -387,10 +402,16 @@ export function usePlan() {
         setModalMealFilters(target?.mealType ? new Set([target.mealType]) : new Set());
         setModalSearch(initialSearch || '');
         setBrowseTarget(target);
+        // Fresh selection every open — stale ticks from a previous browse used
+        // to re-add (and auto-split leftovers for) recipes silently on confirm.
+        setModalSelectedRecipeIds(new Set());
         setShowRecipeModal(true);
     }, []);
 
-    const closeModal = useCallback(() => setShowRecipeModal(false), []);
+    const closeModal = useCallback(() => {
+        setModalSelectedRecipeIds(new Set());
+        setShowRecipeModal(false);
+    }, []);
 
     const toggleMealFilter = useCallback((m: string) => {
         setModalMealFilters(prev => {
@@ -411,6 +432,37 @@ export function usePlan() {
     }, []);
 
     // --- Recipe additions (with auto-split) ---
+    // Shared block builder: a primary block for the target slot at the plan's
+    // default servings, plus an auto-split leftover block into the Recipe Pool
+    // when the recipe serves more than that. Used by the Browse modal and the
+    // day quiz so both paths behave identically.
+    const buildRecipeBlocks = useCallback((recipe: Recipe, targetDay: string, targetMeal: string): PlannedRecipeItem[] => {
+        const serves = recipe.servings || 1;
+        const blocks: PlannedRecipeItem[] = [{
+            recipe_id: recipe._id,
+            recipe_name: recipe.name,
+            servings: plan.defaultServings,
+            day: targetDay,
+            mealType: targetMeal,
+            carbType: recipe.carbType || 'Uncategorized',
+            isLeftover: false,
+            id: newTempId()
+        }];
+        if (serves > plan.defaultServings) {
+            blocks.push({
+                recipe_id: recipe._id,
+                recipe_name: `${recipe.name} (Leftovers)`,
+                servings: serves - plan.defaultServings,
+                day: 'Undecided',
+                mealType: 'Lunch',
+                carbType: recipe.carbType || 'Uncategorized',
+                isLeftover: true,
+                id: newTempId()
+            });
+        }
+        return blocks;
+    }, [plan.defaultServings]);
+
     const confirmModalRecipes = useCallback(() => {
         if (browseTarget?.pantry) {
             // Pantry mode: add selected recipes as everyday items (no auto-split)
@@ -438,32 +490,9 @@ export function usePlan() {
         modalSelectedRecipeIds.forEach((id: string) => {
             const recipe = allRecipes.find(r => r._id === id);
             if (recipe) {
-                const serves = recipe.servings || 1;
                 const targetDay = browseTarget?.day || 'Undecided';
                 const targetMeal = browseTarget?.mealType || 'Dinner';
-                newRecipes.push({
-                    recipe_id: recipe._id,
-                    recipe_name: recipe.name,
-                    servings: plan.defaultServings,
-                    day: targetDay,
-                    mealType: targetMeal,
-                    carbType: recipe.carbType || 'Uncategorized',
-                    isLeftover: false,
-                    id: newTempId()
-                });
-
-                if (serves > plan.defaultServings) {
-                    newRecipes.push({
-                        recipe_id: recipe._id,
-                        recipe_name: `${recipe.name} (Leftovers)`,
-                        servings: serves - plan.defaultServings,
-                        day: 'Undecided',
-                        mealType: 'Lunch',
-                        carbType: recipe.carbType || 'Uncategorized',
-                        isLeftover: true,
-                        id: newTempId()
-                    });
-                }
+                newRecipes.push(...buildRecipeBlocks(recipe, targetDay, targetMeal));
             }
         });
 
@@ -472,12 +501,32 @@ export function usePlan() {
             plannedRecipes: [...prev.plannedRecipes, ...newRecipes]
         }));
         setShowRecipeModal(false);
-    }, [modalSelectedRecipeIds, allRecipes, plan.defaultServings, browseTarget, newEverydayQty, numDays]);
+    }, [modalSelectedRecipeIds, allRecipes, plan.defaultServings, browseTarget, newEverydayQty, numDays, buildRecipeBlocks]);
 
     const removePlannedRecipe = useCallback((idToRemove: string) => {
         setPlan(prev => ({
             ...prev,
             plannedRecipes: prev.plannedRecipes.filter(r => r.id !== idToRemove && r._id !== idToRemove)
+        }));
+    }, []);
+
+    // Scale a planned block to an explicit number of servings (min 1).
+    const scalePlannedRecipe = useCallback((id: string, servings: number) => {
+        setPlan(prev => ({
+            ...prev,
+            plannedRecipes: prev.plannedRecipes.map(r =>
+                makeKey(r) === id ? { ...r, servings: Math.max(1, Math.round(Number(servings) || 1)) } : r
+            )
+        }));
+    }, []);
+
+    // Quick ×2 on a block's servings.
+    const doublePlannedRecipe = useCallback((id: string) => {
+        setPlan(prev => ({
+            ...prev,
+            plannedRecipes: prev.plannedRecipes.map(r =>
+                makeKey(r) === id ? { ...r, servings: Math.max(1, (Number(r.servings) || 1) * 2) } : r
+            )
         }));
     }, []);
 
@@ -636,6 +685,26 @@ export function usePlan() {
         mergeTwoItems(combinePendingId, draggedId);
         setCombinePendingId(null);
     }, [plan.plannedRecipes, combinePendingId, mergeTwoItems]);
+
+    // --- Day quiz ---
+    const openDayQuiz = useCallback((day: string) => {
+        setQuizDay(day);
+    }, []);
+
+    const closeDayQuiz = useCallback(() => {
+        setQuizDay(null);
+    }, []);
+
+    // Commit the quiz's chosen recipe into the target slot, with the same
+    // leftover auto-split behaviour as the Browse modal.
+    const addQuizRecipe = useCallback((recipe: Recipe, day: string, mealType: string) => {
+        immediateSaveRef.current = true;
+        setPlan(prev => ({
+            ...prev,
+            plannedRecipes: [...prev.plannedRecipes, ...buildRecipeBlocks(recipe, day, mealType)]
+        }));
+        closeDayQuiz();
+    }, [buildRecipeBlocks, closeDayQuiz]);
 
     // --- Day AI suggestions ---
     const openDaySuggest = useCallback(async (day: string) => {
@@ -858,6 +927,14 @@ export function usePlan() {
         onRangeKeyDown,
         handleSave,
         handleExport,
+        runExport,
+        showExportModal,
+        openExportModal: handleExport,
+        closeExportModal,
+        addQuizRecipe,
+        openDayQuiz,
+        closeDayQuiz,
+        quizDay,
         addEverydayItem,
         updateEverydayQty,
         addEverydayIngredient,
@@ -884,6 +961,8 @@ export function usePlan() {
         confirmModalRecipes,
         browseTarget,
         removePlannedRecipe,
+        scalePlannedRecipe,
+        doublePlannedRecipe,
         addAverageMeal,
         mergeTwoItems,
         splitRecipe,

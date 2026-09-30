@@ -16,6 +16,7 @@ export interface QuizRecipe {
     time?: string | null
     priceCategory?: string | null
     mealTypes?: string[] | null
+    carbType?: string | null
     timesCooked?: number | null
     servings?: number | null
     genre?: string
@@ -31,6 +32,10 @@ export interface QuizAnswers {
     time: TimeRange | null
     novelty: QuizNovelty | null
     price: QuizPrice | null
+    // Planner day-quiz extensions
+    carbType: string | null
+    // 'outlook' = rank matches by how much they lift the day's low nutrients
+    priority: 'outlook' | 'none' | null
 }
 
 export const DEFAULT_ANSWERS: QuizAnswers = {
@@ -38,13 +43,34 @@ export const DEFAULT_ANSWERS: QuizAnswers = {
     people: null,
     time: null,
     novelty: null,
-    price: null
+    price: null,
+    carbType: null,
+    priority: null
 }
 
 export const QUIZ_MEAL_OPTIONS = ['Breakfast', 'Lunch', 'Main', 'Entree', 'Dessert', 'Snack']
 export const QUIZ_PRICE_OPTIONS: QuizPrice[] = ['cheap', 'medium', 'expensive']
 export const QUIZ_NOVELTY_OPTIONS: QuizNovelty[] = ['new', 'classic']
 export const CLASSIC_THRESHOLD = 3
+
+// Carb choices for the planner's day quiz. Mirrors Recipe.carbType's enum.
+export const QUIZ_CARB_OPTIONS = ['Rice', 'Bread/Wraps', 'Pasta/Noodles', 'Potato', 'Quinoa', 'None/Other']
+
+// Map a planner meal slot to recipe mealTypes the same way the Browse modal
+// does: primary mealType, 'Main' → 'Dinner'. Recipes with no mealTypes (or a
+// 'General' primary) are wildcards that fit any slot.
+function normalizeMealTypeSlot(mt: string): string {
+    return /^main$/i.test(mt) ? 'Dinner' : mt
+}
+
+export function recipeMatchesPlannerSlot(recipe: { mealTypes?: string[] | null }, slot: string | null): boolean {
+    if (!slot) return true
+    const meals = recipe?.mealTypes
+    if (!Array.isArray(meals) || meals.length === 0) return true
+    const primary = normalizeMealTypeSlot(String(meals[0]))
+    if (primary === 'General') return true
+    return primary === slot
+}
 
 export const TIME_BUCKET_RANGES: Record<QuizTime, TimeRange> = {
     short: { min: 0, max: 30 },
@@ -98,7 +124,8 @@ export function answerCount(answers: QuizAnswers): number {
         (answers.people ? 1 : 0) +
         (answers.time ? 1 : 0) +
         (answers.novelty ? 1 : 0) +
-        (answers.price ? 1 : 0)
+        (answers.price ? 1 : 0) +
+        (answers.carbType ? 1 : 0)
 }
 
 export function filterRecipes(recipes: QuizRecipe[], answers: QuizAnswers): QuizRecipe[] {
@@ -134,8 +161,30 @@ export function filterRecipes(recipes: QuizRecipe[], answers: QuizAnswers): Quiz
             if (price && price !== answers.price) return false
         }
 
+        // Carb choice: recipes with an explicit carbType must match it.
+        // Recipes with no carbType (or Uncategorized) stay as a wildcard.
+        if (answers.carbType) {
+            const carb = recipe.carbType
+            if (carb && carb !== 'Uncategorized' && carb !== answers.carbType) return false
+        }
+
         return true
     })
+}
+
+/**
+ * Histogram of the week's planned carb types (excluding leftover blocks —
+ * those are already-cooked servings of the same recipe). Used to annotate
+ * the carb-choice step with variety info.
+ */
+export function weekCarbCounts(plannedItems: { carbType?: string | null; isLeftover?: boolean }[]): Record<string, number> {
+    const counts: Record<string, number> = {}
+    for (const item of plannedItems || []) {
+        if (!item || item.isLeftover) continue
+        const carb = item.carbType || 'Uncategorized'
+        counts[carb] = (counts[carb] || 0) + 1
+    }
+    return counts
 }
 
 export function sortMatches(matches: QuizRecipe[], novelty: QuizNovelty | null): QuizRecipe[] {

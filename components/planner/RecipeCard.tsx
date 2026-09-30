@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FiTrash2, FiGitMerge, FiScissors, FiCheck, FiX } from 'react-icons/fi';
+import { FiTrash2, FiGitMerge, FiScissors, FiCheck, FiX, FiChevronsUp } from 'react-icons/fi';
 import { usePlanner } from '../planner/PlannerContext';
 import { makeKey } from '../planner/utils';
 
@@ -14,6 +14,8 @@ export default function RecipeCard({ item, analysisData, compact = false, timeli
     const {
         handleDragStart,
         removePlannedRecipe,
+        scalePlannedRecipe,
+        doublePlannedRecipe,
         mergeTwoItems,
         splitRecipe,
         combinePendingId,
@@ -128,7 +130,26 @@ export default function RecipeCard({ item, analysisData, compact = false, timeli
                 {item.isAverageMeal && <div className="text-[10px] font-bold text-amber-400 mb-1 uppercase tracking-wider">Avg Meal</div>}
                 <div className="font-bold text-sm leading-tight break-words">{item.recipe_name}</div>
                 <div className="flex items-center gap-2 mt-1">
-                    <div className="text-xs text-muted-foreground">People: {item.servings}</div>
+                    {!compact ? (
+                        <div className="flex items-center gap-0.5" title="Scale servings">
+                            <button
+                                onClick={() => scalePlannedRecipe(key, total - 1)}
+                                disabled={total <= 1}
+                                className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-white/10 text-xs font-black disabled:opacity-30 transition-colors"
+                            >
+                                −
+                            </button>
+                            <span className="text-xs text-muted-foreground min-w-[3rem] text-center">People: {total}</span>
+                            <button
+                                onClick={() => scalePlannedRecipe(key, total + 1)}
+                                className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-white/10 text-xs font-black transition-colors"
+                            >
+                                +
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="text-xs text-muted-foreground">People: {total}</div>
+                    )}
                     {analysisData?.cost != null && (
                         <div className="text-[10px] font-medium text-emerald-400">${analysisData.cost.toFixed(2)}</div>
                     )}
@@ -144,7 +165,14 @@ export default function RecipeCard({ item, analysisData, compact = false, timeli
                 )}
                 {splitControls}
                 {!compact && !splitOpen && (
-                    <div className="flex items-center gap-1 mt-2">
+                    <div className="flex items-center flex-wrap gap-1 mt-2">
+                        <button
+                            onClick={() => doublePlannedRecipe(key)}
+                            title="Double this block's servings"
+                            className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider text-purple-400/70 hover:text-purple-300 hover:bg-purple-500/20 transition-colors"
+                        >
+                            <FiChevronsUp size={12} /> Double
+                        </button>
                         <button
                             onClick={clickMerge}
                             title={combinePendingId && combinePendingId !== key ? 'Merge with pending' : 'Merge with another of the same recipe'}
@@ -161,6 +189,13 @@ export default function RecipeCard({ item, analysisData, compact = false, timeli
                                 <FiScissors size={12} /> Split
                             </button>
                         )}
+                        <button
+                            onClick={() => removePlannedRecipe(key)}
+                            title="Remove from plan"
+                            className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider text-rose-400/70 hover:text-rose-300 hover:bg-rose-500/20 transition-colors"
+                        >
+                            <FiTrash2 size={12} /> Delete
+                        </button>
                     </div>
                 )}
             </div>

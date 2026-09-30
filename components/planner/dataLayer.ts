@@ -48,10 +48,17 @@ export async function fetchAnalysis(plan: Plan): Promise<any> {
     });
 }
 
-export async function postExport(startDate: string): Promise<any> {
+export async function postExport(startDate: string, cutoffDay?: string | null, cutoffMeal?: string | null): Promise<any> {
     return authedFetch('/api/weeklyPlan/export', {
         method: 'POST',
-        body: JSON.stringify({ startDate })
+        body: JSON.stringify({ startDate, cutoffDay: cutoffDay || null, cutoffMeal: cutoffMeal || null })
+    });
+}
+
+export async function fetchQuizCandidates(plan: Plan, day: string, answers: any): Promise<any> {
+    return authedFetch('/api/weeklyPlan/quizCandidates', {
+        method: 'POST',
+        body: JSON.stringify({ plan, day, answers })
     });
 }
 
