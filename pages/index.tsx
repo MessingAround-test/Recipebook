@@ -537,6 +537,7 @@ export default function Dashboard() {
             onIconClick={() => setShowPlanCoverage(true)}
             iconTitle="Estimated day coverage"
             action={{ label: 'Plan', onClick: () => Router.push('/weeklyPlanner') }}
+            className={dashStyles.ideaMeals}
             bodyClassName="gap-2 justify-center"
         >
             {/* Warnings only — no cheerful filler when the plan looks fine. */}
@@ -726,6 +727,7 @@ export default function Dashboard() {
             icon={<FiClock size={16} />}
             accent="berry"
             action={{ label: 'All', onClick: () => Router.push('/recipes'), hideMobile: true }}
+            className={dashStyles.ideaSuggest}
             bodyClassName="justify-center"
         >
             {loading && recipes.length === 0 ? (

@@ -56,6 +56,31 @@
   align-items: stretch;
 }
 
+/* Phone: widths are content-driven, not proportional — Today's Meals hugs
+   its text (meal names stay readable) and the idea card soaks up whatever
+   is left. The meals card only gives ground (truncates) when the pair
+   can't fit, and the idea card never drops below 7.5rem. */
+@media (max-width: 767px) {
+  .ideaDuo,
+  .ideaDuoIdeaFirst {
+    display: flex;
+  }
+
+  .ideaDuo .ideaMeals,
+  .ideaDuoIdeaFirst .ideaMeals {
+    flex: 0 1 auto;
+    min-width: 0;
+    /* Safety cap so a long warning banner can't starve the idea card. */
+    max-width: 75%;
+  }
+
+  .ideaDuo .ideaSuggest,
+  .ideaDuoIdeaFirst .ideaSuggest {
+    flex: 1 1 7.5rem;
+    min-width: 7.5rem;
+  }
+}
+
 .mainCol {
   display: flex;
   flex-direction: column;
