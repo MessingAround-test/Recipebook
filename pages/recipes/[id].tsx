@@ -3,11 +3,12 @@ import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
 import { formatQuantityDisplay } from '../../lib/fractionFormat'
 import { renderFractions } from '../../components/Fraction'
 import { Button } from '../../components/ui/button'
-import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Users, Download, Info, Hourglass, Flame, Scale, Globe2, Camera } from 'lucide-react'
+import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Sparkles, Users, Download, Info, Hourglass, Flame, Scale, Globe2, Camera } from 'lucide-react'
 import { calculateRecipeWeight, formatWeight, rescaleDisplayAmount } from '../../lib/conversion'
 import { isImperialDisplay, convertForDisplay, formatWeightImperial } from '../../lib/unitDisplay'
 import { buildFlowItems, computePhaseInsertPoints, fillCarbPhaseText, recommendCarbOption, resolveCarbSlot, resolveCarbTiming, resolveVariant } from '../../lib/carbSideOps'
 import Router, { useRouter } from 'next/router'
+import { parseRemixSourceRef } from '../../lib/recipeRemix'
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
 import IngredientCard from '../../components/IngredientCard'
 import { IngredientSearchList } from '../../components/IngredientSearchList'
@@ -284,6 +285,13 @@ export default function RecipeDetail() {
     const gramLookupDoneRef = useRef<string | null>(null)
     const [exportModalOpen, setExportModalOpen] = useState(false)
 
+    // Remix pre-flight: small prompt that lets the user set the initial remix
+    // notes (pre-filled with the recipe's cooking reflection when there is
+    // one, editable, clearable). Launching writes the standard remixDraft and
+    // hands off to /remixRecipe.
+    const [remixModalOpen, setRemixModalOpen] = useState(false)
+    const [remixNotesInput, setRemixNotesInput] = useState('')
+
     // Prep work state
     const [prepWork, setPrepWork] = useState<any[]>([])
     const [checkedPrep, setCheckedPrep] = useState<Set<number>>(new Set())
@@ -559,6 +567,50 @@ export default function RecipeDetail() {
     const openScaleModal = () => {
         setPendingGrams(estimatedWeight)
         setScaleModalOpen(true)
+    }
+
+    // Remix handoff: builds the same remixDraft the dish-list flows write and
+    // sends the user to /remixRecipe, which runs the AI adaptation pass and
+    // lands on /createRecipe?genImport=1 to save the result as a NEW recipe.
+    // `notes` is whatever the user typed/accepted in the pre-flight prompt;
+    // the reflection (when present) also travels separately so the wizard's
+    // review step can bring it through or clear it mid-review.
+    const launchRecipeRemix = (notes: string) => {
+        const reflection = (feedback || '').trim()
+        const seedNotes = notes.trim() || 'Give this recipe a fresh take — tweak a few ingredients or steps, keeping the dish recognisable.'
+        const draft = {
+            name: recipeName || recipe?.name || '',
+            notes: seedNotes,
+            // Kept separate from `notes` so the wizard can toggle it on/off.
+            reflection: reflection && timesCooked > 0 ? reflection : '',
+            criteria: [],
+            // Normalise to the model/AI shape the remix API and the wizard's
+            // diffing consume ({ Name, Amount, AmountType, Note } / { Text,
+            // Note }) — the GET API serves the lowercase list shape
+            // ({ name, quantity, quantity_type, note }), and passing that
+            // through raw makes every ingredient look "changed".
+            recipe: {
+                name: recipeName || recipe?.name || '',
+                ingredients: (listIngreds || []).map((i: any) => ({
+                    Name: String(i?.Name ?? i?.name ?? '').trim(),
+                    Amount: i?.Amount ?? i?.quantity ?? '',
+                    AmountType: String(i?.AmountType ?? i?.quantity_type ?? 'each'),
+                    Note: String(i?.Note ?? i?.note ?? '')
+                })),
+                instructions: (instructions || []).map((s: any) => ({
+                    Text: String(s?.Text ?? s?.text ?? '').trim(),
+                    Note: String(s?.Note ?? s?.note ?? '')
+                })),
+                time: recipeTime || recipe?.time,
+                genre: recipeGenre || recipe?.genre,
+                mealTypes: (recipeMealTypes?.length ? recipeMealTypes : recipe?.mealTypes) || [],
+                servings: recipeServings || recipe?.servings,
+                carbType: recipeCarbType || recipe?.carbType
+            },
+            context: { sourceRecipeId: String(id || '') }
+        }
+        try { sessionStorage.setItem('remixDraft', JSON.stringify(draft)) } catch { }
+        Router.push('/remixRecipe')
     }
 
     // Ingredients offered to the "scale from an amount you have" tab: name,
@@ -940,7 +992,13 @@ export default function RecipeDetail() {
                     if (response.ok) {
                         window.location.reload()
                     } else {
-                        console.error('Failed to update the image')
+                        let msg = 'Failed to update the image'
+                        try {
+                            const err = await response.json()
+                            msg = err.message || err.res || msg
+                        } catch { /* non-JSON error body (e.g. 413) */ }
+                        console.error('Failed to update the image:', response.status, msg)
+                        alert(msg)
                     }
                 } catch (error) {
                     console.error('Error updating image:', error)
@@ -1537,15 +1595,25 @@ export default function RecipeDetail() {
         if (reflectionImage) body.image = reflectionImage
         if (finishHide) body.hidden = true
         try {
-            await fetch(`/api/Recipe/${String(id)}`, {
+            const res = await fetch(`/api/Recipe/${String(id)}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'edgetoken': token },
                 body: JSON.stringify(body)
             })
+            if (!res.ok) {
+                let msg = 'Failed to save cooking reflection'
+                try {
+                    const err = await res.json()
+                    msg = err.message || err.res || msg
+                } catch { /* non-JSON error body */ }
+                alert(msg)
+            }
             setTimesCooked(nextTimesCooked)
             setRating(finishRating)
             setFeedback(finishFeedback)
-            if (reflectionImage) setImageData(reflectionImage)
+            // Only swap the hero to the new photo when the server accepted it —
+            // otherwise the reload would resurrect the old (stored) image.
+            if (reflectionImage && res.ok) setImageData(reflectionImage)
             if (finishHide) setIsHidden(true)
         } catch (e) {
             console.error("Failed to save cooking reflection")
@@ -2146,6 +2214,9 @@ export default function RecipeDetail() {
     const displayPriceCategory = recipePriceCategory || (displayCost > 0 ? getPriceCategory(displayCost) : null)
     const sourceUrl: string | null = recipe.sourceUrl || null
     const isVideoSource = !!sourceUrl && (sourceUrl.includes('facebook.com') || sourceUrl.includes('fb.watch'))
+    // An internal remix lineage reference rides in sourceUrl with a fake
+    // scheme — never navigable, shown as a plain chip instead.
+    const remixedFromRef = sourceUrl ? parseRemixSourceRef(sourceUrl) : null
     const showPerPerson = recipeServings > 1
 
     // One compact cost card — every value lives in a single wrapping row
@@ -2211,7 +2282,15 @@ export default function RecipeDetail() {
                     <EyeOff size={11} /> Hidden
                 </span>
             )}
-            {sourceUrl && (
+            {sourceUrl && remixedFromRef && (
+                <span
+                    title={`Remixed from a recipe (${remixedFromRef})`}
+                    className={chipClass}
+                >
+                    <RefreshCw size={11} /> Remix of original
+                </span>
+            )}
+            {sourceUrl && !remixedFromRef && (
                 <a
                     href={sourceUrl}
                     target="_blank"
@@ -2415,6 +2494,22 @@ export default function RecipeDetail() {
                             >
                                 <Pencil className="w-4 h-4" />
                                 <span className="hidden sm:inline">Edit</span>
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    // Pre-fill the initial prompt with the
+                                    // cooking reflection when there is one.
+                                    const t = (feedback || '').trim()
+                                    setRemixNotesInput(t && timesCooked > 0 ? t : '')
+                                    setRemixModalOpen(true)
+                                }}
+                                variant="outline"
+                                className="h-12 sm:h-14 px-3 sm:px-6 rounded-md bg-secondary/70 hover:bg-secondary text-foreground/85 font-semibold text-sm flex items-center justify-center gap-1.5 transition-all shrink-0 !border-0"
+                                title="Remix this recipe into a new version"
+                                aria-label="Remix recipe"
+                            >
+                                <Sparkles className="w-4 h-4" />
+                                <span className="hidden sm:inline">Remix</span>
                             </Button>
                             <Button
                                 onClick={() => setExportModalOpen(true)}
@@ -2986,6 +3081,18 @@ export default function RecipeDetail() {
                                 className="w-full min-h-[120px] rounded-xl bg-secondary px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-accent/40 transition-shadow resize-none placeholder:text-muted-foreground/50"
                             />
                             {isSavingFeedback && <div className="text-[10px] font-semibold text-accent animate-pulse text-right pr-2 uppercase tracking-wider">Saving changes...</div>}
+                            {(feedback || '').trim().length > 0 && timesCooked > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setRemixNotesInput((feedback || '').trim())
+                                        setRemixModalOpen(true)
+                                    }}
+                                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-accent transition-colors"
+                                >
+                                    <Sparkles size={12} /> Remix with these notes
+                                </button>
+                            )}
                         </div>
 
                         {recipe?.carbSide?.state === 'analyzed' && (
@@ -4694,6 +4801,84 @@ export default function RecipeDetail() {
                                 onClick={() => openReflection()}
                             >
                                 Finish
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Remix pre-flight: the user sets the initial remix prompt. It
+                pre-fills with the cooking reflection when there is one, and
+                stays fully editable — Clear empties it, or type something
+                else entirely. Excluding the reflection is just deleting the
+                text; the original recipe's reflection is never modified. */}
+            {remixModalOpen && (
+                <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-card border border-border/40 rounded-2xl p-5 max-w-sm mx-4 shadow-xl w-[calc(100%-2rem)]">
+                        <h3 className="text-lg font-bold mb-2">Remix this recipe?</h3>
+                        <p className="text-sm text-foreground/60 mb-3">
+                            Remixing creates a new version — the original stays untouched. You'll review every change before saving.
+                        </p>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                            Initial prompt
+                        </label>
+                        <div className="relative mb-4">
+                            <textarea
+                                value={remixNotesInput}
+                                onChange={(e) => setRemixNotesInput(e.target.value)}
+                                placeholder="e.g. “make it spicier”, “swap the cream for coconut milk”, “quicker weeknight version”…"
+                                className={`w-full min-h-[110px] rounded-xl bg-secondary px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-accent/40 transition-shadow resize-none placeholder:text-muted-foreground/50 ${(() => {
+                                    const t = (feedback || '').trim()
+                                    const isReflection = !!t && timesCooked > 0 && remixNotesInput.trim() === t
+                                    return isReflection ? 'ring-1 ring-emerald-500/60 border border-emerald-500/40' : ''
+                                })()}`}
+                            />
+                            {(() => {
+                                const t = (feedback || '').trim()
+                                const isReflection = !!t && timesCooked > 0 && remixNotesInput.trim() === t
+                                return isReflection ? (
+                                    <span className="absolute bottom-2 right-3 text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 pointer-events-none">
+                                        Cooking reflection
+                                    </span>
+                                ) : null
+                            })()}
+                        </div>
+                        {(() => {
+                            const t = (feedback || '').trim()
+                            const isReflection = !!t && timesCooked > 0 && remixNotesInput.trim() === t
+                            if (!isReflection) return null
+                            return (
+                                <p className="text-[11px] text-muted-foreground -mt-2 mb-3 flex items-center gap-1.5">
+                                    <MessageSquare size={12} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                    Brought through from your cooking reflection — edit freely or clear it.
+                                </p>
+                            )
+                        })()}
+                        <div className="flex gap-3">
+                            <Button
+                                variant="outline"
+                                className="flex-1 h-11"
+                                onClick={() => setRemixModalOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                className="h-11 px-4"
+                                disabled={remixNotesInput.trim().length === 0}
+                                onClick={() => setRemixNotesInput('')}
+                                title="Clear the prompt"
+                            >
+                                Clear
+                            </Button>
+                            <Button
+                                className="flex-1 h-11 bg-emerald-500 hover:bg-emerald-600 text-white font-bold"
+                                onClick={() => {
+                                    setRemixModalOpen(false)
+                                    launchRecipeRemix(remixNotesInput)
+                                }}
+                            >
+                                <Sparkles size={16} /> Remix
                             </Button>
                         </div>
                     </div>

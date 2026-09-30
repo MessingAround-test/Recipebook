@@ -295,7 +295,7 @@ export default async function handler(req, res) {
                 if (candidateFoodNames.length > 0) {
                     const nameRegexes = candidateFoodNames.map(name => new RegExp(escapeRegExp(name), 'i'));
                     const matchingRecipes = await Recipe.find({ 'ingredients.Name': { $in: nameRegexes } })
-                        .select('name ingredients servings hasImage _id')
+                        .select('name ingredients servings hasImage imageVersion _id')
                         .limit(10)
                         .lean();
 
@@ -307,7 +307,7 @@ export default async function handler(req, res) {
                             scored.push({
                                 _id: String(rec._id),
                                 name: rec.name,
-                                image: rec.hasImage ? recipeImageUrl(rec._id, 'thumb') : undefined,
+                                image: rec.hasImage ? recipeImageUrl(rec._id, 'thumb', rec.imageVersion) : undefined,
                                 pct: targets[key] ? (perServing / (targets[key] * numDays)) * 100 : 0
                             });
                         }

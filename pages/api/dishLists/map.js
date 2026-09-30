@@ -69,7 +69,7 @@ export default async function handler(req, res) {
                 DishList.find({}).select('name').lean(),
                 DishListItem.find({}).lean(),
                 DishListItem.countDocuments({}),
-                Recipe.find(recipeQuery).select('name genre location timesCooked hasImage').lean(),
+                Recipe.find(recipeQuery).select('name genre location timesCooked hasImage imageVersion').lean(),
                 Recipe.countDocuments(recipeQuery)
             ])
             const listNames = new Map(lists.map(l => [String(l._id), l.name]))
@@ -93,6 +93,7 @@ export default async function handler(req, res) {
                     recipeId: item.recipeId,
                     recipeIds: (Array.isArray(item.recipeIds) && item.recipeIds.length ? item.recipeIds : (item.recipeId ? [item.recipeId] : [])).map(String),
                     hasImage: item.hasImage === true,
+                    imageVersion: item.imageVersion || 0,
                     sourceUrl: item.sourceUrl
                 }))
 
@@ -116,7 +117,7 @@ export default async function handler(req, res) {
                     recipeId: String(r._id),
                     recipeIds: [String(r._id)],
                     hasImage: r.hasImage === true,
-                    imageUrl: r.hasImage ? recipeImageUrl(r._id, 'thumb') : undefined
+                    imageUrl: r.hasImage ? recipeImageUrl(r._id, 'thumb', r.imageVersion) : undefined
                 }))
 
             const withPlace = items.filter(item => hasPlace(item.location)).length

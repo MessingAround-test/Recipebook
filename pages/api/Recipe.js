@@ -1,10 +1,14 @@
 import dbConnect from '../../lib/dbConnect'
 import User from '../../models/User'
 import Recipe from '../../models/Recipe'
-import { saveRecipeImages, recipeImageUrl } from '../../lib/recipeImageServer'
+import { saveRecipeImages, deleteRecipeImages, recipeImageUrl } from '../../lib/recipeImageServer'
 import { verifyToken, requireFeature } from "../../lib/auth.ts";
 import { logAPI } from '../../lib/logger.ts';
 import { sanitizeDishListRefs, sanitizeRecipeLocation } from '../../lib/dishLists/recipeLink'
+
+// Image uploads ride in the JSON body; the default 1mb limit 413s mid-sized
+// photos (base64 inflates ~33%), which broke image creation.
+export const config = { api: { bodyParser: { sizeLimit: '10mb' } } }
 
 export default async function handler(req, res) {
   logAPI(req)
@@ -28,7 +32,7 @@ export default async function handler(req, res) {
       let RecipeData = await Recipe.find(query)
         .lean()
       RecipeData.forEach(r => {
-        r.image = r.hasImage ? recipeImageUrl(r._id, 'thumb') : undefined
+        r.image = r.hasImage ? recipeImageUrl(r._id, 'thumb', r.imageVersion) : undefined
       })
       return res.status(200).json({ res: RecipeData })
     } else if (req.method === "POST") {
@@ -52,7 +56,19 @@ export default async function handler(req, res) {
           carbSide: sanitizeCarbSideInput(req.body.carbSide)
         });
         if (req.body.image) {
-          await saveRecipeImages(response._id, req.body.image)
+          // The recipe only "exists" once we return it — so an image failure
+          // rolls the whole create back rather than leaving a half-saved record.
+          try {
+            const saved = await saveRecipeImages(response._id, req.body.image)
+            if (!saved.ok) throw new Error('unsupported or corrupt image data')
+          } catch (imgErr) {
+            await deleteRecipeImages(String(response._id)).catch(() => {})
+            await Recipe.deleteOne({ _id: response._id }).catch(() => {})
+            return res.status(400).json({
+              success: false,
+              message: 'Recipe could not be created: the image could not be processed (' + (imgErr?.message || imgErr) + ')'
+            })
+          }
         }
         return res.status(200).json({ success: true, data: response, message: "Success" })
       } catch (error) {

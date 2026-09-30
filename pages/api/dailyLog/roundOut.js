@@ -169,7 +169,7 @@ export default async function handler(req, res) {
         //    default (any ingredient name that reads as meat/seafood/fish).
         const recipeQuery = decoded.role === 'admin' ? {} : { creator_email: user.email };
         const catalogAll = await Recipe.find({ ...recipeQuery, hidden: { $ne: true } })
-            .select('name genre mealTypes carbType time servings ingredients hasImage _id')
+            .select('name genre mealTypes carbType time servings ingredients hasImage imageVersion _id')
             .lean();
         const catalog = noMeat
             ? catalogAll.filter(r => !(r.ingredients || []).some(ing => isMeatName(ing.Name)))
@@ -380,7 +380,7 @@ ${JSON.stringify(pantryCandidates)}`;
                 recipe: {
                     _id: String(candidate._id),
                     name: candidate.name,
-                    image: candidate.hasImage ? recipeImageUrl(candidate._id, 'thumb') : undefined,
+                    image: candidate.hasImage ? recipeImageUrl(candidate._id, 'thumb', candidate.imageVersion) : undefined,
                     time: candidate.time,
                     mealTypes: candidate.mealTypes,
                     carbType: candidate.carbType,

@@ -34,6 +34,9 @@ const DishListItemSchema = new mongoose.Schema(
         // DishListImage so the list never hot-links TasteAtlas.
         imageOriginalUrl: { type: String, required: false },
         hasImage: { type: Boolean, default: false },
+        // Bumped on every image save/delete so item image URLs can carry a
+        // cache busting `&v=` param (bytes live in DishListImage).
+        imageVersion: { type: Number, default: 0 },
         // TasteAtlas dish page + optional authentic-recipe page
         sourceUrl: { type: String, required: false },
         recipeSourceUrl: { type: String, required: false },

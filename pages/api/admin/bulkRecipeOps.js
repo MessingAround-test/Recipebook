@@ -167,7 +167,8 @@ Rules:
             console.error(`Pollinations image failed for ${recipe.name}, trying Gemini:`, pollinationsError);
             image = await generateGeminiImage(prompt);
         }
-        await saveRecipeImages(recipe._id, image);
+        const saved = await saveRecipeImages(recipe._id, image);
+        if (!saved.ok) throw new Error('Generated image could not be processed');
         return { message: 'Generated recipe image' };
     }
 

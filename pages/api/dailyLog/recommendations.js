@@ -165,7 +165,7 @@ export default async function handler(req, res) {
             recipeQuery.creator_email = user.email;
         }
 
-        let recipes = await Recipe.find(recipeQuery).limit(10).select('name genre mealTypes carbType time servings ingredients hasImage');
+        let recipes = await Recipe.find(recipeQuery).limit(10).select('name genre mealTypes carbType time servings ingredients hasImage imageVersion');
 
         recipes.sort((a, b) => {
             const isASnack = (a.mealTypes || []).some(m => /snack/i.test(m)) || /snack/i.test(a.genre || '');
@@ -203,7 +203,7 @@ export default async function handler(req, res) {
             return {
                 id: rec._id,
                 name: rec.name,
-                image: rec.hasImage ? recipeImageUrl(rec._id, 'thumb') : undefined,
+                image: rec.hasImage ? recipeImageUrl(rec._id, 'thumb', rec.imageVersion) : undefined,
                 ingredients: rec.ingredients.map(i => i.Name),
                 isSnack: (rec.mealTypes || []).some(m => /snack/i.test(m)) || /snack/i.test(rec.genre || ''),
                 nutrients: recipeNutrients

@@ -45,12 +45,12 @@ export default async function handler(req, res) {
             if (decoded.role !== 'admin') {
                 recipeQuery.creator_email = user?.email || '__no_such_user__'
             }
-            const docs = await Recipe.find(recipeQuery).select('name hasImage timesCooked').lean()
+            const docs = await Recipe.find(recipeQuery).select('name hasImage imageVersion timesCooked').lean()
             recipes = docs.map(doc => ({
                 _id: doc._id,
                 name: doc.name,
                 timesCooked: doc.timesCooked || 0,
-                image: doc.hasImage ? `/api/Recipe/${doc._id}/image?q=thumb` : undefined
+                image: doc.hasImage ? `/api/Recipe/${doc._id}/image?q=thumb&v=${doc.imageVersion ?? 0}` : undefined
             }))
         }
 
@@ -64,7 +64,7 @@ export default async function handler(req, res) {
                     ...item,
                     cooked: cookedSet.has(String(item._id)),
                     cookedAt: undefined,
-                    image: item.hasImage ? `/api/dishLists/items/${item._id}/image?q=full` : undefined
+                    image: item.hasImage ? `/api/dishLists/items/${item._id}/image?q=full&v=${item.imageVersion ?? 0}` : undefined
                 },
                 list: list ? { _id: list._id, name: list.name, dietaryFilters: list.dietaryFilters || [], sourceUrl: list.sourceUrl } : null,
                 recipes

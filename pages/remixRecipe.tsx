@@ -3,16 +3,20 @@ import Router from 'next/router'
 import { Layout } from '../components/Layout'
 import { Button } from '../components/ui/button'
 import { useFeatureGuard } from '../lib/useFeatureGuard'
-import { Check, Loader2, ArrowLeft, Sparkles, ChevronRight, ListChecks, AlertCircle } from 'lucide-react'
+import { Check, Loader2, ArrowLeft, Sparkles, ChevronRight, ListChecks, AlertCircle, MessageSquareText } from 'lucide-react'
 import { criterionLabel } from '../lib/dishLists/criteria'
-import { applyDietaryNameTag } from '../lib/recipeRemix'
+import { applyDietaryNameTag, nextRemixName, remixSourceRef } from '../lib/recipeRemix'
 
 interface RemixDraft {
     name?: string
     notes?: string
+    // Separate copy of the source recipe's cooking reflection (feedback). It
+    // travels alongside `notes` so the review step can let the user bring it
+    // through (adds it to the notes) or clear it out again mid-review.
+    reflection?: string
     criteria?: string[]
     recipe?: any
-    context?: { listId?: string; itemId?: string; listName?: string; loc?: string; sourceUrl?: string; sourceNotes?: string }
+    context?: { listId?: string; itemId?: string; listName?: string; loc?: string; sourceUrl?: string; sourceNotes?: string; sourceRecipeId?: string }
 }
 
 const STEPS = ['Base recipe', 'Remix & review', 'Finish']
@@ -76,6 +80,10 @@ export default function RemixRecipe() {
     const [pendingSubs, setPendingSubs] = useState<Record<number, { from: string; to: string }>>({})
     // Which ingredient rows have their "type your own" field revealed.
     const [customOpen, setCustomOpen] = useState<Record<number, boolean>>({})
+    // Review list mode: by default only changed/added ingredients render;
+    // the toggle reveals every ingredient in the list so untouched rows can
+    // also be inspected and substituted.
+    const [showAllIngredients, setShowAllIngredients] = useState(false)
     // Human-readable running state shown while a generate/remix is in flight.
     const [busyMsg, setBusyMsg] = useState('')
     const [working, setWorking] = useState(false)
@@ -102,8 +110,7 @@ export default function RemixRecipe() {
                 startedRef.current = true
                 void start()
             }
-        }
-        setBooted(true)
+        }        setBooted(true)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthed])
 
@@ -241,6 +248,25 @@ export default function RemixRecipe() {
             }
         })
         const cleanText = (s: any) => String(s || '').replace(/\s+/g, ' ').trim()
+        // Ingredients the AI appended beyond the base list count as changes
+        // too — flag them so the review step can say where each item came
+        // from (carried over vs replaced vs newly added).
+        const addedFrom = Math.min(baseIng.length, curIng.length)
+        for (let i = addedFrom; i < curIng.length; i++) {
+            const ci = curIng[i]
+            const lc = (changes || []).find(c => c.kind === 'ingredient' && c.index === i)
+            out.push({
+                kind: 'ingredient',
+                index: i,
+                originalName: '',
+                newName: ci?.Name || '',
+                newNote: ci?.Note || '',
+                reason: lc?.reason || '',
+                alternatives: lc?.alternatives && lc.alternatives.length ? lc.alternatives : [],
+                added: true,
+                isLastPass: true
+            })
+        }
         const baseIns: any[] = baseRecipe.instructions || []
         const curIns: any[] = recipe.instructions || []
         baseIns.forEach((bs, i) => {
@@ -273,26 +299,61 @@ export default function RemixRecipe() {
 
     const startOver = async () => {
         if (working) return
-        setNotes('')
+        setNotes(draft?.notes || '')
         setPendingSubs({})
         setWorking(true)
         setProgress(12)
         setBusyMsg('Resetting to the base remix…')
         try {
-            await runRemix(baseRecipe, '')
+            await runRemix(baseRecipe, draft?.notes || '')
         } finally {
             setWorking(false)
             setBusyMsg('')
         }
     }
 
+    // The source recipe's cooking reflection, offered on the review step. It
+    // counts as "in" only when it's actually present in the current notes —
+    // so the user can bring it through, clear it out again, or clear the
+    // notes wholesale without losing access to the reflection text.
+    const reflectionText = String(draft?.reflection || '').trim()
+    const reflectionInNotes = !!reflectionText && canonName(notes).includes(canonName(reflectionText))
+    const canBringReflection = !!reflectionText && !reflectionInNotes
+
+    const bringReflectionIn = () => {
+        if (reflectionInNotes || working) return
+        setNotes(notes ? `${notes.replace(/\s+$/, '')}\n${reflectionText}` : reflectionText)
+    }
+
+    const clearReflectionOut = () => {
+        if (!reflectionInNotes) return
+        // Remove the reflection text plus any separator/newline it leaves
+        // behind, then collapse the whitespace it was joined with.
+        const cleaned = notes
+            .replace(reflectionText, '')
+            .replace(/\n\s*\n/g, '\n')
+            .replace(/^[ \t]+|[ \t]+$/gm, '')
+            .trim()
+        setNotes(cleaned)
+    }
+
     const finish = () => {
         if (!recipe) return
         // Only tag the saved title when the remix actually adapted the recipe.
         const labels = (draftRef.current?.criteria || []).map(criterionLabel)
-        const name = baseDiffs.length > 0 ? applyDietaryNameTag(recipe.name, labels) : recipe.name
         const ctx = draftRef.current?.context || {}
-        try { sessionStorage.setItem('dishGeneratedRecipe', JSON.stringify({ ...recipe, name, sourceUrl: ctx.sourceUrl, sourceNotes: ctx.sourceNotes })) } catch { /* ignore */ }
+        // Recipe-page remixes version the name off the ORIGINAL source recipe
+        // ("X" -> "X v2", "X v2" -> "X v3") even when the AI result kept the
+        // name, and record the parent id in sourceUrl via the fake remix://
+        // scheme so remixed recipes can be related/grouped later. Dish-list
+        // remixes keep the existing dietary-tag naming.
+        const sourceRecipeId = ctx.sourceRecipeId
+        const versionBumped = !!sourceRecipeId && baseDiffs.length > 0
+        const name = versionBumped
+            ? applyDietaryNameTag(nextRemixName(draftRef.current?.name || recipe.name), labels)
+            : (baseDiffs.length > 0 ? applyDietaryNameTag(recipe.name, labels) : recipe.name)
+        const sourceUrl = ctx.sourceUrl || (sourceRecipeId ? remixSourceRef(sourceRecipeId) : undefined)
+        try { sessionStorage.setItem('dishGeneratedRecipe', JSON.stringify({ ...recipe, name, sourceUrl, sourceNotes: ctx.sourceNotes })) } catch { /* ignore */ }
         const params = new URLSearchParams({ genImport: '1' })
         if (ctx.listId) params.set('listId', ctx.listId)
         if (ctx.itemId) params.set('itemId', ctx.itemId)
@@ -326,7 +387,11 @@ export default function RemixRecipe() {
     // The dietary tag is only applied once we're ready to save, and only if the
     // remix actually changed something.
     const willTagName = baseDiffs.length > 0 && dietLabels.length > 0
-    const finalName = willTagName ? applyDietaryNameTag(recipe?.name || draft.name, dietLabels) : (recipe?.name || draft.name)
+    // Recipe-page remixes: mirror finish() — the parent's name gets versioned.
+    const willVersionName = !!draft.context?.sourceRecipeId && baseDiffs.length > 0
+    const finalName = willVersionName
+        ? applyDietaryNameTag(nextRemixName(draft.name || recipe?.name || 'Recipe'), dietLabels)
+        : (willTagName ? applyDietaryNameTag(recipe?.name || draft.name, dietLabels) : (recipe?.name || draft.name))
     const canNextFrom1 = baseReady
     const pendingCount = Object.keys(pendingSubs).length
     const canNextFrom2 = remixDone && pendingCount === 0
@@ -424,55 +489,105 @@ export default function RemixRecipe() {
                                 <p className="text-xs text-muted-foreground mt-1">Nothing needed changing for this diet. Add a note below to refine it.</p>
                             ) : (
                                 <div className="mt-3 space-y-4">
-                                    {ingredientDiffs.length > 0 && (
-                                        <div>
-                                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Ingredients</p>
-                                            <div className="space-y-2">
-                                                {ingredientDiffs.map((ch) => {
-                                                    const selectedName = selected[ch.index] ?? ch.newName
-                                                    const isCustom = !!selected[ch.index] && !(ch.alternatives || []).some((a: string) => canonName(a) === canonName(selected[ch.index]))
-                                                    const showInput = !!customOpen[ch.index] || isCustom
-                                                    return (
-                                                        <div key={`ing-${ch.index}`} className={`rounded-xl border border-border p-3 ${ch.isLastPass ? 'border-l-2 border-l-amber-400' : ''}`}>
-                                                            <div className="flex items-center gap-2 flex-wrap">
-                                                                <p className="text-sm min-w-0">
-                                                                    <span className="line-through text-muted-foreground">{ch.originalName}</span>
-                                                                    <span className="mx-1.5 text-muted-foreground">→</span>
-                                                                    <span className="font-bold">{selectedName}</span>
-                                                                </p>
-                                                                {ch.isLastPass && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Changed this pass" aria-label="Changed this pass" />}
-                                                            </div>
-                                                            {ch.reason && <p className="text-[11px] text-muted-foreground mt-0.5">{ch.reason}</p>}
-                                                            <div className="mt-2 flex flex-wrap gap-1.5">
-                                                                {(ch.alternatives || []).map((alt: string) => {
-                                                                    const sel = canonName(selectedName) === canonName(alt)
-                                                                    return (
-                                                                        <button key={alt} type="button" onClick={() => applySubstitute(ch.index, alt)}
-                                                                            className={`px-2 py-0.5 rounded-full text-[11px] border transition-colors ${sel ? 'bg-accent text-accent-foreground border-accent' : 'bg-transparent border-border text-muted-foreground hover:text-foreground hover:border-accent'}`}>
-                                                                            {alt}
-                                                                        </button>
-                                                                    )
-                                                                })}
-                                                                <button type="button" onClick={() => setCustomOpen(prev => ({ ...prev, [ch.index]: !prev[ch.index] }))}
-                                                                    className={`px-2 py-0.5 rounded-full text-[11px] border border-dashed border-border transition-colors ${showInput ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-                                                                    Custom…
+                                    {ingredientDiffs.length > 0 && (() => {
+                                        const diffByIndex = new Map(ingredientDiffs.map((d: any) => [d.index, d]))
+                                        const curIng: any[] = recipe?.ingredients || []
+                                        const renderDiffCard = (ch: any) => {
+                                            const selectedName = selected[ch.index] ?? ch.newName
+                                            const isCustom = !!selected[ch.index] && !(ch.alternatives || []).some((a: string) => canonName(a) === canonName(selected[ch.index]))
+                                            const showInput = !!customOpen[ch.index] || isCustom
+                                            return (
+                                                <div key={`ing-${ch.index}`} className={`rounded-xl border border-border p-3 ${ch.isLastPass ? 'border-l-2 border-l-amber-400' : ''}`}>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        {ch.added ? (
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600">Added</span>
+                                                        ) : (
+                                                            <p className="text-sm min-w-0">
+                                                                <span className="line-through text-muted-foreground">{ch.originalName}</span>
+                                                                <span className="mx-1.5 text-muted-foreground">→</span>
+                                                                <span className="font-bold">{selectedName}</span>
+                                                            </p>
+                                                        )}
+                                                        {ch.added && <p className="text-sm min-w-0 font-bold">{selectedName}</p>}
+                                                        {ch.isLastPass && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Changed this pass" aria-label="Changed this pass" />}
+                                                    </div>
+                                                    {ch.newNote && <p className="text-[11px] text-muted-foreground mt-0.5">{ch.newNote}</p>}
+                                                    {ch.reason && <p className="text-[11px] text-muted-foreground mt-0.5">{ch.reason}</p>}
+                                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                                        {(ch.alternatives || []).map((alt: string) => {
+                                                            const sel = canonName(selectedName) === canonName(alt)
+                                                            return (
+                                                                <button key={alt} type="button" onClick={() => applySubstitute(ch.index, alt)}
+                                                                    className={`px-2 py-0.5 rounded-full text-[11px] border transition-colors ${sel ? 'bg-accent text-accent-foreground border-accent' : 'bg-transparent border-border text-muted-foreground hover:text-foreground hover:border-accent'}`}>
+                                                                    {alt}
                                                                 </button>
-                                                            </div>
-                                                            {showInput && (
-                                                                <input
-                                                                    value={selected[ch.index] ?? ''}
-                                                                    autoFocus
-                                                                    onChange={e => applySubstitute(ch.index, e.target.value)}
-                                                                    placeholder="Type a substitute…"
-                                                                    className="mt-2 w-full h-8 rounded-lg bg-background border border-border px-2 text-xs focus:outline-none focus:border-accent"
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    )
-                                                })}
+                                                            )
+                                                        })}
+                                                        <button type="button" onClick={() => setCustomOpen(prev => ({ ...prev, [ch.index]: !prev[ch.index] }))}
+                                                            className={`px-2 py-0.5 rounded-full text-[11px] border border-dashed border-border transition-colors ${showInput ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                                                            Custom…
+                                                        </button>
+                                                    </div>
+                                                    {showInput && (
+                                                        <input
+                                                            value={selected[ch.index] ?? ''}
+                                                            autoFocus
+                                                            onChange={e => applySubstitute(ch.index, e.target.value)}
+                                                            placeholder="Type a substitute…"
+                                                            className="mt-2 w-full h-8 rounded-lg bg-background border border-border px-2 text-xs focus:outline-none focus:border-accent"
+                                                        />
+                                                    )}
+                                                </div>
+                                            )
+                                        }
+                                        const renderUnchangedRow = (ing: any, i: number) => {
+                                            const showInput = !!customOpen[i]
+                                            const pending = pendingSubs[i]
+                                            return (
+                                                <div key={`ing-${i}`} className={`rounded-xl border border-border p-2.5 ${pending ? 'border-l-2 border-l-amber-400' : 'border-border/60'}`}>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <p className="text-sm min-w-0 flex-1">
+                                                            <span className={pending ? 'line-through text-muted-foreground' : ''}>{ing.Name}</span>
+                                                            {pending && <span className="ml-1.5 text-muted-foreground">→</span>}
+                                                            {pending && <span className="font-bold">{pending.to}</span>}
+                                                            {ing.Note && <span className="text-[11px] text-muted-foreground"> · {ing.Note}</span>}
+                                                        </p>
+                                                        <button type="button" onClick={() => setCustomOpen(prev => ({ ...prev, [i]: !prev[i] }))}
+                                                            className={`px-2 py-0.5 rounded-full text-[11px] border border-dashed border-border transition-colors shrink-0 ${showInput ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                                                            {showInput ? 'Cancel' : 'Substitute…'}
+                                                        </button>
+                                                    </div>
+                                                    {showInput && (
+                                                        <input
+                                                            value={selected[i] ?? ''}
+                                                            autoFocus
+                                                            onChange={e => applySubstitute(i, e.target.value)}
+                                                            placeholder={`Replace ${ing.Name}…`}
+                                                            className="mt-2 w-full h-8 rounded-lg bg-background border border-border px-2 text-xs focus:outline-none focus:border-accent"
+                                                        />
+                                                    )}
+                                                </div>
+                                            )
+                                        }
+                                        return (
+                                            <div>
+                                                <div className="flex items-center justify-between gap-2 mb-1.5">
+                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ingredients</p>
+                                                    <button type="button" onClick={() => setShowAllIngredients(v => !v)}
+                                                        className="text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors shrink-0">
+                                                        {showAllIngredients
+                                                            ? 'Show changes only'
+                                                            : `Show all ingredients (${recipe?.ingredients?.length || 0})`}
+                                                    </button>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {showAllIngredients
+                                                        ? curIng.map((ing, i) => (diffByIndex.has(i) ? renderDiffCard(diffByIndex.get(i)) : renderUnchangedRow(ing, i)))
+                                                        : ingredientDiffs.map(renderDiffCard)}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )
+                                    })()}
 
                                     {stepDiffs.length > 0 && (
                                         <div>
@@ -503,6 +618,28 @@ export default function RemixRecipe() {
                                 placeholder="e.g. “also make it nut-free”, “use smoked paprika”, “simplify step 3”…"
                                 className="w-full min-h-[70px] rounded-lg bg-secondary border border-border p-2 text-xs resize-y focus:outline-none focus:border-accent"
                             />
+                            {reflectionText && (
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {reflectionInNotes ? (
+                                        <>
+                                            <MessageSquareText className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                            <span className="text-[11px] text-muted-foreground flex-1 min-w-[8rem]">Cooking reflection brought through</span>
+                                            <button type="button" onClick={clearReflectionOut} disabled={working}
+                                                className="px-2 py-0.5 rounded-full text-[11px] border border-border text-muted-foreground hover:text-foreground hover:border-accent transition-colors disabled:opacity-50">
+                                                Clear
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <MessageSquareText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                            <button type="button" onClick={bringReflectionIn} disabled={working}
+                                                className="px-2 py-0.5 rounded-full text-[11px] border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-accent transition-colors disabled:opacity-50">
+                                                Bring through cooking reflection
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            )}
                             <div className="flex gap-2">
                                 <Button variant="secondary" onClick={startOver} disabled={working}>Reset</Button>
                                 <Button variant="secondary" onClick={reRun} disabled={working} className="flex-1">
@@ -543,10 +680,14 @@ export default function RemixRecipe() {
                         )}
                         <div className="text-sm space-y-1">
                             <p><span className="text-muted-foreground">Name:</span> {finalName}</p>
+                            {willVersionName && <p className="text-[11px] text-muted-foreground">Named “{finalName}” and linked back to the original recipe so remixes can be grouped later.</p>}
                             {willTagName && <p className="text-[11px] text-muted-foreground">Name tagged “({dietLabels.join(', ')})” because the recipe was adapted.</p>}
                             <p><span className="text-muted-foreground">Ingredients:</span> {recipe?.ingredients?.length || 0}</p>
                             <p><span className="text-muted-foreground">Steps:</span> {recipe?.instructions?.length || 0}</p>
                             {dietLabels.length > 0 && <p><span className="text-muted-foreground">Remixed to:</span> {dietLabels.join(', ')}</p>}
+                            {reflectionText && (
+                                <p><span className="text-muted-foreground">Reflection:</span> {reflectionInNotes ? 'brought through with the notes' : 'not carried — the original keeps its reflection'}</p>
+                            )}
                         </div>
                         <div className="flex justify-between">
                             <Button variant="secondary" onClick={() => setStep(2)} disabled={working}>Back</Button>

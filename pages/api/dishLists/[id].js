@@ -37,7 +37,7 @@ export default async function handler(req, res) {
                 ...item,
                 cooked: cookedSet.has(String(item._id)),
                 cookedAt: undefined,
-                image: item.hasImage ? dishListImageUrl(item._id, 'thumb') : undefined
+                image: item.hasImage ? dishListImageUrl(item._id, 'thumb', item.imageVersion) : undefined
             }))
 
             return res.status(200).json({ success: true, data: { list, items } })

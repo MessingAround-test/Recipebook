@@ -11,9 +11,10 @@ import {
 
 export type Quality = 'thumb' | 'full'
 
-export function dishListImageUrl(itemId: string | object, quality: Quality = 'thumb'): string {
+export function dishListImageUrl(itemId: string | object, quality: Quality = 'thumb', version?: number | string): string {
     const id = typeof itemId === 'object' ? String((itemId as any)._id) : String(itemId)
-    return `/api/dishLists/items/${id}/image?q=${quality}`
+    // `v` is a pure cache-busting token (see recipeImageUrl).
+    return `/api/dishLists/items/${id}/image?q=${quality}&v=${version ?? 0}`
 }
 
 /**
@@ -64,7 +65,7 @@ export async function saveDishListImage(itemId: string, imageValue: string): Pro
         { upsert: true }
     )
 
-    await DishListItem.updateOne({ _id: itemId }, { $set: { hasImage: true } })
+    await DishListItem.updateOne({ _id: itemId }, { $set: { hasImage: true }, $inc: { imageVersion: 1 } })
     return { ok: true }
 }
 
@@ -78,7 +79,13 @@ export async function getDishListImage(itemId: string, quality: Quality = 'thumb
     return null
 }
 
+/**
+ * Removes an item's stored variants and clears the hasImage flag / busts
+ * client caches. (Whole-list deletion purges DishListImage rows directly,
+ * since the items themselves are removed too.)
+ */
 export async function deleteDishListImage(itemId: string): Promise<void> {
     await dbConnect()
     await DishListImage.deleteMany({ itemId })
+    await DishListItem.updateOne({ _id: itemId }, { $set: { hasImage: false }, $inc: { imageVersion: 1 } })
 }

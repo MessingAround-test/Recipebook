@@ -109,6 +109,9 @@ const RecipeSchema = new mongoose.Schema(
         cookingTimers: [cookingTimerSchema],
         timersChecked: { type: Boolean, default: false },
         hasImage: { type: Boolean, default: false },
+        // Bumped on every image save/delete so image URLs can carry a cache
+        // busting `&v=` param (the bytes live in RecipeImage, keyed by id only).
+        imageVersion: { type: Number, default: 0 },
         cost: { type: Number },
         approxCost: { type: Number, required: false },
         unitCost: { type: Number, required: false },

@@ -10,6 +10,7 @@ export interface Recipe {
     name: string
     image?: string
     hasImage?: boolean
+    imageVersion?: number
     cost?: number
     time?: 'short' | 'medium' | 'long'
     genre?: string
@@ -65,7 +66,7 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
         else router.push(path)
     }
 
-    const imageUrl = recipe.image ?? (recipe.hasImage ? `/api/Recipe/${recipe._id}/image?q=thumb` : undefined)
+    const imageUrl = recipe.image ?? (recipe.hasImage ? `/api/Recipe/${recipe._id}/image?q=thumb&v=${recipe.imageVersion ?? 0}` : undefined)
     const isRecipesPage = currentPath.includes('recipes');
 
     const totalMinutes = (recipe.instructions || []).reduce((sum, i) => sum + (i.time || 0), 0)

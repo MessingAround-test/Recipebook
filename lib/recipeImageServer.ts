@@ -13,9 +13,12 @@ const MIME_ALIASES: Record<string, string> = {
     'image/jpg': 'image/jpeg'
 }
 
-export function recipeImageUrl(recipeId: string | object, quality: Quality = 'thumb'): string {
+export function recipeImageUrl(recipeId: string | object, quality: Quality = 'thumb', version?: number | string): string {
     const id = typeof recipeId === 'object' ? String((recipeId as any)._id) : String(recipeId)
-    return `/api/Recipe/${id}/image?q=${quality}`
+    // `v` is a pure cache-busting token: the endpoint serves current bytes
+    // regardless of it, but a new value forces browsers/SWs to re-fetch after
+    // a replace or removal (the endpoint otherwise sends `immutable` caching).
+    return `/api/Recipe/${id}/image?q=${quality}&v=${version ?? 0}`
 }
 
 /** Accepts a data URL, raw base64, or an http(s) URL and returns decoded bytes + mime. */
@@ -124,7 +127,9 @@ export async function saveRecipeImages(recipeId: string, imageValue: string): Pr
         { upsert: true }
     )
 
-    await Recipe.updateOne({ _id: recipeId }, { $set: { hasImage: true } })
+    // hasImage + imageVersion go together: the version busts client caches
+    // so the replacement bytes are actually fetched.
+    await Recipe.updateOne({ _id: recipeId }, { $set: { hasImage: true }, $inc: { imageVersion: 1 } })
     return { ok: true }
 }
 
@@ -145,6 +150,17 @@ export async function getRecipeImage(recipeId: string, quality: Quality = 'thumb
     return null
 }
 
+/**
+ * Removes every stored variant plus the recipe's image flags: RecipeImage
+ * rows, hasImage, any legacy inline blob — and bumps imageVersion so clients
+ * drop their cached copy. Safe to call on recipes that no longer exist.
+ */
 export async function deleteRecipeImages(recipeId: string): Promise<void> {
     await RecipeImage.deleteMany({ recipeId })
+    await Recipe.updateOne({ _id: recipeId }, { $set: { hasImage: false }, $inc: { imageVersion: 1 } })
+    // Raw collection: mongoose ignores $unset on schema-less legacy fields.
+    await Recipe.collection.updateOne(
+        { _id: new mongoose.Types.ObjectId(recipeId) },
+        { $unset: { image: '' } }
+    )
 }

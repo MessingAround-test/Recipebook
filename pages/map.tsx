@@ -24,6 +24,7 @@ interface MapPoint {
     recipeId?: string
     recipeIds?: string[]
     hasImage?: boolean
+    imageVersion?: number
     imageUrl?: string
     sourceUrl?: string
 }
@@ -65,7 +66,7 @@ const clampView = (scale: number, tx: number, ty: number, size: number): View =>
 const thumbUrl = (p: MapPoint): string | undefined => {
     if (p.imageUrl) return p.imageUrl
     if (isRecipe(p)) return undefined
-    return p.hasImage ? `/api/dishLists/items/${p._id}/image?q=thumb` : undefined
+    return p.hasImage ? `/api/dishLists/items/${p._id}/image?q=thumb&v=${p.imageVersion ?? 0}` : undefined
 }
 
 /** All recipes linked to a dish (new array field, or the legacy single id). */

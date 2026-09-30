@@ -15,6 +15,10 @@ import { callGroqChat } from '../../../lib/ai';
 import { sanitizeDishListRefs, sanitizeRecipeLocation } from '../../../lib/dishLists/recipeLink';
 import { sanitizeRating } from '../../../lib/recipeRating';
 
+// Recipe image uploads ride in the JSON body; the default 1mb limit 413s
+// mid-sized photos (base64 inflates ~33%) so replacements silently failed.
+export const config = { api: { bodyParser: { sizeLimit: '10mb' } } }
+
 
 async function convertIngredients(originalObject) {
   const ingredients = await Promise.all(originalObject.map(async (item) => {
@@ -64,7 +68,7 @@ export default async function handler(req, res) {
 
       const responseData = {
         ...safeToObject(RecipeData),
-        image: RecipeData.hasImage || RecipeData.image ? recipeImageUrl(recipe_id, 'full') : undefined,
+        image: RecipeData.hasImage || RecipeData.image ? recipeImageUrl(recipe_id, 'full', RecipeData.imageVersion) : undefined,
         ingredients: await convertIngredients(RecipeData.ingredients)
       }
       return res.status(200).json({ res: responseData })
@@ -163,12 +167,19 @@ export default async function handler(req, res) {
 
         if (req.body.image !== undefined) {
           if (req.body.image === null || req.body.image === '') {
+            // Deletes RecipeImage rows, clears hasImage + any legacy blob and
+            // bumps imageVersion so clients drop their cached copy.
             await deleteRecipeImages(recipe_id);
-            await Recipe.updateOne({ _id: recipe_id }, { $set: { hasImage: false } });
-            // Raw collection: mongoose ignores $unset on schema-less fields
-            await Recipe.collection.updateOne({ _id: new mongoose.Types.ObjectId(recipe_id) }, { $unset: { image: '' } });
           } else {
-            await saveRecipeImages(recipe_id, req.body.image);
+            const saved = await saveRecipeImages(recipe_id, req.body.image);
+            if (!saved.ok) {
+              // Decode failures bail before any write, so the stored image is
+              // untouched — say so instead of pretending everything worked.
+              return res.status(400).json({
+                success: false,
+                message: "The recipe was saved, but the image could not be processed and was left unchanged"
+              });
+            }
           }
         }
         return res.status(200).json({ success: true, message: "Recipe updated successfully" })

@@ -105,7 +105,7 @@ export default async function handler(req, res) {
         // pantry, so nothing on hand gets re-suggested.
         const recipeQuery = decoded.role === 'admin' ? {} : { creator_email: user.email };
         const candidates = await Recipe.find({ ...recipeQuery, hidden: { $ne: true } })
-            .select('name genre mealTypes carbType ingredients hasImage _id')
+            .select('name genre mealTypes carbType ingredients hasImage imageVersion _id')
             .lean();
 
         const planRecipeIds = new Set(
@@ -301,7 +301,7 @@ ${JSON.stringify(pantryCandidates)}`;
                 recipe: {
                     _id: String(candidate._id),
                     name: candidate.name,
-                    image: candidate.hasImage ? recipeImageUrl(candidate._id, 'thumb') : undefined,
+                    image: candidate.hasImage ? recipeImageUrl(candidate._id, 'thumb', candidate.imageVersion) : undefined,
                     mealTypes: candidate.mealTypes,
                     carbType: candidate.carbType,
                     genre: candidate.genre

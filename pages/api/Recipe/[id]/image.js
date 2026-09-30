@@ -31,7 +31,10 @@ export default async function handler(req, res) {
 
             const etag = weakEtag(image.data);
             res.setHeader('Content-Type', image.mime);
-            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            // `v` in the URL changes whenever the image changes (imageVersion),
+            // so long immutable caching is safe. `private` because the route is
+            // auth-gated — shared caches must not store it.
+            res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
             res.setHeader('ETag', etag);
 
             if (req.headers['if-none-match'] === etag) {
