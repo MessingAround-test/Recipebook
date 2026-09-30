@@ -18,7 +18,7 @@ import DashboardCard from '../components/dashboard/DashboardCard'
 import ListRow from '../components/dashboard/ListRow'
 import TodaySummary from '../components/dashboard/TodaySummary'
 import PathTiles from '../components/dashboard/PathTiles'
-import { selectSuggestedMeals, selectIdeaSlot, ideaIsAfterAllPlanned, SLOT_LABELS, SLOT_EMOJI } from '../lib/mealSuggestion'
+import { selectSuggestedMeals, selectIdeaSlot, ideaIsAfterAllPlanned, SLOT_EMOJI } from '../lib/mealSuggestion'
 import { getPreset } from '../lib/dishLists/presets'
 import dashStyles from '../styles/Dashboard.module.css'
 
