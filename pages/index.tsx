@@ -18,7 +18,7 @@ import DashboardCard from '../components/dashboard/DashboardCard'
 import ListRow from '../components/dashboard/ListRow'
 import TodaySummary from '../components/dashboard/TodaySummary'
 import PathTiles from '../components/dashboard/PathTiles'
-import { getMealSlot, selectSuggestedMeals, SLOT_LABELS, SLOT_EMOJI } from '../lib/mealSuggestion'
+import { selectSuggestedMeals, selectIdeaSlot, ideaIsAfterAllPlanned, SLOT_LABELS, SLOT_EMOJI } from '../lib/mealSuggestion'
 import { getPreset } from '../lib/dishLists/presets'
 import dashStyles from '../styles/Dashboard.module.css'
 
@@ -328,7 +328,12 @@ export default function Dashboard() {
         return () => clearInterval(id)
     }, [])
 
-    const mealSlot = getMealSlot(now ?? new Date())
+    // Which slot the idea card pitches for: skip slots already planned today,
+    // fall back to Snack when the whole day is booked.
+    const mealSlot = selectIdeaSlot(now ?? new Date(), todayMealsAll.map((r: any) => r.mealType))
+    // Beside Today's Meals: left when the slot is before/among the plan,
+    // right when it lands after every planned meal.
+    const ideaLeft = !ideaIsAfterAllPlanned(mealSlot, todayMealsAll.map((r: any) => r.mealType))
     const suggestedMeals = useMemo(() => selectSuggestedMeals(recipes, mealSlot), [recipes, mealSlot])
     // New data or a new slot restarts the carousel at the top.
     useEffect(() => { setSuggestIndex(0) }, [mealSlot, recipes])
@@ -521,6 +526,8 @@ export default function Dashboard() {
 
     // ── Dashboard cards ──
     const hasTodayData = ((todayLog?.items || []).length > 0) || dailyTasks.some(t => t.done)
+    const showMealsCard = features.weeklyPlanner && todayMealsAll.length > 0
+    const showIdeaCard = features.recipes
 
     const mealsCard = (
         <DashboardCard
@@ -530,31 +537,46 @@ export default function Dashboard() {
             onIconClick={() => setShowPlanCoverage(true)}
             iconTitle="Estimated day coverage"
             action={{ label: 'Plan', onClick: () => Router.push('/weeklyPlanner') }}
-            bodyClassName="gap-2"
+            bodyClassName="gap-2 justify-center"
         >
-            <p className="mb-1 border-l-2 border-terracotta/50 pl-3 text-[13px] font-semibold leading-snug text-foreground md:text-sm">
-                {planSuggestion ? planSuggestion.message : 'Balanced day, enjoy.'}
-            </p>
+            {/* Warnings only — no cheerful filler when the plan looks fine. */}
+            {planSuggestion && (
+                <p className="mb-1 border-l-2 border-terracotta/50 pl-3 text-[13px] font-semibold leading-snug text-foreground md:text-sm">
+                    {planSuggestion.message}
+                </p>
+            )}
             <div className="space-y-0.5">
                 {todayMeals.slice(0, 4).map((r: any, idx: number) => (
                     <ListRow
                         key={idx}
-                        /* Mobile: only the next meal — the rest live behind "N more planned". */
-                        className={idx > 0 ? 'hidden md:flex' : undefined}
+                        /* Phone: two rows fit the half-width card beside the idea. */
+                        className={idx > 1 ? 'hidden md:flex' : undefined}
                         leading={MEAL_EMOJI[r.mealType] || '🍽️'}
                         title={r.recipe_name}
-                        subtitle={r.isLeftover ? 'Leftover' : undefined}
-                        trailing={<span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{r.mealType}</span>}
+                        subtitle={
+                            <>
+                                <span className="md:hidden">{r.mealType}{r.isLeftover ? ' · Leftover' : ''}</span>
+                                {r.isLeftover && <span className="hidden md:inline">Leftover</span>}
+                            </>
+                        }
+                        trailing={
+                            <>
+                                <span className="hidden shrink-0 text-[11px] font-bold uppercase tracking-wider text-muted-foreground md:inline-flex">
+                                    {r.mealType}
+                                </span>
+                                <FiChevronRight size={16} className="shrink-0 text-muted-foreground md:hidden" />
+                            </>
+                        }
                         onClick={r.recipe_id ? () => Router.push(`/recipes/${r.recipe_id}`) : undefined}
                     />
                 ))}
-                {todayMeals.length > 1 && (
+                {todayMeals.length > 2 && (
                     <button
                         type="button"
                         onClick={() => Router.push('/weeklyPlanner')}
                         className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground md:hidden"
                     >
-                        <span>{todayMeals.length - 1} more planned today</span>
+                        <span>{todayMeals.length - 2} more planned today</span>
                         <FiChevronRight size={14} />
                     </button>
                 )}
@@ -578,7 +600,6 @@ export default function Dashboard() {
             icon={<FiCompass size={16} />}
             accent="butter"
             action={{ label: 'All', onClick: () => Router.push('/dishLists'), hideMobile: true }}
-            className={dashStyles.sideExplore}
         >
             {!lastDishList ? (
                 <button
@@ -640,7 +661,6 @@ export default function Dashboard() {
             icon={<FiShoppingCart size={16} />}
             accent="water"
             action={{ label: 'All', onClick: () => Router.push('/shoppingList'), hideMobile: true }}
-            className={dashStyles.sideShop}
         >
             {loading && !latestList ? (
                 <div className="space-y-2">
@@ -699,11 +719,14 @@ export default function Dashboard() {
 
     const suggestionCard = (
         <DashboardCard
-            title={now ? `${SLOT_LABELS[mealSlot]} idea` : 'Meal idea'}
+            /* Compact wording ("Snack idea", not "Afternoon snack idea") plus a
+               smaller mobile label so it stays on one line in the 1/3 card. */
+            title={now ? `${mealSlot === 'Main' ? 'Dinner' : mealSlot} idea` : 'Meal idea'}
+            titleClassName="text-[10px] tracking-[0.05em]"
             icon={<FiClock size={16} />}
             accent="berry"
             action={{ label: 'All', onClick: () => Router.push('/recipes'), hideMobile: true }}
-            className={dashStyles.sideSuggest}
+            bodyClassName="justify-center"
         >
             {loading && recipes.length === 0 ? (
                 <div className="space-y-2">
@@ -731,10 +754,9 @@ export default function Dashboard() {
                         leading={suggestedMeal.image
                             ? <img src={suggestedMeal.image} alt="" className="h-full w-full object-cover" />
                             : SLOT_EMOJI[mealSlot]}
+                        /* Narrow 1/3 card: no thumb or chevron on phones — name gets the room. */
+                        leadingClassName="hidden md:flex"
                         title={suggestedMeal.name}
-                        subtitle={(suggestedMeal.mealTypes || []).length
-                            ? (suggestedMeal.mealTypes || []).join(' · ')
-                            : suggestedMeal.genre || ''}
                         meta={
                             <>
                                 {suggestedMeal.time && <span>{RECIPE_TIME_LABEL[suggestedMeal.time] || suggestedMeal.time}</span>}
@@ -746,17 +768,18 @@ export default function Dashboard() {
                                 )}
                             </>
                         }
+                        trailing={<FiChevronRight size={16} className="hidden shrink-0 text-muted-foreground md:block" />}
                         onClick={() => Router.push(`/recipes/${suggestedMeal._id}`)}
                     />
                     {suggestedMeals.length > 1 && (
-                        <div className="mt-1 flex items-center justify-between gap-2 px-1">
+                        <div className="mt-1 flex items-center justify-between gap-1 px-1">
                             <button
                                 type="button"
                                 onClick={() => setSuggestIndex(suggestPos - 1)}
                                 aria-label="Previous suggestion"
-                                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-berry transition-colors hover:bg-berry/10 active:scale-95"
+                                className="rounded-lg p-1.5 text-berry transition-colors hover:bg-berry/10 active:scale-95"
                             >
-                                <FiChevronLeft size={14} /> Back
+                                <FiChevronLeft size={16} />
                             </button>
                             <span className="text-[10px] font-bold tabular-nums text-muted-foreground">
                                 {suggestPos + 1}/{suggestedMeals.length}
@@ -765,9 +788,9 @@ export default function Dashboard() {
                                 type="button"
                                 onClick={() => setSuggestIndex(suggestPos + 1)}
                                 aria-label="Next suggestion"
-                                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-berry transition-colors hover:bg-berry/10 active:scale-95"
+                                className="rounded-lg p-1.5 text-berry transition-colors hover:bg-berry/10 active:scale-95"
                             >
-                                Next <FiChevronRight size={14} />
+                                <FiChevronRight size={16} />
                             </button>
                         </div>
                     )}
@@ -820,12 +843,17 @@ export default function Dashboard() {
 
                 <div className={dashStyles.columns}>
                     <div className={dashStyles.mainCol}>
-                        {features.weeklyPlanner && todayMealsAll.length > 0 && mealsCard}
+                        {(showMealsCard || showIdeaCard) && (
+                            <div className={`${dashStyles.ideaRow}${showMealsCard && showIdeaCard ? (ideaLeft ? ` ${dashStyles.ideaDuoIdeaFirst}` : ` ${dashStyles.ideaDuo}`) : ''}`}>
+                                {showIdeaCard && ideaLeft && suggestionCard}
+                                {showMealsCard && mealsCard}
+                                {showIdeaCard && !ideaLeft && suggestionCard}
+                            </div>
+                        )}
                         {features.dailyTasks && dailyTasksCard}
                     </div>
                     <div className={`${dashStyles.sideCol}${features.shoppingList && features.worldList ? ` ${dashStyles.sideColDuo}` : ''}`}>
                         {features.shoppingList && shoppingCard}
-                        {features.recipes && suggestionCard}
                         {features.worldList && dishListCard}
                     </div>
                 </div>

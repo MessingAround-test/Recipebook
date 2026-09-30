@@ -26,27 +26,34 @@
   min-width: 0;
 }
 
-/* Phone duo: Shopping | Explore stay paired on row 1 while the meal
-   suggestion spans full width beneath them (explicit placement so the DOM
-   order Shopping → Suggestion → Explore still yields that picture). Rows
+/* Phone duo: Shopping | Explore share row 1 (auto-flow, DOM order). Rows
    collapse naturally when a card isn't rendered. */
 @media (max-width: 767px) {
   .sideColDuo {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: stretch;
   }
+}
 
-  .sideColDuo .sideShop {
-    grid-area: 1 / 1 / 2 / 2;
-  }
+/* Today's Meals + "XXX idea" sit side by side (idea left or right of the
+   meals card depending on where its slot falls in the day): the meals card
+   always gets the lion's share (2/3), the idea a narrow 1/3 — so the track
+   order flips with the idea's side. One column when only one renders. */
+.ideaRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  min-width: 0;
+}
 
-  .sideColDuo .sideExplore {
-    grid-area: 1 / 2 / 2 / 3;
-  }
+.ideaDuo {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  align-items: stretch;
+}
 
-  .sideColDuo .sideSuggest {
-    grid-area: 2 / 1 / 3 / 3;
-  }
+.ideaDuoIdeaFirst {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  align-items: stretch;
 }
 
 .mainCol {

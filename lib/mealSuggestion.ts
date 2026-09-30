@@ -44,6 +44,52 @@ export function getMealSlot(now: Date = new Date()): MealSlot {
     return 'Breakfast'
 }
 
+// Day order for slot comparisons (planner "Dinner" maps onto "Main").
+export const SLOT_ORDER: MealSlot[] = ['Breakfast', 'Lunch', 'Snack', 'Main']
+
+/** Planner meal types (Breakfast/Lunch/Snack/Dinner) → our slot names. */
+export function normalizeMealType(type: string | null | undefined): MealSlot | null {
+    const t = String(type || '').trim().toLowerCase()
+    if (t === 'dinner' || t === 'main' || t === 'entree') return 'Main'
+    const match = SLOT_ORDER.find(s => s.toLowerCase() === t)
+    return match || null
+}
+
+/**
+ * Which slot the dashboard's "XXX idea" card should pitch for: start at the
+ * current time slot and take the first slot that has no meal planned today
+ * (wrapping once past midnight), so we never suggest what's already on the
+ * plan. When every slot is planned, fall back to Snack.
+ */
+export function selectIdeaSlot(now: Date, plannedMealTypes: (string | null | undefined)[]): MealSlot {
+    const planned = new Set(
+        plannedMealTypes.map(normalizeMealType).filter((s): s is MealSlot => s !== null)
+    )
+    const start = SLOT_ORDER.indexOf(getMealSlot(now))
+    for (let i = 0; i < SLOT_ORDER.length; i++) {
+        const slot = SLOT_ORDER[(start + i) % SLOT_ORDER.length]
+        if (!planned.has(slot)) return slot
+    }
+    return 'Snack'
+}
+
+/**
+ * True only when the idea's slot lands strictly after every planned meal
+ * (the idea fills the tail of the day); before/among planned meals → false.
+ * Used to decide whether the idea card sits left or right of Today's Meals.
+ */
+export function ideaIsAfterAllPlanned(
+    ideaSlot: MealSlot,
+    plannedMealTypes: (string | null | undefined)[]
+): boolean {
+    const orders = plannedMealTypes
+        .map(normalizeMealType)
+        .filter((s): s is MealSlot => s !== null)
+        .map(s => SLOT_ORDER.indexOf(s))
+    if (orders.length === 0) return false
+    return SLOT_ORDER.indexOf(ideaSlot) > Math.max(...orders)
+}
+
 function matchesSlot(recipe: SuggestableRecipe, slot: MealSlot): boolean {
     const types = (recipe.mealTypes || []).map(m => String(m || '').trim().toLowerCase())
     const genre = String(recipe.genre || '').toLowerCase()

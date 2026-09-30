@@ -1,4 +1,4 @@
-const { getMealSlot, selectSuggestedMeals, SLOT_LABELS, SLOT_EMOJI } = require('../lib/mealSuggestion');
+const { getMealSlot, selectSuggestedMeals, selectIdeaSlot, ideaIsAfterAllPlanned, normalizeMealType, SLOT_LABELS, SLOT_EMOJI } = require('../lib/mealSuggestion');
 
 const at = (h, m) => new Date(2026, 0, 5, h, m);
 
@@ -102,5 +102,74 @@ describe('selectSuggestedMeals', () => {
             recipe({ _id: 'mid2', name: 'Apple', mealTypes: ['Main'], rating: 4, timesCooked: 9 })
         ];
         expect(selectSuggestedMeals(recipes, 'Main').map(r => r._id)).toEqual(['top', 'mid2', 'mid1', 'low']);
+    });
+});
+
+describe('normalizeMealType', () => {
+    test('maps planner meal types onto slots', () => {
+        expect(normalizeMealType('Breakfast')).toBe('Breakfast');
+        expect(normalizeMealType('lunch')).toBe('Lunch');
+        expect(normalizeMealType('Snack')).toBe('Snack');
+        expect(normalizeMealType('Dinner')).toBe('Main');
+        expect(normalizeMealType(' dinner ')).toBe('Main');
+        expect(normalizeMealType('Entree')).toBe('Main');
+    });
+
+    test('returns null for unknown or empty types', () => {
+        expect(normalizeMealType('Dessert')).toBeNull();
+        expect(normalizeMealType('')).toBeNull();
+        expect(normalizeMealType(null)).toBeNull();
+        expect(normalizeMealType(undefined)).toBeNull();
+    });
+});
+
+describe('selectIdeaSlot', () => {
+    test('keeps the current slot when nothing is planned there', () => {
+        expect(selectIdeaSlot(at(12, 15), [])).toBe('Lunch');
+        expect(selectIdeaSlot(at(12, 15), ['Breakfast', 'Snack', 'Dinner'])).toBe('Lunch');
+    });
+
+    test('skips planned slots going forward (lunch planned → snack)', () => {
+        expect(selectIdeaSlot(at(12, 15), ['Breakfast', 'Lunch'])).toBe('Snack');
+    });
+
+    test('keeps advancing through the day (lunch + snack planned → dinner)', () => {
+        expect(selectIdeaSlot(at(12, 15), ['Breakfast', 'Lunch', 'Snack'])).toBe('Main');
+    });
+
+    test('falls back to Snack when every slot is planned', () => {
+        expect(selectIdeaSlot(at(12, 15), ['Breakfast', 'Lunch', 'Snack', 'Dinner'])).toBe('Snack');
+    });
+
+    test('treats planner Dinner as the Main slot', () => {
+        expect(selectIdeaSlot(at(19, 0), ['Dinner'])).toBe('Breakfast');
+        expect(selectIdeaSlot(at(12, 15), ['Breakfast', 'Dinner'])).toBe('Lunch');
+    });
+
+    test('wraps around past midnight when only earlier slots are free', () => {
+        expect(selectIdeaSlot(at(19, 0), ['Lunch', 'Snack', 'Dinner'])).toBe('Breakfast');
+    });
+});
+
+describe('ideaIsAfterAllPlanned', () => {
+    test('false when the idea sits before or among the planned meals', () => {
+        expect(ideaIsAfterAllPlanned('Lunch', ['Breakfast', 'Dinner'])).toBe(false);
+        expect(ideaIsAfterAllPlanned('Snack', ['Breakfast', 'Lunch', 'Dinner'])).toBe(false);
+        expect(ideaIsAfterAllPlanned('Breakfast', ['Lunch', 'Dinner'])).toBe(false);
+    });
+
+    test('true only when every planned meal comes earlier in the day', () => {
+        expect(ideaIsAfterAllPlanned('Main', ['Breakfast', 'Lunch'])).toBe(true);
+        expect(ideaIsAfterAllPlanned('Snack', ['Breakfast', 'Lunch'])).toBe(true);
+        expect(ideaIsAfterAllPlanned('Lunch', ['Breakfast'])).toBe(true);
+    });
+
+    test('a tie with a planned slot counts as among, not after', () => {
+        expect(ideaIsAfterAllPlanned('Snack', ['Breakfast', 'Snack'])).toBe(false);
+    });
+
+    test('no planned meals → never after', () => {
+        expect(ideaIsAfterAllPlanned('Main', [])).toBe(false);
+        expect(ideaIsAfterAllPlanned('Main', [null, 'Mystery'])).toBe(false);
     });
 });

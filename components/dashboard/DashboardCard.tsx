@@ -24,6 +24,7 @@ export interface DashboardCardProps {
     children: ReactNode
     className?: string
     bodyClassName?: string
+    titleClassName?: string
 }
 
 export default function DashboardCard({
@@ -37,6 +38,7 @@ export default function DashboardCard({
     children,
     className,
     bodyClassName,
+    titleClassName,
 }: DashboardCardProps) {
     const tone = ACCENTS[accent] || ACCENTS.olive
     const chipClasses = cn(
@@ -69,7 +71,7 @@ export default function DashboardCard({
                     ) : (
                         <span className={chipClasses}>{icon}</span>
                     )}
-                    <h3 className="truncate text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground md:text-sm md:font-black md:tracking-tight md:text-foreground">
+                    <h3 className={cn('truncate text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground md:text-sm md:font-black md:tracking-tight md:text-foreground', titleClassName)}>
                         {title}
                     </h3>
                 </div>

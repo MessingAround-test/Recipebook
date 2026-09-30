@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils'
 
 export interface ListRowProps {
     leading?: ReactNode
+    leadingClassName?: string
     title: ReactNode
     subtitle?: ReactNode
     meta?: ReactNode
@@ -12,11 +13,11 @@ export interface ListRowProps {
     className?: string
 }
 
-export default function ListRow({ leading, title, subtitle, meta, trailing, onClick, className }: ListRowProps) {
+export default function ListRow({ leading, leadingClassName, title, subtitle, meta, trailing, onClick, className }: ListRowProps) {
     const content = (
         <>
             {leading != null && (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted/70 text-base">
+                <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted/70 text-base', leadingClassName)}>
                     {leading}
                 </span>
             )}
