@@ -29,17 +29,17 @@ export function PageHeader({ title, actions, children, subtitle, icon, accent = 
     return (
         <div className={cn(
             /* soft card surface, dashboard-card sizing */
-            'flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 md:mb-6 rounded-2xl bg-card p-3.5 shadow-sm md:p-5',
+            'flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 md:mb-6 rounded-2xl bg-card p-3 shadow-sm md:p-5',
             className
         )}>
             <div className="flex min-w-0 items-center gap-3">
                 {icon && (
-                    <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', ACCENTS[accent])}>
+                    <span className={cn('flex h-8 w-8 md:h-9 md:w-9 shrink-0 items-center justify-center rounded-xl', ACCENTS[accent])}>
                         {icon}
                     </span>
                 )}
                 <div className="min-w-0">
-                    <h1 className="font-cursive truncate text-2xl leading-tight text-foreground md:text-3xl">{title}</h1>
+                    <h1 className="font-cursive truncate text-xl leading-tight text-foreground md:text-3xl">{title}</h1>
                     {subtitle && (
                         <p className="mt-0.5 truncate text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{subtitle}</p>
                     )}

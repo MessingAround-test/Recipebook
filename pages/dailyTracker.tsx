@@ -644,23 +644,23 @@ export default function DailyTracker() {
         <Layout title="Daily Food Tracker" description="Track and optimize your daily intake">
             <div className={`pb-24 md:pb-8 ${pageShell.shell}`}>
                 {/* ═══ COMPACT HEADER ═══ */}
-                <div className="mb-4 md:mb-8">
-                    <div className="flex items-center justify-between mb-3 md:mb-6">
-                        <PageHeader title="Daily Food Tracker" icon={<FiTarget size={18} />} accent="olive" subtitle="Track & Optimize" className="mb-0 rounded-2xl md:rounded-2xl bg-card p-3.5 md:p-4 shadow-sm" />
+                <div className="mb-3 md:mb-8">
+                    <div className="flex items-center justify-between mb-2 md:mb-6">
+                        <PageHeader title="Daily Food Tracker" icon={<FiTarget size={18} />} accent="olive" subtitle="Track & Optimize" className="mb-0 rounded-2xl bg-card shadow-sm" />
                         <div className="flex flex-col items-center shrink-0">
-                            <div className={`text-3xl md:text-4xl font-black ${dailyScore > 80 ? 'text-olive' : dailyScore > 50 ? 'text-butter' : 'text-berry'}`}>{dailyScore}%</div>
+                            <div className={`text-2xl md:text-4xl font-black ${dailyScore > 80 ? 'text-olive' : dailyScore > 50 ? 'text-butter' : 'text-berry'}`}>{dailyScore}%</div>
                             <div className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-muted-foreground">Daily Score</div>
                         </div>
                     </div>
-                    <div className="flex flex-wrap items-center justify-between gap-3 md:gap-4">
-                        <div className="flex flex-wrap gap-1 bg-foreground/[0.05] p-1 rounded-xl w-full sm:w-auto">
+                    <div className="flex flex-col sm:flex-row flex-nowrap items-stretch sm:items-center justify-between gap-2 md:gap-4">
+                        <div className="order-2 sm:order-1 flex flex-nowrap gap-0.5 bg-foreground/[0.05] p-0.5 rounded-xl w-full sm:w-auto sm:flex-1 overflow-hidden">
                             {([['daily', 'food'], ['stats', 'exercise'], ['weekly', 'stats'], ['trends', 'trends'], ['insights', 'insights'], ['symptoms', 'symptoms']] as const).map(([mode, label]) => (
-                                <button key={mode} onClick={() => setViewMode(mode)} className={`px-2.5 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === mode ? (mode === 'symptoms' ? 'bg-berry text-primary-foreground shadow-sm' : 'bg-olive text-primary-foreground shadow-sm') : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>
+                                <button key={mode} onClick={() => setViewMode(mode)} className={`flex-1 px-2 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-wider md:tracking-widest transition-all min-h-[36px] md:min-h-[40px] whitespace-nowrap ${viewMode === mode ? (mode === 'symptoms' ? 'bg-berry text-primary-foreground shadow-sm' : 'bg-olive text-primary-foreground shadow-sm') : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>
                             ))}
                         </div>
                         {(viewMode === 'daily' || viewMode === 'stats' || viewMode === 'insights' || viewMode === 'symptoms') && (
-                            <div className="flex items-center justify-between sm:justify-start gap-1 md:gap-3 bg-foreground/[0.05] p-1 md:p-1.5 rounded-xl w-full sm:w-auto sm:ml-auto">
-                                <button onClick={() => changeDate(-1)} className="p-2.5 md:p-2 hover:bg-foreground/10 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-90"><FiChevronLeft size={18} /></button>
+                            <div className="order-1 sm:order-2 flex items-center justify-between sm:justify-start gap-0.5 md:gap-3 bg-foreground/[0.05] p-0.5 md:p-1.5 rounded-xl w-full sm:w-auto sm:ml-auto">
+                                <button onClick={() => changeDate(-1)} className="p-2 md:p-2 hover:bg-foreground/10 rounded-lg transition-colors min-h-[36px] md:min-h-[40px] min-w-[36px] md:min-w-[40px] flex items-center justify-center active:scale-90"><FiChevronLeft size={18} /></button>
                                 <div className="relative group/date">
                                     <input
                                         type="date"
@@ -668,11 +668,11 @@ export default function DailyTracker() {
                                         onChange={(e) => setDate(e.target.value)}
                                         className="absolute inset-0 opacity-0 cursor-pointer z-10"
                                     />
-                                    <button className="font-black text-[11px] tracking-widest uppercase px-2 md:px-4 transition-all active:scale-95 min-h-[40px] flex items-center">
+                                    <button className="font-black text-[10px] md:text-[11px] tracking-widest uppercase px-2 md:px-4 transition-all active:scale-95 min-h-[36px] md:min-h-[40px] flex items-center">
                                         {date === getLocalDateString(new Date()) ? 'Today' : (() => { const [y, m, d] = date.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }); })()}
                                     </button>
                                 </div>
-                                <button onClick={() => changeDate(1)} className="p-2.5 md:p-2 hover:bg-foreground/10 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-90"><FiChevronRight size={18} /></button>
+                                <button onClick={() => changeDate(1)} className="p-2 md:p-2 hover:bg-foreground/10 rounded-lg transition-colors min-h-[36px] md:min-h-[40px] min-w-[36px] md:min-w-[40px] flex items-center justify-center active:scale-90"><FiChevronRight size={18} /></button>
                             </div>
                         )}
                     </div>

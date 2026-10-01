@@ -1223,6 +1223,18 @@ export default function Home() {
                         }}
                     />
 
+                    {/* Mobile Floating Action Button — one-hand reach to add items.
+                        Hidden while the add-item overlay is open; the header + stays. */}
+                    {!createNewIngredOpen && (
+                        <button
+                            className="sm:hidden fixed bottom-[8rem] right-4 z-[90] w-14 h-14 rounded-full bg-water text-primary-foreground shadow-2xl shadow-water/40 flex items-center justify-center active:scale-90 transition-all"
+                            onClick={() => setCreateNewIngredOpen(true)}
+                            aria-label="Add Item"
+                        >
+                            <Plus size={28} />
+                        </button>
+                    )}
+
                 </main>
             </div>
         </div>
