@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FiActivity, FiRefreshCw, FiZap } from 'react-icons/fi';
+import { FiActivity, FiRefreshCw, FiZap, FiDollarSign } from 'react-icons/fi';
 import { usePlanner } from '../planner/PlannerContext';
 
 const TABS = [
@@ -22,7 +22,7 @@ function scoreColor(score: number | null | undefined): string {
 }
 
 export default function DietaryPanel() {
-    const { analysis, analyzing, openModal, addSuggestedIngredient } = usePlanner();
+    const { analysis, analyzing, openModal, addSuggestedIngredient, numDays } = usePlanner();
     const [tab, setTab] = useState<'macro' | 'mineral' | 'vitamin'>('macro');
 
     const coverage = analysis?.nutrientCoverage || [];
@@ -43,7 +43,7 @@ export default function DietaryPanel() {
         <div className="glass-card bg-gradient-to-br from-emerald-500/5 to-transparent border-emerald-500/20 relative z-10 p-4">
             <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-emerald-400">
-                    <FiActivity /> Weeklong Dietary Requirements
+                    <FiActivity /> Dietary
                     {analyzing && <FiRefreshCw className="animate-spin text-emerald-400/60" size={14} />}
                 </h3>
                 {score != null && (
@@ -52,6 +52,22 @@ export default function DietaryPanel() {
                     </div>
                 )}
             </div>
+
+            {/* Cost summary strip (from the old Insights panel) */}
+            {analysis && (
+                <div className="flex items-center justify-between gap-3 mb-3 rounded-xl bg-black/20 border border-white/5 px-3 py-2">
+                    <div className="flex items-baseline gap-1.5">
+                        <FiDollarSign className="text-emerald-500 self-center" size={16} />
+                        <span className="text-lg font-black text-white">
+                            {analysis.averageDailyCostPerPerson?.toFixed(2) || analysis.averageDailyCost.toFixed(2)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">/person/day</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-medium text-right">
+                        {numDays}d total ${analysis.totalCost.toFixed(2)}
+                    </span>
+                </div>
+            )}
 
             {/* Tabs */}
             <div className="flex gap-1 mb-3 p-1 rounded-xl bg-black/20 border border-white/5">

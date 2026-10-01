@@ -10,6 +10,38 @@ import { saveRecipe } from '../../lib/recipeExtraction';
 
 const emptyPlan = (): Plan => ({ defaultServings: 2, plannedRecipes: [], everydayItems: [], numDays: 7, pantryPlacements: {} });
 
+const VIEW_MODE_KEY = 'plannerViewMode';
+const RAIL_TAB_KEY = 'plannerRailTab';
+export type ViewMode = 'grid' | 'day';
+export type RailTab = 'library' | 'pantry' | 'diet';
+
+// Mobile: 4-tab bottom bar (plan is the day flow; week is desktop-only).
+// Desktop: Plan/Week segmented control in the header + right rail.
+export type PlannerTab = 'plan' | 'week' | 'library' | 'pantry' | 'diet';
+
+// The day-flow view is the natural fit for a phone; desktop opens in grid.
+// A user's explicit toggle overrides the device default (persisted).
+function initialViewMode(): ViewMode {
+    try {
+        const stored = localStorage.getItem(VIEW_MODE_KEY);
+        if (stored === 'grid' && typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+            try { localStorage.setItem(VIEW_MODE_KEY, 'day'); } catch { /* ignore */ }
+            return 'day';
+        }
+        if (stored === 'grid' || stored === 'day') return stored;
+    } catch { /* localStorage may be unavailable */ }
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) return 'day';
+    return 'grid';
+}
+
+function initialRailTab(): RailTab {
+    try {
+        const stored = localStorage.getItem(RAIL_TAB_KEY);
+        if (stored === 'library' || stored === 'pantry' || stored === 'diet') return stored;
+    } catch { /* ignore */ }
+    return 'library';
+}
+
 export function usePlan() {
     const isAuthed = useFeatureGuard('weeklyPlanner');
 
@@ -34,9 +66,6 @@ export function usePlan() {
     const [modalSearch, setModalSearch] = useState('');
     const [browseTarget, setBrowseTarget] = useState<BrowseTarget | null>(null);
 
-    // Mobile pool drawer
-    const [mobilePoolOpen, setMobilePoolOpen] = useState(false);
-
     // Day AI suggestions
     const [suggestDay, setSuggestDay] = useState<string | null>(null);
     const [suggestData, setSuggestData] = useState<DaySuggestionResponse | null>(null);
@@ -52,6 +81,35 @@ export function usePlan() {
     // Export cutoff modal + day-fill quiz
     const [showExportModal, setShowExportModal] = useState(false);
     const [quizDay, setQuizDay] = useState<string | null>(null);
+
+    // Grid (week timeline) vs day-by-day flow + mobile bottom-tab routing
+    const [viewMode, setViewModeState] = useState<ViewMode>(initialViewMode);
+    const setViewMode = useCallback((mode: ViewMode) => {
+        setViewModeState(mode);
+        // Keep the bottom-tab router in sync (week tab toggled from the header)
+        setPlannerTabState(mode === 'grid' ? 'week' : 'plan');
+        try { localStorage.setItem(VIEW_MODE_KEY, mode); } catch { /* ignore */ }
+    }, []);
+
+    const [railTab, setRailTabState] = useState<RailTab>(initialRailTab);
+    const setRailTab = useCallback((t: RailTab) => {
+        setRailTabState(t);
+        try { localStorage.setItem(RAIL_TAB_KEY, t); } catch { /* ignore */ }
+    }, []);
+
+    // Mobile tab routing: plan (day flow), or one of the sheet tabs.
+    // 'week' is desktop-only. Keep synced with viewMode so both persist paths agree.
+    // Mobile opens on the Library: picking what to eat comes before the plan.
+    const [plannerTab, setPlannerTabState] = useState<PlannerTab>(() => {
+        const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+        if (isMobile) return 'library';
+        return initialViewMode() === 'grid' ? 'week' : 'plan';
+    });
+    const setPlannerTab = useCallback((t: PlannerTab) => {
+        setPlannerTabState(t);
+        if (t === 'plan') setViewMode('day');
+        if (t === 'week') setViewMode('grid');
+    }, []); // rail tabs ('library'|'pantry'|'diet') never touch viewMode
 
     // Editable date-range fields (typed text + tick to apply)
     const [draftStart, setDraftStart] = useState(startDate);
@@ -71,6 +129,44 @@ export function usePlan() {
 
     const dates = useMemo(() => getDateRange(startDate, numDays), [startDate, numDays]);
     const endDate = dates[dates.length - 1];
+
+    // Selected day in the day-flow pane. Shared so the Library pool cards can
+    // place items onto the visible day; falls back to the first date in range.
+    const [selectedDayRaw, setSelectedDay] = useState<string>(startDate);
+    const selectedDay = useMemo(
+        () => (selectedDayRaw && dates.includes(selectedDayRaw) ? selectedDayRaw : dates[0]),
+        [selectedDayRaw, dates]
+    );
+
+    // Pool item awaiting meal choice ('Place into <day>' popup, shown from the Library)
+    const [placeTray, setPlaceTray] = useState<PlannedRecipeItem | null>(null);
+
+    // Period planning progress: mains coverage (one main per day is the goal,
+    // scored off both placed meals and items still in the pool), plus optional
+    // lunch / breakfast counts. Undecided items count toward mains — they are
+    // unassigned meals waiting to be placed; an Average Meal counts as a main.
+    const planProgress = useMemo(() => {
+        const datesSet = new Set(dates);
+        const mainDays = new Set<string>();
+        const lunchDays = new Set<string>();
+        const breakfastDays = new Set<string>();
+        let undecided = 0;
+        (plan.plannedRecipes || []).forEach((r: PlannedRecipeItem) => {
+            if (r.day === 'Undecided') { undecided++; return; }
+            if (!datesSet.has(r.day)) return;
+            if (r.isAverageMeal) { mainDays.add(r.day); return; }
+            if (r.mealType === 'Dinner') mainDays.add(r.day);
+            else if (r.mealType === 'Lunch') lunchDays.add(r.day);
+            else if (r.mealType === 'Breakfast') breakfastDays.add(r.day);
+        });
+        return {
+            mains: mainDays.size + undecided,
+            mainTarget: dates.length,
+            lunches: lunchDays.size,
+            breakfasts: breakfastDays.size,
+            days: dates.length
+        };
+    }, [plan.plannedRecipes, dates]);
 
     const planWithRange = useMemo(() => ({ ...plan, numDays }), [plan, numDays]);
     // Content-only snapshot (no startDate) so navigating weeks never autosaves the wrong plan
@@ -613,13 +709,13 @@ export function usePlan() {
         e.preventDefault();
     }, []);
 
-    const handleDrop = useCallback((e, targetDay: string, targetMealType: string | null = null) => {
-        e.preventDefault();
-        const draggedId = e.dataTransfer.getData('text/plain');
-
-        setPlan(prev => {
-            const nextRecipes = prev.plannedRecipes.map(r => {
-                if ((r.id && r.id === draggedId) || (r._id && r._id === draggedId)) {
+    // Shared mover: relocates one planned block to a day + meal slot. Used by
+    // drag & drop and by the day-flow's tap-to-place.
+    const movePlannedRecipe = useCallback((id: string, targetDay: string, targetMealType: string | null = null) => {
+        setPlan(prev => ({
+            ...prev,
+            plannedRecipes: prev.plannedRecipes.map(r => {
+                if ((r.id && r.id === id) || (r._id && r._id === id)) {
                     return {
                         ...r,
                         day: targetDay,
@@ -627,10 +723,16 @@ export function usePlan() {
                     };
                 }
                 return r;
-            });
-            return { ...prev, plannedRecipes: nextRecipes };
-        });
+            })
+        }));
     }, []);
+
+    const handleDrop = useCallback((e, targetDay: string, targetMealType: string | null = null) => {
+        e.preventDefault();
+        const draggedId = e.dataTransfer.getData('text/plain');
+        if (!draggedId) return;
+        movePlannedRecipe(draggedId, targetDay, targetMealType);
+    }, [movePlannedRecipe]);
 
     // Drag an item onto the Split zone to split it in half
     const handleSplitDrop = useCallback((e) => {
@@ -973,12 +1075,22 @@ export function usePlan() {
         handleDragStart,
         handleDragOver,
         handleDrop,
+        movePlannedRecipe,
         handleSplitDrop,
         handleCombineDrop,
+        viewMode,
+        setViewMode,
+        railTab,
+        setRailTab,
+        plannerTab,
+        setPlannerTab,
+        selectedDay,
+        setSelectedDay,
+        placeTray,
+        setPlaceTray,
+        planProgress,
         carbSuggestions,
         undecidedRecipes,
-        mobilePoolOpen,
-        setMobilePoolOpen,
         suggestDay,
         suggestData,
         suggesting,

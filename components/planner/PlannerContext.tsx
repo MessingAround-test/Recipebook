@@ -1,4 +1,6 @@
 import { createContext, useContext } from 'react';
+import type { PlannerTab, RailTab, ViewMode } from './usePlan';
+import type { PlannedRecipeItem } from './types';
 
 export interface PlannerApi {
     isAuthed: boolean;
@@ -72,12 +74,22 @@ export interface PlannerApi {
     handleDragStart: (e: any, item: any) => void;
     handleDragOver: (e: any) => void;
     handleDrop: (e: any, day: string, meal?: string | null) => void;
+    movePlannedRecipe: (id: string, day: string, meal?: string | null) => void;
     handleSplitDrop: (e: any) => void;
     handleCombineDrop: (e: any) => void;
+    viewMode: ViewMode;
+    setViewMode: (mode: ViewMode) => void;
+    railTab: RailTab;
+    setRailTab: (t: RailTab) => void;
+    plannerTab: PlannerTab;
+    setPlannerTab: (t: PlannerTab) => void;
+    selectedDay: string;
+    setSelectedDay: (d: string) => void;
+    placeTray: PlannedRecipeItem | null;
+    setPlaceTray: (v: PlannedRecipeItem | null) => void;
+    planProgress: { mains: number; mainTarget: number; lunches: number; breakfasts: number; days: number };
     carbSuggestions: any[];
     undecidedRecipes: any[];
-    mobilePoolOpen: boolean;
-    setMobilePoolOpen: (v: boolean) => void;
     suggestDay: string | null;
     suggestData: any;
     suggesting: boolean;

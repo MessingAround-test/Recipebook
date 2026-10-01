@@ -23,8 +23,12 @@ interface WeekTimelineProps {
     dayRefs?: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
 }
 
+/**
+ * Desktop Week view: the drag-drop grid — day headers with quiz/AI-fill and
+ * cost, four meal rows.
+ */
 export default function WeekTimeline({ dayRefs }: WeekTimelineProps) {
-    const { dates, plan, analysis, openDaySuggest, openDayQuiz } = usePlanner();
+    const { dates, plan, analysis, openDayQuiz, openDaySuggest } = usePlanner();
 
     const dayCost = (date: string) => {
         let planned = 0;
@@ -40,11 +44,10 @@ export default function WeekTimeline({ dayRefs }: WeekTimelineProps) {
         <div className="overflow-x-auto pb-4 custom-scrollbar">
             <div
                 className="grid min-w-max"
-                style={{ gridTemplateColumns: `minmax(84px, 5.5rem) repeat(${dates.length}, minmax(11rem, 1fr))` }}
+                style={{ gridTemplateColumns: `minmax(64px, 4rem) repeat(${dates.length}, minmax(10rem, 1fr))` }}
             >
                 {/* Corner cell */}
-                <div className="sticky left-0 z-20 bg-background border-b border-white/10 px-3 py-3 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-muted-foreground/40" />
+                <div className="sticky left-0 z-20 bg-background border-b border-white/10 px-2 flex items-center">
                     <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Meal</span>
                 </div>
 
@@ -53,7 +56,7 @@ export default function WeekTimeline({ dayRefs }: WeekTimelineProps) {
                     <div
                         key={d}
                         ref={(el) => { if (dayRefs) dayRefs.current[d] = el; }}
-                        className="border-b border-white/10 px-3 py-2.5 flex flex-col gap-1"
+                        className="border-b border-white/10 px-2 py-2 flex flex-col"
                     >
                         <div className="flex items-start justify-between gap-1">
                             <span className="text-xs font-black uppercase tracking-wider">{formatShortDate(d)}</span>
@@ -83,8 +86,7 @@ export default function WeekTimeline({ dayRefs }: WeekTimelineProps) {
                 {/* Meal rows */}
                 {MEALS.map(meal => (
                     <Fragment key={meal}>
-                        <div className="sticky left-0 z-10 bg-background px-3 py-3 flex items-center gap-2 border-t border-white/5">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500/60 shrink-0" />
+                        <div className="sticky left-0 z-10 bg-background px-2 flex items-center border-t border-white/5">
                             <span className={`text-[10px] font-black uppercase tracking-widest ${MEAL_COLORS[meal] || 'text-muted-foreground'}`}>{MEAL_LABELS[meal] || meal}</span>
                         </div>
                         {dates.map(date => (

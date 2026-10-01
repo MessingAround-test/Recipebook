@@ -33,6 +33,12 @@ export function formatShortDate(dateStr: string): string {
     return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+// Minimal chip label for the day selector strip: weekday + day number only.
+export function formatDayChip(dateStr: string): string {
+    const d = parseDateStr(dateStr);
+    return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
+}
+
 export function formatRangeLabel(startDate: string, numDays: number): string {
     const endDate = addDays(startDate, numDays - 1);
     return `${formatShortDate(startDate)} \u2013 ${formatShortDate(endDate)}`;

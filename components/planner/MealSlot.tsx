@@ -10,6 +10,10 @@ interface MealSlotProps {
     timeline?: boolean;
 }
 
+/**
+ * Meal slot: label, always-visible "+" (tap to fill) and cards. Pantry
+ * pinning folds into the same "+" flow so no extra chrome per slot.
+ */
 export default function MealSlot({ date, meal, compact = false, timeline = false }: MealSlotProps) {
     const { plan, analysis, handleDragOver, handleDrop, openModal, togglePantryPlacement } = usePlanner();
     const [pantryOpen, setPantryOpen] = useState(false);
@@ -26,7 +30,7 @@ export default function MealSlot({ date, meal, compact = false, timeline = false
         <div className="flex items-center gap-0.5">
             {plan.everydayItems.length > 0 && (
                 <button
-                    onClick={() => setPantryOpen(!open)}
+                    onClick={(e) => { e.stopPropagation(); setPantryOpen(!open); }}
                     title="Pin pantry item"
                     className={`p-0.5 rounded transition-colors ${open ? 'text-emerald-400 bg-emerald-500/10' : 'text-muted-foreground/40 hover:text-emerald-400 hover:bg-emerald-500/10'}`}
                 >
@@ -34,7 +38,7 @@ export default function MealSlot({ date, meal, compact = false, timeline = false
                 </button>
             )}
             <button
-                onClick={() => openModal(false, { day: date, mealType: meal })}
+                onClick={(e) => { e.stopPropagation(); openModal(false, { day: date, mealType: meal }); }}
                 title={`Add to ${meal}`}
                 className="p-0.5 rounded text-muted-foreground/40 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
             >
@@ -89,12 +93,12 @@ export default function MealSlot({ date, meal, compact = false, timeline = false
 
     return (
         <div
-            className={`flex flex-col bg-black/20 rounded-xl border border-white/5 transition-colors ${timeline ? 'm-0.5 min-h-[110px] p-2' : 'p-3 min-h-[110px]'}`}
+            className={`flex flex-col bg-black/20 rounded-xl border border-white/5 transition-colors ${timeline ? 'm-0.5 min-h-[96px] p-2' : 'p-2.5 min-h-[96px]'}`}
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, date, meal)}
         >
             {!timeline && (
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2">
                     <h3 className={`text-xs font-bold uppercase tracking-wider ${meal === 'Snack' ? 'text-amber-400/80' : 'text-muted-foreground'}`}>{meal}</h3>
                     {headerButtons(14, pantryOpen)}
                 </div>
@@ -110,15 +114,18 @@ export default function MealSlot({ date, meal, compact = false, timeline = false
             {pinnedChips()}
 
             {mealRecipes.length > 0 ? (
-                <div className={`${timeline ? 'space-y-1.5' : 'space-y-2'} flex-1`}>
+                <div className={`${timeline ? 'space-y-1.5' : 'space-y-1.5'} flex-1`}>
                     {mealRecipes.map((r, idx) => (
                         <RecipeCard key={r.id || r._id || idx} item={r} analysisData={analysisDataFor(r)} compact={compact || timeline} />
                     ))}
                 </div>
             ) : (
-                <div className="flex-1 flex items-center justify-center border border-dashed border-white/5 rounded-lg text-muted-foreground/30 text-[10px] font-bold uppercase tracking-widest mt-1">
-                    Drop here
-                </div>
+                <button
+                    onClick={() => openModal(false, { day: date, mealType: meal })}
+                    className="flex-1 flex items-center justify-center border border-dashed border-white/5 rounded-lg text-muted-foreground/30 text-[10px] font-bold uppercase tracking-widest mt-1 min-h-[28px] hover:border-emerald-500/30 hover:text-emerald-400/60 transition-colors"
+                >
+                    +
+                </button>
             )}
         </div>
     );

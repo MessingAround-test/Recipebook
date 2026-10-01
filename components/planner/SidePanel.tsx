@@ -1,38 +1,46 @@
-import { useState } from 'react';
-import { FiCoffee, FiActivity, FiBookOpen } from 'react-icons/fi';
+'use client';
+
 import RecipePool from './RecipePool';
 import PantryPanel from './PantryPanel';
-import InsightsPanel from './InsightsPanel';
+import DietaryPanel from './DietaryPanel';
+import { usePlanner } from './PlannerContext';
+import type { RailTab } from './usePlan';
 
-type Tab = 'library' | 'pantry' | 'insights';
+/**
+ * Unified Library / Pantry / Diet panel. Renders one tab's content without
+ * its own tab bar when `embedded` (bottom tabs own navigation on mobile);
+ * standalone mode shows the rail tab switcher (desktop right column).
+ */
+export default function SidePanel({ tab, embedded = false }: { tab?: RailTab; embedded?: boolean }) {
+    const { railTab, setRailTab } = usePlanner();
+    const active: RailTab = tab || railTab;
 
-const TABS: { key: Tab; label: string; icon: any }[] = [
-    { key: 'library', label: 'Library', icon: FiBookOpen },
-    { key: 'pantry', label: 'Pantry', icon: FiCoffee },
-    { key: 'insights', label: 'Insights', icon: FiActivity }
-];
+    const content = (
+        <div className="w-full">
+            {active === 'library' && <RecipePool />}
+            {active === 'pantry' && <PantryPanel />}
+            {active === 'diet' && <DietaryPanel />}
+        </div>
+    );
 
-export default function SidePanel() {
-    const [tab, setTab] = useState<Tab>('library');
+    if (embedded) return content;
 
     return (
-        <div className="w-full">
-            <div className="flex gap-1 mb-4 p-1 rounded-xl bg-black/20 border border-white/5">
-                {TABS.map(t => (
+        <div className="w-full flex flex-col min-h-0">
+            <div className="flex gap-1 mb-3 shrink-0">
+                {(['library', 'pantry', 'diet'] as RailTab[]).map(t => (
                     <button
-                        key={t.key}
-                        onClick={() => setTab(t.key)}
-                        className={`flex-1 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2 py-2 rounded-lg transition-all ${tab === t.key
+                        key={t}
+                        onClick={() => setRailTab(t)}
+                        className={`flex-1 text-[10px] font-black uppercase tracking-widest px-2 py-2 rounded-lg transition-all capitalize ${active === t
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                            : 'text-muted-foreground hover:text-white hover:bg-white/5 border border-transparent'}`}
+                            : 'bg-white/5 text-muted-foreground hover:text-white hover:bg-white/10 border border-transparent'}`}
                     >
-                        <t.icon size={12} /> {t.label}
+                        {t}
                     </button>
                 ))}
             </div>
-            {tab === 'library' && <RecipePool />}
-            {tab === 'pantry' && <PantryPanel />}
-            {tab === 'insights' && <InsightsPanel />}
+            <div className="flex-1 min-h-0">{content}</div>
         </div>
     );
 }
