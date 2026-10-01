@@ -78,7 +78,7 @@ export default function QuickTimerCreator({ onStart, onDone }: QuickTimerCreator
                         key={m}
                         type="button"
                         onClick={() => setMinutes(String(m))}
-                        className="px-3 py-1.5 rounded-full text-[11px] font-bold border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                        className="px-3 py-1.5 rounded-full text-[11px] font-bold border border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
                     >
                         {m} min
                     </button>
@@ -90,8 +90,8 @@ export default function QuickTimerCreator({ onStart, onDone }: QuickTimerCreator
                 disabled={!canStart}
                 onClick={start}
                 className={`w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all active:scale-95 ${canStart
-                    ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-xl shadow-emerald-500/20'
-                    : 'bg-white/5 text-muted-foreground cursor-not-allowed'}`}
+                    ? 'bg-plum text-primary-foreground shadow-xl shadow-plum/20'
+                    : 'bg-foreground/5 text-muted-foreground cursor-not-allowed'}`}
             >
                 <Play size={15} /> Start timer
             </button>

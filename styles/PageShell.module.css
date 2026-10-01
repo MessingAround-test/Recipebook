@@ -1,0 +1,44 @@
+/* Shared page shell — same rhythm as the dashboard: hairline horizontal inset
+   on phones (--edge-pad) so blocks run edge to edge together, centred column on
+   desktop. Bottom padding is left to each page (FAB/taskbar spacing).
+   Opt-out from the global mobile "flatten every radius" rule so the soft card
+   look actually shows on phones. */
+.shell {
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding-top: 0.25rem;
+  padding-inline: var(--edge-pad);
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .shell {
+    padding-top: 0.5rem;
+    padding-inline: 1rem;
+    max-width: 76rem;
+  }
+}
+
+/* Narrower centred column for utility pages (quick tools). */
+@media (min-width: 768px) {
+  .narrow {
+    max-width: 48rem;
+  }
+}
+
+/* Relax the global "flatten every radius on mobile" rule inside the shell. */
+@media (max-width: 768px) {
+  .shell :global(.rounded-lg) {
+    border-radius: 0.5rem !important;
+  }
+
+  .shell :global(.rounded-xl) {
+    border-radius: 0.75rem !important;
+  }
+
+  .shell :global(.rounded-2xl) {
+    border-radius: 1rem !important;
+  }
+}

@@ -23,6 +23,7 @@ import {
     type ToolKind
 } from '../lib/quickTools'
 import { BookOpen, Check, Clock, Flame, Search, Scale, Timer, TimerReset, X, Zap, type LucideIcon } from 'lucide-react'
+import pageShell from '../styles/PageShell.module.css'
 
 const USAGE_KEY = 'quickTools-usage-v1'
 
@@ -184,16 +185,21 @@ export default function QuickTools() {
 
     return (
         <Layout title="Quick Tools" description="Timers, converters and kitchen guides">
-            <div className="w-full max-w-3xl mx-auto px-2 sm:px-4 pb-28 sm:pb-10">
+            <div className={`pb-28 sm:pb-10 ${pageShell.shell} ${pageShell.narrow}`}>
 
                 {/* Header */}
-                <div className="mb-4">
-                    <h1 className="text-2xl sm:text-3xl font-bold m-0 tracking-tight flex items-center gap-2">
-                        <Zap size={24} className="text-emerald-400" /> Quick Tools
-                    </h1>
-                    <p className="m-0 mt-1 text-xs text-muted-foreground">
-                        Timers, converters and kitchen guides — most-used first.
-                    </p>
+                <div className="mb-4 mt-2">
+                    <div className="flex items-center gap-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-plum/15 text-plum">
+                            <Zap size={18} />
+                        </span>
+                        <div className="min-w-0">
+                            <h1 className="font-cursive text-2xl leading-tight text-foreground md:text-3xl m-0">Quick Tools</h1>
+                            <p className="m-0 mt-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground truncate">
+                                Timers, converters and kitchen guides — most-used first
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Search */}
@@ -211,7 +217,7 @@ export default function QuickTools() {
                             type="button"
                             onClick={() => setQuery('')}
                             aria-label="Clear search"
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-white/5"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-foreground/5"
                         >
                             <X size={15} />
                         </button>
@@ -226,8 +232,8 @@ export default function QuickTools() {
                             type="button"
                             onClick={() => setFilter(f.id)}
                             className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest border transition-colors ${filter === f.id
-                                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
-                                : 'border-border text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
+                                ? 'bg-plum/15 border-plum/40 text-plum'
+                                : 'border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5'}`}
                         >
                             {f.label}
                         </button>
@@ -289,16 +295,16 @@ export default function QuickTools() {
                                         key={item.id}
                                         type="button"
                                         onClick={() => openItem(item)}
-                                        className="group flex items-start gap-3 text-left p-4 rounded-2xl border border-border bg-card/50 hover:bg-white/[0.04] hover:border-accent/40 transition-all active:scale-[0.98]"
+                                        className="group flex items-start gap-3 text-left p-4 rounded-2xl border border-border bg-card hover:bg-muted/60 hover:border-plum/40 transition-all active:scale-[0.98]"
                                     >
-                                        <span className="shrink-0 w-10 h-10 rounded-xl bg-accent/10 text-accent border border-accent/20 flex items-center justify-center">
+                                        <span className="shrink-0 w-10 h-10 rounded-xl bg-plum/15 text-plum flex items-center justify-center">
                                             <Icon size={18} />
                                         </span>
                                         <span className="min-w-0 flex-1">
                                             <span className="flex items-center gap-2 min-w-0">
                                                 <span className="font-semibold text-sm truncate">{item.title}</span>
                                                 {used > 0 && (
-                                                    <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-emerald-400/80">
+                                                    <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-plum/80">
                                                         {used}×
                                                     </span>
                                                 )}

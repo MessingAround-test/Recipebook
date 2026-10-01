@@ -387,12 +387,12 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
             {isOverlay && (
                 <div className="flex items-center min-h-[22px] pr-10">
                     {justSaved ? (
-                        <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-black uppercase tracking-[0.25em] animate-in fade-in slide-in-from-top-1 duration-300">
+                        <div className="flex items-center gap-1.5 text-olive text-[10px] font-black uppercase tracking-[0.25em] animate-in fade-in slide-in-from-top-1 duration-300">
                             <Check size={13} strokeWidth={3} />
                             {editMode ? 'Saved' : 'Added to list'}
                         </div>
                     ) : (
-                        <div className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">{editMode ? 'Edit Item' : 'Add Item'}</div>
+                        <div className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/40">{editMode ? 'Edit Item' : 'Add Item'}</div>
                     )}
                 </div>
             )}
@@ -415,7 +415,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                     </div>
                     {editMode && showRefreshPrompt && !isAiLoading && (
                         <div className="flex items-center gap-2 mt-1 animate-in fade-in duration-200">
-                            <span className="text-[9px] text-white/40 font-medium">Name changed</span>
+                            <span className="text-[9px] text-foreground/40 font-medium">Name changed</span>
                             <button
                                 type="button"
                                 onClick={handleRefreshDefaults}
@@ -435,7 +435,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                         <>
                             <div className="flex items-center justify-between">
                                 <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Note (optional)</label>
-                                <button type="button" onClick={() => setIsNoteOpen(false)} className="text-[8px] text-muted-foreground hover:text-white uppercase font-black transition-colors">Hide</button>
+                                <button type="button" onClick={() => setIsNoteOpen(false)} className="text-[8px] text-muted-foreground hover:text-foreground uppercase font-black transition-colors">Hide</button>
                             </div>
                             <input
                                 name="note"
@@ -444,14 +444,14 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                                 placeholder="e.g. Extra fresh, organic..."
                                 onChange={handleChange}
                                 value={formData.note}
-                                className="input-modern !py-2 !px-3 bg-background/40 border-white/5 focus:bg-background/60 transition-all text-xs"
+                                className="input-modern !py-2 !px-3 bg-background/40 border-border focus:bg-background/60 transition-all text-xs"
                             />
                         </>
                     ) : (
                         <button 
                             type="button" 
                             onClick={() => setIsNoteOpen(true)} 
-                            className="text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-white flex items-center gap-2 transition-colors w-fit ml-1"
+                            className="text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors w-fit ml-1"
                         >
                             <span className="text-accent text-xs">+</span> Add Note
                         </button>
@@ -460,10 +460,10 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
             )}
 
             {isAiLoading && (isOverlay ? (
-                <div className="flex flex-col items-center gap-2.5 py-4 px-4 bg-white/[0.03] rounded-2xl border border-white/10 animate-in fade-in duration-300">
+                <div className="flex flex-col items-center gap-2.5 py-4 px-4 bg-foreground/[0.03] rounded-2xl border border-border animate-in fade-in duration-300">
                     <div className="flex items-center gap-2.5">
                         <Loader2 size={14} className="animate-spin text-accent shrink-0" />
-                        <span className="text-[10px] text-white/60 font-black uppercase tracking-[0.2em] text-center">
+                        <span className="text-[10px] text-foreground/60 font-black uppercase tracking-[0.2em] text-center">
                             Looking up {formData.name ? `"${formData.name}"` : 'details'}…
                         </span>
                     </div>
@@ -471,7 +471,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                         <button
                             type="button"
                             onClick={cancelLookup}
-                            className="text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-white border border-white/10 hover:border-white/25 rounded-full px-4 py-2.5 transition-all active:scale-95 animate-in fade-in duration-300 min-h-[38px]"
+                            className="text-[10px] font-black uppercase tracking-widest text-foreground/50 hover:text-foreground border border-border hover:border-white/25 rounded-full px-4 py-2.5 transition-all active:scale-95 animate-in fade-in duration-300 min-h-[38px]"
                         >
                             Cancel — enter manually
                         </button>
@@ -485,7 +485,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
             ))}
 
             {fieldsRevealed && (
-                <div className={`flex flex-col gap-3 ${isOverlay ? '' : 'animate-in fade-in slide-in-from-top-4 duration-500 pt-3 border-t border-white/5'}`}>
+                <div className={`flex flex-col gap-3 ${isOverlay ? '' : 'animate-in fade-in slide-in-from-top-4 duration-500 pt-3 border-t border-border'}`}>
                     <div className={`grid grid-cols-2 ${isOverlay ? 'gap-3' : 'gap-2'}`}>
                         <div className="flex flex-col gap-1">
                             <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Quantity</label>
@@ -504,14 +504,14 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                                     value={formData.quantity}
                                     className={`input-modern ${isOverlay
                                         ? '!py-3 !px-3.5 !pr-[5.5rem] !rounded-xl text-sm font-bold'
-                                        : '!py-2 !px-3 bg-background/40 border-white/5 focus:ring-2 focus:ring-accent/20 text-xs'}`}
+                                        : '!py-2 !px-3 bg-background/40 border-border focus:ring-2 focus:ring-accent/20 text-xs'}`}
                                 />
                                 {isOverlay && (
                                     <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
                                         <button
                                             type="button"
                                             onClick={() => adjustQuantity(-1)}
-                                            className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white flex items-center justify-center active:scale-90 transition-all"
+                                            className="h-8 w-8 rounded-lg bg-foreground/5 hover:bg-foreground/10 border border-border text-foreground/60 hover:text-foreground flex items-center justify-center active:scale-90 transition-all"
                                             tabIndex={-1}
                                             aria-label="Decrease quantity"
                                         >
@@ -520,7 +520,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                                         <button
                                             type="button"
                                             onClick={() => adjustQuantity(1)}
-                                            className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white flex items-center justify-center active:scale-90 transition-all"
+                                            className="h-8 w-8 rounded-lg bg-foreground/5 hover:bg-foreground/10 border border-border text-foreground/60 hover:text-foreground flex items-center justify-center active:scale-90 transition-all"
                                             tabIndex={-1}
                                             aria-label="Increase quantity"
                                         >
@@ -540,7 +540,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                                 required
                                 className={`input-modern ${isOverlay
                                     ? '!py-3 !px-3 !rounded-xl text-sm font-bold'
-                                    : '!py-2 !px-3 bg-background/40 border-white/5 focus:ring-2 focus:ring-accent/20 text-xs'}`}
+                                    : '!py-2 !px-3 bg-background/40 border-border focus:ring-2 focus:ring-accent/20 text-xs'}`}
                             >
                                 {Object.keys(quantity_unit_conversions)
                                     .filter(item => !["can", "bottle", "package", "stick", "bunch", "head", "stalk", "stem", "bag", "box", "tray", "tub"].includes(item))
@@ -571,7 +571,7 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
             <div className={isOverlay ? 'mt-auto pt-2' : 'mt-1'}>
                 <Button
                     className={`w-full font-black uppercase tracking-[0.2em] text-[10px] ${isOverlay ? 'py-4 rounded-2xl' : 'py-3.5 rounded-xl'} transition-all active:scale-95 flex items-center justify-center gap-2.5 shadow-xl ${fieldsRevealed
-                        ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-500/20'
+                        ? 'bg-olive hover:bg-olive text-black shadow-olive/20'
                         : 'bg-accent/20 hover:bg-accent/30 text-accent border border-accent/20 shadow-none'
                         }`}
                     type="submit"
@@ -608,14 +608,14 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
                     role="dialog"
                     aria-modal="true"
                     aria-label="Add item to shopping list"
-                    className="relative z-10 w-full max-w-md h-[min(560px,calc(100dvh_-_1.5rem))] flex flex-col rounded-3xl border border-white/10 bg-[#0a0d0c] shadow-[0_32px_80px_-16px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300"
+                    className="relative z-10 w-full max-w-md h-[min(560px,calc(100dvh_-_1.5rem))] flex flex-col rounded-3xl border border-border bg-[#0a0d0c] shadow-[0_32px_80px_-16px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300"
                 >
                     <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/50 to-transparent pointer-events-none" />
                     {onCancel && (
                         <button
                             type="button"
                             onClick={onCancel}
-                            className="absolute top-3.5 right-3.5 text-white/50 hover:text-white transition-colors p-2.5 hover:bg-white/5 rounded-full flex items-center justify-center min-h-[40px] min-w-[40px] z-[70]"
+                            className="absolute top-3.5 right-3.5 text-foreground/50 hover:text-foreground transition-colors p-2.5 hover:bg-foreground/5 rounded-full flex items-center justify-center min-h-[40px] min-w-[40px] z-[70]"
                             aria-label="Close"
                         >
                             <X size={18} />
@@ -630,16 +630,16 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
     }
 
     return (
-        <div className="bg-secondary/40 backdrop-blur-md rounded-xl md:rounded-[2rem] border border-white/10 w-full max-w-none md:max-w-[550px] mx-auto mb-3 md:mb-6 p-3 md:p-5 relative min-h-[110px] group/add-item animate-in fade-in zoom-in-95 duration-500 shadow-2xl shadow-black/20">
+        <div className="bg-secondary/40 backdrop-blur-md rounded-xl md:rounded-[2rem] border border-border w-full max-w-none md:max-w-[550px] mx-auto mb-3 md:mb-6 p-3 md:p-5 relative min-h-[110px] group/add-item animate-in fade-in zoom-in-95 duration-500 shadow-2xl shadow-black/20">
             {/* Improved visibility highlight */}
             <div className="absolute inset-0 bg-gradient-to-br from-accent/15 via-transparent to-accent/5 opacity-40 pointer-events-none" />
-            <div className="absolute inset-0 bg-white/[0.02] pointer-events-none" />
+            <div className="absolute inset-0 bg-foreground/[0.02] pointer-events-none" />
 
             {onCancel && (
                 <button
                     type="button"
                     onClick={onCancel}
-                    className="absolute top-3 right-3 md:top-6 md:right-6 text-muted-foreground hover:text-white transition-colors z-[70] p-2.5 hover:bg-white/5 rounded-full flex items-center justify-center min-h-[40px] min-w-[40px]"
+                    className="absolute top-3 right-3 md:top-6 md:right-6 text-muted-foreground hover:text-foreground transition-colors z-[70] p-2.5 hover:bg-foreground/5 rounded-full flex items-center justify-center min-h-[40px] min-w-[40px]"
                 >
                     <X size={18} />
                 </button>
@@ -649,3 +649,4 @@ export default function AddShoppingItem({ shoppingListId, handleSubmit, hideCate
         </div>
     );
 }
+

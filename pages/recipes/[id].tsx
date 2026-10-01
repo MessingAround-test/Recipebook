@@ -2524,7 +2524,7 @@ export default function RecipeDetail() {
                             </Button>
                             <Button
                     onClick={() => { startCooking() }}
-                                className="flex-1 h-12 sm:h-14 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base sm:text-lg rounded-md shadow-sm transition-all active:scale-[0.99] flex items-center justify-center gap-2"
+                                className="flex-1 h-12 sm:h-14 bg-olive hover:bg-olive/85 text-primary-foreground font-bold text-base sm:text-lg rounded-md shadow-sm transition-all active:scale-[0.99] flex items-center justify-center gap-2"
                             >
                                 <ChefHat className="w-5 h-5" />
                                 Start Cooking
@@ -2616,7 +2616,7 @@ export default function RecipeDetail() {
                                             })}
                                             className={`w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
                                                 checkedPrep.has(index)
-                                                    ? 'bg-emerald-500 border-emerald-500 text-white'
+                                                    ? 'bg-olive border-olive text-primary-foreground'
                                                     : item.optional ? 'border-border/60 hover:border-accent/50' : 'border-border hover:border-accent/70'
                                             }`}
                                         >
@@ -2876,7 +2876,7 @@ export default function RecipeDetail() {
                                                 <div className="flex items-center gap-3 mt-2">
                                                     <button
                                                         onClick={() => saveRecipeTimerEdit(timer.id)}
-                                                        className="text-xs font-bold text-accent hover:text-emerald-400 transition-colors"
+                                                        className="text-xs font-bold text-accent hover:text-berry transition-colors"
                                                     >
                                                         Save
                                                     </button>
@@ -2958,7 +2958,7 @@ export default function RecipeDetail() {
                                 />
                                 <button
                                     onClick={addRecipeTimer}
-                                    className="text-xs font-bold text-accent hover:text-emerald-400 transition-colors"
+                                    className="text-xs font-bold text-accent hover:text-berry transition-colors"
                                 >
                                     Add
                                 </button>
@@ -2991,7 +2991,7 @@ export default function RecipeDetail() {
                                                 onChange={(e) => updateStepInvolvement(idx, e.target.value)}
                                                 className={`bg-transparent outline-none cursor-pointer text-[10px] font-bold uppercase tracking-[0.08em] rounded-md px-1.5 py-0.5 max-w-[6.5rem] transition-colors focus:bg-secondary ${
                                                     instruction.involvement === 'none' ? 'text-sky-600'
-                                                        : instruction.involvement === 'low' ? 'text-amber-600'
+                                                        : instruction.involvement === 'low' ? 'text-butter'
                                                         : instruction.involvement === 'active' ? 'text-red-500'
                                                         : 'text-muted-foreground/60'
                                                 }`}
@@ -3059,7 +3059,7 @@ export default function RecipeDetail() {
                                 </div>
                                 <Button
                                     onClick={() => updateTimesCooked(timesCooked + 1)}
-                                    className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold h-10 px-4 rounded-xl flex items-center gap-2 transition-all active:scale-95 text-sm"
+                                    className="bg-olive hover:bg-olive/85 text-primary-foreground font-bold h-10 px-4 rounded-xl flex items-center gap-2 transition-all active:scale-95 text-sm"
                                 >
                                     <ChefHat size={16} /> <span className="sm:hidden">Cooked</span><span className="hidden sm:inline">Mark as Cooked</span>
                                 </Button>
@@ -3284,7 +3284,7 @@ export default function RecipeDetail() {
                                 <Button
                                     onClick={createListAndAdd}
                                     disabled={addingToList}
-                                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl"
+                                    className="w-full bg-olive hover:bg-olive/85 text-primary-foreground font-semibold rounded-xl"
                                 >
                                     {addingToList ? 'Creating...' : '+ Create New List & Add'}
                                 </Button>
@@ -3296,7 +3296,7 @@ export default function RecipeDetail() {
                             {/* Existing lists */}
                             {shopListLoading ? (
                                 <div className="flex justify-center py-6">
-                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500" />
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-olive" />
                                 </div>
                             ) : shoppingLists.length > 0 ? (
                                 <div>
@@ -3307,10 +3307,10 @@ export default function RecipeDetail() {
                                                 key={list._id}
                                                 onClick={() => addToExistingList(list._id)}
                                                 disabled={addingToList}
-                                                className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-border hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all text-left disabled:opacity-50"
+                                                className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-border hover:border-olive/50 hover:bg-olive/5 transition-all text-left disabled:opacity-50"
                                             >
                                                 <span className="font-medium text-sm">{list.name}</span>
-                                                <span className="text-emerald-500 text-sm">Add →</span>
+                                                <span className="text-olive text-sm">Add →</span>
                                             </button>
                                         ))}
                                     </div>
@@ -3334,7 +3334,7 @@ export default function RecipeDetail() {
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="shrink-0 px-5 pt-4 pb-3 border-b border-border">
-                                <h3 className="text-lg font-bold flex items-center gap-2"><ChefHat size={18} className="text-emerald-500" /> Serve with a carb side?</h3>
+                                <h3 className="text-lg font-bold flex items-center gap-2"><ChefHat size={18} className="text-olive" /> Serve with a carb side?</h3>
                                 {recipe?.carbSide?.analysis?.note && (
                                     <p className="text-xs text-muted-foreground mt-1">{recipe.carbSide.analysis.note}</p>
                                 )}
@@ -3343,15 +3343,15 @@ export default function RecipeDetail() {
                                 {/* No carb side — first option, same card style */}
                                 <button
                                     className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-left transition-all touch-manipulation ${carbModalNone
-                                        ? 'bg-emerald-500/10 border-emerald-500/40'
+                                        ? 'bg-olive/10 border-olive/40'
                                         : 'bg-secondary border-border hover:border-accent'}`}
                                     onClick={() => { setCarbModalNone(true); setCarbModalType(null) }}
                                 >
                                     <span className="min-w-0">
-                                        <span className={`block text-sm font-semibold ${carbModalNone ? 'text-emerald-400' : 'text-foreground'}`}>Nothing — no carb side</span>
+                                        <span className={`block text-sm font-semibold ${carbModalNone ? 'text-olive' : 'text-foreground'}`}>Nothing — no carb side</span>
                                         <span className="block text-[11px] text-muted-foreground">Cook the dish as written, no extra steps for carbs</span>
                                     </span>
-                                    {carbModalNone && <Check size={16} className="text-emerald-400 shrink-0" />}
+                                    {carbModalNone && <Check size={16} className="text-olive shrink-0" />}
                                 </button>
                                 {carbCatalog.map((entry: any) => {
                                     const isSel = !carbModalNone && carbModalType?._id === entry._id
@@ -3360,13 +3360,13 @@ export default function RecipeDetail() {
                                         <div key={entry._id} className="space-y-1.5">
                                             <button
                                                 className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-left transition-all touch-manipulation ${isSel
-                                                    ? 'bg-emerald-500/10 border-emerald-500/40'
+                                                    ? 'bg-olive/10 border-olive/40'
                                                     : 'bg-secondary border-border hover:border-accent'}`}
                                                 onClick={() => { setCarbModalNone(false); setCarbModalType(entry); setCarbModalVariant(resolveVariant(entry, carbModalVariant)) }}
                                             >
                                                 <span className="min-w-0 truncate">
-                                                    <span className={`text-sm font-semibold ${isSel ? 'text-emerald-400' : 'text-muted-foreground'}`}>{entry.name}</span>
-                                                    {isRec && <span className="ml-2 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">recommended</span>}
+                                                    <span className={`text-sm font-semibold ${isSel ? 'text-olive' : 'text-muted-foreground'}`}>{entry.name}</span>
+                                                    {isRec && <span className="ml-2 text-[10px] font-bold text-olive uppercase tracking-wider">recommended</span>}
                                                 </span>
                                                 <span className="text-[11px] text-muted-foreground shrink-0 truncate max-w-[45%] text-right">
                                                     {(entry.variants || []).map((v: any) => v.name).join(' / ')}
@@ -3378,7 +3378,7 @@ export default function RecipeDetail() {
                                                         <button
                                                             key={v.name}
                                                             className={`px-3 py-2 rounded-full border text-xs font-semibold transition-all touch-manipulation ${!carbModalNone && carbModalVariant === v.name
-                                                                ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
+                                                                ? 'bg-olive/10 border-olive/40 text-olive'
                                                                 : 'bg-secondary border-border text-muted-foreground hover:border-accent'}`}
                                                             onClick={() => setCarbModalVariant(v.name)}
                                                         >
@@ -4688,8 +4688,8 @@ export default function RecipeDetail() {
                     <div className="flex-1 min-h-0 overflow-y-auto px-4 py-6 sm:py-10">
                         <div className="mx-auto w-full max-w-md space-y-6">
                             <div className="text-center">
-                                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15">
-                                    <ChefHat className="text-emerald-400" size={26} />
+                                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-olive/15">
+                                    <ChefHat className="text-olive" size={26} />
                                 </div>
                                 <h2 className="text-xl font-bold tracking-tight">How did it turn out?</h2>
                                 <p className="mt-1 text-sm text-muted-foreground">Rate this cook, then finish up — or skip.</p>
@@ -4745,22 +4745,22 @@ export default function RecipeDetail() {
                                 </div>
                             )}
 
-                            <label className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors ${finishHide ? 'border-amber-500/50 bg-amber-500/10' : 'border-border hover:border-amber-500/30'}`}>
+                            <label className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors ${finishHide ? 'border-butter/50 bg-butter/10' : 'border-border hover:border-butter/30'}`}>
                                 <input
                                     type="checkbox"
                                     checked={finishHide}
                                     onChange={(e) => setFinishHide(e.target.checked)}
-                                    className="mt-0.5 h-4 w-4 shrink-0 accent-amber-500"
+                                    className="mt-0.5 h-4 w-4 shrink-0 accent-butter"
                                 />
                                 <span className="min-w-0">
-                                    <span className={`block text-sm font-semibold ${finishHide ? 'text-amber-400' : 'text-foreground'}`}>I wouldn't cook this again</span>
+                                    <span className={`block text-sm font-semibold ${finishHide ? 'text-butter' : 'text-foreground'}`}>I wouldn't cook this again</span>
                                     <span className="block text-xs text-muted-foreground">Hides it from your recipes list</span>
                                 </span>
                             </label>
 
                             <div className="flex flex-col gap-2">
                                 <Button
-                                    className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl flex items-center justify-center gap-2"
+                                    className="w-full h-12 bg-olive hover:bg-olive/85 text-primary-foreground font-bold rounded-xl flex items-center justify-center gap-2"
                                     disabled={isSubmittingReflection}
                                     onClick={submitReflection}
                                 >
@@ -4798,7 +4798,7 @@ export default function RecipeDetail() {
                                 Keep Cooking
                             </Button>
                             <Button
-                                className="flex-1 h-11 bg-emerald-500 hover:bg-emerald-600 text-white"
+                                className="flex-1 h-11 bg-olive hover:bg-olive/85 text-primary-foreground"
                                 onClick={() => openReflection()}
                             >
                                 Finish
@@ -4831,14 +4831,14 @@ export default function RecipeDetail() {
                                 className={`w-full min-h-[110px] rounded-xl bg-secondary px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-accent/40 transition-shadow resize-none placeholder:text-muted-foreground/50 ${(() => {
                                     const t = (feedback || '').trim()
                                     const isReflection = !!t && timesCooked > 0 && remixNotesInput.trim() === t
-                                    return isReflection ? 'ring-1 ring-emerald-500/60 border border-emerald-500/40' : ''
+                                    return isReflection ? 'ring-1 ring-olive/60 border border-olive/40' : ''
                                 })()}`}
                             />
                             {(() => {
                                 const t = (feedback || '').trim()
                                 const isReflection = !!t && timesCooked > 0 && remixNotesInput.trim() === t
                                 return isReflection ? (
-                                    <span className="absolute bottom-2 right-3 text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 pointer-events-none">
+                                    <span className="absolute bottom-2 right-3 text-[10px] font-semibold uppercase tracking-wider text-olive dark:text-olive pointer-events-none">
                                         Cooking reflection
                                     </span>
                                 ) : null
@@ -4850,7 +4850,7 @@ export default function RecipeDetail() {
                             if (!isReflection) return null
                             return (
                                 <p className="text-[11px] text-muted-foreground -mt-2 mb-3 flex items-center gap-1.5">
-                                    <MessageSquare size={12} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                    <MessageSquare size={12} className="text-olive dark:text-olive shrink-0" />
                                     Brought through from your cooking reflection — edit freely or clear it.
                                 </p>
                             )
@@ -4873,7 +4873,7 @@ export default function RecipeDetail() {
                                 Clear
                             </Button>
                             <Button
-                                className="flex-1 h-11 bg-emerald-500 hover:bg-emerald-600 text-white font-bold"
+                                className="flex-1 h-11 bg-olive hover:bg-olive/85 text-primary-foreground font-bold"
                                 onClick={() => {
                                     setRemixModalOpen(false)
                                     launchRecipeRemix(remixNotesInput)
@@ -5014,3 +5014,6 @@ export default function RecipeDetail() {
         </Layout>
     )
 }
+
+
+

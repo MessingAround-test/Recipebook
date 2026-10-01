@@ -200,17 +200,17 @@ export default function WeightTrendsView() {
         <div className="space-y-6">
             {/* Header / Periods */}
             <div className="flex flex-wrap gap-2 items-center justify-between">
-                <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-white/5 shadow-inner">
+                <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-border shadow-inner">
                     {(['week', 'month', 'year'] as const).map(p => (
-                        <button key={p} onClick={() => setPeriod(p)} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${period === p ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                        <button key={p} onClick={() => setPeriod(p)} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${period === p ? 'bg-olive text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
                             {PERIOD_CONFIG[p].label}
                         </button>
                     ))}
                 </div>
-                <div className="flex items-center gap-1 bg-muted/30 rounded-xl p-0.5 border border-white/5">
-                    <button onClick={() => setEndDate(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d; })} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-muted-foreground"><FiChevronLeft size={14} /></button>
+                <div className="flex items-center gap-1 bg-muted/30 rounded-xl p-0.5 border border-border">
+                    <button onClick={() => setEndDate(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d; })} className="p-1.5 hover:bg-foreground/10 rounded-lg transition-colors text-muted-foreground"><FiChevronLeft size={14} /></button>
                     <div className="px-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">{startDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} - {endDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</div>
-                    <button onClick={() => setEndDate(prev => { const d = new Date(prev); d.setDate(d.getDate() + 7); return d; })} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-muted-foreground"><FiChevronRight size={14} /></button>
+                    <button onClick={() => setEndDate(prev => { const d = new Date(prev); d.setDate(d.getDate() + 7); return d; })} className="p-1.5 hover:bg-foreground/10 rounded-lg transition-colors text-muted-foreground"><FiChevronRight size={14} /></button>
                 </div>
             </div>
 
@@ -218,51 +218,51 @@ export default function WeightTrendsView() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Left: Projection Card */}
                     <div className="lg:col-span-1 space-y-4">
-                        <div className="glass-card border-emerald-500/20 bg-emerald-500/5 relative overflow-hidden h-full flex flex-col justify-between">
+                        <div className="glass-card border-olive/20 bg-olive/5 relative overflow-hidden h-full flex flex-col justify-between">
                             <div className="absolute top-0 right-0 p-8 opacity-5">
                                 {chartData.summary.weightToGoal <= 0 ? <FiTrendingDown size={120} /> : <FiTrendingUp size={120} />}
                             </div>
                             
                             <div className="relative z-10">
-                                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500 mb-1">Current Projection</div>
+                                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-olive mb-1">Current Projection</div>
                                 <h3 className="text-3xl font-black mb-1">
                                     {chartData.summary.currentProjected.toFixed(1)} <span className="text-sm font-bold text-muted-foreground">kg</span>
                                 </h3>
                                 <div className="flex items-center gap-2 mb-6">
                                     <span className="text-[10px] font-bold text-muted-foreground">Initial: {chartData.summary.initialWeight}kg</span>
-                                    <div className="w-1 h-1 rounded-full bg-white/20" />
-                                    <span className={`text-[10px] font-black ${chartData.summary.currentProjected < chartData.summary.initialWeight ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                    <div className="w-1 h-1 rounded-full bg-foreground/20" />
+                                    <span className={`text-[10px] font-black ${chartData.summary.currentProjected < chartData.summary.initialWeight ? 'text-olive' : 'text-berry'}`}>
                                         {chartData.summary.currentProjected < chartData.summary.initialWeight ? '-' : '+'}
                                         {Math.abs(chartData.summary.currentProjected - chartData.summary.initialWeight).toFixed(1)}kg
                                     </span>
                                 </div>
 
                                 {chartData.summary.targetWeight > 0 && (
-                                    <div className="p-4 bg-black/40 rounded-2xl border border-white/5 space-y-4">
+                                    <div className="p-4 bg-black/40 rounded-2xl border border-border space-y-4">
                                         <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                                             <span>Progress to {chartData.summary.targetWeight}kg</span>
-                                            <span className="text-white">{Math.abs(chartData.summary.weightToGoal).toFixed(1)}kg left</span>
+                                            <span className="text-foreground">{Math.abs(chartData.summary.weightToGoal).toFixed(1)}kg left</span>
                                         </div>
-                                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                        <div className="h-2 w-full bg-foreground/5 rounded-full overflow-hidden">
                                             {(() => {
                                                 const totalNeeded = Math.abs(chartData.summary.initialWeight - chartData.summary.targetWeight);
                                                 const current = Math.abs(chartData.summary.initialWeight - chartData.summary.currentProjected);
                                                 const progress = totalNeeded > 0 ? (current / totalNeeded) * 100 : 0;
-                                                return <div className="h-full bg-emerald-500 transition-all duration-1000 shadow-[0_0_10px_rgba(16,185,129,0.5)]" style={{ width: `${Math.min(progress, 100)}%` }} />;
+                                                return <div className="h-full bg-olive transition-all duration-1000 shadow-[0_0_10px_rgba(16,185,129,0.5)]" style={{ width: `${Math.min(progress, 100)}%` }} />;
                                             })()}
                                         </div>
                                         
                                         <div className="space-y-2 pt-2">
                                             <div className="flex items-center justify-between">
                                                 <span className="text-[10px] font-bold text-muted-foreground uppercase">Target Adjustment</span>
-                                                <span className={`text-[11px] font-black ${chartData.summary.dailyAdjustment >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                <span className={`text-[11px] font-black ${chartData.summary.dailyAdjustment >= 0 ? 'text-olive' : 'text-berry'}`}>
                                                     Eat {Math.abs(Math.round(chartData.summary.dailyAdjustment))} kcal {chartData.summary.dailyAdjustment >= 0 ? 'more' : 'less'}
                                                 </span>
                                             </div>
                                             {chartData.summary.estWeeks > 0 && (
-                                                <div className="flex items-center justify-between border-t border-white/5 pt-2">
+                                                <div className="flex items-center justify-between border-t border-border pt-2">
                                                     <span className="text-[10px] font-bold text-muted-foreground uppercase">Est. Completion</span>
-                                                    <span className="text-[11px] font-black text-white">{Math.ceil(chartData.summary.estWeeks)} weeks</span>
+                                                    <span className="text-[11px] font-black text-foreground">{Math.ceil(chartData.summary.estWeeks)} weeks</span>
                                                 </div>
                                             )}
                                         </div>
@@ -271,28 +271,28 @@ export default function WeightTrendsView() {
                             </div>
 
                             <div className="mt-6 flex items-center gap-3 relative z-10">
-                                <div className="p-2 rounded-lg bg-white/5 flex items-center gap-2">
-                                    <FiActivity className="text-emerald-500" size={14} />
-                                    <span className="text-[10px] font-bold text-white">{Math.round(chartData.summary.cumulativeDeficit).toLocaleString()} kcal deficit</span>
+                                <div className="p-2 rounded-lg bg-foreground/5 flex items-center gap-2">
+                                    <FiActivity className="text-olive" size={14} />
+                                    <span className="text-[10px] font-bold text-foreground">{Math.round(chartData.summary.cumulativeDeficit).toLocaleString()} kcal deficit</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Right: The Graph */}
-                    <div className="lg:col-span-2 glass-card border-white/5 bg-black/20 p-6 min-h-[400px] flex flex-col">
+                    <div className="lg:col-span-2 glass-card border-border bg-black/20 p-6 min-h-[400px] flex flex-col">
                         <div className="flex items-center justify-between mb-8">
                             <div>
-                                <h3 className="text-sm font-black uppercase tracking-widest text-white">Weight Trend</h3>
+                                <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Weight Trend</h3>
                                 <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Actual vs Projected</p>
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-3 h-1 bg-emerald-500 rounded-full" />
+                                    <div className="w-3 h-1 bg-olive rounded-full" />
                                     <span className="text-[10px] font-bold text-muted-foreground uppercase">Projected</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-amber-500 rounded-full" />
+                                    <div className="w-2 h-2 bg-butter rounded-full" />
                                     <span className="text-[10px] font-bold text-muted-foreground uppercase">Actual</span>
                                 </div>
                             </div>
@@ -307,3 +307,5 @@ export default function WeightTrendsView() {
         </div>
     );
 }
+
+

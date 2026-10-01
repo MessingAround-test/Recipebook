@@ -15,13 +15,13 @@ import {
     Calendar,
     ArrowUpDown,
     ChefHat,
-    Loader2,
     Trash2,
     EyeOff,
     Compass,
     Globe2
 } from 'lucide-react'
 import { FilterSheet } from '../../components/recipes/FilterSheet'
+import pageShell from '../../styles/PageShell.module.css'
 
 interface UserData {
     _id: string
@@ -179,15 +179,23 @@ export default function Recipes() {
 
     return (
         <Layout title="Your Recipes" description="View and manage your recipes">
-            <div className="relative min-h-screen pb-24">
+            <div className={`relative min-h-screen pb-24 ${pageShell.shell}`}>
                 {/* Modern Header */}
-                <header className="sticky top-0 z-40 px-6 sm:px-8 py-2 bg-background/80 backdrop-blur-xl shadow-sm">
-                    <div className="flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                            <h1 className="text-xl font-black tracking-tight flex items-center gap-2">
-                                <ChefHat className="text-accent" size={20} />
-                                Your Recipes
-                            </h1>
+                <header className="flex flex-col gap-2.5 md:mt-2">
+                    <div className="flex items-center justify-between">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-terracotta/15 text-terracotta">
+                                <ChefHat size={18} />
+                            </span>
+                            <div className="min-w-0">
+                                <h1 className="font-cursive truncate text-2xl leading-tight text-foreground md:text-3xl">Your Recipes</h1>
+                                {recipes.length > 0 && (
+                                    <p className="mt-0.5 truncate text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                                        {filteredRecipes.length} recipe{filteredRecipes.length === 1 ? '' : 's'}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
                             {recipes.length > 0 && (
                             <div className="flex items-center gap-2">
                                 {userData && (
@@ -196,22 +204,22 @@ export default function Recipes() {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => bulkAction ? setBulkAction(null) : setBulkMenuOpen(!bulkMenuOpen)}
-                                            className={bulkAction ? "text-accent bg-accent/10" : "text-muted-foreground"}
+                                            className={bulkAction ? "text-terracotta bg-terracotta/10" : "text-muted-foreground"}
                                         >
                                             {bulkAction ? "Done" : "Bulk Actions"}
                                         </Button>
                                         {bulkMenuOpen && !bulkAction && (
-                                            <div className="absolute right-0 top-full mt-2 z-50 w-52 bg-card border border-border/10 rounded-2xl shadow-2xl p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                                            <div className="absolute right-0 top-full mt-2 z-50 w-52 bg-card border border-border rounded-2xl shadow-2xl p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
                                                 <button
                                                     onClick={() => { setBulkAction('hide'); setBulkMenuOpen(false) }}
-                                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold hover:bg-secondary/50 text-left"
+                                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold hover:bg-muted/60 text-left"
                                                 >
-                                                    <EyeOff size={14} className="text-amber-500" /> Hide / Unhide
+                                                    <EyeOff size={14} className="text-butter" /> Hide / Unhide
                                                 </button>
                                                 {userData?.role === "admin" && (
                                                     <button
                                                         onClick={() => { setBulkAction('delete'); setBulkMenuOpen(false) }}
-                                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold hover:bg-secondary/50 text-left text-rose-500"
+                                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold hover:bg-muted/60 text-left text-berry"
                                                     >
                                                         <Trash2 size={14} /> Delete
                                                     </button>
@@ -228,23 +236,23 @@ export default function Recipes() {
                         {recipes.length > 0 && (
                         <div className="flex items-center gap-2">
                             <div className="relative flex-1 group">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-accent" size={18} />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-terracotta" size={18} />
                                 <Input
                                     placeholder="Search recipes..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 h-10 bg-secondary/50 border-none rounded-xl focus-visible:ring-2 focus-visible:ring-accent/50 text-sm"
+                                    className="pl-10 h-10 bg-foreground/[0.05] border-none rounded-xl focus-visible:ring-2 focus-visible:ring-terracotta/50 text-sm"
                                 />
                             </div>
                             <Button
                                 size="icon"
                                 variant={hasActiveFilters ? "default" : "secondary"}
                                 onClick={() => setShowFilters(true)}
-                                className={`h-10 w-10 rounded-xl shrink-0 transition-all ${hasActiveFilters ? 'bg-accent text-accent-foreground shadow-lg shadow-accent/20' : 'bg-secondary/50'}`}
+                                className={`h-10 w-10 rounded-xl shrink-0 transition-all ${hasActiveFilters ? 'bg-terracotta text-primary-foreground shadow-lg shadow-terracotta/20' : 'bg-foreground/[0.06]'}`}
                             >
                                 <SlidersHorizontal size={18} />
                                 {hasActiveFilters && (
-                                    <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-background shadow-lg">
+                                    <span className="absolute -top-1 -right-1 bg-berry text-primary-foreground text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-background shadow-lg">
                                         {filterTime.length + filterPrice.length + filterGenre.length + (filterCooked ? 1 : 0) + filterMealTypes.length + (showHidden ? 1 : 0)}
                                     </span>
                                 )}
@@ -254,7 +262,7 @@ export default function Recipes() {
                                 variant="secondary"
                                 onClick={pickRandomRecipe}
                                 disabled={filteredRecipes.length === 0}
-                                className="h-10 w-10 rounded-xl shrink-0 bg-secondary/50 hover:bg-accent/20 hover:text-accent transition-colors"
+                                className="h-10 w-10 rounded-xl shrink-0 bg-foreground/[0.06] hover:bg-terracotta/15 hover:text-terracotta transition-colors"
                                 title="Pick for me"
                             >
                                 <Dices size={18} />
@@ -263,7 +271,7 @@ export default function Recipes() {
                                 size="icon"
                                 variant="secondary"
                                 onClick={() => redirect('/recipes/quiz')}
-                                className="h-10 w-10 rounded-xl shrink-0 bg-secondary/50 hover:bg-accent/20 hover:text-accent transition-colors"
+                                className="h-10 w-10 rounded-xl shrink-0 bg-foreground/[0.06] hover:bg-terracotta/15 hover:text-terracotta transition-colors"
                                 title="Recipe quiz"
                             >
                                 <Sparkles size={18} />
@@ -272,50 +280,49 @@ export default function Recipes() {
                                 size="icon"
                                 variant="secondary"
                                 onClick={() => redirect('/map?recipes=1&from=/recipes')}
-                                className="h-10 w-10 rounded-xl shrink-0 bg-secondary/50 hover:bg-accent/20 hover:text-accent transition-colors"
+                                className="h-10 w-10 rounded-xl shrink-0 bg-foreground/[0.06] hover:bg-terracotta/15 hover:text-terracotta transition-colors"
                                 title="View recipes on the world map"
                             >
                                 <Compass size={18} />
                             </Button>
                         </div>
                         )}
-                    </div>
                 </header>
 
                  {/* Active Filter Chips (Scrollable Row) */}
                 {recipes.length > 0 && hasActiveFilters && (
-                    <div className="flex items-center gap-2 py-4 overflow-x-auto no-scrollbar">
+                    <div className="flex items-center gap-2 py-1 overflow-x-auto no-scrollbar">
                          {filterTime.map(t => (
-                            <button key={t} onClick={() => setFilterTime(prev => prev.filter(i => i !== t))} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-1 shadow-sm">
+                            <button key={t} onClick={() => setFilterTime(prev => prev.filter(i => i !== t))} className="shrink-0 px-3 py-1.5 rounded-full bg-terracotta/10 text-terracotta text-xs font-bold flex items-center gap-1">
                                 {t} <Plus size={12} className="rotate-45" />
                             </button>
                         ))}
                         {filterPrice.map(p => (
-                            <button key={p} onClick={() => setFilterPrice(prev => prev.filter(i => i !== p))} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-1 shadow-sm">
+                            <button key={p} onClick={() => setFilterPrice(prev => prev.filter(i => i !== p))} className="shrink-0 px-3 py-1.5 rounded-full bg-terracotta/10 text-terracotta text-xs font-bold flex items-center gap-1">
                                 {p === 'cheap' ? '$' : p === 'medium' ? '$$' : '$$$'} <Plus size={12} className="rotate-45" />
                             </button>
                         ))}
                         {filterGenre.map(g => (
-                            <button key={g} onClick={() => setFilterGenre(prev => prev.filter(i => i !== g))} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-1 shadow-sm">
+                            <button key={g} onClick={() => setFilterGenre(prev => prev.filter(i => i !== g))} className="shrink-0 px-3 py-1.5 rounded-full bg-terracotta/10 text-terracotta text-xs font-bold flex items-center gap-1">
                                 {g} <Plus size={12} className="rotate-45" />
                             </button>
                         ))}
                          {filterCooked && (
-                            <button onClick={() => setFilterCooked('')} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-1 shadow-sm">
+                            <button onClick={() => setFilterCooked('')} className="shrink-0 px-3 py-1.5 rounded-full bg-terracotta/10 text-terracotta text-xs font-bold flex items-center gap-1">
                                 {filterCooked === 'cooked' ? '👨‍🍳 Already Cooked' : '📝 Never Cooked'} <Plus size={12} className="rotate-45" />
                             </button>
                         )}
                         {filterMealTypes.map(m => (
-                            <button key={m} onClick={() => setFilterMealTypes(prev => prev.filter(i => i !== m))} className="shrink-0 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-1 shadow-sm">
+                            <button key={m} onClick={() => setFilterMealTypes(prev => prev.filter(i => i !== m))} className="shrink-0 px-3 py-1.5 rounded-full bg-terracotta/10 text-terracotta text-xs font-bold flex items-center gap-1">
                                 🍽️ {m} <Plus size={12} className="rotate-45" />
                             </button>
                         ))}
                         {showHidden && (
-                            <button onClick={() => setShowHidden(false)} className="shrink-0 px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-500 text-xs font-bold flex items-center gap-1 shadow-sm">
+                            <button onClick={() => setShowHidden(false)} className="shrink-0 px-3 py-1.5 rounded-full bg-butter/10 text-butter text-xs font-bold flex items-center gap-1">
                                 👁️ Hidden <Plus size={12} className="rotate-45" />
                             </button>
                         )}
-                        <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-rose-500 whitespace-nowrap px-2">
+                        <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-berry whitespace-nowrap px-2">
                             Clear all
                         </button>
                     </div>
@@ -323,13 +330,13 @@ export default function Recipes() {
 
                 {/* Dish-linked filter banner */}
                 {recipes.length > 0 && idFilter.length > 0 && (
-                    <div className="flex items-center gap-2 py-3">
-                        <span className="px-3 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center gap-2">
+                    <div className="flex items-center gap-2 py-1">
+                        <span className="px-3 py-1.5 rounded-full bg-terracotta/10 text-terracotta text-xs font-bold flex items-center gap-2">
                             <ChefHat size={12} /> Showing recipes for this dish
                         </span>
                         <button
                             onClick={() => { setIdFilter([]); Router.push('/recipes') }}
-                            className="text-xs text-muted-foreground hover:text-rose-500"
+                            className="text-xs text-muted-foreground hover:text-foreground"
                         >
                             Clear
                         </button>
@@ -349,13 +356,14 @@ export default function Recipes() {
 
                 {/* Grid */}
                 {loading ? (
-                    <div className="flex flex-col items-center justify-center py-24 gap-4">
-                        <Loader2 className="animate-spin text-accent" size={32} />
-                        <p className="text-sm font-medium text-muted-foreground">Fetching your cookbook...</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 pt-2">
+                        {Array.from({ length: 12 }).map((_, i) => (
+                            <div key={i} className="animate-pulse bg-foreground/[0.05] rounded-2xl" style={{ height: '11rem', animationDelay: `${i * 40}ms` }} />
+                        ))}
                     </div>
                 ) : recipes.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-24 text-center px-6 border border-dashed border-border/10 rounded-3xl bg-secondary/50 shadow-inner">
-                        <div className="w-20 h-20 bg-secondary/50 rounded-full flex items-center justify-center mb-6 text-4xl">
+                    <div className="flex flex-col items-center justify-center py-16 text-center px-6 mt-4 border border-dashed border-border rounded-3xl bg-muted/40">
+                        <div className="w-20 h-20 bg-terracotta/10 rounded-full flex items-center justify-center mb-6 text-4xl">
                             🍳
                         </div>
                         <h2 className="text-xl font-bold mb-2">Your cookbook is empty</h2>
@@ -363,7 +371,7 @@ export default function Recipes() {
                             Explore dish lists to find dishes from around the world. Tap one, then use its recipe creation flow to save your first recipe.
                         </p>
                         <div className="flex flex-wrap items-center justify-center gap-2">
-                            <Button onClick={() => redirect('/dishLists')} className="rounded-xl">
+                            <Button onClick={() => redirect('/dishLists')} className="rounded-xl bg-terracotta text-primary-foreground hover:bg-terracotta/85">
                                 <Globe2 size={16} /> Explore dish lists
                             </Button>
                             <Button onClick={() => redirect('/createRecipe')} variant="outline" className="rounded-xl">
@@ -372,8 +380,8 @@ export default function Recipes() {
                         </div>
                     </div>
                 ) : filteredRecipes.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-24 text-center px-6 border border-dashed border-border/10 rounded-3xl bg-secondary/50 shadow-inner">
-                        <div className="w-20 h-20 bg-secondary/50 rounded-full flex items-center justify-center mb-6 text-4xl">
+                    <div className="flex flex-col items-center justify-center py-16 text-center px-6 mt-4 border border-dashed border-border rounded-3xl bg-muted/40">
+                        <div className="w-20 h-20 bg-terracotta/10 rounded-full flex items-center justify-center mb-6 text-4xl">
                             🍳
                         </div>
                         <h2 className="text-xl font-bold mb-2">No recipes found</h2>
@@ -421,7 +429,7 @@ export default function Recipes() {
                 {/* Mobile Floating Action Button */}
                 <Button
                     onClick={() => redirect("/createRecipe")}
-                    className="fixed bottom-24 sm:bottom-6 right-6 w-14 h-14 rounded-full shadow-2xl shadow-accent/40 bg-accent text-accent-foreground hover:scale-110 active:scale-95 transition-all z-50 p-0"
+                    className="fixed bottom-24 sm:bottom-6 right-6 w-14 h-14 rounded-full shadow-2xl shadow-terracotta/40 bg-terracotta text-primary-foreground hover:scale-110 active:scale-95 transition-all z-50 p-0"
                 >
                     <Plus size={28} />
                 </Button>

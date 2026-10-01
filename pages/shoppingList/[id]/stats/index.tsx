@@ -112,7 +112,7 @@ export default function Home() {
         <Layout title="Shopping List Stats">
             <div className="max-w-4xl mx-auto mt-8">
                 <PageHeader title="List Nutrients" />
-                <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-8 shadow-xl mt-6">
+                <div className="bg-card backdrop-blur-md border border-border rounded-2xl p-8 shadow-sm mt-6">
                     <IngredientNutrientGraph ingredients={convertIngredientToOldFormat(listIngreds)} />
                 </div>
             </div>

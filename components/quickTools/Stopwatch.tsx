@@ -41,7 +41,7 @@ export default function Stopwatch({ stopwatch, elapsed, onStart, onPause, onRese
                     {stopwatch.laps.map((lap, i) => {
                         const split = lap - (stopwatch.laps[i + 1] || 0)
                         return (
-                            <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-border">
+                            <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-foreground/[0.03] border border-border">
                                 <span className="text-[11px] font-bold text-muted-foreground">Lap {total - i}</span>
                                 <span className="flex items-center gap-3 text-sm font-semibold tabular-nums">
                                     <span className="text-[11px] text-muted-foreground">+{formatClock(split)}</span>

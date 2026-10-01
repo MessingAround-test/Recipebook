@@ -59,13 +59,13 @@ export default function DailyMetricsView({
         <div className="space-y-6 max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Weight Section */}
-                <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 md:p-8 shadow-xl">
+                <div className="bg-foreground/5 border border-border rounded-[2rem] p-6 md:p-8 shadow-xl">
                     <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                        <div className="w-10 h-10 rounded-2xl bg-olive/10 flex items-center justify-center text-olive">
                             <FiTarget size={20} />
                         </div>
                         <div>
-                            <h3 className="text-sm font-black uppercase tracking-widest text-white">Current Weight</h3>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Current Weight</h3>
                             <p className="text-[10px] text-muted-foreground uppercase font-bold">Log your weigh-in for today</p>
                         </div>
                     </div>
@@ -77,7 +77,7 @@ export default function DailyMetricsView({
                                 step="0.1"
                                 value={weight} 
                                 onChange={(e) => setWeight(e.target.value)}
-                                className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-2xl font-black focus:ring-4 focus:ring-emerald-500/20 transition-all pr-16" 
+                                className="w-full bg-foreground/[0.05] border border-border rounded-2xl px-6 py-4 text-2xl font-black focus:ring-4 focus:ring-olive/20 transition-all pr-16" 
                                 placeholder="0.0"
                             />
                             <span className="absolute right-6 top-1/2 -translate-y-1/2 text-sm font-black text-muted-foreground uppercase tracking-widest">kg</span>
@@ -87,13 +87,13 @@ export default function DailyMetricsView({
                 </div>
 
                 {/* Exercise Summary Section */}
-                <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 md:p-8 shadow-xl">
+                <div className="bg-foreground/5 border border-border rounded-[2rem] p-6 md:p-8 shadow-xl">
                     <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                        <div className="w-10 h-10 rounded-2xl bg-butter/10 flex items-center justify-center text-butter">
                             <FiZap size={20} />
                         </div>
                         <div>
-                            <h3 className="text-sm font-black uppercase tracking-widest text-white">Daily Exercise</h3>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Daily Exercise</h3>
                             <p className="text-[10px] text-muted-foreground uppercase font-bold">Total energy burned today</p>
                         </div>
                     </div>
@@ -104,14 +104,14 @@ export default function DailyMetricsView({
                                 type="number" 
                                 value={exerciseKcal} 
                                 onChange={(e) => setExerciseKcal(e.target.value)}
-                                className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-2xl font-black focus:ring-4 focus:ring-amber-500/20 transition-all pr-16" 
+                                className="w-full bg-foreground/[0.05] border border-border rounded-2xl px-6 py-4 text-2xl font-black focus:ring-4 focus:ring-butter/20 transition-all pr-16" 
                                 placeholder="0"
                             />
                             <span className="absolute right-6 top-1/2 -translate-y-1/2 text-sm font-black text-muted-foreground uppercase tracking-widest">kcal</span>
                         </div>
                         <button 
                             onClick={() => setExerciseKcal("0")}
-                            className="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-400 transition-colors flex items-center gap-1 px-2"
+                            className="text-[10px] font-black uppercase tracking-widest text-berry hover:text-berry transition-colors flex items-center gap-1 px-2"
                         >
                             <FiTrash2 size={12} /> Clear Total
                         </button>
@@ -120,13 +120,13 @@ export default function DailyMetricsView({
             </div>
 
             {/* Exercise Builder */}
-            <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 md:p-8 shadow-xl">
+            <div className="bg-foreground/5 border border-border rounded-[2rem] p-6 md:p-8 shadow-xl">
                 <div className="flex items-center gap-3 mb-8">
-                    <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                    <div className="w-10 h-10 rounded-2xl bg-water/10 flex items-center justify-center text-water">
                         <FiActivity size={20} />
                     </div>
                     <div>
-                        <h3 className="text-sm font-black uppercase tracking-widest text-white">Activity Calculator</h3>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Activity Calculator</h3>
                         <p className="text-[10px] text-muted-foreground uppercase font-bold">Add energy based on physical activity</p>
                     </div>
                 </div>
@@ -137,7 +137,7 @@ export default function DailyMetricsView({
                         <select 
                             value={EXERCISE_ACTIVITIES.indexOf(selectedActivity)}
                             onChange={(e) => setSelectedActivity(EXERCISE_ACTIVITIES[Number(e.target.value)])}
-                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-blue-500/50"
+                            className="w-full bg-foreground/[0.05] border border-border rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-water/50"
                         >
                             {EXERCISE_ACTIVITIES.map((act, idx) => (
                                 <option key={act.label} value={idx}>{act.label}</option>
@@ -152,20 +152,20 @@ export default function DailyMetricsView({
                                 type="number" 
                                 value={durationMins} 
                                 onChange={(e) => setDurationMins(Number(e.target.value))}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-blue-500/50 pr-12" 
+                                className="w-full bg-foreground/[0.05] border border-border rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-water/50 pr-12" 
                             />
                             <FiClock className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                         </div>
                     </div>
 
                     <div className="flex gap-2">
-                        <div className="flex-1 bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 flex flex-col justify-center">
-                            <div className="text-[9px] font-black uppercase tracking-widest text-blue-400 mb-0.5">Estimated</div>
-                            <div className="text-lg font-black text-white">{calculatedKcal} kcal</div>
+                        <div className="flex-1 bg-water/10 border border-water/20 rounded-xl p-3 flex flex-col justify-center">
+                            <div className="text-[9px] font-black uppercase tracking-widest text-water mb-0.5">Estimated</div>
+                            <div className="text-lg font-black text-foreground">{calculatedKcal} kcal</div>
                         </div>
                         <button 
                             onClick={addCalculatedExercise}
-                            className="p-4 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+                            className="p-4 bg-water text-primary-foreground rounded-xl hover:bg-water/85 transition-all active:scale-95 shadow-lg shadow-water/20"
                         >
                             <FiPlus size={24} />
                         </button>
@@ -178,7 +178,7 @@ export default function DailyMetricsView({
                 <Button 
                     onClick={handleSave} 
                     disabled={saving}
-                    className="w-full md:w-auto min-w-[200px] h-14 !bg-emerald-500 !text-black font-black uppercase tracking-[0.2em] shadow-2xl shadow-emerald-500/30 rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-all"
+                    className="w-full md:w-auto min-w-[200px] h-14 !bg-olive !text-black font-black uppercase tracking-[0.2em] shadow-2xl shadow-olive/30 rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-all"
                 >
                     {saving ? 'Syncing...' : <><FiSave size={20} /> Save Daily Stats</>}
                 </Button>
@@ -186,3 +186,5 @@ export default function DailyMetricsView({
         </div>
     );
 }
+
+

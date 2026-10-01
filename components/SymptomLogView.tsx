@@ -146,7 +146,7 @@ export default function SymptomLogView({ date }: { date: string }) {
         return (
             <div className="flex items-center justify-center py-24">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+                    <div className="w-8 h-8 border-2 border-olive/30 border-t-olive rounded-full animate-spin" />
                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Loading...</p>
                 </div>
             </div>
@@ -156,22 +156,22 @@ export default function SymptomLogView({ date }: { date: string }) {
     return (
         <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in duration-500">
             {/* Mood Selector */}
-            <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 md:p-8 shadow-xl">
-                <h3 className="text-sm font-black uppercase tracking-widest text-white mb-6 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <div className="bg-foreground/5 border border-border rounded-[2rem] p-6 md:p-8 shadow-xl">
+                <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-6 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-olive" />
                     How do you feel? (1-10)
                 </h3>
                 <div className="flex flex-col items-center gap-6">
                     <div className="grid grid-cols-5 gap-1.5 md:gap-2 w-full">
                         {[1,2,3,4,5,6,7,8,9,10].map(n => {
                             const selected = mood === n;
-                            let cls = 'bg-white/[0.02] border-white/5 text-muted-foreground hover:border-white/20 hover:text-white';
+                            let cls = 'bg-foreground/[0.02] border-border text-muted-foreground hover:border-white/20 hover:text-foreground';
                             if (selected) {
-                                if (n <= 2) cls = 'bg-rose-500/20 border-rose-500 text-rose-400 shadow-lg shadow-rose-500/20';
+                                if (n <= 2) cls = 'bg-berry/20 border-berry text-berry shadow-lg shadow-berry/20';
                                 else if (n <= 4) cls = 'bg-orange-500/20 border-orange-500 text-orange-400 shadow-lg shadow-orange-500/20';
                                 else if (n <= 6) cls = 'bg-yellow-500/20 border-yellow-500 text-yellow-400 shadow-lg shadow-yellow-500/20';
                                 else if (n <= 8) cls = 'bg-lime-500/20 border-lime-500 text-lime-400 shadow-lg shadow-lime-500/20';
-                                else cls = 'bg-emerald-500/20 border-emerald-500 text-emerald-400 shadow-lg shadow-emerald-500/20';
+                                else cls = 'bg-olive/20 border-olive text-olive shadow-lg shadow-olive/20';
                             }
                             return (
                                 <button
@@ -193,9 +193,9 @@ export default function SymptomLogView({ date }: { date: string }) {
             </div>
 
             {/* Symptoms */}
-            <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 md:p-8 shadow-xl">
-                <h3 className="text-sm font-black uppercase tracking-widest text-white mb-6 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            <div className="bg-foreground/5 border border-border rounded-[2rem] p-6 md:p-8 shadow-xl">
+                <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-6 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-butter" />
                     Symptoms
                 </h3>
 
@@ -209,13 +209,13 @@ export default function SymptomLogView({ date }: { date: string }) {
                             onFocus={() => setSearchOpen(true)}
                             onKeyDown={handleSearchKey}
                             placeholder="Search or type a symptom..."
-                            className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-emerald-500/50 outline-none"
+                            className="flex-1 bg-black/40 border border-border rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-olive/50 outline-none"
                             autoComplete="off"
                         />
                         <button
                             onClick={() => addSymptom(searchVal)}
                             disabled={!searchVal.trim()}
-                            className="px-4 py-3 bg-emerald-500/10 text-emerald-400 rounded-xl hover:bg-emerald-500 hover:text-black transition-all disabled:opacity-30 disabled:cursor-not-allowed min-h-[44px] flex items-center gap-2 font-black uppercase tracking-widest text-[10px]"
+                            className="px-4 py-3 bg-olive/10 text-olive rounded-xl hover:bg-olive hover:text-black transition-all disabled:opacity-30 disabled:cursor-not-allowed min-h-[44px] flex items-center gap-2 font-black uppercase tracking-widest text-[10px]"
                         >
                             <FiPlus size={18} /> Add
                         </button>
@@ -227,7 +227,7 @@ export default function SymptomLogView({ date }: { date: string }) {
                                 <li
                                     key={s.value}
                                     onMouseDown={() => { optionSelected.current = true; addSymptom(s.value); }}
-                                    className="px-4 py-2.5 text-sm font-medium text-zinc-300 rounded-xl cursor-pointer hover:bg-emerald-500/10 hover:text-emerald-400 hover:pl-5 transition-all"
+                                    className="px-4 py-2.5 text-sm font-medium text-zinc-300 rounded-xl cursor-pointer hover:bg-olive/10 hover:text-olive hover:pl-5 transition-all"
                                 >
                                     {s.label}
                                 </li>
@@ -245,7 +245,7 @@ export default function SymptomLogView({ date }: { date: string }) {
                         </div>
                         <button
                             onClick={() => setBrowseOpen(true)}
-                            className="flex-none inline-flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-emerald-400 hover:border-emerald-500/30 hover:bg-emerald-500/10 transition-all active:scale-95 min-h-[36px]"
+                            className="flex-none inline-flex items-center gap-1.5 px-3 py-2 bg-foreground/5 border border-border rounded-xl text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-olive hover:border-olive/30 hover:bg-olive/10 transition-all active:scale-95 min-h-[36px]"
                         >
                             <FiGrid size={14} /> Browse
                         </button>
@@ -258,10 +258,10 @@ export default function SymptomLogView({ date }: { date: string }) {
                         {symptoms.map(s => (
                             <span
                                 key={s}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-xs font-bold text-emerald-400"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-olive/10 border border-olive/20 rounded-full text-xs font-bold text-olive"
                             >
                                 {s}
-                                <button onClick={() => removeSymptom(s)} className="hover:text-rose-400 transition-colors">
+                                <button onClick={() => removeSymptom(s)} className="hover:text-berry transition-colors">
                                     <FiX size={14} />
                                 </button>
                             </span>
@@ -275,8 +275,8 @@ export default function SymptomLogView({ date }: { date: string }) {
             </div>
 
             {/* Notes */}
-            <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 md:p-8 shadow-xl">
-                <h3 className="text-sm font-black uppercase tracking-widest text-white mb-6 flex items-center gap-2">
+            <div className="bg-foreground/5 border border-border rounded-[2rem] p-6 md:p-8 shadow-xl">
+                <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-6 flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                     What was different today?
                 </h3>
@@ -285,7 +285,7 @@ export default function SymptomLogView({ date }: { date: string }) {
                     onChange={e => setNotes(e.target.value)}
                     placeholder="e.g. Didn't sleep well, stressed at work, had a rest day..."
                     rows={4}
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-medium focus:ring-2 focus:ring-emerald-500/50 outline-none resize-none placeholder:text-muted-foreground/50"
+                    className="w-full bg-black/40 border border-border rounded-2xl px-6 py-4 text-sm font-medium focus:ring-2 focus:ring-olive/50 outline-none resize-none placeholder:text-muted-foreground/50"
                 />
             </div>
 
@@ -294,7 +294,7 @@ export default function SymptomLogView({ date }: { date: string }) {
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="w-full md:w-auto min-w-[200px] h-14 bg-emerald-500 text-black font-black uppercase tracking-[0.2em] shadow-2xl shadow-emerald-500/30 rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-all disabled:opacity-50"
+                    className="w-full md:w-auto min-w-[200px] h-14 bg-olive text-black font-black uppercase tracking-[0.2em] shadow-2xl shadow-olive/30 rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-all disabled:opacity-50"
                 >
                     {saving ? (
                         'Saving...'
@@ -308,14 +308,14 @@ export default function SymptomLogView({ date }: { date: string }) {
             {browseOpen && (
                 <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center md:p-8 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-8">
                     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setBrowseOpen(false)} />
-                    <div className="relative bg-background border-t md:border border-white/10 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full md:max-w-xl max-h-[90vh] md:max-h-[80vh] overflow-hidden animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in md:zoom-in-95">
+                    <div className="relative bg-background border-t md:border border-border rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full md:max-w-xl max-h-[90vh] md:max-h-[80vh] overflow-hidden animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in md:zoom-in-95">
                         {/* Header */}
-                        <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-white/5 bg-background/95 backdrop-blur-md">
+                        <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background/95 backdrop-blur-md">
                             <div>
-                                <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2"><FiGrid className="text-emerald-500" /> Browse Symptoms</h2>
+                                <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2"><FiGrid className="text-olive" /> Browse Symptoms</h2>
                                 <p className="text-[9px] font-bold text-muted-foreground mt-0.5">Tap to toggle — added ones are checked</p>
                             </div>
-                            <button onClick={() => setBrowseOpen(false)} className="p-2.5 hover:bg-white/10 rounded-full text-muted-foreground hover:text-white transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
+                            <button onClick={() => setBrowseOpen(false)} className="p-2.5 hover:bg-foreground/10 rounded-full text-muted-foreground hover:text-foreground transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
                         </div>
 
                         {/* List — already-used ones sorted to the end */}
@@ -337,8 +337,8 @@ export default function SymptomLogView({ date }: { date: string }) {
                                                     onClick={() => isAdded ? removeSymptom(name) : addSymptom(name)}
                                                     className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold border transition-all active:scale-95 ${
                                                         isAdded
-                                                            ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
-                                                            : 'bg-white/5 border-white/10 text-muted-foreground hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-400'
+                                                            ? 'bg-olive/20 border-olive/40 text-olive'
+                                                            : 'bg-foreground/5 border-border text-muted-foreground hover:bg-olive/10 hover:border-olive/30 hover:text-olive'
                                                     }`}
                                                 >
                                                     {isAdded ? <FiCheck size={14} /> : <FiPlus size={14} />}
@@ -354,8 +354,8 @@ export default function SymptomLogView({ date }: { date: string }) {
                         </div>
 
                         {/* Done button for mobile */}
-                        <div className="sticky bottom-0 p-4 bg-background/95 backdrop-blur-md border-t border-white/5 md:hidden">
-                            <button onClick={() => setBrowseOpen(false)} className="w-full h-12 bg-emerald-500 text-black font-black uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all">
+                        <div className="sticky bottom-0 p-4 bg-background/95 backdrop-blur-md border-t border-border md:hidden">
+                            <button onClick={() => setBrowseOpen(false)} className="w-full h-12 bg-olive text-black font-black uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all">
                                 <FiCheck size={18} /> Done ({symptoms.length})
                             </button>
                         </div>
@@ -365,3 +365,4 @@ export default function SymptomLogView({ date }: { date: string }) {
         </div>
     );
 }
+

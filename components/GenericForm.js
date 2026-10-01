@@ -1,6 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import styles from '../styles/Home.module.css'; // Import CSS module
-import { quantity_unit_conversions } from "../lib/conversion"
+import React, { useState } from 'react';
 import SearchableDropdown from './SearchableDropdown';
 
 function GenericForm({ formInitialState, handleSubmitProp, children = null }) {
@@ -16,7 +14,6 @@ function GenericForm({ formInitialState, handleSubmitProp, children = null }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        e.formData = formData
         let keyValuePairs = {};
         Object.keys(formData).forEach((key) => {
             keyValuePairs[key] = formData[key].value;
@@ -28,42 +25,42 @@ function GenericForm({ formInitialState, handleSubmitProp, children = null }) {
     };
 
     return (
-        <div className="glass-card w-full max-w-md mx-auto p-4 sm:p-8 my-6">
+        <div className="w-full max-w-md mx-auto rounded-2xl bg-card shadow-sm p-4 sm:p-6 my-2">
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <h3 className="text-center font-bold uppercase text-2xl tracking-tight text-white mb-4 border-b border-[var(--glass-border)] pb-4">Entry</h3>
                 {Object.keys(formData).map((key) => {
+                    // Fields start empty; the initial value is only ever shown as
+                    // the placeholder, so typing always starts from scratch.
+                    const placeholderValue = formData[key].placeholder ?? formData[key].value ?? key
                     if (Array.isArray(formData[key].options)) {
                         return (
                             <div className="flex flex-col gap-2" key={key}>
-                                <label className="label-modern text-white">{key}</label>
+                                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{key}</label>
                                 <SearchableDropdown options={formData[key].options} placeholder={key} onChange={handleChange} name={key}></SearchableDropdown>
                             </div>
                         )
                     } else {
                         return (
                             <div className="flex flex-col gap-2" key={key}>
-                                <label className="label-modern text-white">{key}</label>
+                                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{key}</label>
                                 <input
                                     name={key}
                                     id={key}
                                     type="text"
-                                    placeholder={key}
+                                    placeholder={placeholderValue}
+                                    value={formData[key].value ?? ''}
                                     onChange={handleChange}
-                                    className="input-modern"
+                                    className="w-full rounded-xl border border-input bg-background px-4 py-3.5 text-base font-bold tracking-tight text-foreground caret-water outline-none transition-colors focus:border-water/50 focus:ring-2 focus:ring-water/30 placeholder:font-semibold placeholder:text-muted-foreground"
                                 />
                             </div>
                         )
                     }
                 })}
 
-                <div className="flex flex-col gap-4 mt-6">
-                    <button className="btn-modern !bg-emerald-500 hover:!bg-emerald-400 !text-black w-full py-4 text-base tracking-wider uppercase" type="submit">
-                        Submit
-                    </button>
-                    <button className="btn-modern btn-outline text-sm w-full py-2" type="button" onClick={() => console.log(formData)}>
-                        Show State (Debug)
-                    </button>
-                </div>
+                {children}
+
+                <button className="mt-2 flex w-full items-center justify-center rounded-xl bg-water py-3 text-sm font-black uppercase tracking-widest text-primary-foreground shadow-lg shadow-water/20 transition-all hover:bg-water/85 active:scale-[0.99]" type="submit">
+                    Create list
+                </button>
             </form>
         </div>
     );

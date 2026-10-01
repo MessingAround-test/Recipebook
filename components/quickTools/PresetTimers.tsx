@@ -20,12 +20,12 @@ export default function PresetTimers({ onStart, onDone }: PresetTimersProps) {
                                 key={preset.id}
                                 type="button"
                                 onClick={() => { onStart(preset.label, preset.seconds); onDone?.() }}
-                                className="flex items-center justify-between gap-3 w-full px-4 py-3 rounded-xl border border-border bg-white/[0.02] hover:bg-white/5 hover:border-accent/40 transition-all active:scale-[0.98] text-left"
+                                className="flex items-center justify-between gap-3 w-full px-4 py-3 rounded-xl border border-border bg-foreground/[0.02] hover:bg-foreground/5 hover:border-plum/40 transition-all active:scale-[0.98] text-left"
                             >
                                 <span className="text-sm font-semibold truncate">{preset.label}</span>
                                 <span className="flex items-center gap-2 shrink-0 text-[11px] font-bold text-muted-foreground">
                                     {formatDurationLabel(preset.seconds / 60)}
-                                    <span className="w-6 h-6 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+                                    <span className="w-6 h-6 rounded-full bg-plum/15 text-plum flex items-center justify-center">
                                         <Play size={11} fill="currentColor" />
                                     </span>
                                 </span>

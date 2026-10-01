@@ -45,7 +45,7 @@ export default function UnitConverter() {
                     type="button"
                     onClick={swap}
                     aria-label="Swap units"
-                    className="mb-1 shrink-0 w-11 h-11 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-white/5 flex items-center justify-center transition-colors"
+                    className="mb-1 shrink-0 w-11 h-11 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5 flex items-center justify-center transition-colors"
                 >
                     <ArrowRightLeft size={16} />
                 </button>
@@ -59,7 +59,7 @@ export default function UnitConverter() {
                 </div>
             </div>
 
-            <div className="mt-1 rounded-2xl border border-accent/30 bg-emerald-500/5 px-4 py-5 text-center">
+            <div className="mt-1 rounded-2xl border border-plum/30 bg-plum/5 px-4 py-5 text-center">
                 <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Result</div>
                 <div className="text-2xl font-bold tabular-nums break-words">
                     {result == null ? '—' : `${roundSmart(result, 3)} ${toUnit?.short || ''}`}

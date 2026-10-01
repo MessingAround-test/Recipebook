@@ -1,6 +1,7 @@
 import dbConnect from '../../../lib/dbConnect'
 import User from '../../../models/User'
 import ShoppingList from '../../../models/ShoppingList'
+import ShoppingListItem from '../../../models/ShoppingListItem'
 import { verifyToken, requireFeature } from "../../../lib/auth.ts";
 import { logAPI } from '../../../lib/logger.ts';
 
@@ -28,6 +29,23 @@ export default async function handler(req, res) {
                 query.complete = req.query.complete === 'true'
             }
             let ShoppingListData = await ShoppingList.find(query)
+            // Attach live item counts (bought / unbought) for each list without
+            // persisting anything — used by the list-page cards on mobile.
+            if (ShoppingListData.length > 0) {
+                const listIds = ShoppingListData.map((l) => String(l._id))
+                const itemAgg = await ShoppingListItem.aggregate([
+                    { $match: { shoppingListId: { $in: listIds }, deleted: { $ne: true } } },
+                    { $group: { _id: '$shoppingListId', total: { $sum: 1 }, bought: { $sum: { $cond: ['$complete', 1, 0] } } } }
+                ])
+                const countsByList = {}
+                itemAgg.forEach((row) => {
+                    countsByList[row._id] = { total: row.total, bought: row.bought, unbought: row.total - row.bought }
+                })
+                ShoppingListData = ShoppingListData.map((l) => {
+                    const obj = l.toObject ? l.toObject() : l
+                    return { ...obj, counts: countsByList[String(obj._id)] || { total: 0, bought: 0, unbought: 0 } }
+                })
+            }
             return res.status(200).json({ res: ShoppingListData })
         } else if (req.method === "POST") {
             try {

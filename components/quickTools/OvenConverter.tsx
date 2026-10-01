@@ -34,7 +34,7 @@ export default function OvenConverter() {
                                 key={unit}
                                 type="button"
                                 onClick={() => setMode(unit)}
-                                className={`px-4 font-black text-sm transition-colors ${mode === unit ? 'bg-emerald-500 text-black' : 'text-muted-foreground hover:text-foreground'}`}
+                                className={`px-4 font-black text-sm transition-colors ${mode === unit ? 'bg-plum text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                             >
                                 °{unit}
                             </button>
@@ -46,15 +46,15 @@ export default function OvenConverter() {
             <button
                 type="button"
                 onClick={() => setFan(f => !f)}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${fan ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-border bg-white/[0.02]'}`}
+                className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${fan ? 'border-plum/40 bg-plum/10' : 'border-border bg-foreground/[0.02]'}`}
             >
                 <span className="text-sm font-semibold">Fan-forced oven</span>
-                <span className={`relative w-11 h-6 rounded-full transition-colors ${fan ? 'bg-emerald-500' : 'bg-white/10'}`}>
+                <span className={`relative w-11 h-6 rounded-full transition-colors ${fan ? 'bg-plum' : 'bg-foreground/10'}`}>
                     <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${fan ? 'left-[1.375rem]' : 'left-0.5'}`} />
                 </span>
             </button>
 
-            <div className="rounded-2xl border border-accent/30 bg-emerald-500/5 px-4 py-5 text-center">
+            <div className="rounded-2xl border border-plum/30 bg-plum/5 px-4 py-5 text-center">
                 <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">
                     Set oven to{fan ? ' (fan)' : ''}
                 </div>
@@ -81,7 +81,7 @@ export default function OvenConverter() {
                             key={row.mark}
                             type="button"
                             onClick={() => { setMode('C'); setValue(String(row.celsius)) }}
-                            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors ${gas.mark === row.mark ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400' : 'border-border text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
+                            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors ${gas.mark === row.mark ? 'border-plum/50 bg-plum/10 text-plum' : 'border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5'}`}
                         >
                             Gas {row.mark} · {row.celsius}°C
                         </button>

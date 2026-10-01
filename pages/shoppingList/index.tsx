@@ -7,7 +7,8 @@ import { Button } from '../../components/ui/button'
 import Router from 'next/router'
 import ImageCard from '../../components/ImageCard'
 import { useFeatureGuard } from '../../lib/useFeatureGuard'
-import { CheckCircle, History } from 'lucide-react'
+import { CheckCircle, History, Plus, ShoppingCart } from 'lucide-react'
+import pageShell from '../../styles/PageShell.module.css'
 
 export default function Home() {
     useFeatureGuard('shoppingList')
@@ -17,6 +18,7 @@ export default function Home() {
     const [allowDelete, setAllowDelete] = useState(false)
     const [showCompleted, setShowCompleted] = useState(false)
     const [loadingCompleted, setLoadingCompleted] = useState(false)
+    const [loadingShopping, setLoadingShopping] = useState(true)
 
     async function getUserDetails() {
         let res = await fetch("/api/UserDetails", {
@@ -40,6 +42,7 @@ export default function Home() {
             recipe.complete === false
         ))
         setRecipes(localRecipes)
+        setLoadingShopping(false)
     }
 
     async function getCompletedRecipeDetails() {
@@ -103,16 +106,22 @@ export default function Home() {
 
     return (
         <Layout title="Shopping Lists">
-            <PageHeader title="Shopping Lists">
+            <div className={`pb-24 md:pb-8 ${pageShell.shell}`}>
+            <PageHeader
+                title="Shopping Lists"
+                icon={<ShoppingCart size={18} />}
+                accent="water"
+                subtitle={!loadingShopping ? `${recipes.length} active list${recipes.length === 1 ? '' : 's'}` : undefined}
+            >
                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                    <Button onClick={() => redirect("/shoppingList/create/")} className="flex-1 sm:flex-none">
+                    <Button onClick={() => redirect("/shoppingList/create/")} className="flex-1 sm:flex-none bg-water text-primary-foreground hover:bg-water/85">
                         + Create New List
                     </Button>
                     <Button
                         variant={showCompleted ? "default" : "outline"}
                         onClick={toggleShowCompleted}
                         disabled={loadingCompleted}
-                        className="flex-1 sm:flex-none text-xs sm:text-sm"
+                        className={`flex-1 sm:flex-none text-xs sm:text-sm rounded-xl ${showCompleted ? "bg-water text-primary-foreground hover:bg-water/85" : ""}`}
                     >
                         {loadingCompleted ? (
                             "Loading..."
@@ -129,47 +138,93 @@ export default function Home() {
                         )}
                     </Button>
                     {userData?.role === "admin" && (
-                        <Button variant="destructive" onClick={toggleMassDelete} className="flex-1 sm:flex-none text-xs sm:text-sm">
+                        <Button variant="destructive" onClick={toggleMassDelete} className="flex-1 sm:flex-none text-xs sm:text-sm rounded-xl bg-berry/10 text-berry hover:bg-berry/20">
                             Allow Mass Delete
                         </Button>
                     )}
                 </div>
             </PageHeader>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mt-6">
-                {recipes.map((recipe) => (
-                    <div key={recipe._id} className={recipe.complete ? "bg-green-100" : ""}>
-                        <ImageCard
-                            recipe={recipe}
-                            allowDelete={allowDelete}
-                            onDelete={deleteRecipe}
-                            onRedirect={redirect}
-                            cardHeight={'5rem'}
-                        />
+            {loadingShopping ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 mt-2">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i} className="animate-pulse bg-foreground/[0.05] rounded-2xl" style={{ height: '8rem', animationDelay: `${i * 50}ms` }} />
+                    ))}
+                </div>
+            ) : (
+                <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 mt-2">
+                    {recipes.map((recipe) => (
+                        <div key={recipe._id}>
+                            <ImageCard
+                                recipe={recipe}
+                                allowDelete={allowDelete}
+                                onDelete={deleteRecipe}
+                                onRedirect={redirect}
+                                cardHeight={'6rem'}
+                                hidePlaceholderName
+                            />
+                        </div>
+                    ))}
+                </div>
+                {recipes.length === 0 && !showCompleted && (
+                    <div className="flex flex-col items-center justify-center py-12 text-center px-6 border border-dashed border-border rounded-3xl bg-muted/40">
+                        <div className="w-16 h-16 bg-water/10 rounded-full flex items-center justify-center mb-4 text-3xl">
+                            🛒
+                        </div>
+                        <h2 className="text-lg font-bold mb-1.5">No active shopping lists</h2>
+                        <p className="text-sm text-muted-foreground max-w-[300px] mb-5">
+                            Start a fresh list and it shows up here while you shop.
+                        </p>
+                        <Button onClick={() => redirect("/shoppingList/create/")} className="rounded-xl bg-water text-primary-foreground hover:bg-water/85">
+                            + Create a list
+                        </Button>
                     </div>
-                ))}
-                {showCompleted && completedRecipes.map((recipe) => (
-                    <div key={recipe._id} className="bg-green-100/50 opacity-80">
-                        <ImageCard
-                            recipe={recipe}
-                            allowDelete={allowDelete}
-                            onDelete={deleteRecipe}
-                            onRedirect={redirect}
-                            cardHeight={'5rem'}
-                        />
-                    </div>
-                ))}
+                )}
+                {showCompleted && (
+                    <>
+                        {completedRecipes.length > 0 && (
+                            <div className="mt-6 mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Completed</div>
+                        )}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 opacity-60">
+                            {completedRecipes.map((recipe) => (
+                                <div key={recipe._id} className="grayscale-[30%]">
+                                    <ImageCard
+                                        recipe={recipe}
+                                        allowDelete={allowDelete}
+                                        onDelete={deleteRecipe}
+                                        onRedirect={redirect}
+                                        cardHeight={'6rem'}
+                                        hidePlaceholderName
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        {completedRecipes.length === 0 && !loadingCompleted && (
+                            <div className="flex flex-col items-center justify-center py-10 text-center px-6 border border-dashed border-border rounded-3xl bg-muted/40">
+                                <div className="w-16 h-16 bg-water/10 rounded-full flex items-center justify-center mb-4 text-3xl">
+                                    📝
+                                </div>
+                                <h2 className="text-lg font-bold mb-1.5">No completed lists yet</h2>
+                                <p className="text-sm text-muted-foreground max-w-[300px]">
+                                    Finish a shopping run and the list lands here for reference.
+                                </p>
+                            </div>
+                        )}
+                    </>
+                )}
+                </>
+            )}
+
+            {/* Mobile Floating Action Button — one-hand reach for a new list */}
+            <Button
+                onClick={() => redirect("/shoppingList/create/")}
+                className="fixed bottom-24 sm:bottom-6 right-6 w-14 h-14 rounded-full shadow-2xl shadow-water/40 bg-water text-primary-foreground hover:scale-110 active:scale-95 transition-all z-50 p-0"
+                aria-label="Create new shopping list"
+            >
+                <Plus size={28} />
+            </Button>
             </div>
-            {recipes.length === 0 && !showCompleted && (
-                <div className="text-center text-muted-foreground mt-8">
-                    No active shopping lists found.
-                </div>
-            )}
-            {showCompleted && completedRecipes.length === 0 && !loadingCompleted && (
-                <div className="text-center text-muted-foreground mt-8">
-                    No completed shopping lists found.
-                </div>
-            )}
         </Layout>
     )
 }

@@ -8,7 +8,6 @@ import 'chart.js/auto';
 import { Bar } from 'react-chartjs-2';
 import { FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiSearch, FiZap, FiX, FiChevronDown, FiChevronUp, FiPieChart, FiTarget, FiAward } from 'react-icons/fi';
 import AddShoppingItem from '../components/AddShoppingItem';
-import { Toolbar } from '../components/Toolbar';
 import IngredientNutrientGraph from '../components/IngredientNutrientGraph';
 import WeeklyNutrientGraph from '../components/WeeklyNutrientGraph';
 import SearchableDropdown from '../components/SearchableDropdown';
@@ -20,6 +19,7 @@ import DailyMetricsView from '../components/DailyMetricsView';
 import WeightTrendsView from '../components/WeightTrendsView';
 import DailyScoreTrendsView from '../components/DailyScoreTrendsView';
 import SymptomLogView from '../components/SymptomLogView';
+import pageShell from '../styles/PageShell.module.css';
 
 export default function DailyTracker() {
     const router = useRouter();
@@ -367,7 +367,7 @@ export default function DailyTracker() {
     const renderConsumedItems = () => (
         <div className="space-y-3">
             {log?.items?.length === 0 ? (
-                <div className="py-12 md:py-20 text-center text-muted-foreground border-2 border-dashed border-white/5 rounded-xl opacity-40 text-sm">
+                <div className="py-12 md:py-20 text-center text-muted-foreground border-2 border-dashed border-border rounded-xl opacity-60 text-sm">
                     No items logged for this day.
                 </div>
             ) : (
@@ -376,20 +376,20 @@ export default function DailyTracker() {
                         const recipeKey = `${g.recipe_id}-${g.logged_at}`;
                         const isExpanded = expandedRecipes.has(recipeKey);
                         return (
-                            <div key={recipeKey} className="bg-white/[0.03] rounded-2xl md:rounded-3xl border-l-2 border-l-emerald-500/40 overflow-hidden group/recipe">
-                                <div className="flex items-center justify-between p-3 md:p-4 bg-white/[0.04]">
+                            <div key={recipeKey} className="bg-foreground/[0.03] rounded-2xl md:rounded-3xl border-l-2 border-l-olive/50 overflow-hidden group/recipe">
+                                <div className="flex items-center justify-between p-3 md:p-4 bg-foreground/[0.04]">
                                     <div className="flex items-center gap-3 min-w-0 flex-1">
                                         <div className="min-w-0 flex-1">
-                                            <div className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-0.5">Recipe</div>
-                                            <div className="font-black text-sm truncate cursor-pointer hover:text-emerald-400 transition-colors" onClick={() => router.push(`/Recipe/${g.recipe_id}`)}>{g.recipe_name}</div>
+                                            <div className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-olive mb-0.5">Recipe</div>
+                                            <div className="font-black text-sm truncate cursor-pointer transition-colors" onClick={() => router.push(`/Recipe/${g.recipe_id}`)}>{g.recipe_name}</div>
                                         </div>
-                                        <button onClick={() => toggleRecipe(recipeKey)} className={`shrink-0 px-2.5 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest border border-white/10 hover:bg-white/5 transition-all min-h-[40px] ${isExpanded ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'text-muted-foreground'}`}>
+                                        <button onClick={() => toggleRecipe(recipeKey)} className={`shrink-0 px-2.5 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest border border-border hover:bg-foreground/5 transition-all min-h-[40px] ${isExpanded ? 'bg-olive/10 text-olive border-olive/25' : 'text-muted-foreground'}`}>
                                             {isExpanded ? <span className="flex items-center gap-1">Hide <FiChevronUp /></span> : <span className="flex items-center gap-1">Details <FiChevronDown /></span>}
                                         </button>
                                     </div>
                                     <div className="flex items-center gap-2 md:gap-4 ml-2 shrink-0">
                                         <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{Math.round(g.totalKcal)} kcal</div>
-                                        <button onClick={() => deleteItem(g.items[0]._id)} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg opacity-100 md:opacity-0 md:group-hover/recipe:opacity-100 transition-all min-h-[40px] min-w-[40px] flex items-center justify-center">
+                                        <button onClick={() => deleteItem(g.items[0]._id)} className="p-2 text-berry hover:bg-berry/10 rounded-lg opacity-100 md:opacity-0 md:group-hover/recipe:opacity-100 transition-all min-h-[40px] min-w-[40px] flex items-center justify-center">
                                             <FiTrash2 size={16} />
                                         </button>
                                     </div>
@@ -397,8 +397,8 @@ export default function DailyTracker() {
                                 {isExpanded && (
                                     <div className="p-2 space-y-1 animate-in slide-in-from-top-1 duration-200">
                                         {g.items.map((it: any) => (
-                                            <div key={it._id} className="flex items-center justify-between px-3 md:px-4 py-2 text-[11px] hover:bg-white/[0.02] rounded-xl transition-all">
-                                                <span className="text-muted-foreground capitalize font-bold cursor-pointer hover:text-emerald-400" onClick={() => setResearchIngredient({ name: it.name, quantity: it.quantity, unit: it.quantity_unit })}>{it.name}</span>
+                                            <div key={it._id} className="flex items-center justify-between px-3 md:px-4 py-2 text-[11px] hover:bg-foreground/[0.02] rounded-xl transition-all">
+                                                <span className="text-muted-foreground capitalize font-bold cursor-pointer hover:text-foreground transition-colors" onClick={() => setResearchIngredient({ name: it.name, quantity: it.quantity, unit: it.quantity_unit })}>{it.name}</span>
                                                 <span className="text-muted-foreground/60">{it.quantity}{it.quantity_unit}</span>
                                             </div>
                                         ))}
@@ -408,12 +408,12 @@ export default function DailyTracker() {
                         );
                     } else {
                         return (
-                            <div key={g._id} className="flex items-center justify-between p-3 md:p-4 bg-white/[0.03] rounded-2xl hover:bg-white/[0.06] transition-all group">
+                            <div key={g._id} className="flex items-center justify-between p-3 md:p-4 bg-foreground/[0.03] rounded-2xl hover:bg-foreground/[0.06] transition-all group">
                                 <div className="min-w-0 flex-1">
-                                    <div className="font-bold text-sm capitalize cursor-pointer hover:text-emerald-400 transition-colors truncate" onClick={() => setResearchIngredient({ name: g.name, quantity: g.quantity, unit: g.quantity_unit })}>{g.name}</div>
+                                    <div className="font-bold text-sm capitalize cursor-pointer hover:text-foreground transition-colors truncate" onClick={() => setResearchIngredient({ name: g.name, quantity: g.quantity, unit: g.quantity_unit })}>{g.name}</div>
                                     <div className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-0.5">{g.quantity}{g.quantity_unit} • {Math.round(g.nutrients.energy_kcal)} kcal</div>
                                 </div>
-                                <button onClick={() => deleteItem(g._id)} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center">
+                                <button onClick={() => deleteItem(g._id)} className="p-2 text-berry hover:bg-berry/10 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center">
                                     <FiTrash2 size={16} />
                                 </button>
                             </div>
@@ -435,15 +435,15 @@ export default function DailyTracker() {
         return (
             <>
                 <p className="text-sm font-medium mb-4 leading-relaxed">
-                    You're at <span className="text-amber-400 font-black">{dailyPct}%</span> of your daily <span className="capitalize text-white">{nutrientInfo?.label}</span>. Try adding:
+                    You're at <span className="text-butter font-black">{dailyPct}%</span> of your daily <span className="capitalize text-foreground">{nutrientInfo?.label}</span>. Try adding:
                 </p>
                 <div className="space-y-2">
                     {recommendations.recommendations.map((rec: any) => (
-                        <div key={rec.name} className="p-3 md:p-4 bg-white/[0.04] rounded-xl md:rounded-2xl flex items-center gap-3 group hover:bg-emerald-500/10 transition-all">
+                        <div key={rec.name} className="p-3 md:p-4 bg-foreground/[0.04] rounded-xl md:rounded-2xl flex items-center gap-3 group hover:bg-olive/10 transition-all">
                             <div className="flex-1 min-w-0">
-                                <span className="text-[12px] font-black cursor-pointer hover:text-emerald-400 transition-colors capitalize" onClick={() => setResearchIngredient({ name: rec.name, quantity: 100, unit: 'gram' })}>{rec.name} / 100g</span>
+                                <span className="text-[12px] font-black cursor-pointer transition-colors capitalize" onClick={() => setResearchIngredient({ name: rec.name, quantity: 100, unit: 'gram' })}>{rec.name} / 100g</span>
                                 <div className="flex flex-wrap gap-x-2 mt-0.5">
-                                    <span className="text-[10px] font-black text-emerald-400">+{Math.round((rec.value / dailyTarget) * 100)}% {nutrientInfo?.label}</span>
+                                    <span className="text-[10px] font-black text-olive">+{Math.round((rec.value / dailyTarget) * 100)}% {nutrientInfo?.label}</span>
                                     {rec.helpsWith?.slice(0, 2).map((h: string) => {
                                         const hInfo = NUTRIENT_LABELS[h as keyof DailyIntakeTargets];
                                         const hValue = rec.fullProfile?.[h] || 0;
@@ -456,18 +456,18 @@ export default function DailyTracker() {
                                 {rec.warnings?.length > 0 && (
                                     <div className="flex flex-wrap gap-1.5 mt-2">
                                         {rec.warnings?.map((w: string) => (
-                                            <span key={w} className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-rose-500/10 text-rose-400 rounded-full border border-rose-500/20">High {NUTRIENT_LABELS[w as keyof DailyIntakeTargets]?.label}</span>
+                                            <span key={w} className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-berry/10 text-berry rounded-full border border-berry/20">High {NUTRIENT_LABELS[w as keyof DailyIntakeTargets]?.label}</span>
                                         ))}
                                     </div>
                                 )}
                             </div>
-                            <button onClick={() => handlePrefillIngredient(rec.name)} className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl hover:bg-emerald-500 hover:text-black transition-all active:scale-90 shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center">
+                            <button onClick={() => handlePrefillIngredient(rec.name)} className="p-2.5 bg-olive/10 text-olive rounded-xl hover:bg-olive hover:text-primary-foreground transition-all active:scale-90 shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center">
                                 <FiPlus size={18} />
                             </button>
                         </div>
                     ))}
                     {recommendations.recipeRecommendations?.length > 0 && (
-                        <div className="space-y-2 mt-4 border-t border-white/5 pt-4">
+                        <div className="space-y-2 mt-4 border-t border-border pt-4">
                             <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3">
                                 {recommendations.recipeRecommendations.some((r: any) => r.isSnack) ? 'Snack Suggestions' : 'Recipe Suggestions'}
                             </h4>
@@ -475,13 +475,13 @@ export default function DailyTracker() {
                                 const recipeValue = recipe.nutrients?.[nutrientKey] || 0;
                                 const boostPct = Math.round((recipeValue / dailyTarget) * 100);
                                 return (
-                                    <div key={recipe.id} className="p-3 md:p-4 bg-emerald-500/[0.07] rounded-xl md:rounded-2xl flex gap-3 items-center group hover:bg-emerald-500/10 transition-all">
-                                        {recipe.image && <img src={recipe.image} alt={recipe.name} className="w-10 h-10 rounded-xl object-cover shadow-lg border border-white/10 cursor-pointer shrink-0" onClick={() => router.push(`/Recipe/${recipe.id}`)} />}
+                                    <div key={recipe.id} className="p-3 md:p-4 bg-olive/[0.07] rounded-xl md:rounded-2xl flex gap-3 items-center group hover:bg-olive/10 transition-all">
+                                        {recipe.image && <img src={recipe.image} alt={recipe.name} className="w-10 h-10 rounded-xl object-cover shadow-lg cursor-pointer shrink-0" onClick={() => router.push(`/Recipe/${recipe.id}`)} />}
                                         <div className="flex-1 min-w-0">
-                                            <div className="text-[12px] font-black truncate cursor-pointer hover:text-emerald-400 transition-colors" onClick={() => router.push(`/Recipe/${recipe.id}`)}>{recipe.name}</div>
-                                            <span className="text-[10px] font-black text-emerald-400">+{boostPct}% {nutrientInfo?.label}</span>
+                                            <div className="text-[12px] font-black truncate cursor-pointer transition-colors" onClick={() => router.push(`/Recipe/${recipe.id}`)}>{recipe.name}</div>
+                                            <span className="text-[10px] font-black text-olive">+{boostPct}% {nutrientInfo?.label}</span>
                                         </div>
-                                        <button onClick={() => handlePrefillRecipe(recipe)} className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl hover:bg-emerald-500 hover:text-black transition-all active:scale-90 shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center">
+                                        <button onClick={() => handlePrefillRecipe(recipe)} className="p-2.5 bg-olive/10 text-olive rounded-xl hover:bg-olive hover:text-primary-foreground transition-all active:scale-90 shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center">
                                             <FiPlus size={18} />
                                         </button>
                                     </div>
@@ -581,16 +581,16 @@ export default function DailyTracker() {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Log Food
+                    <span className="w-1.5 h-1.5 rounded-full bg-olive" /> Log Food
                 </h2>
                 {unifiedSearch && (
-                    <button onClick={() => { setUnifiedSearch(""); setPrefillData(null); setSelectedRecipe(null); }} className="text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-white transition-colors bg-white/5 px-2 py-1 rounded-md">
+                    <button onClick={() => { setUnifiedSearch(""); setPrefillData(null); setSelectedRecipe(null); }} className="text-[9px] font-black uppercase tracking-widest text-muted-foreground transition-colors bg-foreground/5 px-2 py-1 rounded-md">
                         Clear Search
                     </button>
                 )}
             </div>
-            
-            <div className="bg-white/[0.03] rounded-2xl md:rounded-3xl p-4 md:p-6">
+
+            <div className="bg-foreground/[0.03] rounded-2xl md:rounded-3xl p-4 md:p-6">
                 <div className="space-y-4 md:space-y-6">
                     <SearchableDropdown
                         name="unified-search"
@@ -603,7 +603,7 @@ export default function DailyTracker() {
                     />
 
                     {prefillData ? (
-                        <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-t border-white/5 pt-4">
+                        <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-t border-border pt-4">
                             <AddShoppingItem
                                 key={`prefill-${prefillData.name}`}
                                 handleSubmit={handleLogItem}
@@ -616,24 +616,24 @@ export default function DailyTracker() {
                             />
                         </div>
                     ) : selectedRecipe ? (
-                        <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4 pt-4 border-t border-white/5">
+                        <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-4 pt-4 border-t border-border">
                             <div className="flex flex-col md:flex-row gap-4 md:gap-6">
                                 <div className="flex-1 space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Servings to Log</label>
                                     <div className="flex items-center gap-4">
-                                        <input type="number" value={servingsToLog} onChange={(e) => setServingsToLog(Number(e.target.value))} className="w-24 bg-background border border-white/10 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-emerald-500/50" />
+                                        <input type="number" value={servingsToLog} onChange={(e) => setServingsToLog(Number(e.target.value))} className="w-24 bg-foreground/[0.05] border border-border rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-olive/50" />
                                         <div className="text-[10px] font-black text-muted-foreground uppercase">of {selectedRecipe.servings || 1} total</div>
                                     </div>
                                 </div>
                                 {recipeWeight !== null && (
-                                    <div className="bg-emerald-500/10 rounded-2xl p-4 border border-emerald-500/20 flex flex-col justify-center">
-                                        <div className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-1">Est. Weight</div>
+                                    <div className="bg-olive/10 rounded-2xl p-4 border border-olive/20 flex flex-col justify-center">
+                                        <div className="text-[9px] font-black uppercase tracking-widest text-olive mb-1">Est. Weight</div>
                                         <div className="text-xl font-black">{Math.round(recipeWeight / (selectedRecipe.servings || 1))}g <span className="text-[10px] font-medium text-muted-foreground ml-1">per serve</span></div>
                                     </div>
                                 )}
                             </div>
-                            <button onClick={handleLogRecipe} className="w-full btn-modern !bg-emerald-500 !text-black py-4 font-black uppercase tracking-widest flex items-center justify-center gap-2 min-h-[48px]"><FiPlus /> Log {servingsToLog} Serving{servingsToLog !== 1 ? 's' : ''}</button>
-                            <div className="flex items-center gap-2 px-1"><FiZap size={10} className="text-emerald-400" /><p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Recipe logging expands into constituent ingredients for accuracy.</p></div>
+                            <button onClick={handleLogRecipe} className="w-full bg-olive text-primary-foreground py-4 font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 min-h-[48px] hover:bg-olive/85 transition-all"><FiPlus /> Log {servingsToLog} Serving{servingsToLog !== 1 ? 's' : ''}</button>
+                            <div className="flex items-center gap-2 px-1"><FiZap size={10} className="text-olive" /><p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Recipe logging expands into constituent ingredients for accuracy.</p></div>
                         </div>
                     ) : null}
                 </div>
@@ -641,45 +641,38 @@ export default function DailyTracker() {
         </div>
     );
     return (
-        <div className="min-h-screen bg-background text-foreground pb-24 md:pb-0">
-            <Toolbar />
-            <div className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-8">
+        <Layout title="Daily Food Tracker" description="Track and optimize your daily intake">
+            <div className={`pb-24 md:pb-8 ${pageShell.shell}`}>
                 {/* ═══ COMPACT HEADER ═══ */}
                 <div className="mb-4 md:mb-8">
                     <div className="flex items-center justify-between mb-3 md:mb-6">
-                        <div>
-                            <PageHeader title="Daily Food Tracker" />
-                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mt-0.5">Track & Optimize</p>
-                        </div>
-                        <div className="flex flex-col items-center">
-                            <div className={`text-3xl md:text-4xl font-black ${dailyScore > 80 ? 'text-emerald-400' : dailyScore > 50 ? 'text-amber-400' : 'text-rose-400'}`}>{dailyScore}%</div>
+                        <PageHeader title="Daily Food Tracker" icon={<FiTarget size={18} />} accent="olive" subtitle="Track & Optimize" className="mb-0 rounded-2xl md:rounded-2xl bg-card p-3.5 md:p-4 shadow-sm" />
+                        <div className="flex flex-col items-center shrink-0">
+                            <div className={`text-3xl md:text-4xl font-black ${dailyScore > 80 ? 'text-olive' : dailyScore > 50 ? 'text-butter' : 'text-berry'}`}>{dailyScore}%</div>
                             <div className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-muted-foreground">Daily Score</div>
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-3 md:gap-4">
-                        <div className="flex flex-wrap gap-1 bg-muted/30 p-1 rounded-xl border border-white/5 shadow-inner w-full sm:w-auto">
-                            <button onClick={() => setViewMode('daily')} className={`px-2.5 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'daily' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>food</button>
-                            <button onClick={() => setViewMode('stats')} className={`px-2.5 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'stats' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>exercise</button>
-                            <button onClick={() => setViewMode('weekly')} className={`px-2.5 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'weekly' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>stats</button>
-                            <button onClick={() => setViewMode('trends')} className={`px-2.5 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'trends' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>trends</button>
-                            <button onClick={() => setViewMode('insights')} className={`px-2.5 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'insights' ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>insights</button>
-                            <button onClick={() => setViewMode('symptoms')} className={`px-2.5 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === 'symptoms' ? 'bg-rose-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>symptoms</button>
+                        <div className="flex flex-wrap gap-1 bg-foreground/[0.05] p-1 rounded-xl w-full sm:w-auto">
+                            {([['daily', 'food'], ['stats', 'exercise'], ['weekly', 'stats'], ['trends', 'trends'], ['insights', 'insights'], ['symptoms', 'symptoms']] as const).map(([mode, label]) => (
+                                <button key={mode} onClick={() => setViewMode(mode)} className={`px-2.5 md:px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all min-h-[40px] whitespace-nowrap ${viewMode === mode ? (mode === 'symptoms' ? 'bg-berry text-primary-foreground shadow-sm' : 'bg-olive text-primary-foreground shadow-sm') : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>
+                            ))}
                         </div>
                         {(viewMode === 'daily' || viewMode === 'stats' || viewMode === 'insights' || viewMode === 'symptoms') && (
-                            <div className="flex items-center justify-between sm:justify-start gap-1 md:gap-3 bg-muted/30 p-1 md:p-1.5 rounded-xl border border-white/5 shadow-inner w-full sm:w-auto sm:ml-auto">
-                                <button onClick={() => changeDate(-1)} className="p-2.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-90"><FiChevronLeft size={18} /></button>
+                            <div className="flex items-center justify-between sm:justify-start gap-1 md:gap-3 bg-foreground/[0.05] p-1 md:p-1.5 rounded-xl w-full sm:w-auto sm:ml-auto">
+                                <button onClick={() => changeDate(-1)} className="p-2.5 md:p-2 hover:bg-foreground/10 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-90"><FiChevronLeft size={18} /></button>
                                 <div className="relative group/date">
-                                    <input 
-                                        type="date" 
-                                        value={date} 
+                                    <input
+                                        type="date"
+                                        value={date}
                                         onChange={(e) => setDate(e.target.value)}
-                                        className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
                                     />
-                                    <button className="font-black text-[11px] tracking-widest uppercase px-2 md:px-4 hover:text-emerald-400 transition-all active:scale-95 min-h-[40px] flex items-center">
+                                    <button className="font-black text-[11px] tracking-widest uppercase px-2 md:px-4 transition-all active:scale-95 min-h-[40px] flex items-center">
                                         {date === getLocalDateString(new Date()) ? 'Today' : (() => { const [y, m, d] = date.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }); })()}
                                     </button>
                                 </div>
-                                <button onClick={() => changeDate(1)} className="p-2.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-90"><FiChevronRight size={18} /></button>
+                                <button onClick={() => changeDate(1)} className="p-2.5 md:p-2 hover:bg-foreground/10 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-90"><FiChevronRight size={18} /></button>
                             </div>
                         )}
                     </div>
@@ -728,26 +721,26 @@ export default function DailyTracker() {
                         {/* ═══ DESKTOP LAYOUT (md+) ═══ */}
                         <div className="hidden md:block animate-in fade-in duration-500">
                             {/* Log Food - own row */}
-                            <div id="logging-section" className="bg-emerald-500/[0.04] rounded-3xl p-6 mb-6">
+                            <div id="logging-section" className="bg-olive/[0.04] rounded-3xl p-6 mb-6">
                                 {renderLoggingForm()}
                             </div>
 
                             {/* Consumed + Snapshot/Breakdown - two columns */}
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                                <div className="lg:col-span-7 bg-white/[0.03] rounded-3xl p-6 min-h-[300px]">
+                                <div className="lg:col-span-7 bg-card rounded-3xl p-6 min-h-[300px] shadow-sm">
                                     <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Consumed Today
+                                        <h3 className="text-xs font-black uppercase tracking-widest text-olive flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-olive" /> Consumed Today
                                         </h3>
-                                        <div className="text-[10px] font-black text-emerald-400">{totalKcal} kcal</div>
+                                        <div className="text-[10px] font-black text-olive">{totalKcal} kcal</div>
                                     </div>
                                     {renderConsumedItems()}
                                 </div>
 
                                 <div className="lg:col-span-5 space-y-6">
                                     {/* Daily Snapshot + Insight notification */}
-                                    <div className="bg-white/[0.03] rounded-3xl p-6">
-                                        <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2 mb-5">
+                                    <div className="bg-card rounded-3xl p-6 shadow-sm">
+                                        <h3 className="text-xs font-black uppercase tracking-widest text-olive flex items-center gap-2 mb-5">
                                             <FiTarget /> Daily Snapshot
                                         </h3>
                                         <div className="flex items-center justify-between mb-5">
@@ -755,14 +748,14 @@ export default function DailyTracker() {
                                                 <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Energy</div>
                                                 <div className="text-2xl font-black tabular-nums">{totalKcal} <span className="text-[10px] text-muted-foreground font-bold">kcal</span></div>
                                             </div>
-                                            <div className={`text-3xl font-black ${dailyScore > 80 ? 'text-emerald-400' : dailyScore > 50 ? 'text-amber-400' : 'text-rose-400'}`}>{dailyScore}%</div>
+                                            <div className={`text-3xl font-black ${dailyScore > 80 ? 'text-olive' : dailyScore > 50 ? 'text-butter' : 'text-berry'}`}>{dailyScore}%</div>
                                         </div>
                                         <div className="space-y-3">
                                             {[
-                                                { key: 'protein_g', label: 'Protein', color: '#10b981' },
-                                                { key: 'fat_g', label: 'Fat', color: '#f59e0b' },
-                                                { key: 'carbohydrates_g', label: 'Carbs', color: '#6366f1' },
-                                                { key: 'fiber_g', label: 'Fiber', color: '#06b6d4' },
+                                                { key: 'protein_g', label: 'Protein', color: 'var(--terracotta)' },
+                                                { key: 'fat_g', label: 'Fat', color: 'var(--berry)' },
+                                                { key: 'carbohydrates_g', label: 'Carbs', color: 'var(--butter)' },
+                                                { key: 'fiber_g', label: 'Fiber', color: 'var(--plum)' },
                                             ].map(m => {
                                                 const val = totals[m.key] || 0;
                                                 const tgt = targets?.[m.key] || 1;
@@ -773,8 +766,8 @@ export default function DailyTracker() {
                                                             <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">{m.label}</span>
                                                             <span className="text-[9px] font-bold text-muted-foreground/70 tabular-nums">{Math.round(val)}/{Math.round(tgt)}g</span>
                                                         </div>
-                                                        <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-                                                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: m.color }} />
+                                                        <div className="h-1.5 rounded-full bg-foreground/10 overflow-hidden">
+                                                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: `rgb(${m.color})` }} />
                                                         </div>
                                                     </div>
                                                 );
@@ -782,23 +775,23 @@ export default function DailyTracker() {
                                         </div>
 
                                         {recommendations?.deficientNutrient && (
-                                            <button onClick={() => setInsightsExpanded(true)} className="mt-5 w-full flex items-center gap-3 rounded-2xl bg-amber-500/[0.08] p-3 text-left hover:bg-amber-500/[0.15] transition-all active:scale-[0.98] group/insight">
+                                            <button onClick={() => setInsightsExpanded(true)} className="mt-5 w-full flex items-center gap-3 rounded-2xl bg-butter/[0.08] p-3 text-left hover:bg-butter/[0.15] transition-all active:scale-[0.98] group/insight">
                                                 <span className="relative shrink-0">
-                                                    <span className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-400"><FiZap size={18} /></span>
-                                                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-black text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-background">{(recommendations?.recommendations?.length || 0) + (recommendations?.recipeRecommendations?.length || 0)}</span>
+                                                    <span className="w-10 h-10 rounded-xl bg-butter/15 flex items-center justify-center text-butter"><FiZap size={18} /></span>
+                                                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-butter text-primary-foreground text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-background">{(recommendations?.recommendations?.length || 0) + (recommendations?.recipeRecommendations?.length || 0)}</span>
                                                 </span>
                                                 <span className="flex-1 min-w-0">
-                                                    <span className="block text-[9px] font-black uppercase tracking-widest text-amber-400">Daily Insight</span>
+                                                    <span className="block text-[9px] font-black uppercase tracking-widest text-butter">Daily Insight</span>
                                                     <span className="block text-[11px] font-bold text-muted-foreground truncate">Low on {NUTRIENT_LABELS[recommendations.deficientNutrient]?.label}</span>
                                                 </span>
-                                                <FiChevronRight size={16} className="text-amber-400 shrink-0 group-hover/insight:translate-x-0.5 transition-transform" />
+                                                <FiChevronRight size={16} className="text-butter shrink-0 group-hover/insight:translate-x-0.5 transition-transform" />
                                             </button>
                                         )}
                                     </div>
 
                                     {/* MVP of the Day */}
-                                    <div className="bg-white/[0.03] rounded-3xl p-6">
-                                        <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2 mb-5">
+                                    <div className="bg-card rounded-3xl p-6 shadow-sm">
+                                        <h3 className="text-xs font-black uppercase tracking-widest text-olive flex items-center gap-2 mb-5">
                                             <FiAward /> MVP's of the Day
                                         </h3>
                                         {mvps.length === 0 ? (
@@ -806,14 +799,14 @@ export default function DailyTracker() {
                                         ) : (
                                             <div className="space-y-2">
                                                 {mvps.map((m, idx) => (
-                                                    <div key={`${m.name}-${m.nutrient}`} onClick={() => setResearchIngredient({ name: m.name, quantity: 100, unit: 'gram' })} className="flex items-center gap-3 p-2.5 rounded-xl bg-white/[0.03] hover:bg-emerald-500/10 transition-all cursor-pointer group">
-                                                        <span className="shrink-0 w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-[11px] font-black">{idx + 1}</span>
+                                                    <div key={`${m.name}-${m.nutrient}`} onClick={() => setResearchIngredient({ name: m.name, quantity: 100, unit: 'gram' })} className="flex items-center gap-3 p-2.5 rounded-xl bg-foreground/[0.03] hover:bg-olive/10 transition-all cursor-pointer group">
+                                                        <span className="shrink-0 w-7 h-7 rounded-lg bg-olive/10 text-olive flex items-center justify-center text-[11px] font-black">{idx + 1}</span>
                                                         <span className="flex-1 min-w-0">
                                                             <span className="block text-[12px] font-black capitalize truncate">{m.name}</span>
                                                             <span className="block text-[10px] font-bold text-muted-foreground">+{Math.round(m.pct)}% {NUTRIENT_LABELS[m.nutrient as keyof DailyIntakeTargets]?.label}</span>
                                                         </span>
                                                         {m.isLimit && (
-                                                            <span className={`shrink-0 text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${m.overLimit ? 'bg-rose-500/15 text-rose-400' : 'bg-amber-500/15 text-amber-400'}`}>
+                                                            <span className={`shrink-0 text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${m.overLimit ? 'bg-berry/15 text-berry' : 'bg-butter/15 text-butter'}`}>
                                                                 {m.overLimit ? 'Over Limit' : 'Limit'}
                                                             </span>
                                                         )}
@@ -826,10 +819,10 @@ export default function DailyTracker() {
                             </div>
 
                             {/* Nutritional Breakdown - full width */}
-                            <div className="bg-indigo-500/[0.05] rounded-3xl p-6 mt-6">
+                            <div className="bg-plum/[0.05] rounded-3xl p-6 mt-6">
                                 <div className="flex items-center justify-between mb-8">
-                                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-400 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-indigo-400" /> Nutritional Breakdown</h3>
-                                    <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest bg-white/5 px-3 py-1 rounded-full">Detailed Analysis</div>
+                                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-plum flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-plum" /> Nutritional Breakdown</h3>
+                                    <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest bg-foreground/5 px-3 py-1 rounded-full">Detailed Analysis</div>
                                 </div>
                                 <IngredientNutrientGraph 
                                     ingredients={(log?.items || []).map((item: any) => ({ name: item.name, quantity: item.quantity, quantity_type: item.quantity_unit }))} 
@@ -841,11 +834,11 @@ export default function DailyTracker() {
                         {/* ═══ DESKTOP: Insight Popup ═══ */}
                         {insightsExpanded && (
                             <div className="hidden md:flex fixed inset-0 z-[90] items-center justify-center p-8">
-                                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setInsightsExpanded(false)} />
-                                <div className="relative bg-background rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6 md:p-8 animate-in fade-in zoom-in-95 duration-300">
+                                <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setInsightsExpanded(false)} />
+                                <div className="relative bg-card rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6 md:p-8 animate-in fade-in zoom-in-95 duration-300">
                                     <div className="flex items-center justify-between mb-5">
-                                        <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-amber-400"><FiZap /> Daily Insight</h2>
-                                        <button onClick={() => setInsightsExpanded(false)} className="p-2.5 hover:bg-white/10 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
+                                        <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-butter"><FiZap /> Daily Insight</h2>
+                                        <button onClick={() => setInsightsExpanded(false)} className="p-2.5 hover:bg-foreground/10 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
                                     </div>
                                     {renderInsightsContent()}
                                 </div>
@@ -855,10 +848,10 @@ export default function DailyTracker() {
                         {/* ═══ MOBILE LAYOUT ═══ */}
                         <div className="md:hidden space-y-3 animate-in fade-in duration-500">
                             {/* Consumed Today ” PRIMARY on mobile */}
-                            <div className="glass-card !p-3 !rounded-2xl">
+                            <div className="bg-card !p-3 !rounded-2xl shadow-sm">
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Consumed Today</h3>
-                                    <div className="text-[10px] font-black text-emerald-400">{totalKcal} kcal</div>
+                                    <div className="text-[10px] font-black text-olive">{totalKcal} kcal</div>
                                 </div>
                                 {renderConsumedItems()}
                             </div>
@@ -866,15 +859,15 @@ export default function DailyTracker() {
                             {/* Quick Action Buttons */}
                             <div className="grid grid-cols-2 gap-3">
                                 {recommendations?.deficientNutrient && (
-                                    <button onClick={() => setInsightsExpanded(true)} className="glass-card !p-3 !rounded-2xl relative flex flex-col items-center justify-center gap-2 active:bg-white/5 transition-colors border-amber-500/30 bg-amber-500/5">
-                                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-amber-500 text-black text-[11px] font-black rounded-full flex items-center justify-center shadow-lg ring-2 ring-background animate-bounce">1</div>
-                                        <FiZap size={24} className="text-amber-400" />
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-amber-400">Insights</div>
+                                    <button onClick={() => setInsightsExpanded(true)} className="bg-card !p-3 !rounded-2xl relative flex flex-col items-center justify-center gap-2 active:bg-foreground/5 transition-colors shadow-sm border border-butter/30 bg-butter/5">
+                                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-butter text-primary-foreground text-[11px] font-black rounded-full flex items-center justify-center shadow-lg ring-2 ring-background animate-bounce">1</div>
+                                        <FiZap size={24} className="text-butter" />
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-butter">Insights</div>
                                     </button>
                                 )}
-                                <button onClick={() => setBreakdownExpanded(true)} className="glass-card !p-3 !rounded-2xl flex flex-col items-center justify-center gap-2 active:bg-white/5 transition-colors">
-                                    <FiPieChart size={24} className="text-emerald-500" />
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Breakdown</div>
+                                <button onClick={() => setBreakdownExpanded(true)} className="bg-card !p-3 !rounded-2xl flex flex-col items-center justify-center gap-2 active:bg-foreground/5 transition-colors shadow-sm">
+                                    <FiPieChart size={24} className="text-plum" />
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-plum">Breakdown</div>
                                 </button>
                             </div>
                         </div>
@@ -882,9 +875,9 @@ export default function DailyTracker() {
                         {/* ═══ MOBILE: Insights Overlay ═══ */}
                         {insightsExpanded && (
                             <div className="md:hidden fixed inset-0 z-[90] bg-background overflow-y-auto animate-in slide-in-from-bottom duration-300">
-                                <div className="sticky top-0 z-10 flex items-center justify-between p-3 bg-background/95 backdrop-blur-md border-b border-white/5">
-                                    <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-amber-400"><FiZap /> Daily Insight</h2>
-                                    <button onClick={() => setInsightsExpanded(false)} className="p-2.5 hover:bg-white/10 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
+                                <div className="sticky top-0 z-10 flex items-center justify-between p-3 bg-background/95 backdrop-blur-md border-b border-border">
+                                    <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-butter"><FiZap /> Daily Insight</h2>
+                                    <button onClick={() => setInsightsExpanded(false)} className="p-2.5 hover:bg-foreground/10 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
                                 </div>
                                 <div className="p-4 pb-8">{renderInsightsContent()}</div>
                             </div>
@@ -893,9 +886,9 @@ export default function DailyTracker() {
                         {/* ═══ MOBILE: Breakdown Overlay ═══ */}
                         {breakdownExpanded && (
                             <div className="md:hidden fixed inset-0 z-[90] bg-background overflow-y-auto overflow-x-hidden animate-in slide-in-from-bottom duration-300">
-                                <div className="sticky top-0 z-10 flex items-center justify-between p-3 bg-background/95 backdrop-blur-md border-b border-white/5">
-                                    <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-emerald-500"><FiPieChart /> Breakdown</h2>
-                                    <button onClick={() => setBreakdownExpanded(false)} className="p-2.5 hover:bg-white/10 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
+                                <div className="sticky top-0 z-10 flex items-center justify-between p-3 bg-background/95 backdrop-blur-md border-b border-border">
+                                    <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-plum"><FiPieChart /> Breakdown</h2>
+                                    <button onClick={() => setBreakdownExpanded(false)} className="p-2.5 hover:bg-foreground/10 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
                                 </div>
                                 <div className="p-4 pb-8">
                                     <IngredientNutrientGraph 
@@ -912,9 +905,9 @@ export default function DailyTracker() {
                         {/* ═══ MOBILE: Logging Overlay ═══ */}
                         {isLoggingOpen && (
                             <div className="md:hidden fixed inset-0 z-[90] bg-background overflow-y-auto animate-in slide-in-from-bottom duration-300">
-                                <div className="sticky top-0 z-10 flex items-center justify-between p-3 bg-background/95 backdrop-blur-md border-b border-white/5">
-                                    <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2"><FiPlus className="text-emerald-500" /> Log Food</h2>
-                                    <button onClick={() => { setIsLoggingOpen(false); setPrefillData(null); }} className="p-2.5 hover:bg-white/10 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
+                                <div className="sticky top-0 z-10 flex items-center justify-between p-3 bg-background/95 backdrop-blur-md border-b border-border">
+                                    <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2"><FiPlus className="text-olive" /> Log Food</h2>
+                                    <button onClick={() => { setIsLoggingOpen(false); setPrefillData(null); }} className="p-2.5 hover:bg-foreground/10 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
                                 </div>
                                 <div className="p-3 pb-8">{renderLoggingForm()}</div>
                             </div>
@@ -924,7 +917,7 @@ export default function DailyTracker() {
                         {!isLoggingOpen && (
                             <button
                                 onClick={() => setIsLoggingOpen(true)}
-                                className="md:hidden fixed bottom-[90px] right-6 z-[100] px-6 py-4 rounded-full bg-emerald-500 text-black shadow-2xl shadow-emerald-500/50 flex items-center justify-center gap-2 font-black uppercase tracking-widest text-sm active:scale-90 transition-all"
+                                className="md:hidden fixed bottom-[90px] right-6 z-[100] px-6 py-4 rounded-full bg-olive text-primary-foreground shadow-2xl shadow-olive/40 flex items-center justify-center gap-2 font-black uppercase tracking-widest text-sm active:scale-90 transition-all"
                             >
                                 <FiPlus size={22} /> Add Food
                             </button>
@@ -936,9 +929,9 @@ export default function DailyTracker() {
             {/* Research Modal */}
             {researchIngredient && (
                 <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center md:p-8 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-8">
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setResearchIngredient(null)} />
-                    <div className="relative bg-background border-t md:border border-white/10 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full md:max-w-5xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto overflow-x-hidden animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in md:zoom-in-95">
-                        <button onClick={() => setResearchIngredient(null)} className="absolute top-4 right-4 md:top-6 md:right-6 p-2.5 hover:bg-white/10 rounded-full text-muted-foreground hover:text-white transition-all z-50 min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setResearchIngredient(null)} />
+                    <div className="relative bg-card border-t md:border border-border rounded-t-2xl md:rounded-3xl shadow-2xl w-full md:max-w-5xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto overflow-x-hidden animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in md:zoom-in-95">
+                        <button onClick={() => setResearchIngredient(null)} className="absolute top-4 right-4 md:top-6 md:right-6 p-2.5 hover:bg-foreground/10 rounded-full text-muted-foreground transition-all z-50 min-h-[44px] min-w-[44px] flex items-center justify-center"><FiX size={22} /></button>
                         <div className="p-1 md:p-2">
                              <IngredientResearchComponent 
                                 initialSearchTerm={researchIngredient.name} 
@@ -958,8 +951,8 @@ export default function DailyTracker() {
             {/* Nutrient Research Modal */}
             {selectedNutrientForResearch && (
                 <div className="fixed inset-0 z-[110] flex items-end md:items-center justify-center md:p-8 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-8">
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedNutrientForResearch(null)} />
-                    <div className="relative bg-background border-t md:border border-white/10 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full md:max-w-4xl h-[80vh] md:h-auto md:max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in md:zoom-in-95">
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSelectedNutrientForResearch(null)} />
+                    <div className="relative bg-card border-t md:border border-border rounded-t-2xl md:rounded-3xl shadow-2xl w-full md:max-w-4xl h-[80vh] md:h-auto md:max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom duration-300 md:animate-in md:fade-in md:zoom-in-95">
                         <NutrientResearchModal 
                             nutrientKey={selectedNutrientForResearch} 
                             onClose={() => setSelectedNutrientForResearch(null)} 
@@ -971,6 +964,6 @@ export default function DailyTracker() {
                     </div>
                 </div>
             )}
-        </div>
+        </Layout>
     );
 }

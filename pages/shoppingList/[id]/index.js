@@ -824,7 +824,7 @@ export default function Home() {
                                 {!isListEmpty && (
                                     <button
                                         onClick={markListAsComplete}
-                                        className={`p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border transition-all active:scale-95 ${list.complete ? 'border-amber-500/30 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10' : 'border-emerald-500/30 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10'}`}
+                                        className={`p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border transition-all active:scale-95 ${list.complete ? 'border-butter/30 text-butter hover:text-butter/80 hover:bg-butter/10' : 'border-water/30 text-water hover:text-water/80 hover:bg-water/10'}`}
                                         title={list.complete ? "Mark List as Incomplete" : "Mark List as Complete"}
                                     >
                                         <ClipboardCheck size={16} className={`sm:w-4 sm:h-4 ${list.complete ? 'line-through decoration-2' : ''}`} />
@@ -834,7 +834,7 @@ export default function Home() {
                                 {!isListEmpty && (
                                     <button
                                         onClick={handleCopyToClipboard}
-                                        className={`p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border border-white/10 transition-all active:scale-95 ${copySuccess ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                        className={`p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border border-white/10 transition-all active:scale-95 ${copySuccess ? 'text-berry bg-berry/10 border-berry/30' : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'}`}
                                         title="Copy to Clipboard"
                                     >
                                         {copySuccess ? <Check size={16} className="sm:w-4 sm:h-4" /> : <Copy size={16} className="sm:w-4 sm:h-4" />}
@@ -843,7 +843,7 @@ export default function Home() {
 
                                 <button
                                     onClick={resetToDefault}
-                                    className="p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition-all active:scale-95"
+                                    className="p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border border-white/10 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all active:scale-95"
                                     title="Reset View"
                                 >
                                     <RotateCcw size={16} className="sm:w-4 sm:h-4" />
@@ -871,7 +871,7 @@ export default function Home() {
 
                                 {!createNewIngredOpen && (
                                     <button
-                                        className="bg-emerald-500 hover:bg-emerald-400 text-black p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                                        className="bg-water hover:bg-water/85 text-primary-foreground p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg transition-all shadow-lg shadow-water/20 active:scale-95"
                                         onClick={() => setCreateNewIngredOpen(true)}
                                         title="Add Item"
                                     >
@@ -890,11 +890,11 @@ export default function Home() {
                                 <div className="flex rounded-lg overflow-hidden border border-white/10 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
                                     <button
                                         onClick={() => setPricingStrategy('match')}
-                                        className={`px-3 py-2 transition-colors ${pricingStrategy === 'match' ? 'bg-blue-500/20 text-blue-400 border-r border-white/10' : 'bg-transparent text-gray-400 hover:text-white border-r border-white/10'}`}
+                                        className={`px-3 py-2 transition-colors ${pricingStrategy === 'match' ? 'bg-water/15 text-water border-r border-white/10' : 'bg-transparent text-gray-400 hover:text-white border-r border-white/10'}`}
                                     >Best Match</button>
                                     <button
                                         onClick={() => setPricingStrategy('value')}
-                                        className={`px-3 py-2 transition-colors ${pricingStrategy === 'value' ? 'bg-blue-500/20 text-blue-400' : 'bg-transparent text-gray-400 hover:text-white'}`}
+                                        className={`px-3 py-2 transition-colors ${pricingStrategy === 'value' ? 'bg-water/15 text-water' : 'bg-transparent text-gray-400 hover:text-white'}`}
                                     >Best Value</button>
                                 </div>
                             </div>
@@ -902,7 +902,7 @@ export default function Home() {
                             <div className="flex flex-col gap-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Layout</label>
                                 <button
-                                    className={`py-2 px-3 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all border ${isGrouped ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-transparent text-gray-400 border-white/10 hover:text-white'}`}
+                                    className={`py-2 px-3 rounded-lg text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all border ${isGrouped ? 'bg-water/15 text-water border-water/30' : 'bg-transparent text-muted-foreground border-border hover:text-foreground'}`}
                                     onClick={() => setIsGrouped(!isGrouped)}
                                 >
                                     {isGrouped ? '📦 Grouped' : '📄 Individual'}
@@ -914,17 +914,17 @@ export default function Home() {
                                 <div className="flex rounded-lg overflow-hidden border border-white/10 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">
                                     <button
                                         onClick={() => setSortMode('alphabetical')}
-                                        className={`px-3 py-2 transition-colors ${sortMode === 'alphabetical' ? 'bg-blue-500/20 text-blue-400 border-r border-white/10' : 'bg-transparent text-gray-400 hover:text-white border-r border-white/10'}`}
+                                        className={`px-3 py-2 transition-colors ${sortMode === 'alphabetical' ? 'bg-water/15 text-water border-r border-white/10' : 'bg-transparent text-gray-400 hover:text-white border-r border-white/10'}`}
                                     >🔤 Alphabetical</button>
                                     <button
                                         onClick={() => setSortMode('woolworths_smart')}
-                                        className={`px-3 py-2 transition-colors ${sortMode === 'woolworths_smart' ? 'bg-blue-500/20 text-blue-400' : 'bg-transparent text-gray-400 hover:text-white'}`}
+                                        className={`px-3 py-2 transition-colors ${sortMode === 'woolworths_smart' ? 'bg-water/15 text-water' : 'bg-transparent text-gray-400 hover:text-white'}`}
                                     >🏪 Woolworths</button>
                                 </div>
                                 {sortMode === 'woolworths_smart' && (
                                     <button
                                         onClick={() => setIsOrderEditorOpen(true)}
-                                        className="text-[9px] font-bold uppercase tracking-widest text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 py-1.5 px-3 rounded-lg transition-all mt-1"
+                                        className="text-[9px] font-bold uppercase tracking-widest text-water border border-water/20 bg-water/5 hover:bg-water/10 py-1.5 px-3 rounded-lg transition-all mt-1"
                                     >✏️ Edit Walkthrough Order</button>
                                 )}
                             </div>
@@ -956,7 +956,7 @@ export default function Home() {
                                         />
                                     </div>
                                     <button
-                                        className="btn-modern !bg-emerald-500 hover:!bg-emerald-400 !text-black px-4 py-2 sm:px-3 sm:py-1 rounded-md font-bold text-[10px] w-full sm:w-auto mt-2 sm:mt-0"
+                                        className="btn-modern !bg-water hover:!bg-water/85 !text-primary-foreground px-4 py-2 sm:px-3 sm:py-1 rounded-md font-bold text-[10px] w-full sm:w-auto mt-2 sm:mt-0"
                                         onClick={() => updateSupplierFromInputObject(pendingSuppliers)}
                                     >
                                         APPLY
@@ -989,12 +989,12 @@ export default function Home() {
                                                 };
                                                 setPendingSuppliers(newPending);
                                             }}
-                                            className={`relative h-9 w-9 rounded-full flex-shrink-0 transition-all duration-200 active:scale-90 ${isActive ? 'ring-2 ring-emerald-400 shadow-lg shadow-emerald-500/20' : 'opacity-40 grayscale'}`}
+                                            className={`relative h-9 w-9 rounded-full flex-shrink-0 transition-all duration-200 active:scale-90 ${isActive ? 'ring-2 ring-water shadow-lg shadow-water/20' : 'opacity-40 grayscale'}`}
                                             style={{ background: 'rgba(255,255,255,0.06)' }}
                                         >
                                             <img src={`/${s}.png`} alt={s} className="w-full h-full object-contain p-1" onError={(e) => { e.target.style.display = 'none'; }} />
                                             {isActive && (
-                                                <div className="absolute -top-1 -right-1 h-4 w-4 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm border-2 border-[var(--bg-main)]">
+                                                <div className="absolute -top-1 -right-1 h-4 w-4 bg-water rounded-full flex items-center justify-center shadow-sm border-2 border-background">
                                                     <Check size={8} className="text-white" strokeWidth={4} />
                                                 </div>
                                             )}
@@ -1031,7 +1031,7 @@ export default function Home() {
                                                             .filter(v => v !== 'true' && v !== 'false' && v !== '');
 
                                                         if (parts.length === 0) {
-                                                            if (group.includes("complete=true")) return <span className="flex items-center gap-1.5 text-emerald-500"><Check size={14} strokeWidth={3} /> COMPLETED</span>;
+                                                            if (group.includes("complete=true")) return <span className="flex items-center gap-1.5 text-water"><Check size={14} strokeWidth={3} /> COMPLETED</span>;
                                                             return <span style={{ color: 'var(--muted-foreground)' }}>OTHER</span>;
                                                         }
 
@@ -1186,7 +1186,7 @@ export default function Home() {
                                                         </div>
 
                                                         <div className="mt-4 pt-3 border-t border-white/[0.03] flex items-center justify-between">
-                                                            <div className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5 ${allFound ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                                                            <div className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5 ${allFound ? 'bg-water/10 text-water' : 'bg-butter/10 text-butter'}`}>
                                                                 <span>{option.itemsFound} found</span>
                                                                 <Info
                                                                     size={10}
@@ -1228,3 +1228,8 @@ export default function Home() {
         </div>
     );
 }
+
+
+
+
+

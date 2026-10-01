@@ -186,7 +186,7 @@ export default function DailyScoreTrendsView() {
         return (
             <div className="flex items-center justify-center py-24">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+                    <div className="w-8 h-8 border-2 border-olive/30 border-t-olive rounded-full animate-spin" />
                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Loading...</p>
                 </div>
             </div>
@@ -197,49 +197,49 @@ export default function DailyScoreTrendsView() {
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header / Periods */}
             <div className="flex flex-wrap gap-2 items-center justify-between">
-                <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-white/5 shadow-inner">
+                <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-border shadow-inner">
                     {(['week', 'month', 'year'] as const).map(p => (
-                        <button key={p} onClick={() => setPeriod(p)} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${period === p ? 'bg-emerald-500 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                        <button key={p} onClick={() => setPeriod(p)} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${period === p ? 'bg-olive text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
                             {PERIOD_CONFIG[p].label}
                         </button>
                     ))}
                 </div>
-                <div className="flex items-center gap-1 bg-muted/30 rounded-xl p-0.5 border border-white/5">
-                    <button onClick={() => setEndDate(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d; })} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-muted-foreground"><FiChevronLeft size={14} /></button>
+                <div className="flex items-center gap-1 bg-muted/30 rounded-xl p-0.5 border border-border">
+                    <button onClick={() => setEndDate(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d; })} className="p-1.5 hover:bg-foreground/10 rounded-lg transition-colors text-muted-foreground"><FiChevronLeft size={14} /></button>
                     <div className="px-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">{startDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} - {endDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</div>
-                    <button onClick={() => setEndDate(prev => { const d = new Date(prev); d.setDate(d.getDate() + 7); return d; })} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-muted-foreground"><FiChevronRight size={14} /></button>
+                    <button onClick={() => setEndDate(prev => { const d = new Date(prev); d.setDate(d.getDate() + 7); return d; })} className="p-1.5 hover:bg-foreground/10 rounded-lg transition-colors text-muted-foreground"><FiChevronRight size={14} /></button>
                 </div>
             </div>
 
             {/* Summary cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                <div className="bg-foreground/5 border border-border rounded-2xl p-4">
                     <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Avg Daily Score</div>
-                    <div className="text-2xl font-black text-emerald-400">{summary.avg}%</div>
+                    <div className="text-2xl font-black text-olive">{summary.avg}%</div>
                 </div>
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                    <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1 flex items-center gap-1"><FiSmile size={12} className="text-emerald-400" /> Positive</div>
+                <div className="bg-foreground/5 border border-border rounded-2xl p-4">
+                    <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1 flex items-center gap-1"><FiSmile size={12} className="text-olive" /> Positive</div>
                     <div className="text-2xl font-black">{summary.totalPos}<span className="text-sm text-muted-foreground font-bold ml-1">days</span></div>
                 </div>
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                    <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1 flex items-center gap-1"><FiMeh size={12} className="text-amber-400" /> Neutral</div>
+                <div className="bg-foreground/5 border border-border rounded-2xl p-4">
+                    <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1 flex items-center gap-1"><FiMeh size={12} className="text-butter" /> Neutral</div>
                     <div className="text-2xl font-black">{summary.totalNeu}<span className="text-sm text-muted-foreground font-bold ml-1">days</span></div>
                 </div>
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                    <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1 flex items-center gap-1"><FiFrown size={12} className="text-rose-400" /> Negative</div>
-                    <div className="text-2xl font-black text-rose-400">{summary.totalNeg}<span className="text-sm text-muted-foreground font-bold ml-1">days</span></div>
+                <div className="bg-foreground/5 border border-border rounded-2xl p-4">
+                    <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1 flex items-center gap-1"><FiFrown size={12} className="text-berry" /> Negative</div>
+                    <div className="text-2xl font-black text-berry">{summary.totalNeg}<span className="text-sm text-muted-foreground font-bold ml-1">days</span></div>
                 </div>
             </div>
 
             {/* Chart */}
-            <div className="glass-card border-white/5 bg-black/20 p-6 min-h-[400px] flex flex-col">
+            <div className="glass-card border-border bg-black/20 p-6 min-h-[400px] flex flex-col">
                 <div className="flex items-center justify-between mb-6">
                     <div>
-                        <h3 className="text-sm font-black uppercase tracking-widest text-white">Daily Score vs Symptoms & Mood</h3>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Daily Score vs Symptoms & Mood</h3>
                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Score & mood overlaid with symptom counts</p>
                     </div>
                     <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase">
-                        <FiTrendingUp size={14} className="text-emerald-500" />
+                        <FiTrendingUp size={14} className="text-olive" />
                         Scored {summary.scoredDays} days
                     </div>
                 </div>
