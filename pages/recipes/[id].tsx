@@ -517,20 +517,29 @@ export default function RecipeDetail() {
     const totalTimeEstimate = prepTimeEstimate + cookTimeEstimate
 
     // Effort flow: consecutive timed steps with the same involvement merge into
-    // one burst ("15m hands-on -> 40m hands-off"). Unset involvement = hands-on.
+    // one burst ("15m hands-on -> 40m hands-off"). Involvement comes from the
+    // step itself if set, otherwise inferred from the step's cooking timers
+    // (most-attentive level wins); still unset = hands-on.
     const effortFlow = useMemo(() => {
         const labelFor = (inv: string | undefined) =>
             inv === 'none' ? 'hands-off' : inv === 'low' ? 'swing by' : 'hands-on'
+        const timerInvByStep = new Map<number, string>()
+        ;(cookingTimers || []).forEach((t: any) => {
+            if (t.carb || t.type !== 'timer' || typeof t.stepIndex !== 'number') return
+            const inv = INVOLVEMENT_META[t.involvement] ? t.involvement : 'active'
+            const prev = timerInvByStep.get(t.stepIndex)
+            if (!prev || INVOLVEMENT_RANK[inv] > INVOLVEMENT_RANK[prev]) timerInvByStep.set(t.stepIndex, inv)
+        })
         const bursts: { label: string; minutes: number }[] = []
-        ;(instructions || []).forEach((i: any) => {
+        ;(instructions || []).forEach((i: any, idx: number) => {
             if (!i.time) return
-            const label = labelFor(i.involvement)
+            const label = labelFor(i.involvement || timerInvByStep.get(idx))
             const prev = bursts[bursts.length - 1]
             if (prev && prev.label === label) prev.minutes += i.time
             else bursts.push({ label, minutes: i.time })
         })
         return bursts
-    }, [instructions])
+    }, [instructions, cookingTimers])
 
     const [showStepBreakdown, setShowStepBreakdown] = useState(false)
 
