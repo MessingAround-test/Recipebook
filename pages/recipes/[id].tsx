@@ -21,6 +21,7 @@ import ScaleRecipeModal, { ScaleIngredientOption } from '../../components/ScaleR
 import { getColorForName } from '../../lib/colors'
 import StarRating from '../../components/StarRating'
 import { playAlarm, requestNotificationPermission, sendNotification } from '../../lib/alarm'
+import { isCookingActive } from '../../lib/cookingSession'
 
 const PRICE_THRESHOLDS = { cheap: 15, expensive: 35 }
 
@@ -325,6 +326,7 @@ export default function RecipeDetail() {
     const [finishConfirm, setFinishConfirm] = useState(false)
     const [resetConfirm, setResetConfirm] = useState(false)
     const [clearResidualPrompt, setClearResidualPrompt] = useState({ show: false, recipeName: '', recipeId: '' })
+    const [otherCookPrompt, setOtherCookPrompt] = useState<{ show: boolean; recipeId: string; recipeName: string } | null>(null)
     const [editingTimerId, setEditingTimerId] = useState<string | null>(null)
     const [editTimerMinutes, setEditTimerMinutes] = useState("")
     const [editTimerSeconds, setEditTimerSeconds] = useState("")
@@ -1690,6 +1692,41 @@ export default function RecipeDetail() {
             setIsCookingMode(true)
             return
         }
+        // Only one active cook at a time: a different recipe's session dies
+        // with this fresh start, so warn before discarding its progress.
+        const other = findOtherLiveCook()
+        if (other) {
+            setOtherCookPrompt({ show: true, recipeId: other.recipeId, recipeName: other.recipeName })
+            return
+        }
+        await beginFreshCook()
+    }
+
+    // Finds another recipe's in-progress session (the current recipe's own
+    // session is excluded — the fresh-start path only runs when it's absent).
+    const findOtherLiveCook = (): { recipeId: string; recipeName: string } | null => {
+        try {
+            const keys = Object.keys(localStorage)
+                .filter(k => k.startsWith('timer-session-') && k !== `timer-session-${String(id)}`)
+            for (const key of keys) {
+                try {
+                    const data = JSON.parse(localStorage.getItem(key) || 'null')
+                    if (isCookingActive(data)) {
+                        return {
+                            recipeId: key.replace('timer-session-', ''),
+                            recipeName: (data && typeof data.recipeName === 'string' && data.recipeName.trim()) ? data.recipeName : 'another recipe'
+                        }
+                    }
+                } catch {}
+            }
+        } catch {}
+        return null
+    }
+
+    // The fresh-start path: carb-side question (when the recipe wants one),
+    // then open the cooking view. Also invoked after the discard-warning
+    // modal clears the other recipe's session.
+    const beginFreshCook = async () => {
         if (needsCarbChoice()) {
             const hasCatalog = await loadCarbData()
             if (hasCatalog) {
@@ -5006,6 +5043,42 @@ export default function RecipeDetail() {
                                 }}
                             >
                                 Clear All
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Warn before a fresh Start Cooking discards another recipe's
+                in-progress session — only one cook runs at a time. */}
+            {otherCookPrompt?.show && (
+                <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-card border border-border/40 rounded-2xl p-5 max-w-sm mx-4 shadow-xl">
+                        <h3 className="text-lg font-bold mb-2">Already Cooking</h3>
+                        <p className="text-sm text-foreground/60 mb-4">
+                            You have an in-progress cook for <span className="font-semibold text-foreground">{otherCookPrompt.recipeName}</span>.
+                            Starting a new cook will discard its progress.
+                        </p>
+                        <div className="flex gap-3">
+                            <Button
+                                variant="outline"
+                                className="flex-1 h-11"
+                                onClick={() => setOtherCookPrompt(null)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                className="flex-1 h-11"
+                                onClick={() => {
+                                    if (otherCookPrompt.recipeId) {
+                                        try { localStorage.removeItem(`timer-session-${otherCookPrompt.recipeId}`) } catch {}
+                                    }
+                                    setOtherCookPrompt(null)
+                                    beginFreshCook()
+                                }}
+                            >
+                                Discard &amp; Start
                             </Button>
                         </div>
                     </div>

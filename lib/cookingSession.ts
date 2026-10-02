@@ -182,27 +182,34 @@ const BUBBLE_GAP = 12
 const MOBILE_NAV_HEIGHT = 72 // 4.5rem — matches the fixed bottom taskbar
 const MOBILE_EDGE = 12
 const DESKTOP_EDGE = 20
+// First bubble's center sits 45% of the way down from the top (slightly above
+// vertical center) so it stays clear of bottom navigation and content edges.
+const BUBBLE_CENTER_FRACTION = 0.45
 
 export function isMobileViewport(width: number): boolean {
     return width <= MOBILE_MAX_WIDTH
 }
 
 // Start position (distance from the right/bottom viewport edges) for the
-// bubble at `index` when `count` are present. Bubbles stack upward on the
-// right and clear the fixed bottom taskbar on phones.
+// bubble at `index` when `count` are present. The first bubble starts 45% up
+// the screen on the right edge; extra bubbles stack downward from there and
+// never dip below the mobile taskbar.
 export function getBubbleStartPosition(count: number, index: number, viewport: BubbleViewport): { right: number; bottom: number } {
     const safeIndex = Math.max(0, Math.floor(index || 0))
     const width = viewport?.width || (typeof window !== 'undefined' ? window.innerWidth : 1024)
+    const height = viewport?.height || (typeof window !== 'undefined' ? window.innerHeight : 768)
+    const startBottom = Math.round(height * (1 - BUBBLE_CENTER_FRACTION) - BUBBLE_SIZE / 2)
     if (isMobileViewport(width)) {
         const safeArea = viewport?.safeAreaBottom || 0
+        const floor = MOBILE_NAV_HEIGHT + MOBILE_EDGE + safeArea
         return {
             right: MOBILE_EDGE,
-            bottom: MOBILE_NAV_HEIGHT + MOBILE_EDGE + safeIndex * (BUBBLE_SIZE + BUBBLE_GAP) + safeArea
+            bottom: Math.max(floor, startBottom - safeIndex * (BUBBLE_SIZE + BUBBLE_GAP))
         }
     }
     return {
         right: DESKTOP_EDGE,
-        bottom: DESKTOP_EDGE + safeIndex * (BUBBLE_SIZE + BUBBLE_GAP)
+        bottom: Math.max(DESKTOP_EDGE, startBottom - safeIndex * (BUBBLE_SIZE + BUBBLE_GAP))
     }
 }
 

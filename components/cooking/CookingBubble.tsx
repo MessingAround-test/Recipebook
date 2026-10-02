@@ -19,7 +19,7 @@ const TAP_SLOP = 8
 const DISMISS_MARGIN = 150
 const REREAD_MS = 1000
 const OVERDUE_RERING_MS = 4000
-const POS_KEY = 'cook-bubble-pos-v1'
+const POS_KEY = 'cook-bubble-pos-v2'
 
 interface Point {
     x: number

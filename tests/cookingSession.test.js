@@ -133,23 +133,37 @@ describe('cookingSession — remaining + positions', () => {
         expect(formatBubbleTime(-500)).toBe('0s')
     })
 
-    test('mobile stacks above the bottom taskbar; desktop from the corner', () => {
+    test('mobile starts 45% up; desktop same; stacks downward above taskbar', () => {
         expect(isMobileViewport(375)).toBe(true)
         expect(isMobileViewport(1280)).toBe(false)
 
-        const one = getBubbleStartPosition(1, 0, { width: 375, safeAreaBottom: 0 })
+        // 45% down from the top of a 768px viewport: center at 345.6, top edge
+        // 56px above that -> bottom offset 394. Right edge anchor unchanged.
+        const one = getBubbleStartPosition(1, 0, { width: 375, height: 768, safeAreaBottom: 0 })
         expect(one.right).toBe(12)
-        expect(one.bottom).toBe(84)
+        expect(one.bottom).toBe(394)
 
-        const two = getBubbleStartPosition(2, 1, { width: 375, safeAreaBottom: 0 })
-        expect(two.bottom).toBe(84 + 68)
+        // Extra bubbles stack downward (56px bubble + 12px gap).
+        const two = getBubbleStartPosition(2, 1, { width: 375, height: 768, safeAreaBottom: 0 })
+        expect(two.bottom).toBe(394 - 68)
 
-        const desktop = getBubbleStartPosition(1, 0, { width: 1280 })
+        // Stacked bubbles clamp above the mobile taskbar (72 + 12 + safe area).
+        const deep = getBubbleStartPosition(6, 5, { width: 375, height: 768, safeAreaBottom: 10 })
+        expect(deep.bottom).toBe(72 + 12 + 10)
+
+        const desktop = getBubbleStartPosition(1, 0, { width: 1280, height: 768 })
         expect(desktop.right).toBe(20)
-        expect(desktop.bottom).toBe(20)
+        expect(desktop.bottom).toBe(394)
 
-        const desktop2 = getBubbleStartPosition(2, 1, { width: 1280 })
-        expect(desktop2.bottom).toBe(20 + 68)
+        const desktop2 = getBubbleStartPosition(2, 1, { width: 1280, height: 768 })
+        expect(desktop2.bottom).toBe(394 - 68)
+
+        // Very short viewports fall back to the bottom floor instead of going
+        // off-screen or under content.
+        const shortMobile = getBubbleStartPosition(1, 0, { width: 375, height: 120, safeAreaBottom: 0 })
+        expect(shortMobile.bottom).toBe(84)
+        const shortDesktop = getBubbleStartPosition(1, 0, { width: 1280, height: 40 })
+        expect(shortDesktop.bottom).toBe(20)
     })
 
     test('clearCookingSession removes only the target key', () => {
