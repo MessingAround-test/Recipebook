@@ -10,7 +10,7 @@ export interface ScrapedIngredientResult {
 export interface ScrapedRecipeResult {
     name?: string
     ingredients?: ScrapedIngredientResult[]
-    instructions?: Array<{ instruction?: string }>
+    instructions?: Array<{ instruction?: string; sectionName?: string }>
     sourceNotes?: string
 }
 
@@ -47,7 +47,12 @@ export const mapScrapedToRemixRecipe = (
         .filter(i => i.Name)
 
     const instructions: Instruction[] = (Array.isArray(scraped.instructions) ? scraped.instructions : [])
-        .map(s => ({ Text: String(s?.instruction || '').trim() }))
+        .map(s => {
+            const sectionName = String(s?.sectionName || '').trim()
+            const inst = { Text: String(s?.instruction || '').trim() } as Instruction
+            if (sectionName) inst.Note = sectionName
+            return inst
+        })
         .filter(s => s.Text)
 
     if (ingredients.length === 0 || instructions.length === 0) return null

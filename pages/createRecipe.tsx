@@ -928,8 +928,12 @@ export default function CreateRecipe() {
                 data.data.instructions.forEach(function (instruction: any) {
                     // Order is the array position (shown as the number chip) —
                     // storing the step number in the note just renders "1", "2"…
-                    // under each step
-                    tasteInstructionList.push({ "Text": instruction.instruction })
+                    // under each step. A JSON-LD HowToSection name (e.g. "Detrempe")
+                    // is a useful grouping label, so it becomes the step note.
+                    tasteInstructionList.push({
+                        "Text": instruction.instruction,
+                        "Note": (instruction.sectionName || "").trim() || ""
+                    })
                 })
                 setInstructions(tasteInstructionList)
 

@@ -17,6 +17,8 @@ export interface ScrapedIngredient {
 export interface ScrapedInstruction {
     stepNumber: number
     instruction: string
+    /** HowToSection name the step belongs to (e.g. "Detrempe") — optional */
+    sectionName?: string
 }
 
 export interface ScrapedRecipe {
@@ -148,6 +150,24 @@ const collectJsonLdRecipes = (html: string): any[] => {
     return out
 }
 
+/** Section names scraped from the page often carry link artifacts from the
+ *  source theme — "(click here to see the image)" etc. */
+const cleanSectionName = (name: string): string =>
+    name.replace(/\s*\(click here[^)]*\)/gi, '').replace(/\s+/g, ' ').trim()
+
+const readStepText = (item: any): string => {
+    let text = ''
+    if (typeof item === 'string') text = item
+    else if (item && typeof item === 'object') {
+        text = typeof item.text === 'string' ? item.text : ''
+        if (!text && item.itemListElement) {
+            const nested = Array.isArray(item.itemListElement) ? item.itemListElement : []
+            text = nested.map((n: any) => (typeof n === 'string' ? n : n?.text || '')).filter(Boolean).join(' ')
+        }
+    }
+    return text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+}
+
 export const extractJsonLd = (html: string): ScrapedRecipe | null => {
     const recipes = collectJsonLdRecipes(html)
     if (recipes.length === 0) return null
@@ -167,16 +187,17 @@ export const extractJsonLd = (html: string): ScrapedRecipe | null => {
         : typeof r.recipeInstructions === 'string' ? [r.recipeInstructions] : []
     let step = 1
     for (const item of rawInstructions) {
-        let text = ''
-        if (typeof item === 'string') text = item
-        else if (item && typeof item === 'object') {
-            text = typeof item.text === 'string' ? item.text : ''
-            if (!text && item.itemListElement) {
-                const nested = Array.isArray(item.itemListElement) ? item.itemListElement : []
-                text = nested.map((n: any) => (typeof n === 'string' ? n : n?.text || '')).filter(Boolean).join(' ')
+        // HowToSection carries HowToSteps in itemListElement — keep each as
+        // its own step instead of joining them into one giant block.
+        if (item && typeof item === 'object' && item.itemListElement && Array.isArray(item.itemListElement)) {
+            const sectionName = cleanSectionName(typeof item.name === 'string' ? item.name : '')
+            for (const nested of item.itemListElement) {
+                const text = readStepText(nested)
+                if (text) instructions.push({ stepNumber: step++, instruction: text, sectionName: sectionName || undefined })
             }
+            continue
         }
-        text = text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+        const text = readStepText(item)
         if (text) instructions.push({ stepNumber: step++, instruction: text })
     }
 

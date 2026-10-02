@@ -1,6 +1,8 @@
 import { verifyToken } from '../../../lib/auth.ts'
 import { logAPI } from '../../../lib/logger.ts'
 import { scrapeRecipe } from '../../../lib/recipeScrape'
+import { callGroqChat } from '../../../lib/ai'
+import { findGiantInstructionIndexes, buildSplitGiantStepsMessages, applyStepSplits, parseSplitGiantStepsResult, parseAiJson } from '../../../lib/aiRecipeOps'
 
 /**
  * Generic recipe site scraper. Replaces the per-site substring routing on
@@ -22,7 +24,8 @@ export default async function handler(req, res) {
     }
 
     try {
-        const recipe = await scrapeRecipe(url)
+        let recipe = await scrapeRecipe(url)
+        recipe = await maybeSplitGiantSteps(recipe)
         // Extraction tier surfaces how the recipe was pulled (jsonld/stored-
         // rule/heuristic/ai-generated) — visible in the network tab and now
         // mirrored into the ScrapeLog collection for admin review.
@@ -38,5 +41,33 @@ export default async function handler(req, res) {
             data: null,
             message: 'Could not extract a recipe from this site. Try the AI Notes or Photo import instead.'
         })
+    }
+}
+
+/** Very long recipe pages sometimes surface "giant block" steps (one scraped
+ *  step packing many distinct actions). Ask the AI to restructure ONLY those
+ *  blocks — untouched steps pass through verbatim. Any failure keeps the raw
+ *  extraction and never blocks import. */
+const maybeSplitGiantSteps = async (recipe) => {
+    const giant = findGiantInstructionIndexes(recipe?.instructions)
+    if (giant.length === 0) return recipe
+    try {
+        const giantTexts = giant.map(i => recipe.instructions[i].instruction)
+        const responseText = await callGroqChat(buildSplitGiantStepsMessages(giantTexts), true)
+        const splits = parseSplitGiantStepsResult(parseAiJson(responseText), giant.length)
+        if (!splits) return recipe
+        const instructions = applyStepSplits(recipe.instructions, splits, giant.map(i => recipe.instructions[i]))
+        const before = recipe.instructions.length
+        const after = instructions.length
+        if (after === before) return recipe
+        console.log(`[recipeSiteExtract/auto] AI split ${giant.length} giant step(s): ${before} -> ${after} steps`)
+        return {
+            ...recipe,
+            instructions: instructions.map((s, i) => ({ ...s, stepNumber: i + 1 })),
+            aiSplitInstructions: true
+        }
+    } catch (err) {
+        console.error('[recipeSiteExtract/auto] AI step split failed, keeping raw steps:', err?.message || err)
+        return recipe
     }
 }
