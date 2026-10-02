@@ -59,7 +59,7 @@ export default function DailyMetricsView({
         <div className="space-y-6 max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Weight Section */}
-                <div className="bg-foreground/5 border border-border rounded-[2rem] p-6 md:p-8 shadow-xl">
+                <div className="bg-card border border-border rounded-[2rem] p-6 md:p-8 shadow-sm">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="w-10 h-10 rounded-2xl bg-olive/10 flex items-center justify-center text-olive">
                             <FiTarget size={20} />
@@ -77,7 +77,7 @@ export default function DailyMetricsView({
                                 step="0.1"
                                 value={weight} 
                                 onChange={(e) => setWeight(e.target.value)}
-                                className="w-full bg-foreground/[0.05] border border-border rounded-2xl px-6 py-4 text-2xl font-black focus:ring-4 focus:ring-olive/20 transition-all pr-16" 
+                                className="w-full bg-input border border-border rounded-2xl px-6 py-4 text-2xl font-black text-foreground focus:ring-4 focus:ring-olive/20 transition-all pr-16"
                                 placeholder="0.0"
                             />
                             <span className="absolute right-6 top-1/2 -translate-y-1/2 text-sm font-black text-muted-foreground uppercase tracking-widest">kg</span>
@@ -87,7 +87,7 @@ export default function DailyMetricsView({
                 </div>
 
                 {/* Exercise Summary Section */}
-                <div className="bg-foreground/5 border border-border rounded-[2rem] p-6 md:p-8 shadow-xl">
+                <div className="bg-card border border-border rounded-[2rem] p-6 md:p-8 shadow-sm">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="w-10 h-10 rounded-2xl bg-butter/10 flex items-center justify-center text-butter">
                             <FiZap size={20} />
@@ -104,7 +104,7 @@ export default function DailyMetricsView({
                                 type="number" 
                                 value={exerciseKcal} 
                                 onChange={(e) => setExerciseKcal(e.target.value)}
-                                className="w-full bg-foreground/[0.05] border border-border rounded-2xl px-6 py-4 text-2xl font-black focus:ring-4 focus:ring-butter/20 transition-all pr-16" 
+                                className="w-full bg-input border border-border rounded-2xl px-6 py-4 text-2xl font-black text-foreground focus:ring-4 focus:ring-butter/20 transition-all pr-16"
                                 placeholder="0"
                             />
                             <span className="absolute right-6 top-1/2 -translate-y-1/2 text-sm font-black text-muted-foreground uppercase tracking-widest">kcal</span>
@@ -120,7 +120,7 @@ export default function DailyMetricsView({
             </div>
 
             {/* Exercise Builder */}
-            <div className="bg-foreground/5 border border-border rounded-[2rem] p-6 md:p-8 shadow-xl">
+            <div className="bg-card border border-border rounded-[2rem] p-6 md:p-8 shadow-sm">
                 <div className="flex items-center gap-3 mb-8">
                     <div className="w-10 h-10 rounded-2xl bg-water/10 flex items-center justify-center text-water">
                         <FiActivity size={20} />
@@ -137,10 +137,10 @@ export default function DailyMetricsView({
                         <select 
                             value={EXERCISE_ACTIVITIES.indexOf(selectedActivity)}
                             onChange={(e) => setSelectedActivity(EXERCISE_ACTIVITIES[Number(e.target.value)])}
-                            className="w-full bg-foreground/[0.05] border border-border rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-water/50"
+                            className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm font-bold text-foreground focus:ring-2 focus:ring-water/50"
                         >
                             {EXERCISE_ACTIVITIES.map((act, idx) => (
-                                <option key={act.label} value={idx}>{act.label}</option>
+                                <option key={act.label} value={idx} className="bg-card text-foreground">{act.label}</option>
                             ))}
                         </select>
                     </div>
@@ -152,7 +152,7 @@ export default function DailyMetricsView({
                                 type="number" 
                                 value={durationMins} 
                                 onChange={(e) => setDurationMins(Number(e.target.value))}
-                                className="w-full bg-foreground/[0.05] border border-border rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-water/50 pr-12" 
+                                className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm font-bold text-foreground focus:ring-2 focus:ring-water/50 pr-12"
                             />
                             <FiClock className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                         </div>
@@ -178,7 +178,7 @@ export default function DailyMetricsView({
                 <Button 
                     onClick={handleSave} 
                     disabled={saving}
-                    className="w-full md:w-auto min-w-[200px] h-14 !bg-olive !text-black font-black uppercase tracking-[0.2em] shadow-2xl shadow-olive/30 rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-all"
+                    className="w-full md:w-auto min-w-[200px] h-14 !bg-olive !text-primary-foreground font-black uppercase tracking-[0.2em] shadow-2xl shadow-olive/30 rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-all"
                 >
                     {saving ? 'Syncing...' : <><FiSave size={20} /> Save Daily Stats</>}
                 </Button>

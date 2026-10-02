@@ -104,6 +104,7 @@ export default async function handler(req, res) {
             days.push({
                 date: dStr,
                 score,
+                logged: !!(log && log.items && log.items.length),
                 mood: symptomLog?.mood ?? null,
                 positive: counts.positive,
                 negative: counts.negative,

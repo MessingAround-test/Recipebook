@@ -13,6 +13,7 @@ import {
     Legend,
     Filler
 } from 'chart.js';
+import { aggregateToWeeks, getWeekOfMonthLabel } from '../lib/trendsAggregation';
 
 ChartJS.register(
     CategoryScale,
@@ -59,7 +60,13 @@ export default function DailyScoreTrendsView() {
             .finally(() => setLoading(false));
     }, [startDate, endDate]);
 
-    const labels = days.map(d => {
+    const chartDays = useMemo(
+        () => (period === 'year' ? aggregateToWeeks(days) : days),
+        [days, period]
+    );
+
+    const labels = chartDays.map(d => {
+        if (period === 'year') return getWeekOfMonthLabel(d.date);
         const [y, m, day] = d.date.split('-').map(Number);
         return new Date(y, m - 1, day).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
     });
@@ -85,7 +92,7 @@ export default function DailyScoreTrendsView() {
             {
                 type: 'line' as const,
                 label: 'Daily Score',
-                data: days.map(d => d.score),
+                data: chartDays.map(d => d.logged ? d.score : null),
                 borderColor: 'rgba(16, 185, 129, 1)',
                 backgroundColor: 'rgba(16, 185, 129, 1)',
                 borderWidth: 3,
@@ -94,12 +101,13 @@ export default function DailyScoreTrendsView() {
                 tension: 0.4,
                 fill: false,
                 yAxisID: 'yScore',
+                spanGaps: true,
                 order: 1,
             },
             {
                 type: 'line' as const,
                 label: 'Mood (1-10)',
-                data: days.map(d => d.mood != null ? d.mood * 10 : null),
+                data: chartDays.map(d => d.mood != null ? d.mood * 10 : null),
                 borderColor: 'rgba(217, 70, 239, 1)',
                 backgroundColor: 'rgba(217, 70, 239, 1)',
                 borderWidth: 2,
@@ -109,12 +117,12 @@ export default function DailyScoreTrendsView() {
                 tension: 0.4,
                 fill: false,
                 yAxisID: 'yScore',
-                spanGaps: false,
+                spanGaps: true,
                 order: 2,
             },
             {
                 label: 'Positive',
-                data: days.map(d => d.positive || 0),
+                data: chartDays.map(d => d.positive || 0),
                 backgroundColor: 'rgba(16, 185, 129, 0.35)',
                 yAxisID: 'yCount',
                 stack: 'symptoms',
@@ -122,7 +130,7 @@ export default function DailyScoreTrendsView() {
             },
             {
                 label: 'Neutral',
-                data: days.map(d => d.neutral || 0),
+                data: chartDays.map(d => d.neutral || 0),
                 backgroundColor: 'rgba(234, 179, 8, 0.35)',
                 yAxisID: 'yCount',
                 stack: 'symptoms',
@@ -130,14 +138,14 @@ export default function DailyScoreTrendsView() {
             },
             {
                 label: 'Negative',
-                data: days.map(d => d.negative || 0),
+                data: chartDays.map(d => d.negative || 0),
                 backgroundColor: 'rgba(244, 63, 94, 0.35)',
                 yAxisID: 'yCount',
                 stack: 'symptoms',
                 order: 3,
             },
         ],
-    }), [days, labels]);
+    }), [chartDays, labels]);
 
     const chartOptions = {
         responsive: true,
@@ -157,6 +165,11 @@ export default function DailyScoreTrendsView() {
                 bodyFont: { size: 11 },
                 padding: 12,
                 cornerRadius: 8,
+                filter: (item: any) => {
+                    const raw = item.raw;
+                    const v = typeof raw === 'number' ? raw : item.parsed?.y;
+                    return v != null && !Number.isNaN(v) && v !== 0;
+                },
             },
         },
         scales: {
@@ -236,7 +249,7 @@ export default function DailyScoreTrendsView() {
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Daily Score vs Symptoms & Mood</h3>
-                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Score & mood overlaid with symptom counts</p>
+                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">{period === 'year' ? 'Weekly averages of logged days with symptom counts' : 'Score & mood overlaid with symptom counts'}</p>
                     </div>
                     <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase">
                         <FiTrendingUp size={14} className="text-olive" />
