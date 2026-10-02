@@ -2292,32 +2292,40 @@ export default function RecipeDetail() {
     const remixedFromRef = sourceUrl ? parseRemixSourceRef(sourceUrl) : null
     const showPerPerson = recipeServings > 1
 
-    // One compact cost card — every value lives in a single wrapping row
+    // One compact cost card — every value lives in a single wrapping row.
+    // "Bulk" is the raw ingredient total; "Exact" is the efficiency-weighted
+    // total. Each has its own per-serving figure when the recipe serves > 1.
+    const exactCost = getAproxTotalRecipeCostUnit()
     const costEntries: { label: string; value: string }[] = [
-        { label: 'Total', value: `$${displayCost.toFixed(2)}` },
-        { label: 'Unit', value: `$${getAproxTotalRecipeCostUnit()}` },
-        ...(showPerPerson ? [{ label: 'Per person', value: `$${(displayCost / recipeServings).toFixed(2)}` }] : [])
+        { label: 'Bulk', value: `$${displayCost.toFixed(2)}` },
+        ...(showPerPerson ? [{ label: 'p/ serve', value: `$${(displayCost / recipeServings).toFixed(2)}` }] : []),
+        { label: 'Exact', value: `$${exactCost}` },
+        ...(showPerPerson ? [{ label: 'p/ serve', value: `$${(Number(exactCost) / recipeServings).toFixed(2)}` }] : [])
     ]
 
     const infoCard = (
         <div className="recipe-band">
             <div className="mx-4 sm:mx-8 rounded-xl bg-secondary/50 px-4 sm:px-6 py-2.5">
-                {/* Single line, never wraps — scrolls horizontally only as a last resort */}
-                <div className="flex items-center gap-x-4 overflow-x-auto hide-scrollbar whitespace-nowrap">
+                {/* Entries scroll horizontally as a last resort; the refresh
+                    button stays pinned outside the scroll area so it is never
+                    pushed off the card on narrow screens. */}
+                <div className="flex items-center gap-x-2">
                     {isCalculatingCost ? (
                         <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/40 shrink-0" />
                     ) : (
                         <>
-                            {costEntries.map((entry, i) => (
-                                <Fragment key={entry.label}>
-                                    {i > 0 && <span className="text-muted-foreground/30 select-none shrink-0" aria-hidden>·</span>}
-                                    <span className="inline-flex items-baseline gap-1.5 shrink-0">
-                                        <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{entry.label}</span>
-                                        <span className="text-xs sm:text-sm font-semibold tabular-nums text-foreground/70">{entry.value}</span>
-                                    </span>
-                                </Fragment>
-                            ))}
-                            <button onClick={refreshCost} title="Refresh cost" className="ml-auto shrink-0 text-muted-foreground/40 hover:text-accent transition-colors">
+                            <div className="min-w-0 flex-1 flex items-center gap-x-2 overflow-x-auto hide-scrollbar whitespace-nowrap">
+                                {costEntries.map((entry, i) => (
+                                    <Fragment key={i}>
+                                        {i > 0 && <span className="text-muted-foreground/30 select-none shrink-0" aria-hidden>·</span>}
+                                        <span className="inline-flex items-baseline gap-0.5 shrink-0">
+                                            <span className="text-[6px] font-semibold tracking-wide text-muted-foreground">{entry.label}</span>
+                                            <span className="text-[9px] font-semibold tabular-nums text-foreground/70">{entry.value}</span>
+                                        </span>
+                                    </Fragment>
+                                ))}
+                            </div>
+                            <button onClick={refreshCost} title="Refresh cost" className="shrink-0 text-muted-foreground/40 hover:text-accent transition-colors">
                                 <RefreshCw className="w-3.5 h-3.5" />
                             </button>
                         </>
