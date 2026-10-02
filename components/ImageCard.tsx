@@ -140,16 +140,20 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
                     /* Info bubbles top right: how much is left to buy, then cost */
                     <div className="ml-auto flex items-center gap-1.5">
                         {recipe.counts && (
-                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-md ${recipe.counts.total === 0 ? 'bg-butter text-primary-foreground' : recipe.counts.unbought > 0 ? 'bg-black/35 text-white border border-white/20' : 'bg-olive/85 text-primary-foreground'}`}>
-                                {recipe.counts.total === 0
-                                    ? 'New'
-                                    : recipe.counts.unbought > 0
-                                        ? `${recipe.counts.unbought} to buy`
-                                        : 'All bought'}
+                            <span className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-black/40 text-white backdrop-blur-sm">
+                                {recipe.counts.total === 0 && <span className="w-1.5 h-1.5 rounded-full bg-butter" />}
+                                {recipe.counts.unbought > 0
+                                    ? `${recipe.counts.unbought} to buy`
+                                    : recipe.counts.total === 0
+                                        ? 'New'
+                                        : <>
+                                            <span className="w-1.5 h-1.5 rounded-full bg-olive" />
+                                            All bought
+                                        </>}
                             </span>
                         )}
                         {recipe.cost !== undefined && (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider bg-water text-primary-foreground">
+                            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-black/40 text-water backdrop-blur-sm">
                                 ${recipe.cost.toFixed(2)}
                             </span>
                         )}
@@ -159,9 +163,9 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
             {onDelete && (bulkAction === 'delete' || (!bulkAction && allowDelete)) && (
                 <button
                     onClick={(e) => { e.stopPropagation(); onDelete(recipe._id); }}
-                    className={isListsPage ? 'w-8 h-8 flex items-center justify-center bg-berry text-primary-foreground rounded-full shadow-lg transition-colors duration-200 hover:bg-berry/85' : 'w-8 h-8 flex items-center justify-center bg-berry text-primary-foreground rounded-full shadow-lg transition-colors duration-200 hover:bg-berry/85 ml-auto'}
+                    className={`flex items-center justify-center bg-berry text-primary-foreground rounded-full shadow-lg transition-colors duration-200 hover:bg-berry/85 ${isListsPage ? 'w-7 h-7 opacity-90' : 'w-8 h-8 ml-auto'}`}
                 >
-                    <Trash2 size={14} />
+                    <Trash2 size={isListsPage ? 13 : 14} />
                 </button>
             )}
 
@@ -183,7 +187,7 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
             {isListsPage && (
                 <button
                     onClick={(e) => { e.stopPropagation(); handleRedirect(`${currentPath}/${recipe._id}`) }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 z-20 max-w-[calc(100%-6rem)] bg-card/75 backdrop-blur-md px-3 py-1.5 rounded-full text-sm font-bold tracking-tight text-black truncate text-left shadow-sm hover:bg-card/90 transition-colors cursor-pointer"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 z-20 max-w-[calc(100%-6rem)] bg-card/90 backdrop-blur-md px-3 py-1.5 rounded-full text-sm font-bold tracking-tight text-card-foreground truncate text-left shadow-md ring-1 ring-black/5 hover:bg-card transition-colors cursor-pointer"
                 >
                     {recipe.name}
                 </button>
