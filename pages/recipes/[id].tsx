@@ -1195,11 +1195,15 @@ export default function RecipeDetail() {
             const ingredientList = listIngreds.map(i =>
                 `${i.name}${i.note ? ` (${i.note})` : ''}`
             ).join(', ')
-            const instructionList = instructions.map(i => i.Text).join('; ')
-            const res = await fetch(
-                `/api/ai/extract_prep_work?recipeName=${encodeURIComponent(recipeName)}&ingredients=${encodeURIComponent(ingredientList)}&instructions=${encodeURIComponent(instructionList)}`,
-                { headers: { 'edgetoken': token } }
-            )
+            // POST body (not GET query) — very long instruction lists blow past
+            // nginx/Next URL size limits with a 414. The server numbers the
+            // steps itself, so send the raw texts.
+            const instructionTexts = instructions.map(i => i.Text)
+            const res = await fetch(`/api/ai/extract_prep_work`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': token },
+                body: JSON.stringify({ recipeName, ingredients: ingredientList, instructions: instructionTexts })
+            })
             const data = await res.json()
             let aiItems: any[] = []
             if (data.success && data.data) {
@@ -1348,9 +1352,14 @@ export default function RecipeDetail() {
         try {
             const token = localStorage.getItem('Token') || ""
             const ingredNames = (listIngreds || []).map((i: any) => i.name).join(', ')
-            const instrText = (instructions || []).map((i: any, idx: number) => `${idx + 1}. ${i.Text}${i.time ? ` (${i.time} min)` : ''}`).join('\n')
-            const res = await fetch(`/api/ai/extract_timers?recipeName=${encodeURIComponent(recipeName)}&ingredients=${encodeURIComponent(ingredNames)}&instructions=${encodeURIComponent(instrText)}`, {
-                headers: { 'edgetoken': token }
+            // POST body (not GET query) — very long instruction lists blow past
+            // nginx/Next URL size limits with a 414. Send raw texts + per-step
+            // times; the server builds the numbered list.
+            const instructionPayload = (instructions || []).map((i: any) => ({ Text: i.Text, time: i.time }))
+            const res = await fetch(`/api/ai/extract_timers`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': token },
+                body: JSON.stringify({ recipeName, ingredients: ingredNames, instructions: instructionPayload })
             })
             const data = await res.json()
             if (data.success && data.data?.timers && data.data.timers.length > 0) {
