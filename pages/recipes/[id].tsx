@@ -516,6 +516,24 @@ export default function RecipeDetail() {
     const cookTimeEstimate = (instructions || []).reduce((sum: number, i: any) => sum + (i.time || 0), 0)
     const totalTimeEstimate = prepTimeEstimate + cookTimeEstimate
 
+    // Effort flow: consecutive timed steps with the same involvement merge into
+    // one burst ("15m hands-on -> 40m hands-off"). Unset involvement = hands-on.
+    const effortFlow = useMemo(() => {
+        const labelFor = (inv: string | undefined) =>
+            inv === 'none' ? 'hands-off' : inv === 'low' ? 'swing by' : 'hands-on'
+        const bursts: { label: string; minutes: number }[] = []
+        ;(instructions || []).forEach((i: any) => {
+            if (!i.time) return
+            const label = labelFor(i.involvement)
+            const prev = bursts[bursts.length - 1]
+            if (prev && prev.label === label) prev.minutes += i.time
+            else bursts.push({ label, minutes: i.time })
+        })
+        return bursts
+    }, [instructions])
+
+    const [showStepBreakdown, setShowStepBreakdown] = useState(false)
+
     // ---------- Local recipe scaling (servings <-> weight, one factor) ----------
     const baseWeightInfo = useMemo(() => calculateRecipeWeight(listIngreds, gramsPerEachMap), [listIngreds, gramsPerEachMap])
     const baseWeight = baseWeightInfo.totalGrams
@@ -3024,33 +3042,56 @@ export default function RecipeDetail() {
                             </button>
                         )}
 
-                        {instructions.filter((i: any) => i.time).length > 1 && (
+                        {instructions.filter((i: any) => i.time).length > 1 && effortFlow.length > 0 && (
                             <div className="mt-6">
-                                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Step Breakdown</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {instructions.map((instruction: any, idx: number) => instruction.time ? (
-                                        <div key={idx} className="px-3 py-1.5 rounded-lg bg-secondary/60 text-sm flex items-center gap-1.5">
-                                            <span className="font-semibold text-foreground/85">Step {idx + 1}</span>
-                                            <span className="text-muted-foreground">~{formatDuration(instruction.time)}</span>
-                                            <select
-                                                value={instruction.involvement || ''}
-                                                onChange={(e) => updateStepInvolvement(idx, e.target.value)}
-                                                className={`bg-transparent outline-none cursor-pointer text-[10px] font-bold uppercase tracking-[0.08em] rounded-md px-1.5 py-0.5 max-w-[6.5rem] transition-colors focus:bg-secondary ${
-                                                    instruction.involvement === 'none' ? 'text-sky-600'
-                                                        : instruction.involvement === 'low' ? 'text-butter'
-                                                        : instruction.involvement === 'active' ? 'text-red-500'
-                                                        : 'text-muted-foreground/60'
-                                                }`}
-                                                title="Set how much attention this step needs"
-                                            >
-                                                <option value="">Set…</option>
-                                                <option value="none">Hands-off</option>
-                                                <option value="low">Swing by</option>
-                                                <option value="active">Active</option>
-                                            </select>
-                                        </div>
-                                    ) : null)}
+                                <div className="flex items-center gap-2 mb-3">
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Effort</p>
+                                    <button
+                                        onClick={() => setShowStepBreakdown(!showStepBreakdown)}
+                                        className="text-muted-foreground/50 hover:text-foreground transition-colors"
+                                        title={showStepBreakdown ? 'Hide step breakdown' : 'Show step breakdown'}
+                                    >
+                                        {showStepBreakdown ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                    </button>
                                 </div>
+                                {!showStepBreakdown && (
+                                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2">
+                                        {effortFlow.map((burst, idx) => (
+                                            <span key={idx} className="flex items-center gap-1.5">
+                                                {idx > 0 && <span className="text-muted-foreground/40 text-xs">→</span>}
+                                                <span className={`px-2 py-1 rounded-lg text-xs ${burst.label === 'hands-on' ? 'bg-red-500/10 text-red-500' : burst.label === 'swing by' ? 'bg-butter/15 text-butter' : 'bg-sky-500/10 text-sky-600'}`}>
+                                                    ~{formatDuration(burst.minutes)} {burst.label}
+                                                </span>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                                {showStepBreakdown && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {instructions.map((instruction: any, idx: number) => instruction.time ? (
+                                            <div key={idx} className="px-3 py-1.5 rounded-lg bg-secondary/60 text-sm flex items-center gap-1.5">
+                                                <span className="font-semibold text-foreground/85">Step {idx + 1}</span>
+                                                <span className="text-muted-foreground">~{formatDuration(instruction.time)}</span>
+                                                <select
+                                                    value={instruction.involvement || ''}
+                                                    onChange={(e) => updateStepInvolvement(idx, e.target.value)}
+                                                    className={`bg-transparent outline-none cursor-pointer text-[10px] font-bold uppercase tracking-[0.08em] rounded-md px-1.5 py-0.5 max-w-[6.5rem] transition-colors focus:bg-secondary ${
+                                                        instruction.involvement === 'none' ? 'text-sky-600'
+                                                            : instruction.involvement === 'low' ? 'text-butter'
+                                                            : instruction.involvement === 'active' ? 'text-red-500'
+                                                            : 'text-muted-foreground/60'
+                                                    }`}
+                                                    title="Set how much attention this step needs"
+                                                >
+                                                    <option value="">Set…</option>
+                                                    <option value="none">Hands-off</option>
+                                                    <option value="low">Swing by</option>
+                                                    <option value="active">Active</option>
+                                                </select>
+                                            </div>
+                                        ) : null)}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
