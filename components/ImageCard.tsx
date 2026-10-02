@@ -153,7 +153,7 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
                             </span>
                         )}
                         {recipe.cost !== undefined && (
-                            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-black/40 text-water backdrop-blur-sm">
+                            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-black/40 text-white/90 backdrop-blur-sm">
                                 ${recipe.cost.toFixed(2)}
                             </span>
                         )}
@@ -182,15 +182,13 @@ export default function ImageCard({ recipe, allowDelete, onDelete, onRedirect, c
             )}
             </div>
 
-            {/* Lists page: name as a tappable left-side button, strip replaced by
-                the top-right bubbles */}
+            {/* Lists page: name over the background, pill removed */}
             {isListsPage && (
-                <button
-                    onClick={(e) => { e.stopPropagation(); handleRedirect(`${currentPath}/${recipe._id}`) }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 z-20 max-w-[calc(100%-6rem)] bg-card/90 backdrop-blur-md px-3 py-1.5 rounded-full text-sm font-bold tracking-tight text-card-foreground truncate text-left shadow-md ring-1 ring-black/5 hover:bg-card transition-colors cursor-pointer"
+                <span
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 z-20 max-w-[calc(100%-6rem)] text-sm font-bold tracking-tight text-white truncate drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]"
                 >
                     {recipe.name}
-                </button>
+                </span>
             )}
 
             {/* Bottom Info Strip (recipes page only) */}
