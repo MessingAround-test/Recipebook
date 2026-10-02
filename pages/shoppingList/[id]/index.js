@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import styles from '../../../styles/Home.module.css'
 import { Toolbar } from '../../../components/Toolbar'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import Router from 'next/router'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
@@ -12,7 +12,7 @@ import ToggleList from '../../../components/ToggleList'
 import { getGroceryStoreProducts } from '../../../lib/commonAPIs'
 import { groupByKeys } from '../../../lib/grouping'
 import { getColorForCategory, getLightColorForCategory } from '../../../lib/colors'
-import { Info, Settings, RotateCcw, Plus, Check, Copy, ClipboardCheck, Leaf, Egg, CakeSlice, Beef, Package, Wheat, FlaskConical, Popcorn, CupSoda, Snowflake, Trash2, User, Heart, Globe, UtensilsCrossed, Home as HomeIcon, ShoppingBag, CircleDot, BadgeCheck, ThumbsUp, HelpCircle, Search } from 'lucide-react'
+import { Info, Settings, SlidersHorizontal, RefreshCw, Plus, Check, ClipboardCheck, Leaf, Egg, CakeSlice, Beef, Package, Wheat, FlaskConical, Popcorn, CupSoda, Snowflake, Trash2, User, Heart, Globe, UtensilsCrossed, Home as HomeIcon, ShoppingBag, CircleDot, BadgeCheck, ThumbsUp, HelpCircle, Search } from 'lucide-react'
 import WoolworthsOrderEditor from '../../../components/WoolworthsOrderEditor'
 import EditShoppingItemOverlay from '../../../components/EditShoppingItemOverlay'
 import { compareByWoolworthsOrder, compareGroupsByWoolworthsOrder, getStoredOrder } from '../../../lib/woolworthsOrder'
@@ -127,6 +127,9 @@ export default function Home() {
     const [isGrouped, setIsGrouped] = useState(true)
     const [isOptionsOpen, setIsOptionsOpen] = useState(false)
     const [copySuccess, setCopySuccess] = useState(false)
+    const [isRefreshing, setIsRefreshing] = useState(false)
+    const allCompletePromptedRef = useRef(false)
+    const hasCheckboxInteractionRef = useRef(false)
     const [isLoaded, setIsLoaded] = useState(false)
     const [sortMode, setSortMode] = useState('alphabetical')
     const [isOrderEditorOpen, setIsOrderEditorOpen] = useState(false)
@@ -197,6 +200,23 @@ export default function Home() {
             getShoppingListItems()
         }
     }, [list._id, isGrouped])
+
+    const allChecked = matchedListIngreds.length > 0 && matchedListIngreds.every(i => i.complete);
+
+    useEffect(() => {
+        if (!id || list._id === undefined) return;
+        if (!allChecked) {
+            allCompletePromptedRef.current = false;
+            return;
+        }
+        if (list.complete || allCompletePromptedRef.current || isLoading) return;
+        if (!hasCheckboxInteractionRef.current) return;
+        allCompletePromptedRef.current = true;
+        const closeOff = confirm("You've marked off everything — close off this list?");
+        if (closeOff) {
+            setListComplete(true);
+        }
+    }, [allChecked, list.complete, id, list._id])
 
     const reloadAllIngredients = async () => {
         const Token = localStorage.getItem('Token');
@@ -280,22 +300,7 @@ export default function Home() {
         setlist(data.res)
     }
 
-    async function getRecipeDetails() {
-        let res = await fetch("/api/ShoppingList/" + String(id), {
-            headers: {
-                'edgetoken': localStorage.getItem('Token') || ''
-            }
-        })
-        let data = await res.json()
-        setlist(data.res)
-    }
-
-    async function markListAsComplete() {
-        const willBeComplete = !list.complete;
-        const action = willBeComplete ? "COMPLETE" : "INCOMPLETE";
-        const isConfirmed = confirm(`Are you sure you want to mark this list as ${action}?`);
-        if (!isConfirmed) return;
-
+    async function setListComplete(willBeComplete) {
         const response = await fetch(`/api/ShoppingList/${String(id)}/`, {
             method: 'PUT',
             headers: {
@@ -313,6 +318,15 @@ export default function Home() {
         }
     }
 
+    async function markListAsComplete() {
+        const willBeComplete = !list.complete;
+        const action = willBeComplete ? "COMPLETE" : "INCOMPLETE";
+        const isConfirmed = confirm(`Are you sure you want to mark this list as ${action}?`);
+        if (!isConfirmed) return;
+
+        await setListComplete(willBeComplete);
+    }
+
     function handleCopyToClipboard() {
         const text = listIngreds
             .filter((ingred) => !ingred.complete)
@@ -322,6 +336,15 @@ export default function Home() {
             setCopySuccess(true);
             setTimeout(() => setCopySuccess(false), 1500);
         });
+    }
+
+    async function refreshFromServer() {
+        setIsRefreshing(true);
+        try {
+            await Promise.all([getShoppingListItems(), getRecipeDetails()]);
+        } finally {
+            setIsRefreshing(false);
+        }
     }
 
     async function handleSubmitCreateNewItem(e) {
@@ -380,6 +403,7 @@ export default function Home() {
     }
 
     async function handleCheckboxChange(ingred) {
+        hasCheckboxInteractionRef.current = true;
         const updatedIngredients = [...matchedListIngreds];
 
         // 1. Try to find the item (either top-level or as a sub-item)
@@ -833,11 +857,12 @@ export default function Home() {
 
                                 {!isListEmpty && (
                                     <button
-                                        onClick={handleCopyToClipboard}
-                                        className={`p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border border-white/10 transition-all active:scale-95 ${copySuccess ? 'text-berry bg-berry/10 border-berry/30' : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'}`}
-                                        title="Copy to Clipboard"
+                                        onClick={refreshFromServer}
+                                        disabled={isRefreshing}
+                                        className={`p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border border-white/10 transition-all active:scale-95 text-muted-foreground hover:text-foreground hover:bg-foreground/5 ${isRefreshing ? 'animate-spin text-water border-water/30' : ''}`}
+                                        title="Refresh from Server"
                                     >
-                                        {copySuccess ? <Check size={16} className="sm:w-4 sm:h-4" /> : <Copy size={16} className="sm:w-4 sm:h-4" />}
+                                        <RefreshCw size={16} className="sm:w-4 sm:h-4" />
                                     </button>
                                 )}
 
@@ -846,7 +871,7 @@ export default function Home() {
                                     className="p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border border-white/10 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all active:scale-95"
                                     title="Reset View"
                                 >
-                                    <RotateCcw size={16} className="sm:w-4 sm:h-4" />
+                                    <SlidersHorizontal size={16} className="sm:w-4 sm:h-4" />
                                 </button>
                                 
                                 {!isListEmpty && (
@@ -1088,6 +1113,19 @@ export default function Home() {
                                     </div>
                                 );
                             })}
+                        </div>
+                    )}
+
+                    {/* Tiny copy link — bottom of the list */}
+                    {!isListEmpty && (
+                        <div className="flex justify-center mt-4 mb-2">
+                            <button
+                                onClick={handleCopyToClipboard}
+                                className={`text-[10px] tracking-wide underline underline-offset-2 transition-colors ${copySuccess ? 'text-berry' : 'text-muted-foreground hover:text-foreground'}`}
+                                title="Copy remaining items to clipboard"
+                            >
+                                {copySuccess ? 'Copied!' : 'Copy shopping list'}
+                            </button>
                         </div>
                     )}
 
