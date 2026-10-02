@@ -621,7 +621,7 @@ export default function DailyTracker() {
                                 <div className="flex-1 space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Servings to Log</label>
                                     <div className="flex items-center gap-4">
-                                        <input type="number" value={servingsToLog} onChange={(e) => setServingsToLog(Number(e.target.value))} className="w-24 bg-foreground/[0.05] border border-border rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-olive/50" />
+                                        <input type="number" value={servingsToLog} onChange={(e) => setServingsToLog(Number(e.target.value))} className="w-24 bg-input border border-border rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-olive/50" />
                                         <div className="text-[10px] font-black text-muted-foreground uppercase">of {selectedRecipe.servings || 1} total</div>
                                     </div>
                                 </div>

@@ -312,10 +312,10 @@ a {
 
 /* Fix input-modern to use theme text color */
 .input-modern {
-  background: var(--bg-secondary);
+  background: var(--secondary);
   border: 1px solid var(--glass-border);
   border-radius: 0.5rem;
-  color: var(--text-primary);
+  color: var(--foreground);
   padding: 0.75rem 1rem;
   width: 100%;
   outline: none;
