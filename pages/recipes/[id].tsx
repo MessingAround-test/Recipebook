@@ -1074,7 +1074,7 @@ export default function RecipeDetail() {
             const res = await fetch('/api/Recipe/addToShoppingList', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'edgetoken': token },
-                body: JSON.stringify({ recipeId: id, shoppingListId: listId })
+                body: JSON.stringify({ recipeId: id, shoppingListId: listId, scaleFactor: isScaled ? scaleFactor : undefined })
             })
             const data = await res.json()
             if (data.success) {
@@ -3380,7 +3380,11 @@ export default function RecipeDetail() {
                     ) : (
                         <>
                             <p className="text-sm text-muted-foreground mb-4">
-                                Adding <strong>{listIngreds.length} ingredient{listIngreds.length !== 1 ? 's' : ''}</strong> from <em>{recipeName}</em>
+                                {isScaled ? (
+                                    <>Adding <strong>{listIngreds.length} ingredient{listIngreds.length !== 1 ? 's' : ''}</strong> from <em>{recipeName}</em> at <strong>×{Math.round(scaleFactor * 100) / 100}</strong> scale ({displayedServings} serving{displayedServings === 1 ? '' : 's'})</>
+                                ) : (
+                                    <>Adding <strong>{listIngreds.length} ingredient{listIngreds.length !== 1 ? 's' : ''}</strong> from <em>{recipeName}</em></>
+                                )}
                             </p>
 
                             {/* Create new list */}

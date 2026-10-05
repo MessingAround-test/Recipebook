@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     try {
         await dbConnect();
 
-        const { recipeId, shoppingListId } = req.body;
+        const { recipeId, shoppingListId, scaleFactor } = req.body;
 
         if (!recipeId || !shoppingListId) {
             return res.status(400).json({ success: false, message: "recipeId and shoppingListId are required" });
@@ -51,6 +51,15 @@ export default async function handler(req, res) {
             return res.status(404).json({ success: false, message: "Shopping list not found" });
         }
 
+        // Optional scaling — the recipe page keeps scaling display-only, so
+        // the caller passes the factor it wants applied to the quantities.
+        // Unscaled requests (no factor) keep the original DB amounts untouched.
+        let factor = 1;
+        if (scaleFactor !== undefined && Number.isFinite(Number(scaleFactor)) && Number(scaleFactor) > 0){
+            factor = Number(scaleFactor);
+        }
+        const factorLabel = factor === 1 ? null : Number(factor.toFixed(4));
+
         // Add each ingredient to the shopping list
         let added = 0;
         for (const ingredient of recipe.ingredients) {
@@ -58,7 +67,7 @@ export default async function handler(req, res) {
 
             await ShoppingListItem.create({
                 name: ingredient.Name.toLowerCase(),
-                quantity: ingredient.Amount,
+                quantity: Number((ingredient.Amount * factor).toFixed(2)),
                 quantity_type: ingredient.AmountType,
                 category: category,
                 shoppingListId: shoppingListId,
@@ -67,7 +76,7 @@ export default async function handler(req, res) {
                 createdBy: userData._id,
                 complete: false,
                 deleted: false,
-                note: `From recipe: ${recipe.name}`
+                note: factorLabel ? `From recipe: ${recipe.name} (scaled ×${factorLabel})` : `From recipe: ${recipe.name}`
             });
             added++;
         }
