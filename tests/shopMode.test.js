@@ -91,6 +91,36 @@ describe('buildSections', () => {
         expect(sections[0].items.map(i => i.name)).toEqual(['Apples', 'Bananas']);
     });
 
+    describe('nested grouped entries stay whole in sections', () => {
+        test('grouped entries are kept as entries, counted by outstanding children', () => {
+            const items = [{
+                _id: 'group-flour',
+                name: 'Plain flour',
+                items: [
+                    { _id: 'a', name: 'Plain flour', complete: false },
+                    { _id: 'b', name: 'Plain flour', complete: true },
+                ],
+            }];
+            const sections = buildSections(items, 'category_simple', []);
+            expect(sections).toHaveLength(1);
+            expect(sections[0].items).toHaveLength(1);
+            expect(sections[0].items[0]._id).toBe('group-flour');
+            expect(sections[0].unresolved).toBe(1);
+        });
+
+        test('grouped entries fall back to their children for grouping values', () => {
+            const items = [{
+                _id: 'group-eggs',
+                name: 'Eggs',
+                items: [
+                    { _id: 'a', name: 'Eggs', complete: false, recipe_name: 'Pancakes' },
+                ],
+            }];
+            const sections = buildSections(items, 'recipe_name', []);
+            expect(sections.map(s => s.key)).toEqual(['Pancakes']);
+        });
+    });
+
     test('held-off items are excluded from the current-pass sections', () => {
         const items = [cat('Apples', 'Fresh Produce'), held('Chia seeds', 'Health and Wellness')];
         const sections = buildSections(items, 'category_simple', []);

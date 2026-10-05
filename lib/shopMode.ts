@@ -21,6 +21,7 @@
 // Dependency-light by design: no React, no mongoose.
 
 import { PLANNING_BUCKET_ORDER } from './pantryPlanning';
+import { formatQuantityDisplay } from './fractionFormat';
 
 export const SHOP_MODE_GROUPING_NONE = 'none';
 
@@ -50,6 +51,20 @@ export function isResolved(item) {
 export function isHeldOff(item) {
     if (!item) return false;
     return !!item.cantFind && !item.complete;
+}
+
+/**
+ * All leaf items of an entry — group children for grouped entries, or the
+ * item itself when it stands alone.
+ */
+export function leafItems(item) {
+    if (item && item.items && item.items.length > 0) return item.items;
+    return item ? [item] : [];
+}
+
+/** The value an item carries for a grouping dimension. */
+export function itemGroupValue(item, groupBy) {
+    return item ? (item[groupBy] || '') : '';
 }
 
 /**
@@ -87,7 +102,7 @@ export function leafQuantityDisplay(item) {
     if (!item) return '';
     if (item.displayString) return item.displayString;
     const type = item.quantity_type_shorthand || item.quantity_type || 'each';
-    return `${item.quantity} ${type}`;
+    return `${formatQuantityDisplay(item.quantity)} ${type}`;
 }
 
 /**
@@ -110,6 +125,21 @@ export function passSummary(items) {
 export function groupValueForLeaf(leaf, groupBy) {
     const raw = leaf ? leaf[groupBy] : '';
     return raw && String(raw).trim() !== '' ? String(raw) : 'Other';
+}
+
+/**
+ * Value used to slot a list ENTRY into a section. Grouped entries may lack
+ * group-level fields (recipe_name, quantity_type etc. live on the children),
+ * so fall back to the children's values.
+ */
+export function groupValueForEntry(item, groupBy) {
+    const top = itemGroupValue(item, groupBy);
+    if (top && String(top).trim() !== '') return String(top);
+    for (const leaf of leafItems(item)) {
+        const value = itemGroupValue(leaf, groupBy);
+        if (value && String(value).trim() !== '') return String(value);
+    }
+    return 'Other';
 }
 
 /**
@@ -150,15 +180,16 @@ export function buildSectionsFromLeaves(leaves, groupBy, walkOrder) {
 
     if (groupBy === SHOP_MODE_GROUPING_NONE) {
         if (leaves.length > 0) {
-            sections.set('all', { key: 'all', label: 'All items', items: [...leaves] });
+            sections.set('all', { key: 'all', label: 'All items', items: [...leaves], unresolved: leaves.length });
         }
     } else {
         for (const leaf of leaves) {
             const value = groupValueForLeaf(leaf, groupBy);
             if (!sections.has(value)) {
-                sections.set(value, { key: value, label: value, items: [] });
+                sections.set(value, { key: value, label: value, items: [], unresolved: 0 });
             }
             sections.get(value).items.push(leaf);
+            sections.get(value).unresolved += 1;
         }
     }
 
@@ -166,12 +197,36 @@ export function buildSectionsFromLeaves(leaves, groupBy, walkOrder) {
 }
 
 /**
- * Current-pass sections: leaves that are neither got nor held off, grouped
- * by the chosen dimension. Returns [{ key, label, items }].
+ * Current-pass sections. Entries are kept whole (grouped entries nest like
+ * the normal list view); an entry is skipped once every one of its leaves is
+ * got or held off. Only sections with at least one outstanding entry exist —
+ * sections with nothing left never appear in the flow.
+ *
+ * Returns: [{ key, label, items, unresolved }] where `unresolved` counts the
+ * outstanding leaves across the section's entries.
  */
 export function buildSections(items, groupBy, walkOrder) {
-    const outstanding = flattenLeaves(items).filter(leaf => !isResolved(leaf));
-    return buildSectionsFromLeaves(outstanding, groupBy, walkOrder);
+    const sections = new Map();
+
+    for (const item of items || []) {
+        const outstandingLeaves = leafItems(item).filter(leaf => !isResolved(leaf));
+        if (outstandingLeaves.length === 0) continue;
+
+        const value = groupBy === SHOP_MODE_GROUPING_NONE ? 'all' : groupValueForEntry(item, groupBy);
+        if (!sections.has(value)) {
+            sections.set(value, {
+                key: value,
+                label: groupBy === SHOP_MODE_GROUPING_NONE ? 'All items' : value,
+                items: [],
+                unresolved: 0,
+            });
+        }
+        const section = sections.get(value);
+        section.items.push(item);
+        section.unresolved += outstandingLeaves.length;
+    }
+
+    return rankSections(Array.from(sections.values()), groupBy, walkOrder);
 }
 
 /**

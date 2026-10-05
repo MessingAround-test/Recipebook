@@ -9,6 +9,8 @@ import {
     comeBackCount,
     flattenLeaves,
     isHeldOff,
+    isResolved,
+    leafItems,
     leafQuantityDisplay,
     outstandingCount,
     passSummary,
@@ -48,6 +50,7 @@ interface Section {
     key: string;
     label: string;
     items: any[];
+    unresolved?: number;
 }
 
 type Location = 'setup' | 'grouping' | 'choose' | 'section' | 'pass-complete' | 'done';
@@ -307,6 +310,80 @@ export default function ShopMode({ show, listName, items, onResolveLeaf, onReset
         );
     };
 
+    const gotAllInGroup = async (entry: any) => {
+        const outstandingSubs = leafItems(entry).filter((sub: any) => !isResolved(sub));
+        for (const sub of outstandingSubs) {
+            await markGot(sub);
+        }
+    };
+
+    const renderSubLeaf = (sub: any) => {
+        const isBusy = busyLeafId === sub._id;
+        return (
+            <div key={sub._id} className={`flex items-center gap-2.5 ${sub.complete ? 'opacity-50' : ''}`}>
+                <button
+                    type="button"
+                    disabled={isBusy}
+                    onClick={() => markGot(sub)}
+                    aria-label={`Got ${sub.name}`}
+                    title="Got it"
+                    className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center border-2 border-water/50 text-water/70 hover:bg-water hover:text-white transition-all active:scale-90"
+                >
+                    <Check size={15} strokeWidth={3} />
+                </button>
+                <div className="flex-1 min-w-0 text-[13px] text-foreground truncate">
+                    <span className={sub.complete ? 'line-through' : ''}>{renderFractions(leafQuantityDisplay(sub))}</span>
+                    {sub.note && <span className="text-[10px] text-muted-foreground ml-1.5">{sub.note}</span>}
+                    {sub.complete && <span className="text-[9px] font-black uppercase tracking-widest text-water/80 ml-1.5">Got</span>}
+                </div>
+                {!sub.complete && (
+                    <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => markHoldOff(sub)}
+                        title="Hold off — pick it up on a later pass"
+                        className="shrink-0 p-2 rounded-lg border border-butter/30 text-butter hover:bg-butter/10 transition-all active:scale-95"
+                        aria-label={`Hold off on ${sub.name}`}
+                    >
+                        <Undo2 size={14} />
+                    </button>
+                )}
+            </div>
+        );
+    };
+
+    const renderGroupCard = (entry: any) => {
+        const entryLeaves: any[] = leafItems(entry);
+        const outstandingSubs = entryLeaves.filter((sub: any) => !isResolved(sub));
+        const totalQty = entry.totalString || leafQuantityDisplay(entry);
+        return (
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 flex flex-col gap-2">
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        disabled={busyLeafId !== null}
+                        onClick={() => gotAllInGroup(entry)}
+                        aria-label={`Got all ${entry.name}`}
+                        title="Got all remaining in this group"
+                        className="shrink-0 w-11 h-11 rounded-full flex items-center justify-center border-2 border-water/50 text-water/70 hover:bg-water hover:text-white transition-all active:scale-90"
+                    >
+                        <Check size={20} strokeWidth={3} />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                        <div className="font-bold text-[15px] leading-tight text-foreground truncate">{entry.name}</div>
+                        <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                            <span>{renderFractions(totalQty)}</span>
+                            <span>· {outstandingSubs.length} of {entryLeaves.length} left</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex flex-col gap-1.5 border-l-2 border-white/10 pl-3 ml-4">
+                    {sortRows(entryLeaves).map((sub: any) => renderSubLeaf(sub))}
+                </div>
+            </div>
+        );
+    };
+
     const renderProgressBar = () => (
         <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
             <div className="h-full rounded-full bg-water transition-all" style={{ width: `${Math.round((resolvedLeaves / Math.max(summary.total, 1)) * 100)}%` }} />
@@ -435,7 +512,9 @@ export default function ShopMode({ show, listName, items, onResolveLeaf, onReset
                     </div>
                 ) : (
                     <div className="flex flex-col gap-2">
-                        {sortRows(rows).map(leaf => renderLeaf(leaf))}
+                        {sortRows(rows).map((entry: any) =>
+                            entry.items && entry.items.length > 0 ? renderGroupCard(entry) : renderLeaf(entry)
+                        )}
                     </div>
                 )}
 
@@ -511,7 +590,7 @@ export default function ShopMode({ show, listName, items, onResolveLeaf, onReset
                                     <span className="shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded bg-water/15 text-water uppercase tracking-widest">Suggested</span>
                                 )}
                             </span>
-                            <span className="block text-[11px] text-muted-foreground mt-0.5">{section.items.length} {countLabel}</span>
+                            <span className="block text-[11px] text-muted-foreground mt-0.5">{section.unresolved ?? section.items.length} {countLabel}</span>
                         </span>
                         <ChevronRight size={16} className="text-muted-foreground shrink-0" />
                     </button>
@@ -537,7 +616,7 @@ export default function ShopMode({ show, listName, items, onResolveLeaf, onReset
                                     <span className="h-2 w-2 rounded-full shrink-0" style={{ background: sectionColor(section.key) }} />
                                     <span className="text-[13px] font-bold text-foreground truncate">{section.label}</span>
                                 </span>
-                                <span className="text-[11px] text-muted-foreground shrink-0">{section.items.length}</span>
+                                <span className="text-[11px] text-muted-foreground shrink-0">{section.unresolved ?? section.items.length}</span>
                             </button>
                         ))}
                     </div>
