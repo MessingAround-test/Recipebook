@@ -25,14 +25,25 @@ describe('convertForDisplay unit system (metric default)', () => {
         expect(convertForDisplay(3, 'tbsp', 'metric')).toEqual({ quantity: 3, shorthand: 'tbsp' })
     })
 
-    it('metric shows cups, tbsp, tsp, fl oz etc. as-is without converting', () => {
+    it('metric converts odd imperial volumes (fl oz, pt, qt, gal) to ml/L', () => {
+        const floz = convertForDisplay(2, 'fl oz', 'metric')
+        expect(floz.shorthand).toBe('ml')
+        expect(floz.quantity).toBeCloseTo(57, 0)
+        expect(convertForDisplay(1, 'pint', 'metric')).toEqual({ quantity: 568, shorthand: 'ml' })
+        const qt = convertForDisplay(1, 'quart', 'metric')
+        expect(qt.shorthand).toBe('L')
+        expect(qt.quantity).toBeCloseTo(1.14, 2)
+        const gal = convertForDisplay(1, 'gallon', 'metric')
+        expect(gal.shorthand).toBe('L')
+        expect(gal.quantity).toBeCloseTo(4.55, 2)
+    })
+
+    it('metric still leaves cups, tbsp, tsp and count units untouched', () => {
         expect(convertForDisplay(2, 'cup', 'metric')).toEqual({ quantity: 2, shorthand: 'cup' })
         expect(convertForDisplay(3, 'tablespoons', 'metric')).toEqual({ quantity: 3, shorthand: 'tbsp' })
         expect(convertForDisplay(1, 'tsp', 'metric')).toEqual({ quantity: 1, shorthand: 'tsp' })
-        expect(convertForDisplay(2, 'fl oz', 'metric')).toEqual({ quantity: 2, shorthand: 'fl oz' })
-        expect(convertForDisplay(1, 'pint', 'metric')).toEqual({ quantity: 1, shorthand: 'pt' })
-        expect(convertForDisplay(1, 'quart', 'metric')).toEqual({ quantity: 1, shorthand: 'qt' })
-        expect(convertForDisplay(1, 'gallon', 'metric')).toEqual({ quantity: 1, shorthand: 'gal' })
+        expect(convertForDisplay(2, 'clove', 'metric')).toEqual({ quantity: 2, shorthand: 'clove' })
+        expect(convertForDisplay(1, 'pinch', 'metric')).toEqual({ quantity: 1, shorthand: 'pinch' })
     })
 
     it('imperial converts g/kg to oz/lb, switching at >= half pound', () => {

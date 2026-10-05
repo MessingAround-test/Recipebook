@@ -8,6 +8,7 @@ import { IngredientSearchList } from './IngredientSearchList';
 import CardListModal from './CardListModal';
 import IngredientCardProduct from './IngredientCardProduct';
 import Skeleton from './Skeleton';
+import { convertForDisplay } from '../lib/unitDisplay';
 
 // Notes that carry no useful information for the shopper:
 //  - "Pantry item" — an import artefact from the weekly planner; always hidden.
@@ -16,6 +17,17 @@ import Skeleton from './Skeleton';
 //    grouped sub-item.
 const isAlwaysNoiseNote = (note) => /^pantry item$/i.test(String(note || '').trim());
 const isGroupOnlyNote = (note) => /^(from recipe:|for\s+\S+$)/i.test(String(note || '').trim());
+
+// Display-time conversion of the stored quantity+unit into the user's
+// preferred unit system (lib/unitDisplay). Purely presentational - the
+// stored values come out of the DB untouched.
+function displayQuantityText(item) {
+    const { quantity, shorthand } = convertForDisplay(
+        item.quantity,
+        item.quantity_type_shorthand || item.quantity_type || 'each'
+    );
+    return `${formatQuantityDisplay(quantity)} ${shorthand || 'each'}`;
+}
 
 function IngredientCard({ 
     ingredient, 
@@ -134,11 +146,11 @@ function IngredientCard({
                                 </span>
                             )}
                             <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)', marginLeft: '0.6rem', fontWeight: '600' }}>
-                                &bull; {renderFractions(ingredient.displayString
-                                    ? ingredient.displayString
-                                    : isGroup
-                                        ? (ingredient.totalString || `${formatQuantityDisplay(ingredient.quantity)} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`)
-                                        : `${formatQuantityDisplay(ingredient.quantity)} ${ingredient.quantity_type_shorthand || ingredient.quantity_type || 'each'}`)}
+                            &bull; {renderFractions(ingredient.displayString
+                                ? ingredient.displayString
+                                : isGroup
+                                    ? (ingredient.totalString || displayQuantityText(ingredient))
+                                    : displayQuantityText(ingredient))}
                             </span>
                         </div>
                         {isGroup && (
@@ -183,7 +195,7 @@ function IngredientCard({
                                                 </svg>
                                             )}
                                         </button>
-                                        <span className="mobile-text-large shrink-0">{renderFractions(`${formatQuantityDisplay(item.quantity)} ${item.quantity_type_shorthand || item.quantity_type || 'each'}`)}</span>
+                                        <span className="mobile-text-large shrink-0">                                        {renderFractions(displayQuantityText(item))}</span>
                                         {item.note && !isAlwaysNoiseNote(item.note) && <span className="italic opacity-60 text-xs truncate min-w-0">{item.note}</span>}
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
