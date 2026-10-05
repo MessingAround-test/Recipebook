@@ -13,6 +13,7 @@ const ShoppingListItem = new mongoose.Schema(
         recipe_id: { type: String, required: false },
         recipe_name: { type: String, required: false },
         complete: { type: Boolean, required: true },
+        cantFind: { type: Boolean, required: false },
         createdBy: { type: String, required: true },
         deleted: { type: Boolean, required: false },
         note: { type: String, required: false },

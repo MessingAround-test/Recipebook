@@ -52,7 +52,7 @@ export default async function handler(req, res) {
         }
       }
 
-      const allowedFields = ['complete', 'name', 'quantity', 'quantity_type', 'category', 'note'];
+      const allowedFields = ['complete', 'cantFind', 'name', 'quantity', 'quantity_type', 'category', 'note'];
       allowedFields.forEach(field => {
         if (req.body[field] !== undefined) {
           dbData[field] = req.body[field];

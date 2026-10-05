@@ -14,7 +14,9 @@ import { groupByKeys } from '../../../lib/grouping'
 import { getColorForCategory, getLightColorForCategory } from '../../../lib/colors'
 import { Info, Settings, SlidersHorizontal, RefreshCw, Plus, Check, ClipboardCheck, Leaf, Egg, CakeSlice, Beef, Package, Wheat, FlaskConical, Popcorn, CupSoda, Snowflake, Trash2, User, Heart, Globe, UtensilsCrossed, Home as HomeIcon, ShoppingBag, CircleDot, BadgeCheck, ThumbsUp, HelpCircle, Search } from 'lucide-react'
 import WoolworthsOrderEditor from '../../../components/WoolworthsOrderEditor'
+import ShopMode from '../../../components/ShopMode'
 import EditShoppingItemOverlay from '../../../components/EditShoppingItemOverlay'
+import { applyItemUpdate, flattenLeaves } from '../../../lib/shopMode'
 import { compareByWoolworthsOrder, compareGroupsByWoolworthsOrder, getStoredOrder } from '../../../lib/woolworthsOrder'
 import { PLANNING_BUCKET_ORDER } from '../../../lib/pantryPlanning'
 
@@ -134,6 +136,7 @@ export default function Home() {
     const [sortMode, setSortMode] = useState('alphabetical')
     const [isOrderEditorOpen, setIsOrderEditorOpen] = useState(false)
     const [editingItem, setEditingItem] = useState(null)
+    const [isShopModeOpen, setIsShopModeOpen] = useState(false)
     const availableFilters = ["supplier", "category", "complete", "price_category", "quantity_type", "category_simple", "planning", "recipe_name"]
 
     useEffect(() => {
@@ -520,6 +523,88 @@ export default function Home() {
         }
     }
 
+    async function shopUpdateItem(leaf, updates) {
+        if (!leaf || !leaf._id) return 'error';
+        hasCheckboxInteractionRef.current = true;
+        setMatchedListIngreds(prev => {
+            const next = applyItemUpdate(prev, leaf._id, updates);
+            return next || prev;
+        });
+
+        const body = { ...updates };
+        if (updates.complete !== undefined) {
+            body.expectedComplete = leaf.complete;
+        }
+
+        try {
+            const response = await fetch(`/api/ShoppingListItem/${String(leaf._id)}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'edgetoken': localStorage.getItem('Token') || ''
+                },
+                body: JSON.stringify(body),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (response.status === 409) {
+                alert(`"${leaf.name}" was modified by someone else. Refreshing...`);
+                getShoppingListItems();
+                return 'conflict';
+            }
+            if (data.alreadyInState) {
+                getShoppingListItems();
+                return 'ok';
+            }
+            if (!response.ok) {
+                alert(data.message || 'Failed to update item');
+                getShoppingListItems();
+                return 'error';
+            }
+            return 'ok';
+        } catch (error) {
+            alert(error);
+            getShoppingListItems();
+            return 'error';
+        }
+    }
+
+    async function shopResetAll() {
+        hasCheckboxInteractionRef.current = true;
+        const targets = flattenLeaves(matchedListIngreds)
+            .filter(leaf => leaf && leaf._id && leaf.cantFind)
+            .map(leaf => ({ id: leaf._id, name: leaf.name }));
+
+        setMatchedListIngreds(prev => {
+            let next = prev;
+            for (const target of targets) {
+                next = applyItemUpdate(next, target.id, { cantFind: false }) || next;
+            }
+            return next;
+        });
+
+        let failed = false;
+        for (const target of targets) {
+            try {
+                const response = await fetch(`/api/ShoppingListItem/${String(target.id)}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'edgetoken': localStorage.getItem('Token') || ''
+                    },
+                    body: JSON.stringify({ cantFind: false }),
+                });
+                if (!response.ok) failed = true;
+            } catch (e) {
+                failed = true;
+            }
+        }
+        if (failed) {
+            alert('Some items could not be reset. Refreshing...');
+            getShoppingListItems();
+        }
+        return failed ? 'error' : 'ok';
+    }
+
     async function updateSupplierFromInputObject(inputObject) {
         const resultArray = Object.keys(inputObject).filter(key => inputObject[key]);
         const formattedResultArray = resultArray.map(key => key.replace(/^\/|\.png$/g, ''));
@@ -845,6 +930,16 @@ export default function Home() {
                             </h1>
 
                             <div className="flex flex-row items-center gap-2 sm:gap-2 shrink-0 flex-1 justify-end">
+                                {!isListEmpty && (
+                                    <button
+                                        onClick={() => setIsShopModeOpen(true)}
+                                        className="bg-water hover:bg-water/85 text-primary-foreground p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg transition-all shadow-lg shadow-water/20 active:scale-95"
+                                        title="Shop Mode — one section at a time"
+                                    >
+                                        <ShoppingBag size={16} className="sm:w-4 sm:h-4" />
+                                    </button>
+                                )}
+
                                 {!isListEmpty && (
                                     <button
                                         onClick={markListAsComplete}
@@ -1248,6 +1343,19 @@ export default function Home() {
                     <WoolworthsOrderEditor
                         isOpen={isOrderEditorOpen}
                         onClose={() => setIsOrderEditorOpen(false)}
+                    />
+
+                    <ShopMode
+                        show={isShopModeOpen}
+                        listName={list?.name}
+                        items={displayIngredients}
+                        onResolveLeaf={shopUpdateItem}
+                        onResetAll={shopResetAll}
+                        onClose={() => setIsShopModeOpen(false)}
+                        onFinishList={async () => {
+                            setIsShopModeOpen(false);
+                            await setListComplete(true);
+                        }}
                     />
 
                     <EditShoppingItemOverlay

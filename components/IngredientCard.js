@@ -153,6 +153,14 @@ function IngredientCard({
                                     : displayQuantityText(ingredient))}
                             </span>
                         </div>
+                        {ingredient.cantFind && !ingredient.complete && (
+                            <span
+                                className="shrink-0 ml-1 text-[9px] font-black uppercase tracking-widest text-butter bg-butter/10 border border-butter/20 rounded px-1.5 py-0.5"
+                                title="Held off for later — reappears when the next Shop Mode pass starts"
+                            >
+                                ↩ Hold off
+                            </span>
+                        )}
                         {isGroup && (
                             <button
                                 onClick={() => setIsExpanded(!isExpanded)}
