@@ -583,8 +583,11 @@ export default function ShopMode({ show, listName, items, onResolveLeaf, onReset
         onPick: (section: Section) => void;
     }) => {
         const suggested = pickerSections[0];
-        const nearby = pickerSections.slice(1, 3);
-        const others = pickerSections.slice(3);
+        // Only fold into "Other sections" when there are too many to scan
+        // comfortably — 8 or fewer always shows in full.
+        const expanded = pickerSections.length > 8 ? 3 : pickerSections.length;
+        const nearby = pickerSections.slice(1, expanded);
+        const others = pickerSections.slice(expanded);
         const leftBehind = fromKey ? pickerSections.find(s => s.key === fromKey) : null;
         return (
             <div className="flex flex-col gap-3">
