@@ -929,24 +929,24 @@ export default function Home() {
                                 <span className="truncate block">{list?.name || '...'}</span>
                             </h1>
 
-                            <div className="flex flex-row items-center gap-2 sm:gap-2 shrink-0 flex-1 justify-end">
+                            <div className="flex flex-row items-center gap-1.5 sm:gap-2 shrink-0 flex-1 justify-end">
                                 {!isListEmpty && (
                                     <button
                                         onClick={() => setIsShopModeOpen(true)}
-                                        className="bg-water hover:bg-water/85 text-primary-foreground p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg transition-all shadow-lg shadow-water/20 active:scale-95"
+                                        className="bg-water hover:bg-water/85 text-primary-foreground p-1.5 min-h-[34px] min-w-[34px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg transition-all shadow-lg shadow-water/20 active:scale-95"
                                         title="Shop Mode — one section at a time"
                                     >
-                                        <Play size={16} className="sm:w-4 sm:h-4" fill="currentColor" />
+                                        <Play size={16} className="w-4 h-4" fill="currentColor" />
                                     </button>
                                 )}
 
                                 {!isListEmpty && (
                                     <button
                                         onClick={markListAsComplete}
-                                        className={`p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border transition-all active:scale-95 ${list.complete ? 'border-butter/30 text-butter hover:text-butter/80 hover:bg-butter/10' : 'border-water/30 text-water hover:text-water/80 hover:bg-water/10'}`}
+                                        className={`p-1.5 min-h-[34px] min-w-[34px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border transition-all active:scale-95 ${list.complete ? 'border-butter/30 text-butter hover:text-butter/80 hover:bg-butter/10' : 'border-water/30 text-water hover:text-water/80 hover:bg-water/10'}`}
                                         title={list.complete ? "Mark List as Incomplete" : "Mark List as Complete"}
                                     >
-                                        <ClipboardCheck size={16} className={`sm:w-4 sm:h-4 ${list.complete ? 'line-through decoration-2' : ''}`} />
+                                        <ClipboardCheck size={16} className={`w-4 h-4 ${list.complete ? 'line-through decoration-2' : ''}`} />
                                     </button>
                                 )}
 
@@ -954,16 +954,16 @@ export default function Home() {
                                     <button
                                         onClick={refreshFromServer}
                                         disabled={isRefreshing}
-                                        className={`p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border border-white/10 transition-all active:scale-95 text-muted-foreground hover:text-foreground hover:bg-foreground/5 ${isRefreshing ? 'animate-spin text-water border-water/30' : ''}`}
+                                        className={`p-1.5 min-h-[34px] min-w-[34px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border border-white/10 transition-all active:scale-95 text-muted-foreground hover:text-foreground hover:bg-foreground/5 ${isRefreshing ? 'animate-spin text-water border-water/30' : ''}`}
                                         title="Refresh from Server"
                                     >
-                                        <RefreshCw size={16} className="sm:w-4 sm:h-4" />
+                                        <RefreshCw size={16} className="w-4 h-4" />
                                     </button>
                                 )}
 
                                 <button
                                     onClick={resetToDefault}
-                                    className="p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border border-white/10 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all active:scale-95"
+                                    className="hidden sm:flex p-2.5 min-h-[40px] min-w-[40px] items-center justify-center rounded-lg border border-white/10 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all active:scale-95"
                                     title="Reset View"
                                 >
                                     <RotateCcw size={16} className="sm:w-4 sm:h-4" />
@@ -983,10 +983,10 @@ export default function Home() {
 
                                 <button
                                     onClick={() => setIsOptionsOpen(!isOptionsOpen)}
-                                    className={`p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border transition-all active:scale-95 ${isOptionsOpen ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-gray-400 hover:text-white'}`}
+                                    className={`p-1.5 min-h-[34px] min-w-[34px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border transition-all active:scale-95 ${isOptionsOpen ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-gray-400 hover:text-white'}`}
                                     title="Options"
                                 >
-                                    <Settings size={16} className={`sm:w-4 sm:h-4 ${isOptionsOpen ? 'animate-spin-slow' : ''}`} />
+                                    <Settings size={16} className={`w-4 h-4 ${isOptionsOpen ? 'animate-spin-slow' : ''}`} />
                                 </button>
 
                                 {!createNewIngredOpen && (
@@ -995,7 +995,7 @@ export default function Home() {
                                         onClick={() => setCreateNewIngredOpen(true)}
                                         title="Add Item"
                                     >
-                                        <Plus size={18} className="sm:w-[18px] sm:h-[18px]" strokeWidth={3} />
+                                        <Plus size={18} className="w-[18px] h-[18px]" strokeWidth={3} />
                                     </button>
                                 )}
                             </div>
@@ -1048,6 +1048,13 @@ export default function Home() {
                                     >✏️ Edit Walkthrough Order</button>
                                 )}
                             </div>
+
+                            <button
+                                onClick={resetToDefault}
+                                className="sm:hidden flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-foreground/[0.04] border border-border active:scale-95 transition-all"
+                            >
+                                <RotateCcw size={12} /> Reset view
+                            </button>
                         </div>
                     )}
 
