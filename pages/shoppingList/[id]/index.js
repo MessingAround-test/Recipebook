@@ -97,15 +97,6 @@ const CATEGORY_ICONS = {
     'To check': Search,
 };
 
-// Short, glanceable glyphs for the planning buckets — shown in the quick-jump
-// bubbles so "have it" vs "need to check" is obvious at a glance.
-const PLANNING_BUCKET_GLYPHS = {
-    'Almost certainly have': '!',
-    'Probably': '~',
-    'Maybe': '?',
-    'To check': '✓',
-};
-
 export default function Home() {
     const [userData, setUserData] = useState({})
     const router = useRouter()
@@ -856,32 +847,6 @@ export default function Home() {
     const groupedIngredients = groupByKeys(displayIngredients, activeFilters);
     const sortedGroups = useMemo(() => Object.keys(groupedIngredients).sort(sortFunction), [groupedIngredients, sortMode]);
 
-    const categoryNavItems = useMemo(() => {
-        return sortedGroups
-            .filter(g => groupedIngredients[g]?.length > 0)
-            .map(group => {
-                const parts = group.split('|').map(p => p.includes('=') ? p.split('=')[1] : p).filter(v => v !== 'true' && v !== 'false' && v !== '');
-                const isCompleted = group.includes('complete=true');
-                const color = isCompleted ? '#047857' : parts.reduce((f, p) => f || getColorForCategory(p), null) || 'var(--accent)';
-                const Icon = isCompleted ? Check : CATEGORY_ICONS[parts[0]];
-                const glyph = !isCompleted && activeFilters.includes('planning') && PLANNING_BUCKET_GLYPHS[parts[0]]
-                    ? PLANNING_BUCKET_GLYPHS[parts[0]]
-                    : null;
-                const label = parts.map(p => FRIENDLY_NAMES[p] || p).join(' & ') || (isCompleted ? 'Done' : 'Other');
-                return { group, color, Icon, glyph, label };
-            });
-    }, [sortedGroups, activeFilters]);
-
-    const scrollToGroup = (group) => {
-        const el = document.querySelector(`[data-group="${CSS.escape(group)}"]`);
-        if (!el) return;
-        el.classList.remove('group-flash');
-        void el.offsetWidth;
-        el.classList.add('group-flash');
-        const y = el.getBoundingClientRect().top + window.scrollY - 120;
-        window.scrollTo({ top: y, behavior: 'smooth' });
-    };
-
     const isListEmpty = matchedListIngreds.length === 0;
 
     return (
@@ -890,30 +855,6 @@ export default function Home() {
             <Head>
                 <title>{`Shopping List | ${list?.name || 'Loading...'}`}</title>
             </Head>
-
-            {categoryNavItems.length > 2 && (
-                <div className="fixed bottom-[4.5rem] left-0 right-0 sm:hidden z-[50] pointer-events-none">
-                    <div className="flex justify-center gap-2.5 px-3 py-2 pointer-events-auto">
-                        {categoryNavItems.map(({ group, color, Icon, glyph, label }) => (
-                            <button
-                                key={group}
-                                onClick={() => scrollToGroup(group)}
-                                className="flex items-center justify-center shrink-0 h-8 w-8 rounded-full transition-all active:scale-90"
-                                style={{ background: color, boxShadow: `0 2px 8px ${color}60` }}
-                                title={label}
-                            >
-                                {glyph ? (
-                                    <span className="text-white text-[15px] font-black leading-none">{glyph}</span>
-                                ) : Icon ? (
-                                    <Icon size={15} strokeWidth={2.5} className="text-white" />
-                                ) : (
-                                    <span className="text-white text-[10px] font-bold">{label[0]}</span>
-                                )}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
             <Head>
                 <title>{`Shopping List | ${list?.name || 'Loading...'}`}</title>
             </Head>
@@ -1380,7 +1321,7 @@ export default function Home() {
                         Hidden while the add-item overlay is open; the header + stays. */}
                     {!createNewIngredOpen && (
                         <button
-                            className="sm:hidden fixed bottom-[8rem] right-4 z-[90] w-14 h-14 rounded-full bg-water text-primary-foreground shadow-2xl shadow-water/40 flex items-center justify-center active:scale-90 transition-all"
+                            className="sm:hidden fixed bottom-[5.5rem] right-4 z-[90] w-14 h-14 rounded-full bg-water text-primary-foreground shadow-2xl shadow-water/40 flex items-center justify-center active:scale-90 transition-all"
                             onClick={() => setCreateNewIngredOpen(true)}
                             aria-label="Add Item"
                         >
