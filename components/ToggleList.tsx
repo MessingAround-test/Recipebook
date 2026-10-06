@@ -71,7 +71,7 @@ const ToggleList = ({ inputList, onUpdateList, value, text = "Select Option", ma
                     <span className="relative">
                         <Layers size={14} className="sm:w-3.5 sm:h-3.5 opacity-70" />
                         {activeCount > 0 && (
-                            <span className="absolute -top-1.5 -right-2 min-w-[14px] h-[14px] bg-emerald-500 text-black text-[8px] font-black rounded-full flex items-center justify-center px-0.5">{activeCount}</span>
+                            <span className="absolute -top-1.5 -right-2 min-w-[14px] h-[14px] bg-water text-primary-foreground text-[8px] font-black rounded-full flex items-center justify-center px-0.5">{activeCount}</span>
                         )}
                     </span>
                     <span className="hidden sm:inline">{text}</span>

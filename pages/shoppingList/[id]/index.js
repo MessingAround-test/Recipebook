@@ -12,7 +12,7 @@ import ToggleList from '../../../components/ToggleList'
 import { getGroceryStoreProducts } from '../../../lib/commonAPIs'
 import { groupByKeys } from '../../../lib/grouping'
 import { getColorForCategory, getLightColorForCategory } from '../../../lib/colors'
-import { Info, Settings, SlidersHorizontal, RefreshCw, Plus, Check, ClipboardCheck, Leaf, Egg, CakeSlice, Beef, Package, Wheat, FlaskConical, Popcorn, CupSoda, Snowflake, Trash2, User, Heart, Globe, UtensilsCrossed, Home as HomeIcon, ShoppingBag, CircleDot, BadgeCheck, ThumbsUp, HelpCircle, Search } from 'lucide-react'
+import { Info, Settings, RefreshCw, Plus, Check, ClipboardCheck, Leaf, Egg, CakeSlice, Beef, Package, Wheat, FlaskConical, Popcorn, CupSoda, Snowflake, Trash2, User, Heart, Globe, UtensilsCrossed, Home as HomeIcon, ShoppingBag, CircleDot, BadgeCheck, ThumbsUp, HelpCircle, Search, Play, RotateCcw } from 'lucide-react'
 import WoolworthsOrderEditor from '../../../components/WoolworthsOrderEditor'
 import ShopMode from '../../../components/ShopMode'
 import EditShoppingItemOverlay from '../../../components/EditShoppingItemOverlay'
@@ -936,7 +936,7 @@ export default function Home() {
                                         className="bg-water hover:bg-water/85 text-primary-foreground p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg transition-all shadow-lg shadow-water/20 active:scale-95"
                                         title="Shop Mode — one section at a time"
                                     >
-                                        <ShoppingBag size={16} className="sm:w-4 sm:h-4" />
+                                        <Play size={16} className="sm:w-4 sm:h-4" fill="currentColor" />
                                     </button>
                                 )}
 
@@ -966,7 +966,7 @@ export default function Home() {
                                     className="p-2 min-h-[38px] min-w-[38px] sm:p-2.5 sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg border border-white/10 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all active:scale-95"
                                     title="Reset View"
                                 >
-                                    <SlidersHorizontal size={16} className="sm:w-4 sm:h-4" />
+                                    <RotateCcw size={16} className="sm:w-4 sm:h-4" />
                                 </button>
                                 
                                 {!isListEmpty && (

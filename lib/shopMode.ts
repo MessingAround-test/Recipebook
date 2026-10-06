@@ -21,6 +21,7 @@
 // Dependency-light by design: no React, no mongoose.
 
 import { PLANNING_BUCKET_ORDER } from './pantryPlanning';
+import { normalizeToGrams, getShorthandForMeasure, resolveUnitKey, pluralizeName } from './conversion';
 import { formatQuantityDisplay } from './fractionFormat';
 
 export const SHOP_MODE_GROUPING_NONE = 'none';
@@ -103,6 +104,80 @@ export function leafQuantityDisplay(item) {
     if (item.displayString) return item.displayString;
     const type = item.quantity_type_shorthand || item.quantity_type || 'each';
     return `${formatQuantityDisplay(item.quantity)} ${type}`;
+}
+
+/**
+ * Display total of what's left TO BUY for a grouped entry, formatted like the
+ * server's aggregation (GramedIngredients: "81g or 1.3 carrots").
+ *
+ * When part of the group is already ticked off (e.g. "I have 1/3 carrot at
+ * home" was ticked), those sub-item quantities should no longer appear in the
+ * top-level total — only what still needs buying.
+ *
+ * Mirror of pages/api/ShoppingList/GroupedIngredients.js: normalize each
+ * sub-item's grams (with the group's gramsPerEach), sum incomplete ones, and
+ * build "Xg or Y.0 name" when both gram-weight and counts are known.
+ *
+ * Returns null when there is nothing to subtract from: no complete
+ * sub-items, or nothing remaining after they're all ticked (the caller keeps
+ * showing the full total; the card is struck through anyway).
+ */
+export function remainingGroupDisplay(group) {
+    if (!group || !Array.isArray(group.items) || group.items.length < 2) return null;
+
+    const remaining = group.items.filter(sub => sub && !sub.complete);
+    if (remaining.length === 0) return null; // everything ticked — card is done
+    const completeCount = group.items.length - remaining.length;
+    if (completeCount === 0) return null; // nothing ticked — full total is unchanged
+
+    const gramsPerEach = Number(group.gramsPerEach) || 0;
+    let remainingGrams = 0;
+    let remainingEach = 0;
+
+    for (const item of remaining) {
+        const unit = item.quantity_unit || item.quantity_type || 'each';
+        const normalized = normalizeToGrams(unit, item.quantity, gramsPerEach);
+
+        if (normalized.value !== null) {
+            remainingGrams += normalized.value;
+            if (gramsPerEach > 0) {
+                remainingEach += normalized.value / gramsPerEach;
+            } else {
+                const canonical = resolveUnitKey(unit);
+                if (canonical === 'each') {
+                    remainingEach += item.quantity;
+                }
+            }
+        } else {
+            // Fallback mirroring the server: each-only sums when grams fail
+            const canonical = resolveUnitKey(unit);
+            if (canonical === 'each') {
+                remainingEach += item.quantity;
+                if (gramsPerEach > 0) {
+                    remainingGrams += item.quantity * gramsPerEach;
+                }
+            }
+        }
+    }
+
+    let totalString = "";
+    if (remainingGrams > 0) {
+        totalString = `${remainingGrams.toFixed(0)}${getShorthandForMeasure('gram')}`;
+        if (remainingEach > 0 && gramsPerEach > 0) {
+            totalString += ` or ${remainingEach.toFixed(1)} ${pluralizeName(group.name, remainingEach)}`;
+        }
+    } else if (remainingEach > 0) {
+        totalString = `${remainingEach.toFixed(1)} ${pluralizeName(group.name, remainingEach)}`;
+    }
+
+    if (!totalString) return null;
+
+    return {
+        totalString,
+        quantity: remainingGrams > 0 ? remainingGrams : remainingEach,
+        quantity_type: remainingGrams > 0 ? 'gram' : 'each',
+        quantity_unit: remainingGrams > 0 ? 'gram' : 'each',
+    };
 }
 
 /**

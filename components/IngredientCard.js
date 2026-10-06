@@ -2,21 +2,14 @@ import React, { useState, useMemo } from 'react';
 import { getColorForCategory } from '../lib/colors';
 import { formatQuantityDisplay } from '../lib/fractionFormat';
 import { renderFractions } from './Fraction';
-import PropTypes from 'prop-types';
+import { remainingGroupDisplay } from '../lib/shopMode';import PropTypes from 'prop-types';
 import styles from '../styles/Home.module.css';
 import { IngredientSearchList } from './IngredientSearchList';
 import CardListModal from './CardListModal';
 import IngredientCardProduct from './IngredientCardProduct';
 import Skeleton from './Skeleton';
 import { convertForDisplay } from '../lib/unitDisplay';
-
-// Notes that carry no useful information for the shopper:
-//  - "Pantry item" — an import artefact from the weekly planner; always hidden.
-//  - "From recipe: X" / "For Monday" / "For 2026-10-01" — redundant on a
-//    standalone item (the recipe is implied), but useful when expanded on a
-//    grouped sub-item.
-const isAlwaysNoiseNote = (note) => /^pantry item$/i.test(String(note || '').trim());
-const isGroupOnlyNote = (note) => /^(from recipe:|for\s+\S+$)/i.test(String(note || '').trim());
+import { isAlwaysNoiseNote, isGroupOnlyNote } from '../lib/notes';
 
 // Display-time conversion of the stored quantity+unit into the user's
 // preferred unit system (lib/unitDisplay). Purely presentational - the
@@ -53,6 +46,14 @@ function IngredientCard({
     const accentColor = groupColor || getColorForCategory(ingredient.category || 'unknown') || 'var(--accent)';
 
     const isGroup = ingredient.isGroup ?? (ingredient.items && ingredient.items.length > 1);
+
+    // "What's left to buy" header total: when part of the group is ticked off,
+    // show the remaining amount instead of the full sum. Falls back to the
+    // server's totalString when nothing is ticked or everything is.
+    const remainingDisplay = useMemo(
+        () => (isGroup ? remainingGroupDisplay(ingredient) : null),
+        [isGroup, ingredient]
+    );
 
     // Notes that carry no useful information for the shopper:
     //  - "Pantry item" — an import artefact from the weekly planner; always hidden.
@@ -149,7 +150,7 @@ function IngredientCard({
                             &bull; {renderFractions(ingredient.displayString
                                 ? ingredient.displayString
                                 : isGroup
-                                    ? (ingredient.totalString || displayQuantityText(ingredient))
+                                    ? (remainingDisplay?.totalString || ingredient.totalString || displayQuantityText(ingredient))
                                     : displayQuantityText(ingredient))}
                             </span>
                         </div>
