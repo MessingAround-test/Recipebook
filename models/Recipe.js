@@ -120,6 +120,15 @@ const RecipeSchema = new mongoose.Schema(
         mealTypes: { type: [String], required: false },
         carbType: { type: String, enum: ['Rice', 'Bread/Wraps', 'Pasta/Noodles', 'Potato', 'Quinoa', 'None/Other'], required: false },
         carbSide: carbSideSchema,
+        // Side-dish metadata: lets other recipes serve alongside this one.
+        usableAsSide: { type: Boolean, default: false },
+        sideCategory: { type: String, enum: ['salad', 'vegetable', 'starch', 'bread', 'other'] },
+        // Serving temperature: cold = can be made early and held,
+        // reheatable = cook in downtime then reheat at serve time,
+        // hot = must land right at the serve moment. Unset -> analysed by AI.
+        serveTemp: { type: String, enum: ['cold', 'reheatable', 'hot'] },
+        serveTempSource: { type: String, enum: ['user', 'ai', 'heuristic'] },
+        reheatMinutes: { type: Number, default: 0 },
         priceCategory: { type: String, enum: ['cheap', 'medium', 'expensive'], required: false },
         timesCooked: { type: Number, default: 0 },
         rating: { type: Number, min: 0.5, max: 5 },

@@ -1,0 +1,47 @@
+import { verifyToken } from "../../../lib/auth.ts";
+import { logAPI } from '../../../lib/logger';
+import dbConnect from '../../../lib/dbConnect';
+import Recipe from '../../../models/Recipe';
+import User from '../../../models/User';
+import { analyzeServeTempForRecipe } from '../../../lib/serveTempServer';
+
+/** One-shot serving temperature analysis for a recipe (POST { recipeId, force? }).
+ *  Result is persisted on the recipe — the cook-time scheduler never calls AI. */
+export default async function handler(req, res) {
+    logAPI(req)
+    const decoded = await verifyToken(req, res);
+    if (!decoded) return;
+
+    if (req.method !== 'POST') {
+        res.setHeader('Allow', ['POST']);
+        return res.status(405).json({ success: false, message: 'Method Not Allowed' });
+    }
+
+    const { recipeId, force } = req.body || {};
+    if (!recipeId) {
+        return res.status(400).json({ success: false, message: 'Missing recipeId' });
+    }
+
+    try {
+        await dbConnect();
+        const userData = await User.findById(decoded.id);
+        if (!userData) return res.status(400).json({ success: false, message: 'user not found, please relog' });
+
+        const recipe = await Recipe.findById(recipeId);
+        if (!recipe) return res.status(404).json({ success: false, message: 'Recipe not found' });
+
+        if (userData.role !== 'admin' && recipe.creator_email !== userData.email) {
+            return res.status(403).json({ success: false, message: 'Forbidden: You do not own this recipe' });
+        }
+
+        const result = await analyzeServeTempForRecipe(recipe, { force: force === true });
+        return res.status(200).json({
+            success: true,
+            data: { serveTemp: result.serveTemp, reheatMinutes: result.reheatMinutes, source: result.source },
+            skipped: result.skipped === true
+        });
+    } catch (error) {
+        console.error('Error running serve temp analysis:', error);
+        return res.status(500).json({ success: false, message: error.message || 'Error processing request' });
+    }
+}

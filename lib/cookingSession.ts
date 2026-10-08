@@ -26,6 +26,8 @@ export interface CookingSessionData {
     doneFlow?: number[]
     carbChoice?: any
     customTimers?: any[]
+    /** v7: recipe sides picked at Start Cooking (schedule + card content). */
+    sidePicks?: any[]
     scaleFactor?: number
     cooking?: boolean
     recipeName?: string

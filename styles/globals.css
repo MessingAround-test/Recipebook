@@ -379,6 +379,29 @@ a {
     --cooking-wait-soft: rgba(56, 189, 248, 0.1);
     --cooking-wait-border: rgba(56, 189, 248, 0.38);
     --cooking-wait-glow: rgba(56, 189, 248, 0.2);
+    /* Concurrent recipe lanes: each running recipe gets its own accent so
+       parallel work stays identifiable. Lane 1..4 cycle; blue is reserved
+       for wait states, amber for the main dish. */
+    --lane-1: #34d399;
+    --lane-1-contrast: #052e23;
+    --lane-1-soft: rgba(52, 211, 153, 0.10);
+    --lane-1-border: rgba(52, 211, 153, 0.38);
+    --lane-1-glow: rgba(52, 211, 153, 0.2);
+    --lane-2: #a78bfa;
+    --lane-2-contrast: #2e1065;
+    --lane-2-soft: rgba(167, 139, 250, 0.10);
+    --lane-2-border: rgba(167, 139, 250, 0.38);
+    --lane-2-glow: rgba(167, 139, 250, 0.2);
+    --lane-3: #fb7185;
+    --lane-3-contrast: #4c0519;
+    --lane-3-soft: rgba(251, 113, 133, 0.10);
+    --lane-3-border: rgba(251, 113, 133, 0.38);
+    --lane-3-glow: rgba(251, 113, 133, 0.2);
+    --lane-4: #2dd4bf;
+    --lane-4-contrast: #042f2e;
+    --lane-4-soft: rgba(45, 212, 191, 0.10);
+    --lane-4-border: rgba(45, 212, 191, 0.38);
+    --lane-4-glow: rgba(45, 212, 191, 0.2);
   }
 
   .light {
@@ -430,6 +453,27 @@ a {
     --cooking-wait-soft: rgba(3, 105, 161, 0.08);
     --cooking-wait-border: rgba(3, 105, 161, 0.35);
     --cooking-wait-glow: rgba(3, 105, 161, 0.16);
+    /* Concurrent recipe lanes (deepened for the cream-paper theme) */
+    --lane-1: #059669;
+    --lane-1-contrast: #ecfdf5;
+    --lane-1-soft: rgba(5, 150, 105, 0.08);
+    --lane-1-border: rgba(5, 150, 105, 0.35);
+    --lane-1-glow: rgba(5, 150, 105, 0.16);
+    --lane-2: #6d28d9;
+    --lane-2-contrast: #f5f3ff;
+    --lane-2-soft: rgba(109, 40, 217, 0.08);
+    --lane-2-border: rgba(109, 40, 217, 0.35);
+    --lane-2-glow: rgba(109, 40, 217, 0.16);
+    --lane-3: #e11d48;
+    --lane-3-contrast: #fff1f2;
+    --lane-3-soft: rgba(225, 29, 72, 0.08);
+    --lane-3-border: rgba(225, 29, 72, 0.35);
+    --lane-3-glow: rgba(225, 29, 72, 0.16);
+    --lane-4: #0d9488;
+    --lane-4-contrast: #f0fdfa;
+    --lane-4-soft: rgba(13, 148, 136, 0.08);
+    --lane-4-border: rgba(13, 148, 136, 0.35);
+    --lane-4-glow: rgba(13, 148, 136, 0.16);
   }
 
   .theme {
@@ -871,6 +915,60 @@ a {
   );
 }
 
+/* ---------- Concurrent recipe lanes ----------
+   Everything belonging to side recipe N carries `is-lane-N`. Lane colour is
+   an identity layer only: card outlines, labels, pill and progress track.
+   Wait states (scheduled timer runs) stay blue — the cooking-wait
+   variables are deliberately NOT remapped inside a lane. */
+.is-lane-1 .cooking-card-label.is-lane,
+.lane-1 .cooking-card-label.is-lane {
+  color: var(--lane-1);
+}
+.is-lane-2 .cooking-card-label.is-lane,
+.lane-2 .cooking-card-label.is-lane {
+  color: var(--lane-2);
+}
+.is-lane-3 .cooking-card-label.is-lane,
+.lane-3 .cooking-card-label.is-lane {
+  color: var(--lane-3);
+}
+.is-lane-4 .cooking-card-label.is-lane,
+.lane-4 .cooking-card-label.is-lane {
+  color: var(--lane-4);
+}
+
+/* Card outline in the recipe's colour (waiting cards stay blue) */
+.cooking-card.is-lane-1:not(.is-waiting) { border-color: var(--lane-1); }
+.cooking-card.is-lane-2:not(.is-waiting) { border-color: var(--lane-2); }
+.cooking-card.is-lane-3:not(.is-waiting) { border-color: var(--lane-3); }
+.cooking-card.is-lane-4:not(.is-waiting) { border-color: var(--lane-4); }
+.cooking-card.is-current.is-lane-1:not(.is-waiting) { box-shadow: 0 0 0 1px var(--lane-1-border), 0 6px 24px var(--lane-1-glow); }
+.cooking-card.is-current.is-lane-2:not(.is-waiting) { box-shadow: 0 0 0 1px var(--lane-2-border), 0 6px 24px var(--lane-2-glow); }
+.cooking-card.is-current.is-lane-3:not(.is-waiting) { box-shadow: 0 0 0 1px var(--lane-3-border), 0 6px 24px var(--lane-3-glow); }
+.cooking-card.is-current.is-lane-4:not(.is-waiting) { box-shadow: 0 0 0 1px var(--lane-4-border), 0 6px 24px var(--lane-4-glow); }
+
+/* Progress segments: per-recipe lane stripes + current colour */
+.cooking-progress-seg.is-side.is-lane-1:not(.is-current):not(.is-done),
+.cooking-progress-seg.is-side.is-lane-2:not(.is-current):not(.is-done),
+.cooking-progress-seg.is-side.is-lane-3:not(.is-current):not(.is-done),
+.cooking-progress-seg.is-side.is-lane-4:not(.is-current):not(.is-done) {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--cooking-wait) 0 3px,
+    transparent 3px 6px
+  );
+}
+.cooking-progress-seg.is-current.is-lane-1 { background: var(--lane-1); box-shadow: 0 0 6px var(--lane-1-glow); }
+.cooking-progress-seg.is-current.is-lane-2 { background: var(--lane-2); box-shadow: 0 0 6px var(--lane-2-glow); }
+.cooking-progress-seg.is-current.is-lane-3 { background: var(--lane-3); box-shadow: 0 0 6px var(--lane-3-glow); }
+.cooking-progress-seg.is-current.is-lane-4 { background: var(--lane-4); box-shadow: 0 0 6px var(--lane-4-glow); }
+
+/* Labels & tags inside a lane group read in the recipe's colour */
+.cooking-card-label.is-lane,
+.cooking-timer-tag.is-lane {
+  color: var(--cooking-wait);
+}
+
 /* Sticky header pill tracking the side-dish lane */
 .cooking-side-pill {
   display: inline-flex;
@@ -887,6 +985,28 @@ a {
   background: var(--cooking-accent-soft, rgba(16, 185, 129, 0.12));
   border: 1px dashed var(--cooking-accent);
   cursor: pointer;
+}
+
+/* Lane-tinted pill (recipe-conscious header status) */
+.cooking-side-pill.is-lane-1 {
+  color: var(--lane-1);
+  background: var(--lane-1-soft);
+  border: 1px dashed var(--lane-1);
+}
+.cooking-side-pill.is-lane-2 {
+  color: var(--lane-2);
+  background: var(--lane-2-soft);
+  border: 1px dashed var(--lane-2);
+}
+.cooking-side-pill.is-lane-3 {
+  color: var(--lane-3);
+  background: var(--lane-3-soft);
+  border: 1px dashed var(--lane-3);
+}
+.cooking-side-pill.is-lane-4 {
+  color: var(--lane-4);
+  background: var(--lane-4-soft);
+  border: 1px dashed var(--lane-4);
 }
 
 .cooking-side-pill strong {

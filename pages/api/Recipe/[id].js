@@ -115,6 +115,24 @@ export default async function handler(req, res) {
         if (req.body.feedback !== undefined) updateData.feedback = req.body.feedback;
         if (req.body.carbType !== undefined) updateData.carbType = req.body.carbType;
         if (req.body.servings !== undefined) updateData.servings = req.body.servings;
+        // Side-dish metadata. serveTempSource tracks who decided: a user edit
+        // always wins and downgrades the AI/heuristic chip to "user".
+        if (req.body.usableAsSide !== undefined) updateData.usableAsSide = req.body.usableAsSide === true;
+        if (req.body.sideCategory !== undefined) updateData.sideCategory = req.body.sideCategory || undefined;
+        if (req.body.serveTemp !== undefined) {
+            const allowed = ['cold', 'reheatable', 'hot'];
+            if (req.body.serveTemp === null || req.body.serveTemp === '') {
+                updateData.serveTemp = undefined;
+                updateData.serveTempSource = undefined;
+            } else if (allowed.includes(req.body.serveTemp)) {
+                updateData.serveTemp = req.body.serveTemp;
+                updateData.serveTempSource = 'user';
+            }
+        }
+        if (req.body.reheatMinutes !== undefined) {
+            const mins = Number(req.body.reheatMinutes);
+            updateData.reheatMinutes = Number.isFinite(mins) && mins > 0 ? Math.round(mins) : 0;
+        }
         if (req.body.sourceUrl !== undefined) updateData.sourceUrl = req.body.sourceUrl;
         if (req.body.sourceNotes !== undefined) updateData.sourceNotes = req.body.sourceNotes;
         if (req.body.dishListRefs !== undefined) updateData.dishListRefs = sanitizeDishListRefs(req.body.dishListRefs);

@@ -3,7 +3,7 @@ import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
 import { formatQuantityDisplay } from '../../lib/fractionFormat'
 import { renderFractions } from '../../components/Fraction'
 import { Button } from '../../components/ui/button'
-import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Sparkles, Users, Download, Info, Hourglass, Flame, Scale, Globe2, Camera } from 'lucide-react'
+import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Sparkles, Users, Download, Info, Hourglass, Flame, Scale, Globe2, Camera, Snowflake, ThumbsUp, ThumbsDown, Salad } from 'lucide-react'
 import { calculateRecipeWeight, formatWeight, rescaleDisplayAmount } from '../../lib/conversion'
 import { isImperialDisplay, convertForDisplay, formatWeightImperial } from '../../lib/unitDisplay'
 import { buildFlowItems, computePhaseInsertPoints, fillCarbPhaseText, recommendCarbOption, resolveCarbSlot, resolveCarbTiming, resolveVariant } from '../../lib/carbSideOps'
@@ -22,6 +22,11 @@ import { getColorForName } from '../../lib/colors'
 import StarRating from '../../components/StarRating'
 import { playAlarm, requestNotificationPermission, sendNotification } from '../../lib/alarm'
 import { isCookingActive } from '../../lib/cookingSession'
+import { buildMainTimeline, buildAttentionGaps, estimateMainRemaining } from '../../lib/sideSchedule'
+import {
+    buildSideContext, unitListForPseudo, serveTempForPseudo, computeSideServings,
+    claimExistingAnchors, buildSidePickEntries, buildRunnerFlowItems, sideUnitLabel, remainingMinutesForStep
+} from '../../lib/sideCommit'
 
 const PRICE_THRESHOLDS = { cheap: 15, expensive: 35 }
 
@@ -261,6 +266,13 @@ export default function RecipeDetail() {
     const [recipeGenre, setRecipeGenre] = useState<string>('')
     const [recipeMealTypes, setRecipeMealTypes] = useState<string[]>([])
     const [recipeCarbType, setRecipeCarbType] = useState<string>('')
+    // Side-dish settings (written straight through PUT /api/Recipe/<id>, the
+    // same save-as-you-change pattern as the rating/feedback fields).
+    const [recipeUsableAsSide, setRecipeUsableAsSide] = useState(false)
+    const [recipeSideCategory, setRecipeSideCategory] = useState('')
+    const [recipeServeTemp, setRecipeServeTemp] = useState('')
+    const [recipeReheatMinutes, setRecipeReheatMinutes] = useState(0)
+    const [isSavingSideSettings, setIsSavingSideSettings] = useState(false)
     const [recipePriceCategory, setRecipePriceCategory] = useState<string>('')
     const [approxCost, setApproxCost] = useState<number | null>(null)
     const [aiFilledFields, setAiFilledFields] = useState<string[]>([])
@@ -275,6 +287,9 @@ export default function RecipeDetail() {
     const [reflectionImage, setReflectionImage] = useState<string | null>(null)
     const [finishHide, setFinishHide] = useState(false)
     const [isSubmittingReflection, setIsSubmittingReflection] = useState(false)
+    // Per-pairing side feedback (reflection): did each pick go well with the
+    // main? Defaults to yes — disliking is the explicit signal.
+    const [sideFeedback, setSideFeedback] = useState<Record<string, { liked: boolean; note: string }>>({})
     const reflectionFileRef = useRef<HTMLInputElement>(null)
     const [isCalculatingCost, setIsCalculatingCost] = useState(false)
     const [recipeServings, setRecipeServings] = useState<number>(0)
@@ -314,7 +329,7 @@ export default function RecipeDetail() {
     const [activeSession, setActiveSession] = useState<Record<string, { endTime: number | null; remaining: number; status: string; checkpointsHit: string[]; during?: boolean; preAlertHit?: boolean }>>({})
     const [activeSheet, setActiveSheet] = useState<'none' | 'prep' | 'ingredients' | 'timers'>('none')
     const [alarmPopupClosed, setAlarmPopupClosed] = useState<Set<string>>(new Set())
-    const [customTimers, setCustomTimers] = useState<{ id: string; name: string; duration: number; carb?: boolean; stepIndex?: number; during?: boolean; intoMinutes?: number }[]>([])
+    const [customTimers, setCustomTimers] = useState<{ id: string; name: string; duration: number; carb?: boolean; side?: boolean; sideRecipeId?: string; stepIndex?: number; during?: boolean; intoMinutes?: number; liveAtCommit?: boolean }[]>([])
     const [customTimerName, setCustomTimerName] = useState("")
     const [customTimerMinutes, setCustomTimerMinutes] = useState("")
     const [doneFlow, setDoneFlow] = useState<Set<number>>(new Set())
@@ -363,7 +378,18 @@ export default function RecipeDetail() {
     const [carbModalNone, setCarbModalNone] = useState(false)
     const [carbChoice, setCarbChoice] = useState<any>(null)
     const [carbCatalogLoading, setCarbCatalogLoading] = useState(false)
-    const flowItems = useMemo<ReturnType<typeof buildFlowItems>>(() => buildFlowItems(instructions || [], prepWork, carbChoice), [instructions, prepWork, carbChoice])
+    // Side dishes (full recipes picked at Start Cooking):
+    //  - sideSuggestions: candidates from /api/sideSuggestions (usableAsSide recipes + pairing history)
+    //  - sidePicks: the committed picks for THIS session (recipes slotted into the flow as 'side' cards)
+    const [sideSuggestions, setSideSuggestions] = useState<any[]>([])
+    const [sideSheetLoading, setSideSheetLoading] = useState(false)
+    const [sideSheetOpen, setSideSheetOpen] = useState(false)
+    const [sideSheetSelected, setSideSheetSelected] = useState<Set<string>>(new Set())
+    // Servings for the picked sides, expressed as a factor of the main's
+    // displayed servings so a scaled main scales its sides with it.
+    const [sideServingsFactor, setSideServingsFactor] = useState(1)
+    const [sidePicks, setSidePicks] = useState<any[]>([])
+    const flowItems = useMemo<ReturnType<typeof buildFlowItems>>(() => buildFlowItems(instructions || [], prepWork, carbChoice, sidePicks), [instructions, prepWork, carbChoice, sidePicks])
 
     // Recipe timers grouped by the instruction step they assist
     const timersByStep = useMemo(() => {
@@ -393,6 +419,17 @@ export default function RecipeDetail() {
         if (timerMins > 0) return { ...(s || {}), time: timerMins }
         return s
     }), [instructions, timersByStep])
+
+    // Side-scheduling inputs: the main dish's minute-level timeline plus its
+    // attention gaps (walk-away spans). Recomputed whenever the recipe data
+    // changes; used when committing side picks and live for hold estimates.
+    const mainSideTimeline = useMemo(() => buildMainTimeline(schedulingInstructions), [schedulingInstructions])
+    const attentionTimers = useMemo(() => (cookingTimers || [])
+        .filter((t: any) => t.type === 'timer')
+        .map((t: any) => ({ duration: t.duration, involvement: t.involvement, stepIndex: t.stepIndex })), [cookingTimers])
+    const attentionGaps = useMemo(
+        () => buildAttentionGaps(schedulingInstructions, mainSideTimeline, attentionTimers),
+        [schedulingInstructions, mainSideTimeline, attentionTimers])
 
     // Per-step ingredient/prep recommendations (computed once per step, read in cards)
     const ingredsByStep = useMemo(() => {
@@ -565,6 +602,15 @@ export default function RecipeDetail() {
     // Display-only; ingredients state, API payloads and the DB are never touched.
     const displayQty = (q: any, unit: any) => {
         const rescaled = rescaleDisplayAmount(Number(q), unit, scaleFactor)
+        if (rescaled.parts) return formatRescaledParts(rescaled.parts)
+        const { quantity, shorthand } = convertForDisplay(rescaled.quantity, rescaled.unit, unitSystem)
+        return `${formatQuantityDisplay(quantity)} ${shorthand}`
+    }
+    // Quantity display at a non-main scale (side dishes picked with the sheet's
+    // servings dropdown): same scale->re-express->unit-system pipeline, driven
+    // by the caller's factor instead of the recipe-wide scaleFactor.
+    const displayQtyFactor = (q: any, unit: any, factor: number) => {
+        const rescaled = rescaleDisplayAmount(Number(q), unit, factor || 1)
         if (rescaled.parts) return formatRescaledParts(rescaled.parts)
         const { quantity, shorthand } = convertForDisplay(rescaled.quantity, rescaled.unit, unitSystem)
         return `${formatQuantityDisplay(quantity)} ${shorthand}`
@@ -788,6 +834,10 @@ export default function RecipeDetail() {
         genre: recipeGenre,
         mealTypes: recipeMealTypes,
         carbType: recipeCarbType,
+        usableAsSide: recipeUsableAsSide,
+        sideCategory: recipeSideCategory,
+        serveTemp: recipeServeTemp,
+        reheatMinutes: recipeReheatMinutes,
         servings: recipeServings,
         sourceUrl: recipe?.sourceUrl,
         prepWork
@@ -808,6 +858,10 @@ export default function RecipeDetail() {
         setRecipeGenre(data.res.genre || '')
         setRecipeMealTypes(data.res.mealTypes || [])
         setRecipeCarbType(data.res.carbType || '')
+        setRecipeUsableAsSide(data.res.usableAsSide === true)
+        setRecipeSideCategory(data.res.sideCategory || '')
+        setRecipeServeTemp(data.res.serveTemp || '')
+        setRecipeReheatMinutes(data.res.reheatMinutes || 0)
         setRecipePriceCategory(data.res.priceCategory || '')
         setTimesCooked(data.res.timesCooked || 0)
         setRating(data.res.rating || 0)
@@ -1476,9 +1530,18 @@ export default function RecipeDetail() {
     // cook has time to get back to the kitchen.
     const SIDE_HEADS_UP_MIN = 3
 
-    const duringPhasesForStep = (stepIndex: number) =>
-        ((carbChoice?.phases || []) as any[]).filter((p: any) =>
+    const duringPhasesForStep = (stepIndex: number) => {
+        const carb = (((carbChoice?.phases || []) as any[]).filter((p: any) =>
             p.during && p.timerId && typeof p.insertAfter === 'number' && p.insertAfter === stepIndex)
+            .map((p: any) => ({ timerId: p.timerId, intoMinutes: p.intoMinutes || 0 })))
+        // Recipe sides slot into the same machinery: anchored to a step, they
+        // fire `intoMinutes` after its timer starts.
+        const sides = (sidePicks || []).flatMap((sp: any) =>
+            ((sp.units || []) as any[]).filter((u: any) =>
+                u.during && u.timerId && typeof u.anchorStep === 'number' && u.anchorStep === stepIndex)
+                .map((u: any) => ({ timerId: u.timerId, intoMinutes: u.intoMinutes || 0, sideName: sp.name })))
+        return [...carb, ...sides]
+    }
 
     const scheduleDuringPhases = (stepIndex: number) => {
         duringPhasesForStep(stepIndex).forEach((p: any) => {
@@ -1604,6 +1667,10 @@ export default function RecipeDetail() {
         setCarbModalOpen(false)
         setScaleFactor(1)
         setScaleModalOpen(false)
+        setSidePicks([])
+        setSideSheetOpen(false)
+        setSideSheetSelected(new Set())
+        setSideSuggestions([])
         setShowReflection(false)
         setFinishRating(0)
         setFinishFeedback("")
@@ -1618,6 +1685,10 @@ export default function RecipeDetail() {
         setReflectionImage(null)
         setFinishHide(false)
         setFinishConfirm(false)
+        // Pre-fill side rows, newest pick order; likes default to yes.
+        const fb: Record<string, { liked: boolean; note: string }> = {}
+        for (const sp of sidePicks || []) fb[sp.recipeId] = { liked: true, note: '' }
+        setSideFeedback(fb)
         setShowReflection(true)
     }
 
@@ -1649,6 +1720,15 @@ export default function RecipeDetail() {
             setTimesCooked(nextTimesCooked)
             setRating(finishRating)
             setFeedback(finishFeedback)
+            // Per-pairing side feedback: liked counts upsert with the note.
+            for (const [sideRecipeId, entry] of Object.entries(sideFeedback)) {
+                if (!sidePicks.some((sp: any) => sp.recipeId === sideRecipeId)) continue
+                fetch('/api/SidePairings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', edgetoken: localStorage.getItem('Token') || '' },
+                    body: JSON.stringify({ mainRecipeId: String(id), sideRecipeId, liked: entry.liked, note: entry.note })
+                }).catch(() => {})
+            }
             // Only swap the hero to the new photo when the server accepted it —
             // otherwise the reload would resurrect the old (stored) image.
             if (reflectionImage && res.ok) setImageData(reflectionImage)
@@ -1714,6 +1794,7 @@ export default function RecipeDetail() {
             // Carb phase timers live in component state, not the DB — restore
             // them so the side's timers/tabs survive a page reload mid-wait.
             if (Array.isArray(saved.customTimers)) setCustomTimers(saved.customTimers as any)
+            if (Array.isArray(saved.sidePicks)) setSidePicks(saved.sidePicks as any)
             setCookingStartedAt(typeof saved.startedAt === 'number' && saved.startedAt > 0 ? saved.startedAt : Date.now())
             setCookingActive(true)
             setIsCookingMode(true)
@@ -1751,9 +1832,12 @@ export default function RecipeDetail() {
     }
 
     // The fresh-start path: carb-side question (when the recipe wants one),
-    // then open the cooking view. Also invoked after the discard-warning
-    // modal clears the other recipe's session.
+    // then the side-dish question, then open the cooking view. Also invoked
+    // after the discard-warning modal clears the other recipe's session.
     const beginFreshCook = async () => {
+        // Fires once per fresh start; the sheet only opens when there is
+        // anything to suggest (a recipe-less cook stays single-recipe).
+        const suggestionsPromise = loadSideSuggestions()
         if (needsCarbChoice()) {
             const hasCatalog = await loadCarbData()
             if (hasCatalog) {
@@ -1769,9 +1853,32 @@ export default function RecipeDetail() {
         } else {
             setCarbChoice(null)
         }
+        const suggestions = await suggestionsPromise
+        if (suggestions.length > 0) {
+            setSideSheetSelected(new Set())
+            setSideSheetOpen(true)
+            return
+        }
+        finishFreshStart()
+    }
+
+    /** Commontail of the fresh-start gates: everything decided, open the cook. */
+    const finishFreshStart = () => {
         setCookingStartedAt(Date.now())
         setCookingActive(true)
         setIsCookingMode(true)
+    }
+
+    /** Gate between the carb choice and cooking: the side sheet shows when
+     *  there are usableSide recipes (or pairing history) for this main. */
+    const sideGateAfterCarb = async () => {
+        const suggestions = await loadSideSuggestions()
+        if (suggestions.length > 0) {
+            setSideSheetSelected(new Set())
+            setSideSheetOpen(true)
+            return
+        }
+        finishFreshStart()
     }
 
     // Catalog unreachable fallback: build a single-phase choice from the
@@ -1860,9 +1967,7 @@ export default function RecipeDetail() {
         setCarbModalOpen(false)
         if (!entry) {
             setCarbChoice(null)
-            setCookingStartedAt(Date.now())
-            setCookingActive(true)
-            setIsCookingMode(true)
+            sideGateAfterCarb()
             return
         }
         const base = resolveCarbChoice(entry, variant)
@@ -1891,9 +1996,7 @@ export default function RecipeDetail() {
         })
         const choice = { ...base, phases }
         setCarbChoice(choice)
-        setCookingStartedAt(Date.now())
-        setCookingActive(true)
-        setIsCookingMode(true)
+        sideGateAfterCarb()
         fetch('/api/carbChoice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'edgetoken': localStorage.getItem('Token') || '' },
@@ -1901,10 +2004,307 @@ export default function RecipeDetail() {
         }).catch(() => {})
     }
 
+    // ---------- Side dishes (Start Cooking picks) ----------
+
+    const sideTempMeta: Record<string, { label: string; icon: any; cls: string }> = {
+        cold: { label: 'Cold', icon: Snowflake, cls: 'text-sky-600' },
+        reheatable: { label: 'Reheat', icon: RefreshCw, cls: 'text-butter' },
+        hot: { label: 'Serve hot', icon: Flame, cls: 'text-red-500' }
+    }
+
+    // Per-recipe lane colour: every picked side owns one of four accents so
+    // concurrent recipes stay visually separable (main dish stays amber,
+    // plain timer waits stay blue). Cycles when more than four run.
+    const sideLaneClass = (sideIndex: number) => `is-lane-${(Math.max(0, Number(sideIndex) || 0) % 4) + 1}`
+
+    // Candidates for the sheet: usableAsSide recipes ranked by pairing
+    // history / meal-type overlap / rating, from /api/sideSuggestions.
+    const loadSideSuggestions = async () => {
+        setSideSheetLoading(true)
+        try {
+            const res = await fetch(`/api/sideSuggestions?recipeId=${encodeURIComponent(String(id))}`, {
+                headers: { edgetoken: localStorage.getItem('Token') || '' }
+            })
+            const data = await res.json()
+            const items = data.success && Array.isArray(data.data) ? data.data : []
+            setSideSuggestions(items)
+            return items
+        } catch (e) {
+            console.error('Failed to load side suggestions:', e)
+            setSideSuggestions([])
+            return []
+        } finally {
+            setSideSheetLoading(false)
+        }
+    }
+
+    /** Side servings: scales with the cook's current servings setting
+     *  (sheet factor override); maths lives in lib/sideCommit. */
+    const sideServingsFor = (p: any) => computeSideServings(p, {
+        factor: sideServingsFactor,
+        mainServes: displayedServings || recipeServings || 0,
+        fallbackServes: p?.servings
+    })
+
+    // ---------- Side-dish settings (recipe-level) ----------
+
+    const SIDE_CATEGORIES: Array<{ value: string; label: string }> = [
+        { value: 'salad', label: 'Salad' },
+        { value: 'vegetable', label: 'Vegetable' },
+        { value: 'starch', label: 'Starch' },
+        { value: 'bread', label: 'Bread' },
+        { value: 'other', label: 'Other' }
+    ]
+    const SIDE_TEMP_OPTIONS: Array<{ value: string; label: string }> = [
+        { value: 'cold', label: 'Cold — make early, holds' },
+        { value: 'reheatable', label: 'Reheatable — cook in downtime' },
+        { value: 'hot', label: 'Best hot — serve timing matters' }
+    ]
+
+    /** Saves the side-dish mark through the normal recipe PUT (same pattern
+     *  as the rating/feedback fields). Optimistic state + rollback on fail. */
+    const saveSideSettings = async (patch: {
+        usableAsSide?: boolean
+        sideCategory?: string
+        serveTemp?: string
+        reheatMinutes?: number
+    }) => {
+        const next = {
+            usableAsSide: patch.usableAsSide ?? recipeUsableAsSide,
+            sideCategory: patch.sideCategory ?? recipeSideCategory,
+            serveTemp: patch.serveTemp ?? recipeServeTemp,
+            reheatMinutes: patch.reheatMinutes ?? recipeReheatMinutes
+        }
+        setRecipeUsableAsSide(next.usableAsSide)
+        setRecipeSideCategory(next.sideCategory)
+        setRecipeServeTemp(next.serveTemp)
+        setRecipeReheatMinutes(next.reheatMinutes)
+        setRecipe((prev: any) => (prev ? { ...prev, ...next } : prev))
+        setIsSavingSideSettings(true)
+        try {
+            const body: any = {}
+            if (patch.usableAsSide !== undefined) body.usableAsSide = next.usableAsSide
+            if (patch.sideCategory !== undefined) body.sideCategory = next.sideCategory
+            if (patch.serveTemp !== undefined) body.serveTemp = next.serveTemp
+            if (patch.reheatMinutes !== undefined) body.reheatMinutes = next.reheatMinutes
+            const res = await fetch(`/api/Recipe/${String(id)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'edgetoken': localStorage.getItem('Token') || "" },
+                body: JSON.stringify(body)
+            })
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}))
+                alert(err.message || err.res || 'Failed to save side settings')
+            } else if (patch.serveTemp !== undefined || patch.reheatMinutes !== undefined) {
+                setRecipe((prev: any) => (prev ? { ...prev, serveTempSource: 'user' } : prev))
+            }
+        } catch (e) {
+            console.error('Failed to save side settings:', e)
+        } finally {
+            setIsSavingSideSettings(false)
+        }
+    }
+
+    // Auto-analysis: fill an unset serving temperature once per recipe (AI
+    // with the keyword fallback), exactly like the carb-side analysis.
+    const serveTempAnalyzedRef = useRef(false)
+    useEffect(() => {
+        if (!id || !recipe?.name) return
+        if (recipe.serveTemp || serveTempAnalyzedRef.current) return
+        serveTempAnalyzedRef.current = true
+        const run = async () => {
+            try {
+                const res = await fetch('/api/ai/analyze_serve_temp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'edgetoken': localStorage.getItem('Token') || '' },
+                    body: JSON.stringify({ recipeId: id })
+                })
+                const data = await res.json()
+                if (data.success && data.data?.serveTemp) {
+                    setRecipe((prev: any) => (prev ? {
+                        ...prev,
+                        serveTemp: data.data.serveTemp,
+                        reheatMinutes: data.data.reheatMinutes ?? prev.reheatMinutes,
+                        serveTempSource: data.data.source
+                    } : prev))
+                    setRecipeServeTemp(data.data.serveTemp)
+                    setRecipeReheatMinutes(data.data.reheatMinutes || recipeReheatMinutes)
+                } else {
+                    console.error('Serve temp analysis failed:', data.message)
+                    serveTempAnalyzedRef.current = false
+                }
+            } catch (e) {
+                console.error('Serve temp analysis failed:', e)
+                serveTempAnalyzedRef.current = false
+            }
+        }
+        run()
+    }, [recipe, id])
+
+
+    /** Fresh-cook commit for the sheet: uses THIS recipe as the main. */
+    const confirmSidePick = (selectedIds: Set<string>) => {
+        setSideSheetOpen(false)
+        if (selectedIds.size === 0) {
+            finishFreshStart()
+            return
+        }
+        const context = buildSideContext(
+            { instructions, cookingTimers },
+            null,
+            null
+        )
+        const chosen = sideSuggestions.filter((s: any) => selectedIds.has(String(s._id)))
+        // The just-made carb choice (and any prior picks) own their during
+        // slots — newly scheduled sides stagger by STAGGER_MIN.
+        const claimed = claimExistingAnchors(carbChoice, sidePicks)
+        const { picks, newTimers } = buildSidePickEntries(chosen, context, { claimedKeys: claimed, servesFor: sideServingsFor })
+        setSidePicks(prev => [...prev, ...picks])
+        setCustomTimers(prev => [...prev, ...newTimers])
+        setSideSuggestions(prev => prev.filter((s: any) => !selectedIds.has(String(s._id))))
+        finishFreshStart()
+    }
+
+    /** Add-to-runner: this recipe joins ANOTHER recipe's live cook as a side.
+     *  Everything is forward-scheduled from that cook's current step (using
+     *  its running timers), written into its localStorage session, and the
+     *  user is dropped into its cooking view. */
+    const addToActiveCook = async () => {
+        const targetId = otherCookPrompt?.recipeId
+        setOtherCookPrompt(null)
+        if (!targetId) return
+        try {
+            const token = localStorage.getItem('Token') || ''
+            const headers = { edgetoken: token }
+            const res = await fetch(`/api/Recipe/${targetId}`, { headers })
+            const docData = await res.json()
+            const doc = docData?.res
+            if (!doc || !Array.isArray(doc.instructions)) {
+                // The runner doc must carry its steps; anything else here
+                // (e.g. the API's string error shape) would schedule the
+                // side against a phantom timeline.
+                throw new Error(typeof docData?.res === 'string'
+                    ? `Runner recipe failed to load: ${docData.res}`
+                    : 'Runner recipe data incomplete')
+            }
+            const session = JSON.parse(localStorage.getItem(`timer-session-${targetId}`) || 'null')
+            if (!session || typeof session.timers !== 'object') throw new Error('The running cook disappeared')
+
+            // Which main step is the runner actually on? Indices refer to the
+            // runner's own flow list (prep/step/side cards interleaved), so
+            // rebuild it the same way the runner does and map the position.
+            const runnerItems = buildRunnerFlowItems(doc, session.sidePicks, session.carbChoice)
+            const cf = typeof session.currentFlow === 'number' ? session.currentFlow : 0
+            const curStepIndex = (() => {
+                for (let i = Math.min(cf, runnerItems.length - 1); i >= 0; i--) {
+                    const it = runnerItems[i]
+                    if (it.kind === 'step') return it.stepIndex
+                    if (it.kind === 'prep') return 0
+                }
+                return 0
+            })()
+
+            const context = buildSideContext(doc, curStepIndex, session)
+            const selfPseudo = {
+                _id: String(id),
+                name: recipeName,
+                sideCategory: recipeSideCategory,
+                serveTemp: recipeServeTemp,
+                reheatMinutes: recipeReheatMinutes,
+                steps: (instructions || []).map((s: any, i: number) => ({
+                    index: i, Text: s.Text, time: s.time ?? null, involvement: s.involvement
+                })),
+                prepWork: (prepWork || []).map((w: any) => ({ action: w.action, timeEstimate: w.timeEstimate, optional: w.optional })),
+                ingredients: (listIngreds || []).map((i: any) => ({ name: i.name || i.Name, quantity: i.quantity ?? i.Amount, quantity_type: i.quantity_type ?? i.AmountType })),
+                timers: (cookingTimers || []).filter((t: any) => t.type === 'timer').map((t: any) => ({
+                    name: t.name, duration: t.duration, stepIndex: t.stepIndex, involvement: t.involvement
+                }))
+            }
+            // New anchors avoid slots already taken by the running cook's
+            // carb phases and existing side units — those never move. The
+            // scheduler works in partial-timeline coords, so shift seeds.
+            const claimedReal = claimExistingAnchors(session.carbChoice, session.sidePicks)
+            const claimed = new Map<string, boolean>()
+            // Map#.forEach yields (value, key) — keep the order straight or
+            // every seed key throws boolean.split and the whole add-to-runner
+            // silently falls back to a fresh cook.
+            claimedReal.forEach((val: boolean, key: string) => {
+                const [stepStr, intoStr] = key.split(':')
+                const partialStep = Number(stepStr) - curStepIndex
+                if (val && partialStep >= 0) claimed.set(`${partialStep}:${intoStr}`, true)
+            })
+            const { picks, newTimers } = buildSidePickEntries([selfPseudo], context, { mid: true, claimedKeys: claimed, servesFor: sideServingsFor })
+
+            const sidePicks = [
+                ...(Array.isArray(session.sidePicks) ? session.sidePicks : []),
+                ...picks
+            ]
+            // Mid-cook timers anchored to the CURRENT step go live at once —
+            // but "into" for legit anchors was measured from the step timer's
+            // START (which already happened): subtract the elapsed part so a
+            // late anchor doesn't fire 30 extra minutes from now. Clamped
+            // overflow units carry the flag and count from NOW.
+            const runnerRem = remainingMinutesForStep(curStepIndex, doc, session)
+            const anchorFullMin = Math.max(0, ...(doc.cookingTimers || [])
+                .filter((t: any) => t.type === 'timer'
+                    && (typeof t.stepIndex === 'number' ? t.stepIndex : 0) === curStepIndex)
+                .map((t: any) => typeof t.duration === 'number' ? t.duration : 0))
+            const anchorElapsed = Math.max(0, anchorFullMin - (runnerRem ?? anchorFullMin))
+            const liveNow: Record<string, any> = {}
+            for (const t of newTimers) {
+                if (t.liveAtCommit) {
+                    const fromNow = t.__clampedNow === true
+                        ? t.intoMinutes
+                        : Math.max(0.5, t.intoMinutes - anchorElapsed)
+                    liveNow[t.id] = { endTime: Date.now() + fromNow * 60000, remaining: fromNow * 60, status: 'active', during: true }
+                }
+                delete t.liveAtCommit
+                delete t.__clampedNow
+            }
+            const nextTimers = { ...(session.timers || {}), ...liveNow }
+            const mergedCustom = [...(session.customTimers || []), ...newTimers]
+            const timerMeta = { ...(session.timerMeta || {}) }
+            for (const t of mergedCustom) {
+                timerMeta[t.id] = { name: t.name || 'Timer', durationSec: Math.max(0, Math.round((t.duration || 0) * 60)) }
+            }
+            localStorage.setItem(`timer-session-${targetId}`, JSON.stringify({
+                ...session,
+                v: 7,
+                timers: nextTimers,
+                customTimers: mergedCustom,
+                sidePicks,
+                timerMeta,
+                cooking: true
+            }))
+            // MUST be a full navigation: /recipes/[id] is the same page
+            // component for every recipe, so client-side routing only swaps
+            // the query param while all state (recipe data, timers, refs)
+            // stays the OLD recipe's — the ?cook=1 auto-resume never fires
+            // and the runner page renders stale. Hard reload = clean mount.
+            window.location.href = `/recipes/${targetId}?cook=1`
+        } catch (e) {
+            // Surface the failure — a silent fallback once started THIS
+            // recipe as its own cook, leaving the user in the wrong session.
+            console.error('Failed to add to running cook:', e)
+            alert(`Couldn't add to the running cook: ${(e as any)?.message || 'unknown error'}. Start it fresh instead?`)
+            beginFreshCook()
+        }
+    }
+
 
     useEffect(() => {
         requestNotificationPermission()
     }, [])
+
+    // Arming "during" side phases on cook start: when the flow's first item
+    // is a step (no prep card), reaching the cook IS arriving at the step,
+    // so propagate the arm-and-fire instead of waiting for a timer.
+    useEffect(() => {
+        if (!isCookingMode) return
+        const first = flowItems[0]
+        if (first?.kind === 'step') scheduleDuringPhases(first.stepIndex)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isCookingMode])
 
     useEffect(() => {
         return () => {
@@ -2036,6 +2436,8 @@ export default function RecipeDetail() {
             if (saved) {
                 const parsed = JSON.parse(saved)
                 if (parsed.timers) setActiveSession(parsed.timers)
+                // v7: recipe sides picked at Start Cooking travel the same way
+                if (Array.isArray(parsed.sidePicks)) setSidePicks(parsed.sidePicks)
                 // Restore the persisted "cook underway" flag so the global
                 // bubble stays visible after a page reload.
                 if (parsed.cooking) {
@@ -2144,12 +2546,13 @@ export default function RecipeDetail() {
                 timerMeta[t.id] = { name: t.name || 'Timer', durationSec: Math.max(0, Math.round((t.duration || 0) * 60)) }
             })
             localStorage.setItem(`timer-session-${id}`, JSON.stringify({
-                v: 6,
+                v: sidePicks && sidePicks.length > 0 ? 7 : 6,
                 timers: activeSession,
                 currentFlow,
                 doneFlow: Array.from(doneFlow),
                 carbChoice,
                 customTimers,
+                sidePicks: sidePicks.length > 0 ? sidePicks : undefined,
                 scaleFactor,
                 cooking,
                 recipeName,
@@ -2157,7 +2560,7 @@ export default function RecipeDetail() {
                 timerMeta
             }))
         } catch {}
-    }, [activeSession, currentFlow, doneFlow, id, customTimers, scaleFactor, cookingActive, cookingStartedAt, recipeName, cookingTimers, hydratedId])
+    }, [activeSession, currentFlow, doneFlow, id, customTimers, scaleFactor, cookingActive, cookingStartedAt, recipeName, cookingTimers, hydratedId, sidePicks])
 
     // Tick clock + countdown engine. A 100ms clock drives re-renders while any
     // timer runs, so countdowns step at true second boundaries (ceiled) and
@@ -2202,8 +2605,8 @@ export default function RecipeDetail() {
                     // Scheduled side phases ring as "start now", not "done"
                     const firingTimer = getTimerById(cookingTimers, timerId) || customTimersRef.current.find((x: any) => x.id === timerId)
                     sendNotification(
-                        firingTimer?.carb ? 'Side dish time' : 'Timer Complete',
-                        firingTimer?.carb ? `Time to start: ${firingTimer?.name || 'side'}` : `${firingTimer?.name || 'Timer'} is done!`
+                        firingTimer?.carb || firingTimer?.side ? 'Side dish time' : 'Timer Complete',
+                        firingTimer?.carb || firingTimer?.side ? `Time to start: ${firingTimer?.name || 'side'}` : `${firingTimer?.name || 'Timer'} is done!`
                     )
                     // A fresh overdue event — make sure the alarm popup shows for it again
                     setAlarmPopupClosed(prev => {
@@ -3212,6 +3615,82 @@ export default function RecipeDetail() {
                                 </p>
                             </div>
                         )}
+
+                        {/* Side-dish settings: mark this recipe as usable as a
+                            side for other cooks. Saves change-by-change. */}
+                        <div className="mt-4 rounded-xl bg-secondary/40 border border-border/50 px-4 py-3 space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Side dish settings</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Lets other cooks pick this recipe as a sidedish</p>
+                                </div>
+                                {isSavingSideSettings && <Loader2 size={13} className="animate-spin text-muted-foreground shrink-0" />}
+                            </div>
+                            <label className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 transition-colors ${recipeUsableAsSide ? 'border-olive/40 bg-olive/10' : 'border-border hover:border-accent/40'}`}>
+                                <input
+                                    type="checkbox"
+                                    checked={recipeUsableAsSide}
+                                    onChange={(e) => saveSideSettings({ usableAsSide: e.target.checked })}
+                                    className="mt-0.5 h-4 w-4 shrink-0 accent-olive"
+                                />
+                                <span>
+                                    <span className={`block text-sm font-semibold ${recipeUsableAsSide ? 'text-olive' : 'text-foreground'}`}>This recipe can be a side dish</span>
+                                    <span className="block text-xs text-muted-foreground">Offered as a recommendation when cooking another recipe</span>
+                                </span>
+                            </label>
+                            {recipeUsableAsSide && (
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <label className="block">
+                                        <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Category</span>
+                                        <select
+                                            value={recipeSideCategory}
+                                            onChange={(e) => saveSideSettings({ sideCategory: e.target.value })}
+                                            className="w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent/40"
+                                        >
+                                            <option value="">Not set</option>
+                                            {SIDE_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                                        </select>
+                                    </label>
+                                    <label className="block">
+                                        <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Serving temperature
+                                            {recipe?.serveTemp && recipe.serveTempSource !== 'user' && <span className="ml-1.5 font-semibold normal-case tracking-normal text-muted-foreground/70">(est.)</span>}
+                                        </span>
+                                        <select
+                                            value={recipeServeTemp}
+                                            onChange={(e) => saveSideSettings({ serveTemp: e.target.value })}
+                                            className="w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent/40"
+                                        >
+                                            <option value="">Estimated for me</option>
+                                            {SIDE_TEMP_OPTIONS.map(t => (
+                                                <option key={t.value} value={t.value}>{t.value === recipe?.serveTemp ? `${t.label} (est.)` : t.label}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    {recipeServeTemp === 'reheatable' && (
+                                        <label className="block sm:col-span-2">
+                                            <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Reheat duration</span>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="number"
+                                                    min={2}
+                                                    max={15}
+                                                    value={recipeReheatMinutes || 5}
+                                                    onChange={(e) => setRecipeReheatMinutes(Math.max(2, Math.min(15, parseInt(e.target.value) || 5)))}
+                                                    onBlur={(e) => saveSideSettings({ reheatMinutes: Math.max(2, Math.min(15, parseInt(e.target.value) || 5)) })}
+                                                    className="w-20 rounded-lg border border-border bg-secondary px-3 py-2 text-sm font-semibold tabular-nums focus:outline-none focus:ring-1 focus:ring-accent/40"
+                                                />
+                                                <span className="text-xs text-muted-foreground">minutes for the warm-back phase at serve time</span>
+                                            </div>
+                                        </label>
+                                    )}
+                                </div>
+                            )}
+                            {(recipe?.serveTempSource === 'ai' || recipe?.serveTempSource === 'heuristic') && recipeServeTemp && (
+                                <p className="text-[11px] text-muted-foreground">
+                                    Estimated: {recipeServeTemp === 'cold' ? 'served cold — make it early and hold' : recipeServeTemp === 'reheatable' ? `hot after a ${recipeReheatMinutes || 5}-min reheat` : 'best made right at the end'}. Change it above to override.
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     {/* Nutrients density — always visible */}
@@ -3512,6 +3991,112 @@ export default function RecipeDetail() {
                     </div>
                 )}
 
+                {/* Side dishes sheet: multi-select of the recipes marked
+                    usable-as-side (plus pairing history), with a servings
+                    dropdown that defaults to the main's current servings. */}
+                {sideSheetOpen && (
+                    <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center sm:p-4 bg-black/70 backdrop-blur-sm" onClick={() => { setSideSheetOpen(false); finishFreshStart() }}>
+                        <div
+                            className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-border bg-background shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh]"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="shrink-0 px-5 pt-4 pb-3 border-b border-border">
+                                <h3 className="text-lg font-bold flex items-center gap-2"><Salad size={18} className="text-olive" /> Serve with a side dish?</h3>
+                                <p className="text-xs text-muted-foreground mt-1">Rounds out the meal — pick as many as you like. Steps slot into the cook automatically.</p>
+                            </div>
+                            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-3 space-y-2">
+                                {sideSheetLoading && (
+                                    <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 size={16} className="animate-spin" /> Loading suggestions…</div>
+                                )}
+                                {sideSuggestions.map((s: any, i: number) => {
+                                    const isSel = sideSheetSelected.has(String(s._id))
+                                    const meta = sideTempMeta[s.serveTemp] || sideTempMeta.hot
+                                    const servedCount = (() => {
+                                        const mainServes = displayedServings || recipeServings || 0
+                                        return Math.max(0, Math.round(mainServes * (Number(sideServingsFactor) || 1)))
+                                    })()
+                                    const totalMin = unitListForPseudo(s).reduce((a: number, u: any) => a + u.minutes, 0)
+                                        + (s.serveTemp === 'reheatable' ? (s.reheatMinutes > 0 ? s.reheatMinutes : 5) : 0)
+                                    return (
+                                        <button
+                                            key={String(s._id)}
+                                            className={`w-full px-4 py-3 rounded-xl border text-left transition-all touch-manipulation ${isSel ? 'bg-olive/10 border-olive/40' : 'bg-secondary border-border hover:border-accent'}`}
+                                            onClick={() => {
+                                                const next = new Set(sideSheetSelected)
+                                                if (next.has(String(s._id))) next.delete(String(s._id))
+                                                else next.add(String(s._id))
+                                                setSideSheetSelected(next)
+                                            }}
+                                        >
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className={`text-sm font-semibold ${isSel ? 'text-olive' : 'text-foreground'}`}>{s.name}</span>
+                                                <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0">
+                                                    <meta.icon size={12} className={meta.cls} /> {meta.label} · {totalMin > 0 ? formatDuration(totalMin) : 'quick'}
+                                                    {isSel && <Check size={15} className="text-olive" />}
+                                                </span>
+                                            </div>
+                                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                                {i === 0 && <span className="text-[10px] font-bold text-olive uppercase tracking-wider">recommended</span>}
+                                                {s.pairing && s.pairing.liked && <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-olive"><ThumbsUp size={10} /> liked with this dish</span>}
+                                                {s.pairing && !s.pairing.liked && <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground"><ThumbsDown size={10} /> wasn't a win last time</span>}
+                                                {s.sideCategory && s.sideCategory !== 'other' && <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.sideCategory}</span>}
+                                                {(s.serveTempSource === 'ai' || s.serveTempSource === 'heuristic') && <span className="text-[10px] text-muted-foreground/70">({s.serveTemp === 'reheatable' ? 'temp estimated' : 'estimated'})</span>}
+                                            </div>
+                                            {isSel && s.ingredients && s.ingredients.length > 0 && (
+                                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                                    {s.ingredients.slice(0, 8).map((ing: any, ci: number) => (
+                                                        <span key={ci} className="cooking-chip">
+                                                            <span className="cooking-chip-name">{ing.name}</span>
+                                                            <span className="cooking-chip-qty">{(() => { try {
+                                                                if (!Number.isFinite(Number(ing.quantity))) return ''
+                                                                return renderFractions(displayQtyFactor(ing.quantity, ing.quantity_type, Number(sideServingsFactor) || 1))
+                                                            } catch { return '' } })()}</span>
+                                                        </span>
+                                                    ))}
+                                                    <span className="text-[10px] text-muted-foreground self-center">≈ {servedCount} serving{servedCount === 1 ? '' : 's'}</span>
+                                                </div>
+                                            )}
+                                        </button>
+                                    )
+                                })}
+                                {!sideSheetLoading && sideSuggestions.length === 0 && (
+                                    <p className="text-sm text-muted-foreground py-6 text-center">No side dishes marked yet — you can flag a recipe as a usable side from its page.</p>
+                                )}
+                            </div>
+                            <div className="shrink-0 px-5 pt-3 pb-5 sm:pb-4 border-t border-border" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+                                {/* Servings factor for the picked sides, shown
+                                    against the main's current serving count */}
+                                <div className="flex items-center justify-between gap-3 mb-2.5">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Side dish servings</span>
+                                    <select
+                                        value={String(Number(sideServingsFactor) || 1)}
+                                        onChange={(e) => setSideServingsFactor(Number(e.target.value) || 1)}
+                                        className="rounded-lg border border-border bg-secondary px-2.5 py-1.5 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-accent/40"
+                                    >
+                                        {(() => {
+                                            const mainServes = displayedServings || recipeServings
+                                            const fmt = (f: number) => {
+                                                const n = mainServes > 0 ? Math.round(mainServes * f) : null
+                                                const label = f === 0.5 ? 'Half' : f === 1 ? 'Same as main' : f === 1.5 ? '1.5×' : 'Double'
+                                                return n ? `${label}${mainServes > 0 ? ` · ${n} serving${n === 1 ? '' : 's'}` : ''}` : label
+                                            }
+                                            return [0.5, 1, 1.5, 2].map(f => (
+                                                <option key={f} value={f}>{fmt(f)}</option>
+                                            ))
+                                        })()}
+                                    </select>
+                                </div>
+                                <Button
+                                    className="w-full cooking-next-btn is-primary touch-manipulation"
+                                    onClick={() => confirmSidePick(sideSheetSelected)}
+                                >
+                                    <ChefHat size={16} /> {sideSheetSelected.size > 0 ? `Start cooking · ${sideSheetSelected.size} side${sideSheetSelected.size > 1 ? 's' : ''}` : 'Start cooking'}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Cooking Mode Overlay */}
                 {isCookingMode && !showReflection && (() => {
                     const clampedCurrent = Math.min(currentFlow, Math.max(0, flowItems.length - 1))
@@ -3583,6 +4168,12 @@ export default function RecipeDetail() {
                             })
                         }
                         setCurrentFlow(clampedCurrent + 1)
+                        // Reaching a step also arms its "during" side phases
+                        // (carb phases + recipe sides): with hands-on steps
+                        // there may be no timer to start, so the phase fires
+                        // relative to arriving at the step instead.
+                        const nextItem = flowItems[clampedCurrent + 1]
+                        if (nextItem?.kind === 'step') scheduleDuringPhases(nextItem.stepIndex)
                     }
 
                     // While peeking, the primary button wraps up the peek and
@@ -3594,7 +4185,9 @@ export default function RecipeDetail() {
                             ? 'Back to prep'
                             : t.kind === 'carb'
                                 ? 'Back to side'
-                                : `Back to Step ${t.stepIndex + 1}`
+                                : t.kind === 'side'
+                                    ? 'Back to side'
+                                    : `Back to Step ${t.stepIndex + 1}`
                     })()
                     const nextLabel = forcedView
                         ? peekReturnLabel
@@ -3948,6 +4541,177 @@ export default function RecipeDetail() {
                                     )}
                                 </div>
                                 {carbTimer && renderTimerTab(carbTimer, state, isWaiting ? 'wait' : undefined)}
+                            </div>
+                        )
+                    }
+
+                    // Recipe-side card: one unit of a picked side recipe
+                    // (prep / step / reheat), slotted exactly like a carb
+                    // phase — starts as a calm waiting card when "during",
+                    // otherwise a manual dashed card with its own timer tab.
+                    const renderSideCard = (item: any, idx: number, state: 'done' | 'current' | 'upcoming', isNext: boolean, peeked: boolean = false) => {
+                        const side = sidePicks[item.sideIndex] || {}
+                        const units = side.units || []
+                        const unit = units[item.unitIndex] || { name: 'Side step', text: '', minutes: 0 }
+                        const unitCount = units.length
+                        const text = unit.text || `${side.name}: step`
+                        const sideTimer = unit.timerId ? customTimers.find((t: any) => t.id === unit.timerId) : undefined
+                        const nextPending = units.find((u: any, ui: number) => ui > item.unitIndex
+                            && u.timerId
+                            && !['completed', 'overdue'].includes(getTimerStatus(u.timerId)))
+                        const waitSession = unit.during && sideTimer ? activeSession[sideTimer.id] : undefined
+                        const isWaiting = !!(waitSession && waitSession.during && ['active', 'paused'].includes(waitSession.status))
+                        const isDoing = !isWaiting && !!unit.during && !!sideTimer && ['active', 'paused'].includes(getTimerStatus(sideTimer.id))
+                        const isDue = waitSession && waitSession.status === 'overdue'
+                        const headsup = !!(waitSession && waitSession.preAlertHit)
+                        const waitRemaining = waitSession ? getRemaining(waitSession, nowMs) : 0
+                        const waitMins = Math.max(1, Math.ceil(waitRemaining / 60))
+                        const waitStartStr = waitSession?.endTime
+                            ? new Date(waitSession.status === 'paused' ? Date.now() + (waitSession.remaining || 0) * 1000 : waitSession.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            : null
+                        const slideId = unit.timerId || `sideunit-${item.sideIndex}-${item.unitIndex}`
+                        const slideOpen = openCarbSlide === slideId
+                        const isLastUnit = item.unitIndex === unitCount - 1
+                        const laneCls = sideLaneClass(item.sideIndex)
+                        // Hold counter: cold/reheatable picks cook early — once
+                        // their chain is done, the last card counts down to the
+                        // moment the main dish needs us again.
+                        const holdInfo = (() => {
+                            if (!isLastUnit || !side.hold || state !== 'current') return null
+                            const allDone = units.every((u: any) => !u.timerId || ['completed', 'overdue'].includes(getTimerStatus(u.timerId)))
+                            if (!allDone) return null
+                            // Live countdown: sum of the main's remaining step
+                            // minutes, eaten into by whatever main timer runs.
+                            const curItem = flowItems[clampedCurrent]
+                            let stepIdx: number | null = null
+                            if (curItem?.kind === 'prep') stepIdx = 0
+                            else if (typeof curItem?.stepIndex === 'number' && curItem.stepIndex >= 0) stepIdx = curItem.stepIndex
+                            if (stepIdx === null) return null
+                            let remSec: number | null = null
+                            cookingTimers.forEach((t: any) => {
+                                if (t.type !== 'timer' || t.stepIndex !== stepIdx) return
+                                const status = getTimerStatus(t.id)
+                                if (status === 'active') {
+                                    const r = getRemaining(activeSession[t.id], nowMs)
+                                    remSec = Math.max(remSec || 0, r)
+                                } else if (status === 'overdue') {
+                                    remSec = 0
+                                }
+                            })
+                            const minsLeft = estimateMainRemaining(mainSideTimeline, stepIdx, remSec)
+                            return minsLeft
+                        })()
+                        return (
+                            <div
+                                key={idx}
+                                ref={(el: HTMLDivElement | null) => { cardRefs.current[idx] = el }}
+                                className={`cooking-step-group ${laneCls}`}
+                            >
+                                <div
+                                    className={`cooking-card cooking-card-step cooking-card-carb is-${state} ${laneCls} ${isWaiting ? 'is-waiting' : ''} ${isNext && state === 'upcoming' ? 'is-next' : ''} ${state === 'done' ? 'is-clickable' : ''}`}
+                                    style={{ borderStyle: isWaiting ? 'solid' : 'dashed' }}
+                                    onClick={state === 'done' ? () => jumpTo(idx) : undefined}
+                                >
+                                    <div className="cooking-card-top">
+                                        {state === 'done' && (
+                                            <span className="cooking-card-label is-lane"><Salad size={13} /> {side.name} · done</span>
+                                        )}
+                                        {!isWaiting && state === 'current' && (
+                                            <span className="cooking-card-label is-lane"><Salad size={13} /> {side.name}{isDue ? ' · do it now' : ''}</span>
+                                        )}
+                                        {isWaiting && state !== 'done' && (
+                                            <span className="cooking-card-label is-wait"><Hourglass size={13} /> {side.name} · waiting</span>
+                                        )}
+                                        {!isWaiting && state === 'upcoming' && (
+                                            <span className="cooking-card-label">{side.name}</span>
+                                        )}
+                                    </div>
+                                    {unitCount > 1 && (
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                                            {side.name} · step {item.unitIndex + 1} of {unitCount}{side.servings ? ` · ${side.servings} serving${side.servings === 1 ? '' : 's'}` : ''}
+                                        </p>
+                                    )}
+                                    {isWaiting && state !== 'done' ? (
+                                        <>
+                                            <p className="cooking-wait-headline">
+                                                Wait <span className="cooking-wait-count">{waitSession?.status === 'paused' ? 'paused' : formatDuration(waitMins)}</span> to start this side step
+                                            </p>
+                                            <p className="cooking-wait-sub">
+                                                {headsup
+                                                    ? <>Head back — {text}{waitStartStr ? ` starts at ${waitStartStr}` : ''}</>
+                                                    : <>then {text}{waitStartStr ? ` · start at ${waitStartStr}` : ''} · we'll ring {SIDE_HEADS_UP_MIN} min before</>}
+                                                {' '}- Step {item.stepIndex + 1} keeps cooking
+                                            </p>
+                                            <button
+                                                className={`cooking-slide-toggle ${slideOpen ? 'is-open' : ''}`}
+                                                onClick={() => setOpenCarbSlide(slideOpen ? null : slideId)}
+                                            >
+                                                What you'll do <ChevronDown size={13} />
+                                            </button>
+                                            <div className={`cooking-side-slideout ${slideOpen ? 'open' : ''}`}>
+                                                <p className="cooking-slideout-text">{text}</p>
+                                                {(side.ingredients || []).length > 0 && (
+                                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                                        {(side.ingredients || []).slice(0, 10).map((ing: any, ci: number) => (
+                                                            <span key={ci} className="cooking-chip">
+                                                                <span className="cooking-chip-name">{ing.name}</span>
+                                                                <span className="cooking-chip-qty">{(() => {
+                                                                    try {
+                                                                        if (!Number.isFinite(Number(ing.quantity))) return ''
+                                                                        return renderFractions(displayQtyFactor(ing.quantity, ing.quantity_type, Number(side.servings && displayedServings && side.servings > 0 ? side.servings / displayedServings : 1)))
+                                                                    } catch { return '' }
+                                                                })()}</span>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p className={`cooking-card-text is-${state}`}>{text}</p>
+                                            {peeked && (
+                                                <div className="cooking-current-hint">Peeking · Next returns to where you were</div>
+                                            )}
+                                            {isDue && state === 'current' && !peeked && (
+                                                <>
+                                                    <div className="cooking-current-hint">
+                                                        Time to do this now — <strong>Step {item.stepIndex + 1} · main dish</strong> keeps cooking in the background{nextPending ? `, and its next step (${sideUnitLabel(nextPending)}) comes up later` : ''}
+                                                    </div>
+                                                    {sideTimer && (
+                                                        <button className="cooking-start-timer" onClick={() => completeTimer(sideTimer)}>
+                                                            <Check size={16} strokeWidth={3} />
+                                                            Done ✓
+                                                        </button>
+                                                    )}
+                                                </>
+                                            )}
+                                            {!isDue && state === 'current' && !peeked && (
+                                                <div className="cooking-current-hint">
+                                                    {sideTimer
+                                                        ? (isDoing
+                                                            ? <>Timer running - carry on with <strong>Step {item.stepIndex + 1} · main dish</strong> - the side runs in the background{nextPending ? `, next: ${sideUnitLabel(nextPending)}` : ''}</>
+                                                            : unit.during
+                                                                ? <>Fires ~{Math.round(unit.intoMinutes)} min into <strong>Step {item.stepIndex + 1} · main dish</strong> once that timer runs - or start it below yourself{nextPending ? `, next: ${sideUnitLabel(nextPending)}` : ''}</>
+                                                                : <>Start the timer below, then carry on with <strong>Step {item.stepIndex + 1} · main dish</strong>{nextPending ? `, next: ${sideUnitLabel(nextPending)}` : ''}</>)
+                                                        : <>Do this while Step {item.stepIndex + 1} runs, then move on below</>}
+                                                </div>
+                                            )}
+                            {holdInfo !== null && (
+                                                <div className={`cooking-prep-hint ${!peeked ? 'is-headsup' : ''}`}>
+                                                    <span className="cooking-prep-hint-task">
+                                                        <Hourglass size={12} />
+                                                        <span className="cooking-prep-hint-text">
+                                                            {side.name} is done · about <strong>{holdInfo > 0 ? formatDuration(holdInfo) : 'any moment now'}</strong> until the main is ready. {side.serveTemp === 'cold' ? 'Store in fridge to hold.' : 'Holds fine meanwhile — reheat comes up near the end.'}
+                                                        </span>
+                                                    </span>
+                                                    <span className="cooking-prep-hint-cta">estimated ~{holdInfo > 0 ? holdInfo : 0} min</span>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                                {sideTimer && renderTimerTab(sideTimer, state, isWaiting ? 'wait' : undefined)}
                             </div>
                         )
                     }
@@ -4479,51 +5243,69 @@ export default function RecipeDetail() {
                                             // While peeking, the title names the
                                             // peeked card, not the flow position.
                                             const titleItem = forcedView ? flowItems[forcedView.idx] : current
-                                            return titleItem ? (
-                                                titleItem.kind === 'prep'
-                                                    ? <>Prep work</>
-                                                    : titleItem.kind === 'carb'
-                                                        ? <>Side · {(carbChoice?.phases || [])[titleItem.phaseIndex]?.name || carbChoice?.label}</>
+                                        return titleItem ? (
+                                            titleItem.kind === 'prep'
+                                                ? <>Prep work</>
+                                                : titleItem.kind === 'carb'
+                                                    ? <>Side · {(carbChoice?.phases || [])[titleItem.phaseIndex]?.name || carbChoice?.label}</>
+                                                    : titleItem.kind === 'side'
+                                                        ? <>{(sidePicks[titleItem.sideIndex]?.name || 'Side dish')} · step {titleItem.unitIndex + 1}</>
                                                         : <>Step {titleItem.stepIndex + 1} of {instructions.length}</>
-                                            ) : 'Cooking'
+                                        ) : 'Cooking'
                                         })()}
                                     </div>
-                                    {/* Sticky side-status pill: shows which side
-                                        phase is running/next so the parallel
-                                        lane stays glanceable anywhere */}
-                                    {carbChoice?.phases?.some((p: any) => p.timerId) && (() => {
-                                        const phases = carbChoice.phases as any[]
-                                        const live = phases.find((p: any) => ['active', 'paused', 'overdue'].includes(getTimerStatus(p.timerId)))
+                                    {/* Sticky side-status pill: whichever side
+                                        lane (carb phases or recipe sides) is
+                                        running/next stays glanceable anywhere */}
+                                    {(() => {
+                                        const lanes: Array<{ id: string; label: string; timerId: string; during: boolean; laneCls: string; peek: () => number }> = []
+                                        const carbPhases = ((carbChoice?.phases || []) as any[]).filter((p: any) => p.timerId)
+                                        const labelC = carbChoice?.label || 'Side'
+                                        carbPhases.forEach((p: any) => lanes.push({
+                                            id: p.timerId,
+                                            label: `${labelC}: ${p.name}`,
+                                            timerId: p.timerId,
+                                            during: !!p.during,
+                                            laneCls: '',
+                                            peek: () => flowItems.findIndex((f: any) => f.kind === 'carb' && carbPhases[f.phaseIndex]?.timerId === p.timerId)
+                                        }))
+                                        ;(sidePicks || []).forEach((sp: any) => (sp.units || []).forEach((u: any) => {
+                                            if (!u.timerId) return
+                                            lanes.push({
+                                                id: u.timerId,
+                                                label: `${sp.name}: ${u.kind === 'reheat' ? 'reheat & serve' : 'step'}`,
+                                                timerId: u.timerId,
+                                                during: !!u.during,
+                                                laneCls: sideLaneClass(sidePicks.indexOf(sp)),
+                                                peek: () => flowItems.findIndex((f: any) => f.kind === 'side' && f.sideIndex === (sidePicks.indexOf(sp)) && f.unitIndex === sp.units.indexOf(u))
+                                            })
+                                        }))
+                                        if (lanes.length === 0) return null
+                                        const live = lanes.find((l: any) => ['active', 'paused', 'overdue'].includes(getTimerStatus(l.timerId)))
                                         const shownTimer = live ? activeSession[live.timerId] : undefined
                                         if (live) {
-                                            const remaining = shownTimer ? getRemaining(shownTimer, nowMs) : live.minutes * 60
+                                            const remaining = shownTimer ? getRemaining(shownTimer, nowMs) : 300
                                             return (
                                                 <button
-                                                    className="cooking-side-pill"
-                                                    onClick={() => {
-                                                        const fi = flowItems.findIndex(f => f.kind === 'carb' && carbChoice.phases[f.phaseIndex]?.timerId === live.timerId)
-                                                        if (fi >= 0) peekTo(fi)
-                                                    }}
-                                                    title={'Side: ' + live.name}
+                                                    className={`cooking-side-pill ${live.laneCls}`}
+                                                    onClick={() => { const fi = live.peek(); if (fi >= 0) peekTo(fi) }}
+                                                    title={'Side: ' + live.label}
                                                 >
                                                     <ChefHat size={11} />
-                                                    <span>{carbChoice.label}: {live.name}</span>
+                                                    <span>{live.label}</span>
                                                     <strong>{live.during && shownTimer?.status === 'active' ? `in ${formatCountdown(remaining)}` : formatCountdown(remaining)}</strong>
                                                 </button>
                                             )
                                         }
-                                        const pending = phases.find((p: any) => p.timerId && !['completed', 'overdue'].includes(getTimerStatus(p.timerId)))
+                                        const pending = lanes.find((l: any) => !['completed', 'overdue'].includes(getTimerStatus(l.timerId)))
                                         if (!pending) return null
                                         return (
                                             <button
-                                                className="cooking-side-pill is-pending"
-                                                onClick={() => {
-                                                    const fi = flowItems.findIndex(f => f.kind === 'carb' && carbChoice.phases[f.phaseIndex]?.timerId === pending.timerId)
-                                                    if (fi >= 0) peekTo(fi)
-                                                }}
+                                                className={`cooking-side-pill is-pending ${pending.laneCls}`}
+                                                onClick={() => { const fi = pending.peek(); if (fi >= 0) peekTo(fi) }}
                                             >
                                                 <ChefHat size={11} />
-                                                <span>{carbChoice.label}: {pending.name}</span>
+                                                <span>{pending.label}</span>
                                                 <strong>start?</strong>
                                             </button>
                                         )
@@ -4536,12 +5318,14 @@ export default function RecipeDetail() {
                                                 ? 'Prep work'
                                                 : item.kind === 'carb'
                                                     ? `${carbChoice?.label || 'Side'}: ${carbChoice?.phases?.[item.phaseIndex]?.name || 'phase'}`
-                                                    : `Step ${item.stepIndex + 1}`
+                                                    : item.kind === 'side'
+                                                        ? `${sidePicks?.[item.sideIndex]?.name || 'Side dish'}: step ${item.unitIndex + 1}`
+                                                        : `Step ${item.stepIndex + 1}`
                                             return (
                                                 <button
                                                     key={idx}
                                                     onClick={() => jumpTo(idx)}
-                                                    className={`cooking-progress-seg ${item.kind === 'carb' ? 'is-side' : ''} ${segDone ? 'is-done' : ''} ${segCurrent ? 'is-current' : ''}`}
+                                                    className={`cooking-progress-seg ${item.kind === 'carb' ? 'is-side' : ''} ${item.kind === 'side' ? `is-side ${sideLaneClass(item.sideIndex)}` : ''} ${segDone ? 'is-done' : ''} ${segCurrent ? 'is-current' : ''}`}
                                                     title={label}
                                                     aria-label={label}
                                                 />
@@ -4568,7 +5352,9 @@ export default function RecipeDetail() {
                                             ? renderPrepCard(idx, state)
                                             : item.kind === 'carb'
                                                 ? renderCarbCard(item, idx, state, isNext, peeked)
-                                                : renderStepCard(item, idx, state, isNext, peeked)
+                                                : item.kind === 'side'
+                                                    ? renderSideCard(item, idx, state, isNext, peeked)
+                                                    : renderStepCard(item, idx, state, isNext, peeked)
                                     })}
                                     {flowItems.length === 0 && (
                                         <div className="cooking-empty">This recipe has no steps yet.</div>
@@ -4820,6 +5606,52 @@ export default function RecipeDetail() {
                                 />
                             </div>
 
+                            {/* Per-side pairing feedback: was this side a good
+                                match for the main? Defaults to yes. */}
+                            {sidePicks.length > 0 && sidePicks.some((sp: any) => sideFeedback[sp.recipeId]) && (
+                                <div className="rounded-xl bg-secondary/50 px-4 py-3 space-y-2.5">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Side dishes this cook</p>
+                                    {sidePicks.filter((sp: any) => sideFeedback[sp.recipeId]).map((sp: any) => {
+                                        const entry = sideFeedback[sp.recipeId]
+                                        return (
+                                            <div key={sp.recipeId} className="rounded-lg border border-border bg-background px-3 py-2.5">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <span className="text-sm font-semibold">{sp.name}</span>
+                                                    <span className="flex items-center gap-1.5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSideFeedback(prev => ({ ...prev, [sp.recipeId]: { ...entry, liked: true } }))}
+                                                            className={`p-1.5 rounded-full border transition-colors ${entry.liked ? 'bg-olive/15 border-olive/40 text-olive' : 'border-border text-muted-foreground/50 hover:text-olive'}`}
+                                                            title="Worked well"
+                                                            aria-label={`${sp.name} worked well`}
+                                                        >
+                                                            <ThumbsUp size={13} />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSideFeedback(prev => ({ ...prev, [sp.recipeId]: { ...entry, liked: false } }))}
+                                                            className={`p-1.5 rounded-full border transition-colors ${!entry.liked ? 'bg-butter/15 border-butter/40 text-butter' : 'border-border text-muted-foreground/50 hover:text-butter'}`}
+                                                            title="Didn't go well"
+                                                            aria-label={`${sp.name} didn't go well`}
+                                                        >
+                                                            <ThumbsDown size={13} />
+                                                        </button>
+                                                    </span>
+                                                </div>
+                                                {!entry.liked && (
+                                                    <input
+                                                        value={entry.note}
+                                                        onChange={(e) => setSideFeedback(prev => ({ ...prev, [sp.recipeId]: { ...entry, note: e.target.value } }))}
+                                                        placeholder="What didn't work? (optional)"
+                                                        className="mt-2 w-full rounded-lg bg-secondary px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-accent/40"
+                                                    />
+                                                )}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+
                             {!imageData && (
                                 <div>
                                     <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Photo</label>
@@ -5029,6 +5861,9 @@ export default function RecipeDetail() {
                                     // The old carb decision dies with the session:
                                     // prompt again like a fresh Start Cooking.
                                     setCarbChoice(null)
+                                    setSidePicks([])
+                                    setSideSuggestions([])
+                                    setSideSheetSelected(new Set())
                                     if (needsCarbChoice()) {
                                         loadCarbData().then(hasCatalog => {
                                             if (hasCatalog) {
@@ -5038,7 +5873,11 @@ export default function RecipeDetail() {
                                                 const fallback = fallbackCarbChoice()
                                                 if (fallback) setCarbChoice(fallback)
                                             }
+                                            // Same fresh-start chain: sides, then cook.
+                                            sideGateAfterCarb()
                                         })
+                                    } else {
+                                        sideGateAfterCarb()
                                     }
                                 }}
                             >
@@ -5112,36 +5951,57 @@ export default function RecipeDetail() {
             )}
 
             {/* Warn before a fresh Start Cooking discards another recipe's
-                in-progress session — only one cook runs at a time. */}
+                in-progress session — only one cook runs at a time. "+" keeps
+                the running cook alive and drops THIS recipe's remaining steps
+                into it as a scheduled side, partial steps included. */}
             {otherCookPrompt?.show && (
                 <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
                     <div className="bg-card border border-border/40 rounded-2xl p-5 max-w-sm mx-4 shadow-xl">
                         <h3 className="text-lg font-bold mb-2">Already Cooking</h3>
                         <p className="text-sm text-foreground/60 mb-4">
                             You have an in-progress cook for <span className="font-semibold text-foreground">{otherCookPrompt.recipeName}</span>.
-                            Starting a new cook will discard its progress.
+                            Add <span className="font-semibold text-foreground">{recipeName || 'this recipe'}</span> as a side to it, or start a fresh cook here (discarding the running one).
                         </p>
-                        <div className="flex gap-3">
+                        <div className="flex flex-col gap-2">
                             <Button
-                                variant="outline"
-                                className="flex-1 h-11"
-                                onClick={() => setOtherCookPrompt(null)}
+                                className="w-full h-11 bg-olive hover:bg-olive/85 text-primary-foreground font-bold"
+                                onClick={addToActiveCook}
                             >
-                                Cancel
+                                <Plus size={16} /> Add as side to running cook
                             </Button>
-                            <Button
-                                variant="destructive"
-                                className="flex-1 h-11"
-                                onClick={() => {
-                                    if (otherCookPrompt.recipeId) {
-                                        try { localStorage.removeItem(`timer-session-${otherCookPrompt.recipeId}`) } catch {}
-                                    }
-                                    setOtherCookPrompt(null)
-                                    beginFreshCook()
-                                }}
-                            >
-                                Discard &amp; Start
-                            </Button>
+                            <div className="flex gap-3">
+                                <Button
+                                    variant="outline"
+                                    className="flex-1 h-11"
+                                    onClick={() => setOtherCookPrompt(null)}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    className="flex-1 h-11"
+                                    onClick={() => {
+                                        if (otherCookPrompt.recipeId) {
+                                            try { localStorage.removeItem(`timer-session-${otherCookPrompt.recipeId}`) } catch {}
+                                        }
+                                        setOtherCookPrompt(null)
+                                        beginFreshCook()
+                                    }}
+                                >
+                                    Discard &amp; Start
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    className="h-11 px-3"
+                                    title="Keep the running cook untouched — reset it from its own page"
+                                    onClick={() => {
+                                        setOtherCookPrompt(null)
+                                        Router.push(`/recipes/${otherCookPrompt.recipeId}?cook=1`)
+                                    }}
+                                >
+                                    Go to cook
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
