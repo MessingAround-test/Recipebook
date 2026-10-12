@@ -61,11 +61,27 @@ export async function sharpResize(buffer: Buffer, longEdge: number, format: 'web
         .toBuffer({ resolveWithObject: true })
 }
 
+/**
+ * True when sharp can decode the buffer as a real image. Buffer.from() accepts
+ * junk base64 without throwing, so this is the only reliable way to reject
+ * garbage "images" (broken paste, wrong encoding, truncated download).
+ */
+export async function isImageBuffer(buffer: Buffer): Promise<boolean> {
+    const sharp = (await import('sharp')).default
+    try {
+        await sharp(buffer).metadata()
+        return true
+    } catch {
+        return false
+    }
+}
+
 /** Upserts the full-res copy plus a derived thumb, clears any legacy inline blob, sets hasImage. */
 export async function saveRecipeImages(recipeId: string, imageValue: string): Promise<{ ok: boolean }> {
     if (!recipeId || !imageValue) return { ok: false }
     const decoded = await decodeImageValue(imageValue)
     if (!decoded || decoded.buffer.length === 0) return { ok: false }
+    if (!(await isImageBuffer(decoded.buffer))) return { ok: false }
 
     // NB: mongoose silently ignores $unset on fields that are no longer in the
     // Recipe schema — use the raw collection so legacy inline blobs are removed.

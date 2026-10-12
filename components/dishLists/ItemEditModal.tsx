@@ -5,7 +5,7 @@ import { X, Loader2, MapPin, CheckCircle2, AlertCircle, Upload, Trash2, ImageIco
 import { DishListItem } from './types'
 import { COUNTRIES } from '../../lib/dishLists/countries'
 import { hasPoint } from '../../lib/dishLists/locationStatus'
-import { fileToBase64 } from '../../lib/recipeImage'
+import { fileToCompressedBase64 } from '../../lib/recipeImage'
 
 interface ItemEditModalProps {
     isOpen: boolean
@@ -105,7 +105,7 @@ export function ItemEditModal({ isOpen, onClose, item, onSaved }: ItemEditModalP
         if (!file) return
         try {
             setImageStatus('Reading image…')
-            const dataUrl = await fileToBase64(file, status => setImageStatus(status))
+            const dataUrl = await fileToCompressedBase64(file, status => setImageStatus(status))
             setPendingImage(dataUrl)
             setRemoveImage(false)
             setImageStatus('')

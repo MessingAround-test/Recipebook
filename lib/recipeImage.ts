@@ -63,3 +63,19 @@ export const fileToBase64 = (file: File, onStatus?: (status: string) => void): P
         reader.onerror = error => reject(error);
     });
 };
+
+/**
+ * Like fileToBase64 but always keeps the payload safely under the API's 1 MB
+ * body limit — files up to 1 MB can still base64 to ~1.37 MB and get rejected,
+ * so anything over ~700 KB of base64 is re-encoded smaller.
+ */
+export const fileToCompressedBase64 = async (file: File, onStatus?: (status: string) => void): Promise<string> => {
+    const base64 = await blobToBase64(file);
+    if (base64.length <= 700 * 1024) return base64;
+    onStatus?.('Compressing image…');
+    try {
+        return await compressImage(base64, 0.5);
+    } finally {
+        onStatus?.('');
+    }
+};

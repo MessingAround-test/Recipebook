@@ -4,6 +4,7 @@ import DishListItem from '../models/DishListItem'
 import DishListImage from '../models/DishListImage'
 import {
     decodeImageValue,
+    isImageBuffer,
     sharpResize,
     THUMB_LONG_EDGE,
     FULL_LONG_EDGE
@@ -26,6 +27,7 @@ export async function saveDishListImage(itemId: string, imageValue: string): Pro
     if (!itemId || !imageValue) return { ok: false }
     const decoded = await decodeImageValue(imageValue)
     if (!decoded || decoded.buffer.length === 0) return { ok: false }
+    if (!(await isImageBuffer(decoded.buffer))) return { ok: false }
 
     let fullMime = decoded.mime
     let fullBuffer = decoded.buffer

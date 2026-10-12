@@ -1,13 +1,14 @@
-import { useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import type { ChangeEvent, ClipboardEvent, FormEvent } from 'react'
 import { Input } from '../ui/input'
 import { Button } from '../ui/button'
 import { COUNTRIES, canonicalCountry } from '../../lib/dishLists/countries'
 import { continentOf } from '../../lib/dishLists/locationStatus'
+import { fileToCompressedBase64 } from '../../lib/recipeImage'
 import { DishListItem } from './types'
 import {
     Globe2, CheckCircle2, Circle, ChevronDown, ChevronUp, Search,
-    ExternalLink, Loader2, Plus, Pencil
+    ExternalLink, Loader2, Plus, Pencil, Upload, X
 } from 'lucide-react'
 
 interface CountryGridProps {
@@ -46,18 +47,56 @@ function CountryCard({ cell, canEdit, listId, onAdded, onEdit }: {
     const [name, setName] = useState('')
     const [link, setLink] = useState('')
     const [image, setImage] = useState('')
+    const [pendingImage, setPendingImage] = useState<string | null>(null)
+    const [imageStatus, setImageStatus] = useState('')
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     const covered = cell.dishes.length > 0
 
+    const applyImageFile = async (file: File | null | undefined) => {
+        if (!file) return
+        if (!file.type.startsWith('image/')) {
+            setError('That file is not an image')
+            return
+        }
+        setError(null)
+        try {
+            const dataUrl = await fileToCompressedBase64(file, setImageStatus)
+            setPendingImage(dataUrl)
+            setImage('')
+        } catch {
+            setError('Could not read image')
+        }
+    }
+
+    const pickImage = async (e: ChangeEvent<HTMLInputElement>) => {
+        await applyImageFile(e.target.files?.[0])
+        e.target.value = ''
+    }
+
+    const onImagePaste = async (e: ClipboardEvent<HTMLInputElement>) => {
+        const items = e.clipboardData?.items
+        if (items) {
+            for (const item of Array.from(items)) {
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault()
+                    await applyImageFile(item.getAsFile())
+                    return
+                }
+            }
+        }
+        // Plain-text paste (URL or data URI) falls through to the input.
+    }
+
     const save = async (e?: FormEvent) => {
         e?.preventDefault()
-        if (busy || !name.trim()) return
+        if (busy || imageStatus || !name.trim()) return
         setBusy(true)
         setError(null)
         try {
-            const imageValue = image.trim()
+            const imageValue = pendingImage || image.trim()
             const res = await fetch(`/api/dishLists/${listId}/items`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'edgetoken': localStorage.getItem('Token') || '' },
@@ -70,9 +109,14 @@ function CountryCard({ cell, canEdit, listId, onAdded, onEdit }: {
             })
             const data = await res.json()
             if (data.success) {
+                const imageWanted = !!imageValue
                 setName('')
                 setLink('')
                 setImage('')
+                setPendingImage(null)
+                if (imageWanted && !data.data?.hasImage) {
+                    setError('Dish saved, but the image could not be loaded — edit the dish to retry.')
+                }
                 onAdded(data.data)
             } else {
                 setError(data.message || 'Could not save')
@@ -147,13 +191,40 @@ function CountryCard({ cell, canEdit, listId, onAdded, onEdit }: {
                         className="h-8 text-xs"
                         disabled={busy}
                     />
-                    <Input
-                        value={image}
-                        onChange={e => setImage(e.target.value)}
-                        placeholder="Image URL (optional)"
-                        className="h-8 text-xs"
-                        disabled={busy}
-                    />
+                    <div className="flex items-center gap-1.5">
+                        {pendingImage && (
+                            <div className="relative shrink-0">
+                                <img src={pendingImage} alt="Dish" className="h-8 w-8 rounded-md object-cover border border-border" />
+                                <button
+                                    type="button"
+                                    onClick={() => setPendingImage(null)}
+                                    title="Remove image"
+                                    className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black"
+                                >
+                                    <X size={10} />
+                                </button>
+                            </div>
+                        )}
+                        <Input
+                            value={image}
+                            onChange={e => setImage(e.target.value)}
+                            onPaste={onImagePaste}
+                            placeholder={pendingImage ? 'Image added' : 'Image: link or paste'}
+                            className="h-8 text-xs min-w-0"
+                            disabled={busy || !!pendingImage}
+                        />
+                        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={pickImage} />
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            title="Upload image"
+                            disabled={busy}
+                            className="h-8 w-8 shrink-0 rounded-xl bg-secondary border border-border text-muted-foreground hover:text-accent hover:border-accent flex items-center justify-center"
+                        >
+                            <Upload size={13} />
+                        </button>
+                    </div>
+                    {imageStatus && <p className="text-[10px] text-muted-foreground">{imageStatus}</p>}
                     <div className="flex gap-1.5">
                         <Input
                             value={link}
@@ -165,7 +236,7 @@ function CountryCard({ cell, canEdit, listId, onAdded, onEdit }: {
                         <Button
                             type="submit"
                             size="sm"
-                            disabled={busy || !name.trim()}
+                            disabled={busy || !!imageStatus || !name.trim()}
                             title={`Add dish for ${cell.country}`}
                             className="h-8 px-2.5 rounded-xl shrink-0"
                         >
