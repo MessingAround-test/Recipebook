@@ -1,4 +1,5 @@
-import { verifyToken } from '../../../lib/auth';
+import { verifyToken, resolveAiLanguage } from '../../../lib/auth';
+import { languageInstructionBlock } from '../../../lib/aiLanguage';
 import { logAPI } from '../../../lib/logger';
 import { normalizeCriteria } from '../../../lib/dishLists/criteria';
 import { callGroqChat } from '../../../lib/ai';
@@ -35,6 +36,7 @@ export default async function handler(req, res) {
         if (!name) {
             return res.status(400).json({ success: false, message: 'A dish name is required' });
         }
+        const language = await resolveAiLanguage(decoded);
         // `criteria`/`extra` are accepted but intentionally ignored here — this
         // endpoint always returns the unrestricted baseline for remixing.
         const extra = String(req.body?.extra || '').trim();
@@ -47,6 +49,8 @@ Write a SINGLE recipe for the given dish that is as TRADITIONAL and AUTHENTIC as
 - Still be home-cookable and delicious, but faithfulness to the traditional dish comes first.
 - Do NOT apply any dietary substitutions — this is the unrestricted baseline that gets adapted afterwards.
 - 'carbType' MUST reflect the primary carbohydrate actually in the traditional dish: Rice for rice dishes, Pasta/Noodles for pasta or noodles, Bread/Wraps for sandwiches/wraps/tortillas, Potato for potato dishes, Quinoa for quinoa dishes, None/Other otherwise.
+
+${languageInstructionBlock(language)}
 
 Return a single JSON object:
 {

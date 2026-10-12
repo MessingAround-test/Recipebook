@@ -3,6 +3,7 @@ import User from '../../models/User'
 import { verifyToken } from "../../lib/auth.ts";
 import { logAPI } from '../../lib/logger.ts';
 import { FEATURES_ADMIN_ONLY, sanitizeFeatures } from '../../lib/features';
+import { AI_LANGUAGES } from '../../lib/aiLanguage';
 
 export default async function handler(req, res) {
   logAPI(req)
@@ -42,6 +43,12 @@ export default async function handler(req, res) {
         if (FEATURES_ADMIN_ONLY && decoded.role !== 'admin') {
             delete req.body.features;
             delete req.body.features_onboarded_at;
+        }
+
+        // AI output language: only store known languages (invalid values are
+        // dropped rather than failing the schema enum validator).
+        if (req.body.ai_language !== undefined && !AI_LANGUAGES.includes(req.body.ai_language)) {
+            delete req.body.ai_language;
         }
 
         delete req.body.passwordHash;

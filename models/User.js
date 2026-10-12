@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { AI_LANGUAGES } from '../lib/aiLanguage'
 
 const UserSchema = new mongoose.Schema(
   {
@@ -25,6 +26,10 @@ const UserSchema = new mongoose.Schema(
     features: { type: mongoose.Schema.Types.Mixed },
     // null => user has not completed feature onboarding yet; undefined => legacy
     features_onboarded_at: { type: Date },
+    // Preferred language for AI-generated recipes (remix flow). No schema
+    // default: absence (undefined) means "nothing set" and resolves to
+    // English at read time (see lib/aiLanguage.js / resolveAiLanguage).
+    ai_language: { type: String, enum: AI_LANGUAGES },
     carbHistory: [new mongoose.Schema({
         type: { type: String, required: true },
         variant: String,

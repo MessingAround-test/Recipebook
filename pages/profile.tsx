@@ -3,12 +3,14 @@ import { Layout } from '../components/Layout'
 import { FormField } from '../components/FormField'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
+import { Label } from '../components/ui/label'
 import { useAuthGuard } from '../lib/useAuthGuard'
 import { PageHeader } from '../components/PageHeader'
 import { useRouter } from 'next/router'
 import { MdLogout, MdArrowForward, MdMonitorHeart } from 'react-icons/md'
 import { NUTRIENT_LABELS } from '../lib/dailyIntake'
 import { FEATURES, FEATURES_ADMIN_ONLY, resolveFeatures, sanitizeFeatures } from '../lib/features'
+import { AI_LANGUAGES } from '../lib/aiLanguage'
 import { useUser } from '../lib/UserContext'
 import {
     calculateHealthScore,
@@ -235,6 +237,7 @@ export default function Profile() {
                         {Object.keys(userData).map((key) => {
                             const val = userData[key]
                             if (key === '_id' || key === 'passwordHash' || key === '__v') return null // Hide internal/sensitive fields
+                            if (key === 'ai_language') return null // Rendered as a select below
                             if (val !== null && typeof val === 'object') return null // Skip nested objects (e.g. health_score_config)
 
                             return (
@@ -247,6 +250,23 @@ export default function Profile() {
                                 />
                             )
                         })}
+
+                        <div className="flex flex-col gap-2 mb-3">
+                            <Label htmlFor="ai_language" className="text-muted-foreground">AI Recipe Language</Label>
+                            <select
+                                id="ai_language"
+                                className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                value={userData.ai_language || 'English'}
+                                onChange={(e) => setUserData((prev) => ({ ...prev, ai_language: e.target.value }))}
+                            >
+                                {AI_LANGUAGES.map((lang) => (
+                                    <option key={lang} value={lang}>{lang}</option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-muted-foreground">
+                                Language for AI-generated recipes when remixing. Defaults to English.
+                            </p>
+                        </div>
 
                         <div className="mt-8 flex gap-4">
                             <Button type="submit">

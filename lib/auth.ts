@@ -3,6 +3,7 @@ import { secret } from "./dbsecret";
 import dbConnect from "./dbConnect";
 import User from "../models/User";
 import { hasFeature } from "./features";
+import { sanitizeAiLanguage, DEFAULT_AI_LANGUAGE } from "./aiLanguage";
 
 /**
  * Verifies the EDGEtoken from headers and handles error responses.
@@ -77,5 +78,22 @@ export async function requireFeatures(req: any, res: any, decoded: any, keys: st
     } catch (error: any) {
         res.status(500).json({ success: false, message: "Feature check failed: " + error.message });
         return null;
+    }
+}
+
+/**
+ * Resolves the user's preferred AI output language (profiles with nothing set
+ * default to English). Never throws — falls back to English on any error so
+ * AI endpoints keep working.
+ */
+export async function resolveAiLanguage(decoded: any): Promise<string> {
+    if (!decoded?.id) return DEFAULT_AI_LANGUAGE;
+
+    try {
+        await dbConnect();
+        const user = await User.findById(decoded.id).select('ai_language');
+        return sanitizeAiLanguage(user?.ai_language);
+    } catch {
+        return DEFAULT_AI_LANGUAGE;
     }
 }
