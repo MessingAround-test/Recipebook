@@ -34,7 +34,7 @@ export function NewListModal({ isOpen, onClose, onCreated }: NewListModalProps) 
         setName(preset.name)
         setDescription(preset.description)
         setSourceUrl(preset.url)
-        setSourceType('tasteatlas')
+        setSourceType(preset.sourceType || 'tasteatlas')
         setCriteria(normalizeCriteria(preset.dietaryFilters))
     }
 

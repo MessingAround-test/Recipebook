@@ -1,13 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '../ui/button'
-import { X, Loader2, ClipboardPaste, Link2 } from 'lucide-react'
-import { DishListSummary } from './types'
+import { X, Loader2, ClipboardPaste, Link2, Globe2 } from 'lucide-react'
+import { CountryGrid } from './CountryGrid'
+import { DishListItem, DishListSummary } from './types'
 
 interface PasteModalProps {
     isOpen: boolean
     onClose: () => void
     list: DishListSummary
     onDone: () => void
+    /** Items for the Country grid tab; refreshed via onCountryAdded. */
+    items: DishListItem[]
+    /** Called after a dish is added through the Country grid tab. */
+    onCountryAdded: () => void
+    /** Opens the dish editor (closes this popup first). */
+    onEditDish: (item: DishListItem) => void
 }
 
 // Runs on the TasteAtlas page (same origin, so Cloudflare lets it through).
@@ -26,12 +33,19 @@ const COPY_LIST_BOOKMARKLET = 'javascript:' + encodeURIComponent(
     `alert('Full HTML is shown selected. Press Ctrl+C to copy, then paste it into Recipebook.');}})();`
 )
 
-export function PasteModal({ isOpen, onClose, list, onDone }: PasteModalProps) {
-    const [mode, setMode] = useState<'html' | 'urls'>('html')
+export function PasteModal({ isOpen, onClose, list, onDone, items, onCountryAdded, onEditDish }: PasteModalProps) {
+    const [mode, setMode] = useState<'html' | 'urls' | 'country'>('html')
     const [html, setHtml] = useState('')
     const [urls, setUrls] = useState('')
     const [busy, setBusy] = useState(false)
     const [result, setResult] = useState<string | null>(null)
+
+    // Each time the popup opens: default to the Country grid tab when the
+    // list has it enabled, otherwise the usual paste mode.
+    useEffect(() => {
+        if (isOpen) setMode(list.countryGrid ? 'country' : 'html')
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen])
 
     if (!isOpen) return null
 
@@ -62,7 +76,7 @@ export function PasteModal({ isOpen, onClose, list, onDone }: PasteModalProps) {
 
     return (
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" onClick={onClose}>
-            <div className="w-full sm:max-w-2xl bg-card border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className={`w-full ${mode === 'country' ? 'sm:max-w-5xl' : 'sm:max-w-2xl'} bg-card border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
                 <div className="sticky top-0 bg-card/95 backdrop-blur px-5 py-4 border-b border-border flex items-center justify-between">
                     <div>
                         <h2 className="text-lg font-bold">Add dishes</h2>
@@ -73,6 +87,10 @@ export function PasteModal({ isOpen, onClose, list, onDone }: PasteModalProps) {
 
                 <div className="p-5 space-y-4">
                     <div className="flex gap-2">
+                        <button type="button" onClick={() => setMode('country')}
+                            className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border transition-colors ${mode === 'country' ? 'bg-accent text-accent-foreground border-accent' : 'bg-secondary border-border hover:border-accent'}`}>
+                            <Globe2 size={14} /> Country grid
+                        </button>
                         <button type="button" onClick={() => setMode('html')}
                             className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border transition-colors ${mode === 'html' ? 'bg-accent text-accent-foreground border-accent' : 'bg-secondary border-border hover:border-accent'}`}>
                             <ClipboardPaste size={14} /> Paste page HTML
@@ -83,49 +101,62 @@ export function PasteModal({ isOpen, onClose, list, onDone }: PasteModalProps) {
                         </button>
                     </div>
 
-                    <p className="text-[11px] leading-snug text-muted-foreground">
-                        TasteAtlas blocks automated fetching, so open the list in your browser, then paste the full page HTML (see the helper below — the page only ships the first 10 dishes until you load the rest) or a newline list of dish URLs/slugs. Names, categories, regions, descriptions and images are pulled in automatically — use <strong>Blurbs &amp; images</strong> afterwards only to fill any gaps.
-                    </p>
-
-                    {mode === 'html' && (
-                        <div className="rounded-2xl bg-secondary/60 border border-border p-3.5 space-y-2">
-                            <p className="text-sm font-bold">Get every dish (TasteAtlas only embeds the first 10)</p>
-                            <p className="text-[11px] leading-snug text-muted-foreground">
-                                Drag the button below onto your bookmarks bar. Open the TasteAtlas list in your browser, click the saved bookmark once — it loads all remaining dishes and copies the full page HTML. Then paste it above.
-                            </p>
-                            <a
-                                href={COPY_LIST_BOOKMARKLET}
-                                onClick={e => e.preventDefault()}
-                                draggable
-                                title="Drag me to your bookmarks bar"
-                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent text-accent-foreground text-sm font-semibold cursor-grab active:cursor-grabbing select-none"
-                            >
-                                <ClipboardPaste size={14} /> Copy full list HTML
-                            </a>
-                        </div>
-                    )}
-
-                    {mode === 'html' ? (
-                        <textarea
-                            value={html}
-                            onChange={e => setHtml(e.target.value)}
-                            placeholder="<html> … paste the TasteAtlas list page source here …"
-                            className="w-full min-h-[220px] rounded-xl bg-secondary border border-border p-3 text-xs font-mono resize-y focus:outline-none focus:border-accent"
+                    {mode === 'country' ? (
+                        <CountryGrid
+                            listId={list._id}
+                            items={items}
+                            canEdit
+                            collapsible={false}
+                            onAdded={onCountryAdded}
+                            onEdit={(item) => { onClose(); onEditDish(item) }}
                         />
                     ) : (
-                        <textarea
-                            value={urls}
-                            onChange={e => setUrls(e.target.value)}
-                            placeholder={'https://www.tasteatlas.com/pizza-napoletana\nhttps://www.tasteatlas.com/pasta-carbonara'}
-                            className="w-full min-h-[220px] rounded-xl bg-secondary border border-border p-3 text-xs font-mono resize-y focus:outline-none focus:border-accent"
-                        />
+                        <>
+                            <p className="text-[11px] leading-snug text-muted-foreground">
+                                TasteAtlas blocks automated fetching, so open the list in your browser, then paste the full page HTML (see the helper below — the page only ships the first 10 dishes until you load the rest) or a newline list of dish URLs/slugs. Names, categories, regions, descriptions and images are pulled in automatically — use <strong>Blurbs &amp; images</strong> afterwards only to fill any gaps.
+                            </p>
+
+                            {mode === 'html' && (
+                                <div className="rounded-2xl bg-secondary/60 border border-border p-3.5 space-y-2">
+                                    <p className="text-sm font-bold">Get every dish (TasteAtlas only embeds the first 10)</p>
+                                    <p className="text-[11px] leading-snug text-muted-foreground">
+                                        Drag the button below onto your bookmarks bar. Open the TasteAtlas list in your browser, click the saved bookmark once — it loads all remaining dishes and copies the full page HTML. Then paste it above.
+                                    </p>
+                                    <a
+                                        href={COPY_LIST_BOOKMARKLET}
+                                        onClick={e => e.preventDefault()}
+                                        draggable
+                                        title="Drag me to your bookmarks bar"
+                                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent text-accent-foreground text-sm font-semibold cursor-grab active:cursor-grabbing select-none"
+                                    >
+                                        <ClipboardPaste size={14} /> Copy full list HTML
+                                    </a>
+                                </div>
+                            )}
+
+                            {mode === 'html' ? (
+                                <textarea
+                                    value={html}
+                                    onChange={e => setHtml(e.target.value)}
+                                    placeholder="<html> … paste the TasteAtlas list page source here …"
+                                    className="w-full min-h-[220px] rounded-xl bg-secondary border border-border p-3 text-xs font-mono resize-y focus:outline-none focus:border-accent"
+                                />
+                            ) : (
+                                <textarea
+                                    value={urls}
+                                    onChange={e => setUrls(e.target.value)}
+                                    placeholder={'https://www.tasteatlas.com/pizza-napoletana\nhttps://www.tasteatlas.com/pasta-carbonara'}
+                                    className="w-full min-h-[220px] rounded-xl bg-secondary border border-border p-3 text-xs font-mono resize-y focus:outline-none focus:border-accent"
+                                />
+                            )}
+
+                            {result && <p className="text-sm font-medium text-foreground bg-secondary rounded-xl p-3">{result}</p>}
+
+                            <Button onClick={scraped} disabled={busy || (mode === 'html' ? !html.trim() : !urls.trim())} className="w-full h-11 rounded-xl">
+                                {busy ? <><Loader2 size={16} className="animate-spin" /> Parsing…</> : 'Parse & add dishes'}
+                            </Button>
+                        </>
                     )}
-
-                    {result && <p className="text-sm font-medium text-foreground bg-secondary rounded-xl p-3">{result}</p>}
-
-                    <Button onClick={scraped} disabled={busy || (mode === 'html' ? !html.trim() : !urls.trim())} className="w-full h-11 rounded-xl">
-                        {busy ? <><Loader2 size={16} className="animate-spin" /> Parsing…</> : 'Parse & add dishes'}
-                    </Button>
                 </div>
             </div>
         </div>

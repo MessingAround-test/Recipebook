@@ -7,6 +7,7 @@ import DishListItemCooked from '../../../models/DishListItemCooked'
 import User from '../../../models/User'
 import { buildItemUpdate } from '../../../lib/dishLists/itemUpdate'
 import { cookedItemIdsForUser } from '../../../lib/dishLists/cookedState'
+import { saveDishListImage, deleteDishListImage, dishListImageUrl } from '../../../lib/dishListImageServer'
 
 export default async function handler(req, res) {
     logAPI(req)
@@ -61,6 +62,29 @@ export default async function handler(req, res) {
         const existing = await DishListItem.findById(itemId).select('location').lean()
         if (!existing) return res.status(404).json({ success: false, message: 'Item not found' })
 
+        // Image set/remove (admin-only). Runs before the text updates so a
+        // bad image URL aborts the whole save instead of partially applying.
+        const wantsImage = typeof req.body?.imageUrl === 'string' && req.body.imageUrl.trim() !== ''
+        const wantsRemoveImage = req.body?.removeImage === true
+        if (decoded.role === 'admin' && (wantsImage || wantsRemoveImage)) {
+            if (wantsImage) {
+                const imageUrl = req.body.imageUrl.trim()
+                const saved = await saveDishListImage(itemId, imageUrl)
+                if (!saved.ok) {
+                    return res.status(400).json({ success: false, message: 'Could not load that image. Check the URL or pick a different file.' })
+                }
+                // Reference URL kept for http(s) links only; bytes live in DishListImage.
+                if (/^https?:\/\//i.test(imageUrl)) {
+                    await DishListItem.updateOne({ _id: itemId }, { $set: { imageOriginalUrl: imageUrl } })
+                } else {
+                    await DishListItem.updateOne({ _id: itemId }, { $unset: { imageOriginalUrl: '' } })
+                }
+            } else {
+                await deleteDishListImage(itemId)
+                await DishListItem.updateOne({ _id: itemId }, { $unset: { imageOriginalUrl: '' } })
+            }
+        }
+
         // Tick-off is handled here (per user); buildItemUpdate covers the rest.
         if (req.body?.cooked !== undefined) {
             const cooked = req.body.cooked === true
@@ -97,7 +121,14 @@ export default async function handler(req, res) {
         const cookedSet = await cookedItemIdsForUser([item], userId, user?.email)
         return res.status(200).json({
             success: true,
-            data: { ...item, cooked: cookedSet.has(String(item._id)) }
+            data: {
+                ...item,
+                // Rebuilt so an image change busts the immutable cache on the
+                // client; null clears a removed image (undefined would be
+                // dropped from JSON and leave a stale URL on the client).
+                image: item.hasImage ? dishListImageUrl(item._id, 'thumb', item.imageVersion) : null,
+                cooked: cookedSet.has(String(item._id))
+            }
         })
     } catch (error) {
         console.error('API Error in /api/dishLists/items:', error)

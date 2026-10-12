@@ -123,6 +123,10 @@ const RecipeSchema = new mongoose.Schema(
         // Side-dish metadata: lets other recipes serve alongside this one.
         usableAsSide: { type: Boolean, default: false },
         sideCategory: { type: String, enum: ['salad', 'vegetable', 'starch', 'bread', 'other'] },
+        // Per-account staple (rice, bread...): seeded from stock templates as
+        // a normal recipe the owner can edit. Presence powers the side
+        // sheet's "Recommended" section; missing staples are re-created.
+        stockKey: { type: String },
         // Serving temperature: cold = can be made early and held,
         // reheatable = cook in downtime then reheat at serve time,
         // hot = must land right at the serve moment. Unset -> analysed by AI.
@@ -144,4 +148,10 @@ const RecipeSchema = new mongoose.Schema(
     { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 )
 delete mongoose.models.Recipe;
+// Stock-staple lookup (ensureStockRecipes): only staples carry stockKey, so
+// the partial filter leaves every other recipe out of the index.
+RecipeSchema.index(
+    { creator_email: 1, stockKey: 1 },
+    { partialFilterExpression: { stockKey: { $exists: true } } }
+)
 export default mongoose.model('Recipe', RecipeSchema)

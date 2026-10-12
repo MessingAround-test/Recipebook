@@ -12,6 +12,9 @@ export interface CookingTimerSession {
     checkpointsHit?: string[]
     during?: boolean
     preAlertHit?: boolean
+    /** When a completed timer actually finished — the anchor dependents
+     *  are measured against after the fact. */
+    completedAt?: number
 }
 
 export interface TimerMeta {

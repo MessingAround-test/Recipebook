@@ -3,10 +3,10 @@ import { useEffect, useState, useRef, useMemo, Fragment } from 'react'
 import { formatQuantityDisplay } from '../../lib/fractionFormat'
 import { renderFractions } from '../../components/Fraction'
 import { Button } from '../../components/ui/button'
-import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Sparkles, Users, Download, Info, Hourglass, Flame, Scale, Globe2, Camera, Snowflake, ThumbsUp, ThumbsDown, Salad } from 'lucide-react'
+import { Clock, Trash2, ChefHat, Check, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Loader2, ShoppingBasket, ListOrdered, MessageSquare, BarChart3, Plus, Eye, EyeOff, RotateCcw, RefreshCw, Pencil, Sparkles, Users, Download, Info, Hourglass, Flame, Scale, Globe2, Camera, Snowflake, ThumbsUp, ThumbsDown, Salad, Bell } from 'lucide-react'
 import { calculateRecipeWeight, formatWeight, rescaleDisplayAmount } from '../../lib/conversion'
 import { isImperialDisplay, convertForDisplay, formatWeightImperial } from '../../lib/unitDisplay'
-import { buildFlowItems, computePhaseInsertPoints, fillCarbPhaseText, recommendCarbOption, resolveCarbSlot, resolveCarbTiming, resolveVariant } from '../../lib/carbSideOps'
+import { buildFlowItems } from '../../lib/carbSideOps'
 import Router, { useRouter } from 'next/router'
 import { parseRemixSourceRef } from '../../lib/recipeRemix'
 import IngredientNutrientGraph from '../../components/IngredientNutrientGraph'
@@ -22,6 +22,7 @@ import { getColorForName } from '../../lib/colors'
 import StarRating from '../../components/StarRating'
 import { playAlarm, requestNotificationPermission, sendNotification } from '../../lib/alarm'
 import { isCookingActive } from '../../lib/cookingSession'
+import { scheduledEndOf, scheduleDelta, shiftSession, planShiftWave } from '../../lib/timerPropagation'
 import { buildMainTimeline, buildAttentionGaps, estimateMainRemaining } from '../../lib/sideSchedule'
 import {
     buildSideContext, unitListForPseudo, serveTempForPseudo, computeSideServings,
@@ -340,13 +341,22 @@ export default function RecipeDetail() {
     const [openCarbSlide, setOpenCarbSlide] = useState<string | null>(null)
     const [finishConfirm, setFinishConfirm] = useState(false)
     const [resetConfirm, setResetConfirm] = useState(false)
-    const [clearResidualPrompt, setClearResidualPrompt] = useState({ show: false, recipeName: '', recipeId: '' })
     const [otherCookPrompt, setOtherCookPrompt] = useState<{ show: boolean; recipeId: string; recipeName: string } | null>(null)
     const [editingTimerId, setEditingTimerId] = useState<string | null>(null)
     const [editTimerMinutes, setEditTimerMinutes] = useState("")
     const [editTimerSeconds, setEditTimerSeconds] = useState("")
     const [customExtendId, setCustomExtendId] = useState<string | null>(null)
     const [customExtendMin, setCustomExtendMin] = useState("")
+    // Two-tap "Do it now" on a wait: first tap arms the button (label +
+    // colour visibly change), the second one actually skips the start.
+    const [skipWaitConfirmId, setSkipWaitConfirmId] = useState<string | null>(null)
+    // The arm never sticks: an unmatched tap reverts on its own, so the
+    // second click is always a deliberate choice.
+    useEffect(() => {
+        if (!skipWaitConfirmId) return
+        const t = setTimeout(() => setSkipWaitConfirmId(null), 4000)
+        return () => clearTimeout(t)
+    }, [skipWaitConfirmId])
 
     // Recipe timer editing (persisted to the recipe document)
     const [editingRecipeTimerId, setEditingRecipeTimerId] = useState<string | null>(null)
@@ -366,18 +376,10 @@ export default function RecipeDetail() {
     // Timers attach to their step as a poke-out tab underneath the card.
     // Cooking flow: prep run-through (if any) then the instruction steps.
     // Timers attach to their step as a poke-out tab underneath the card.
-    // carbChoice: the per-cook carb side decision made in the Start Cooking
-    // modal (session-scoped, never written back to the recipe).
-    const [carbCatalog, setCarbCatalog] = useState<any[]>([])
-    const [carbHistory, setCarbHistory] = useState<any[]>([])
-    const [carbModalOpen, setCarbModalOpen] = useState(false)
-    const [carbModalType, setCarbModalType] = useState<any>(null)
-    const [carbModalVariant, setCarbModalVariant] = useState<string | null>(null)
-    // Straight "no carb side" pick — lives in the list as a card so the
-    // bottom bar stays a single Start button.
-    const [carbModalNone, setCarbModalNone] = useState(false)
+    // carbChoice: the per-cook carb decision of LEGACY sessions only (the
+    // old Start Cooking carb modal). Session-scoped, never written back to
+    // the recipe — new cooks get carbs through sidePicks instead.
     const [carbChoice, setCarbChoice] = useState<any>(null)
-    const [carbCatalogLoading, setCarbCatalogLoading] = useState(false)
     // Side dishes (full recipes picked at Start Cooking):
     //  - sideSuggestions: candidates from /api/sideSuggestions (usableAsSide recipes + pairing history)
     //  - sidePicks: the committed picks for THIS session (recipes slotted into the flow as 'side' cards)
@@ -1351,6 +1353,7 @@ export default function RecipeDetail() {
     const updateRecipeTimers = (timers: any[], removedIds: string[] = []) => {
         setCookingTimers(timers)
         if (removedIds.length > 0) {
+            forgetScheduledEnd(removedIds)
             setActiveSession(prev => {
                 const next = { ...prev }
                 for (const rid of removedIds) delete next[rid]
@@ -1448,6 +1451,7 @@ export default function RecipeDetail() {
             if (data.success && data.data?.timers && data.data.timers.length > 0) {
                 const replacedIds = cookingTimers.map((t: any) => t.id)
                 setCookingTimers(data.data.timers)
+                forgetScheduledEnd(replacedIds)
                 setActiveSession(prev => {
                     const next = { ...prev }
                     for (const rid of replacedIds) delete next[rid]
@@ -1543,78 +1547,177 @@ export default function RecipeDetail() {
         return [...carb, ...sides]
     }
 
+    // Planned end (ms epoch) per timer: the anchor dependents are measured
+    // against. Survives pause/reset — where a session loses endTime — so a
+    // restart can tell how far its plan moved from the previous one.
+    const scheduledEndRef = useRef<Record<string, number>>({})
+
+    const noteScheduledEnd = (timerId: string, end: number | null) => {
+        if (end == null) return
+        scheduledEndRef.current[timerId] = end
+    }
+
+    const forgetScheduledEnd = (timerIds: string[]) => {
+        timerIds.forEach(tid => { delete scheduledEndRef.current[tid] })
+    }
+
+    // Last planned end for a timer: a live session carries its own
+    // (active/overdue → endTime, completed → completedAt); paused/pending
+    // sessions don't, so fall back to the remembered anchor.
+    const prevScheduledEnd = (timerId: string): number | null => {
+        const fromSession = scheduledEndOf(activeSession[timerId])
+        if (fromSession != null) return fromSession
+        return scheduledEndRef.current[timerId] ?? null
+    }
+
+    // Push every timer that hangs off `sourceId` by the same delta:
+    // dependency children (and their children — one delta down the chain)
+    // plus the not-yet-fired "during" phases anchored to its step, so waits
+    // keep tracking the timer they belong to. Paused waits move their stored
+    // remaining; already-fired phases stay where they rang.
+    const propagateShift = (sourceId: string, deltaMs: number) => {
+        if (!deltaMs) return
+        const now = Date.now()
+        const plan = planShiftWave(sourceId, deltaMs, [...cookingTimers, ...customTimers], duringPhasesForStep)
+        if (plan.length === 0) return
+        // Remembered anchors first, outside the state updater (React may
+        // re-run updaters, and ref writes must happen exactly once).
+        plan.forEach(({ id, deltaMs: d }) => {
+            const s = activeSession[id]
+            if (!s) return
+            if ((s.status === 'active' || s.status === 'overdue') && s.endTime) {
+                if (s.during && s.endTime <= now) return // already fired
+                scheduledEndRef.current[id] = s.endTime + d
+            } else if (s.status === 'paused') {
+                const anchor = scheduledEndRef.current[id]
+                if (anchor != null) scheduledEndRef.current[id] = anchor + d
+            }
+        })
+        setActiveSession(prev => {
+            const next = { ...prev }
+            plan.forEach(({ id, deltaMs: d }) => {
+                if (next[id]) next[id] = shiftSession(next[id] as any, d, now) as any
+            })
+            return next
+        })
+    }
+
     const scheduleDuringPhases = (stepIndex: number) => {
         duringPhasesForStep(stepIndex).forEach((p: any) => {
             if (getTimerStatus(p.timerId) !== 'pending') return
             const waitSecs = Math.max(0, (p.intoMinutes || 0) * 60)
+            const endTime = Date.now() + waitSecs * 1000
             updateTimerSession(p.timerId, () => ({
-                endTime: Date.now() + waitSecs * 1000,
+                endTime,
                 remaining: waitSecs,
                 status: 'active',
                 checkpointsHit: [],
                 during: true
             }))
-        })
-    }
-
-    const shiftDuringPhases = (stepIndex: number, deltaMs: number) => {
-        if (!deltaMs) return
-        duringPhasesForStep(stepIndex).forEach((p: any) => {
-            updateTimerSession(p.timerId, (session: any) => {
-                if (!session?.endTime || session.endTime <= Date.now()) return session // already fired
-                return { ...session, endTime: session.endTime + deltaMs }
-            })
+            noteScheduledEnd(p.timerId, endTime)
         })
     }
 
     const startTimer = (timer: any) => {
+        const prevEnd = prevScheduledEnd(timer.id)
+        const endTime = Date.now() + timer.duration * 60 * 1000
         updateTimerSession(timer.id, () => ({
-            endTime: Date.now() + timer.duration * 60 * 1000,
+            endTime,
             remaining: timer.duration * 60,
             status: 'active',
             checkpointsHit: []
         }))
+        noteScheduledEnd(timer.id, endTime)
+        // Moving the plan (restart, late first start) shifts dependents
+        // BEFORE this step's fresh phases are armed — new phases anchor at
+        // "now" and must not inherit the delta.
+        propagateShift(timer.id, scheduleDelta(prevEnd, endTime))
         // Starting a step's timer auto-schedules its "during" side phases.
         if (!timer.carb && typeof timer.stepIndex === 'number') scheduleDuringPhases(timer.stepIndex)
     }
 
     const pauseResumeTimer = (timer: any) => {
-        updateTimerSession(timer.id, (session: any) => {
-            if (!session) return session
-            if (session.status === 'active') {
-                return { endTime: null, remaining: getRemaining(session), status: 'paused', checkpointsHit: session.checkpointsHit }
-            }
-            return { endTime: Date.now() + session.remaining * 1000, remaining: session.remaining, status: 'active', checkpointsHit: session.checkpointsHit }
-        })
+        const session = activeSession[timer.id]
+        if (!session) return
+        if (session.status === 'active') {
+            // Park the plan anchor before endTime goes away — resuming later
+            // measures the pause gap against it.
+            noteScheduledEnd(timer.id, session.endTime)
+            updateTimerSession(timer.id, () => ({
+                endTime: null,
+                remaining: getRemaining(session),
+                status: 'paused',
+                checkpointsHit: session.checkpointsHit
+            }))
+            return
+        }
+        const prevEnd = prevScheduledEnd(timer.id)
+        const endTime = Date.now() + session.remaining * 1000
+        updateTimerSession(timer.id, () => ({
+            endTime,
+            remaining: session.remaining,
+            status: 'active',
+            checkpointsHit: session.checkpointsHit
+        }))
+        noteScheduledEnd(timer.id, endTime)
+        propagateShift(timer.id, scheduleDelta(prevEnd, endTime))
     }
 
     const extendTimer = (timer: any, minutes: number) => {
-        updateTimerSession(timer.id, (session: any) => {
-            const addSec = minutes * 60
-            // Completed timers restart from 0 plus the added time.
-            if (session?.status === 'completed') {
-                return { endTime: null, remaining: addSec, status: 'paused', checkpointsHit: session.checkpointsHit || [] }
-            }
-            if (session?.status === 'active' || session?.status === 'overdue') {
-                const newEndTime = (session.endTime || Date.now()) + addSec * 1000
-                return { endTime: newEndTime, remaining: getRemaining({ ...session, endTime: newEndTime }), status: 'active', checkpointsHit: session.checkpointsHit || [] }
-            }
-            return { endTime: null, remaining: (session.remaining || 0) + addSec, status: session?.status || 'paused', checkpointsHit: session.checkpointsHit || [] }
-        })
-        // A longer step pushes its not-yet-fired side phases back equally.
-        if (!timer.carb && typeof timer.stepIndex === 'number') shiftDuringPhases(timer.stepIndex, minutes * 60 * 1000)
+        const addSec = minutes * 60
+        const deltaMs = addSec * 1000
+        const session = activeSession[timer.id]
+        if (session?.status === 'completed') {
+            // Restart from 0 plus the added time; the anchor stays at the
+            // completion so a later resume accounts for the gap as well.
+            updateTimerSession(timer.id, () => ({
+                endTime: null,
+                remaining: addSec,
+                status: 'paused',
+                checkpointsHit: session.checkpointsHit || []
+            }))
+        } else if (session?.status === 'active' || session?.status === 'overdue') {
+            const newEndTime = (session.endTime || Date.now()) + deltaMs
+            updateTimerSession(timer.id, () => ({
+                endTime: newEndTime,
+                remaining: getRemaining({ ...session, endTime: newEndTime }),
+                status: 'active',
+                checkpointsHit: session.checkpointsHit || []
+            }))
+            noteScheduledEnd(timer.id, newEndTime)
+        } else {
+            updateTimerSession(timer.id, () => ({
+                endTime: null,
+                remaining: (session?.remaining || 0) + addSec,
+                status: session?.status || 'paused',
+                checkpointsHit: session?.checkpointsHit || []
+            }))
+            const anchor = scheduledEndRef.current[timer.id]
+            if (anchor != null) scheduledEndRef.current[timer.id] = anchor + deltaMs
+        }
+        // A longer (or restarted) timer pushes its dependents back equally.
+        propagateShift(timer.id, deltaMs)
     }
 
     const completeTimer = (timer: any) => {
-        updateTimerSession(timer.id, (session: any) => ({
+        const prevEnd = prevScheduledEnd(timer.id)
+        const completedAt = Date.now()
+        const session = activeSession[timer.id]
+        updateTimerSession(timer.id, () => ({
             endTime: null,
             remaining: 0,
             status: 'completed',
+            completedAt,
             checkpointsHit: session?.checkpointsHit || []
         }))
+        noteScheduledEnd(timer.id, completedAt)
+        // Finishing early or late moves everything scheduled behind it by
+        // the same amount (0 when it ended right on plan).
+        propagateShift(timer.id, scheduleDelta(prevEnd, completedAt))
     }
 
     const resetTimer = (timer: any) => {
+        // The remembered plan stays put: a later start measures against it.
         updateTimerSession(timer.id, () => ({
             endTime: null,
             remaining: timer.duration * 60,
@@ -1624,7 +1727,7 @@ export default function RecipeDetail() {
     }
 
     const setTimerRemaining = (timer: any, totalSecs: number) => {
-        const prevEnd = activeSession[timer.id]?.endTime
+        const prevEnd = prevScheduledEnd(timer.id)
         const newEnd = Date.now() + totalSecs * 1000
         updateTimerSession(timer.id, (session: any) => ({
             endTime: newEnd,
@@ -1632,25 +1735,28 @@ export default function RecipeDetail() {
             status: 'active',
             checkpointsHit: session?.checkpointsHit || []
         }))
-        if (!timer.carb && typeof timer.stepIndex === 'number' && prevEnd) {
-            shiftDuringPhases(timer.stepIndex, newEnd - prevEnd)
-        }
+        noteScheduledEnd(timer.id, newEnd)
+        propagateShift(timer.id, scheduleDelta(prevEnd, newEnd))
     }
 
     const addTimerSeconds = (timer: any, seconds: number) => {
-        updateTimerSession(timer.id, (session: any) => {
-            if (session?.status === 'active' || session?.status === 'overdue') {
-                return { ...session, endTime: (session.endTime || Date.now()) + seconds * 1000, status: 'active' }
-            }
-            return { ...session, remaining: (session.remaining || 0) + seconds }
-        })
-        if (!timer.carb && typeof timer.stepIndex === 'number' && ['active', 'overdue'].includes(getTimerStatus(timer.id))) {
-            shiftDuringPhases(timer.stepIndex, seconds * 1000)
+        const deltaMs = seconds * 1000
+        const session = activeSession[timer.id]
+        if (session?.status === 'active' || session?.status === 'overdue') {
+            const endTime = (session.endTime || Date.now()) + deltaMs
+            updateTimerSession(timer.id, () => ({ ...session, endTime, status: 'active' }))
+            noteScheduledEnd(timer.id, endTime)
+        } else {
+            updateTimerSession(timer.id, () => ({ ...session, remaining: (session?.remaining || 0) + seconds }))
+            const anchor = scheduledEndRef.current[timer.id]
+            if (anchor != null) scheduledEndRef.current[timer.id] = anchor + deltaMs
         }
+        propagateShift(timer.id, deltaMs)
     }
 
     const closeCooking = () => {
         setActiveSession({})
+        scheduledEndRef.current = {}
         setCustomTimers([])
         setAlarmPopupClosed(new Set())
         setForcedView(null)
@@ -1664,7 +1770,6 @@ export default function RecipeDetail() {
         setDoneFlow(new Set())
         setActiveSheet('none')
         setCarbChoice(null)
-        setCarbModalOpen(false)
         setScaleFactor(1)
         setScaleModalOpen(false)
         setSidePicks([])
@@ -1742,44 +1847,9 @@ export default function RecipeDetail() {
 
     // ---------- Carb side (Start Cooking) ----------
 
-    // Recipe is marked as needing a carb side and our injector (not the
-    // recipe's own steps) should provide it.
-    const needsCarbChoice = () => recipe?.carbSide?.needs === true
-        && recipe?.carbSide?.state === 'analyzed'
-        && recipe?.carbSide?.analysis?.alreadyInInstructions !== true
-
-    const loadCarbData = async () => {
-        if (carbCatalog.length > 0) return true
-        setCarbCatalogLoading(true)
-        try {
-            const token = { 'edgetoken': localStorage.getItem('Token') || '' }
-            const [catRes, histRes] = await Promise.all([
-                fetch('/api/carbTypes', { headers: token }),
-                fetch('/api/carbChoice', { headers: token })
-            ])
-            const catData = await catRes.json()
-            const histData = await histRes.json()
-            const catalog = catData.success && Array.isArray(catData.data) ? catData.data : []
-            const history = histData.success && Array.isArray(histData.data) ? histData.data : []
-            setCarbCatalog(catalog)
-            setCarbHistory(history)
-            if (catalog.length > 0) {
-                const rec = recommendCarbOption(catalog, history, recipe?.carbSide?.type)
-                setCarbModalType(rec)
-                setCarbModalVariant(resolveVariant(rec, history[0]?.variant))
-            }
-            return catalog.length > 0
-        } catch (e) {
-            console.error('Failed to load carb catalog:', e)
-            return false
-        } finally {
-            setCarbCatalogLoading(false)
-        }
-    }
-
-    // One entry point for both Start Cooking buttons: asks the carb-side
-    // question first (only when the recipe wants one), or resumes an
-    // in-progress session with its stored carb decision.
+    // One entry point for both Start Cooking buttons: opens the side sheet
+    // (staples + sides in one screen), or resumes an in-progress session
+    // with its stored picks.
     const startCooking = async () => {
         setActiveSheet('none')
         let saved: any = null
@@ -1831,35 +1901,14 @@ export default function RecipeDetail() {
         return null
     }
 
-    // The fresh-start path: carb-side question (when the recipe wants one),
-    // then the side-dish question, then open the cooking view. Also invoked
-    // after the discard-warning modal clears the other recipe's session.
+    // The fresh-start path: one side sheet (stock staples recommended,
+    // multi-select), then open the cooking view. Also invoked after the
+    // discard-warning modal clears the other recipe's session.
     const beginFreshCook = async () => {
-        // Fires once per fresh start; the sheet only opens when there is
-        // anything to suggest (a recipe-less cook stays single-recipe).
-        const suggestionsPromise = loadSideSuggestions()
-        if (needsCarbChoice()) {
-            const hasCatalog = await loadCarbData()
-            if (hasCatalog) {
-                setCarbModalNone(false)
-                setCarbModalOpen(true)
-                return
-            }
-            // Catalog unreachable — keep working with the recipe's stored analysis
-            const fallback = fallbackCarbChoice()
-            if (fallback) {
-                setCarbChoice(fallback)
-            }
-        } else {
-            setCarbChoice(null)
-        }
-        const suggestions = await suggestionsPromise
-        if (suggestions.length > 0) {
-            setSideSheetSelected(new Set())
-            setSideSheetOpen(true)
-            return
-        }
-        finishFreshStart()
+        // A fresh cook never carries the legacy carb decision — staples are
+        // normal side picks now.
+        setCarbChoice(null)
+        await sideGate()
     }
 
     /** Commontail of the fresh-start gates: everything decided, open the cook. */
@@ -1869,139 +1918,20 @@ export default function RecipeDetail() {
         setIsCookingMode(true)
     }
 
-    /** Gate between the carb choice and cooking: the side sheet shows when
-     *  there are usableSide recipes (or pairing history) for this main. */
-    const sideGateAfterCarb = async () => {
+    /** The single fresh-start gate: fetch suggestions and open the side
+     *  sheet (top staple pre-selected), or go straight into the cook when
+     *  there's nothing to suggest. */
+    const sideGate = async () => {
         const suggestions = await loadSideSuggestions()
         if (suggestions.length > 0) {
-            setSideSheetSelected(new Set())
+            // Pre-select the top recommended staple (rice etc.); every other
+            // side — and the other staples — stay opt-in.
+            const topStaple = suggestions.find((s: any) => s.stockKey)
+            setSideSheetSelected(new Set(topStaple ? [String(topStaple._id)] : []))
             setSideSheetOpen(true)
             return
         }
         finishFreshStart()
-    }
-
-    // Catalog unreachable fallback: build a single-phase choice from the
-    // recipe's stored analysis.
-    const fallbackCarbChoice = () => {
-        const fallback = recipe?.carbSide
-        const serves = displayedServings || (recipe?.servings && recipe.servings > 0 ? recipe.servings : 0)
-        if (Array.isArray(fallback?.phases) && fallback.phases.length > 0) {
-            const phasedTime = fallback.phases.reduce((a: number, p: any) => a + (p.minutes || 0), 0) || fallback.timeMinutes || 20
-            const phased = computePhaseInsertPoints(schedulingInstructions, fallback.phases.map((p: any) => ({ ...p })))
-            return {
-                type: fallback.type,
-                label: fallback.type,
-                phases: phased.map((p: any, pi: number) => ({
-                    name: fallback.phases[pi]?.name || p.name,
-                    minutes: p.minutes,
-                    instruction: fillCarbPhaseText(
-                        fallback.phases[pi]?.instruction || p.instruction || fallback.stepText || `Cook ${fallback.type} on the side.`,
-                        null,
-                        serves
-                    ),
-                    insertAfter: p.insertAfter,
-                    during: p.during,
-                    intoMinutes: p.intoMinutes
-                })),
-                totalMinutes: phasedTime
-            }
-        }
-        if (fallback?.stepText) {
-            const fallbackMinutes = fallback.timeMinutes || 20
-            const slot = resolveCarbSlot(schedulingInstructions, fallbackMinutes)
-            // A stored AI hint agreeing within one step wins and pins the
-            // phase to that step boundary (timings always win otherwise).
-            const hintOk = typeof fallback.insertAfter === 'number'
-                && Math.abs(fallback.insertAfter - slot.index) <= 1
-            const insertIdx = hintOk ? fallback.insertAfter : slot.index
-            const intoMin = hintOk ? 0 : slot.intoMinutes
-            return {
-                type: fallback.type,
-                label: fallback.type,
-                phases: [{
-                    name: 'Cook on the side',
-                    minutes: fallbackMinutes,
-                    instruction: fillCarbPhaseText(fallback.stepText, null, serves),
-                    insertAfter: insertIdx,
-                    during: intoMin > 0,
-                    intoMinutes: intoMin
-                }],
-                totalMinutes: fallbackMinutes
-            }
-        }
-        return null
-    }
-
-    const resolveCarbChoice = (entry: any, variant: string | null) => {
-        const v = resolveVariant(entry, variant)
-        const timing = resolveCarbTiming(entry, v)
-        // Serve quantities ({qty:rice}/{serves}) are filled against the
-        // recipe's own serving count at the moment the side is picked.
-        const serves = displayedServings || (recipe?.servings && recipe.servings > 0 ? recipe.servings : 0)
-        let phases = (timing?.phases || [{ name: 'Cook', minutes: 20 }]).map((p: any) => ({ ...p }))
-        // Legacy entries without phase instructions fall back to the
-        // catalog's template text so cards are never blank
-        phases = phases.map((p: any) => ({
-            ...p,
-            // EVERY phase text (catalog tokens included) gets its serve
-            // quantities filled here — {qty:rice}/{serves} never reach the card
-            instruction: fillCarbPhaseText(p.instruction, timing, serves)
-                || fillCarbPhaseText(entry?.defaultStepText, timing, serves)
-                || `Cook ${entry.name} on the side.`
-        }))
-        const total = phases.some((p: any) => p.minutes > 0)
-            ? phases.reduce((a: number, p: any) => a + p.minutes, 0)
-            : (recipe?.carbSide?.timeMinutes || timing?.totalMinutes || 20)
-        const phased = computePhaseInsertPoints(schedulingInstructions, phases)
-        return {
-            type: entry.name,
-            variant: timing?.variant,
-            label: timing?.label || entry.name,
-            phases: phased,
-            totalMinutes: total
-        }
-    }
-
-    const confirmCarbPick = (entry: any, variant: string | null) => {
-        setCarbModalOpen(false)
-        if (!entry) {
-            setCarbChoice(null)
-            sideGateAfterCarb()
-            return
-        }
-        const base = resolveCarbChoice(entry, variant)
-        // One session timer per phase with time (custom timers keep alarms,
-        // finish-gate and the timers sheet working), pending until the user
-        // starts each in the flow — or until the anchor step's timer starts
-        // it automatically for "during" phases.
-        const stamp = Date.now().toString(36)
-        const phases = base.phases.map((p: any, pi: number) => {
-            const tid = p.minutes > 0 ? `carb-${stamp}-p${pi}` : undefined
-            if (tid) {
-                setCustomTimers(prev => [...prev, {
-                    id: tid,
-                    name: `${base.label}: ${p.name}`,
-                    duration: p.minutes,
-                    carb: true,
-                    // Anchor step + mid-step offset: when the anchor step's
-                    // timer starts, "during" phases are scheduled to fire
-                    // intoMinutes after it starts.
-                    stepIndex: p.insertAfter,
-                    during: !!p.during,
-                    intoMinutes: p.intoMinutes || 0
-                } as any])
-            }
-            return { ...p, timerId: tid }
-        })
-        const choice = { ...base, phases }
-        setCarbChoice(choice)
-        sideGateAfterCarb()
-        fetch('/api/carbChoice', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'edgetoken': localStorage.getItem('Token') || '' },
-            body: JSON.stringify({ type: entry.name, variant: choice.variant })
-        }).catch(() => {})
     }
 
     // ---------- Side dishes (Start Cooking picks) ----------
@@ -2016,6 +1946,63 @@ export default function RecipeDetail() {
     // concurrent recipes stay visually separable (main dish stays amber,
     // plain timer waits stay blue). Cycles when more than four run.
     const sideLaneClass = (sideIndex: number) => `is-lane-${(Math.max(0, Number(sideIndex) || 0) % 4) + 1}`
+
+    // Sheet sections: the account's stock staples (rice, pasta, bread...)
+    // are recommended at the top; every other usable-as-side recipe below.
+    const recommendedSides = sideSuggestions.filter((s: any) => !!s.stockKey)
+    const otherSides = sideSuggestions.filter((s: any) => !s.stockKey)
+
+    // One selectable card in the side sheet, shared by both sections.
+    const renderSideCard = (s: any) => {
+        const isSel = sideSheetSelected.has(String(s._id))
+        const meta = sideTempMeta[s.serveTemp] || sideTempMeta.hot
+        const servedCount = (() => {
+            const mainServes = displayedServings || recipeServings || 0
+            return Math.max(0, Math.round(mainServes * (Number(sideServingsFactor) || 1)))
+        })()
+        const totalMin = unitListForPseudo(s).reduce((a: number, u: any) => a + u.minutes, 0)
+            + (s.serveTemp === 'reheatable' ? (s.reheatMinutes > 0 ? s.reheatMinutes : 5) : 0)
+        return (
+            <button
+                key={String(s._id)}
+                className={`w-full px-4 py-3 rounded-xl border text-left transition-all touch-manipulation ${isSel ? 'bg-olive/10 border-olive/40' : 'bg-secondary border-border hover:border-accent'}`}
+                onClick={() => {
+                    const next = new Set(sideSheetSelected)
+                    if (next.has(String(s._id))) next.delete(String(s._id))
+                    else next.add(String(s._id))
+                    setSideSheetSelected(next)
+                }}
+            >
+                <div className="flex items-center justify-between gap-3">
+                    <span className={`text-sm font-semibold ${isSel ? 'text-olive' : 'text-foreground'}`}>{s.name}</span>
+                    <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0">
+                        <meta.icon size={12} className={meta.cls} /> {meta.label} · {totalMin > 0 ? formatDuration(totalMin) : 'quick'}
+                        {isSel && <Check size={15} className="text-olive" />}
+                    </span>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    {s.pairing && s.pairing.liked && <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-olive"><ThumbsUp size={10} /> liked with this dish</span>}
+                    {s.pairing && !s.pairing.liked && <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground"><ThumbsDown size={10} /> wasn't a win last time</span>}
+                    {s.sideCategory && s.sideCategory !== 'other' && <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.sideCategory}</span>}
+                    {(s.serveTempSource === 'ai' || s.serveTempSource === 'heuristic') && <span className="text-[10px] text-muted-foreground/70">({s.serveTemp === 'reheatable' ? 'temp estimated' : 'estimated'})</span>}
+                </div>
+                {isSel && s.ingredients && s.ingredients.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                        {s.ingredients.slice(0, 8).map((ing: any, ci: number) => (
+                            <span key={ci} className="cooking-chip">
+                                <span className="cooking-chip-name">{ing.name}</span>
+                                <span className="cooking-chip-qty">{(() => { try {
+                                    if (!Number.isFinite(Number(ing.quantity))) return ''
+                                    return renderFractions(displayQtyFactor(ing.quantity, ing.quantity_type, Number(sideServingsFactor) || 1))
+                                } catch { return '' } })()}</span>
+                            </span>
+                        ))}
+                        <span className="text-[10px] text-muted-foreground self-center">≈ {servedCount} serving{servedCount === 1 ? '' : 's'}</span>
+                    </div>
+                )}
+            </button>
+        )
+    }
 
     // Candidates for the sheet: usableAsSide recipes ranked by pairing
     // history / meal-type overlap / rating, from /api/sideSuggestions.
@@ -2155,7 +2142,7 @@ export default function RecipeDetail() {
             null
         )
         const chosen = sideSuggestions.filter((s: any) => selectedIds.has(String(s._id)))
-        // The just-made carb choice (and any prior picks) own their during
+        // Prior picks (legacy carb phases + earlier sides) own their during
         // slots — newly scheduled sides stagger by STAGGER_MIN.
         const claimed = claimExistingAnchors(carbChoice, sidePicks)
         const { picks, newTimers } = buildSidePickEntries(chosen, context, { claimedKeys: claimed, servesFor: sideServingsFor })
@@ -2406,26 +2393,6 @@ export default function RecipeDetail() {
         run()
     }, [recipe, id])
 
-    // Clear residual timers from other recipes on mount
-    useEffect(() => {
-        if (!id) return
-        const keys = Object.keys(localStorage).filter(k => k.startsWith('timer-session-'))
-        for (const key of keys) {
-            if (key !== `timer-session-${id}`) {
-                try {
-                    const session = JSON.parse(localStorage.getItem(key) || '{}')
-                    const sessions = session.timers ? Object.values(session.timers) : Object.values(session)
-                    const hasActive = (sessions as any[]).some((s: any) => s && (s.status === 'active' || s.status === 'paused'))
-                    if (hasActive) {
-                        const recipeId = key.replace('timer-session-', '')
-                        setClearResidualPrompt({ show: true, recipeName: 'another recipe', recipeId })
-                        break
-                    }
-                } catch {}
-            }
-        }
-    }, [id])
-
     // Load session from localStorage. Migrates older formats:
     //  - v-less "timer-interleaved flow" indices -> step indices
     //  - oldest instruction-index based sessions
@@ -2435,7 +2402,18 @@ export default function RecipeDetail() {
             const saved = localStorage.getItem(`timer-session-${id}`)
             if (saved) {
                 const parsed = JSON.parse(saved)
-                if (parsed.timers) setActiveSession(parsed.timers)
+                if (parsed.timers) {
+                    setActiveSession(parsed.timers)
+                    // Rebuild the remembered plan anchors so paused/completed
+                    // timers still have something to measure dependents
+                    // against after a reload.
+                    const anchors: Record<string, number> = {}
+                    Object.entries(parsed.timers as Record<string, any>).forEach(([tid, s]) => {
+                        const end = scheduledEndOf(s)
+                        if (end != null) anchors[tid] = end
+                    })
+                    scheduledEndRef.current = anchors
+                }
                 // v7: recipe sides picked at Start Cooking travel the same way
                 if (Array.isArray(parsed.sidePicks)) setSidePicks(parsed.sidePicks)
                 // Restore the persisted "cook underway" flag so the global
@@ -3909,93 +3887,11 @@ export default function RecipeDetail() {
                     )}
                 </Modal>
 
-                {/* Carb side choice — asked at Start Cooking when the recipe
-                    needs one. Session-scoped decision. Bottom sheet on phones
-                    (thumb reach) / centred panel on larger screens. "No carb
-                    side" is the first list option, so the footer is a single
-                    Start button. */}
-                {carbModalOpen && (
-                    <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center sm:p-4 bg-black/70 backdrop-blur-sm" onClick={() => setCarbModalOpen(false)}>
-                        <div
-                            className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-border bg-background shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh]"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="shrink-0 px-5 pt-4 pb-3 border-b border-border">
-                                <h3 className="text-lg font-bold flex items-center gap-2"><ChefHat size={18} className="text-olive" /> Serve with a carb side?</h3>
-                                {recipe?.carbSide?.analysis?.note && (
-                                    <p className="text-xs text-muted-foreground mt-1">{recipe.carbSide.analysis.note}</p>
-                                )}
-                            </div>
-                            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-3 space-y-2">
-                                {/* No carb side — first option, same card style */}
-                                <button
-                                    className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-left transition-all touch-manipulation ${carbModalNone
-                                        ? 'bg-olive/10 border-olive/40'
-                                        : 'bg-secondary border-border hover:border-accent'}`}
-                                    onClick={() => { setCarbModalNone(true); setCarbModalType(null) }}
-                                >
-                                    <span className="min-w-0">
-                                        <span className={`block text-sm font-semibold ${carbModalNone ? 'text-olive' : 'text-foreground'}`}>Nothing — no carb side</span>
-                                        <span className="block text-[11px] text-muted-foreground">Cook the dish as written, no extra steps for carbs</span>
-                                    </span>
-                                    {carbModalNone && <Check size={16} className="text-olive shrink-0" />}
-                                </button>
-                                {carbCatalog.map((entry: any) => {
-                                    const isSel = !carbModalNone && carbModalType?._id === entry._id
-                                    const isRec = recommendCarbOption(carbCatalog, carbHistory, recipe?.carbSide?.type)?._id === entry._id
-                                    return (
-                                        <div key={entry._id} className="space-y-1.5">
-                                            <button
-                                                className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-left transition-all touch-manipulation ${isSel
-                                                    ? 'bg-olive/10 border-olive/40'
-                                                    : 'bg-secondary border-border hover:border-accent'}`}
-                                                onClick={() => { setCarbModalNone(false); setCarbModalType(entry); setCarbModalVariant(resolveVariant(entry, carbModalVariant)) }}
-                                            >
-                                                <span className="min-w-0 truncate">
-                                                    <span className={`text-sm font-semibold ${isSel ? 'text-olive' : 'text-muted-foreground'}`}>{entry.name}</span>
-                                                    {isRec && <span className="ml-2 text-[10px] font-bold text-olive uppercase tracking-wider">recommended</span>}
-                                                </span>
-                                                <span className="text-[11px] text-muted-foreground shrink-0 truncate max-w-[45%] text-right">
-                                                    {(entry.variants || []).map((v: any) => v.name).join(' / ')}
-                                                </span>
-                                            </button>
-                                            {isSel && (entry.variants || []).length > 0 && (
-                                                <div className="flex flex-wrap gap-1.5 pl-2">
-                                                    {(entry.variants || []).map((v: any) => (
-                                                        <button
-                                                            key={v.name}
-                                                            className={`px-3 py-2 rounded-full border text-xs font-semibold transition-all touch-manipulation ${!carbModalNone && carbModalVariant === v.name
-                                                                ? 'bg-olive/10 border-olive/40 text-olive'
-                                                                : 'bg-secondary border-border text-muted-foreground hover:border-accent'}`}
-                                                            onClick={() => setCarbModalVariant(v.name)}
-                                                        >
-                                                            {v.name} · {(v.phases?.reduce((a: number, x: any) => a + x.minutes, 0)) || ((v.cookMinutes || 0) + (v.prepMinutes || 0))} min
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                            <div className="shrink-0 px-5 pt-3 pb-5 sm:pb-4 border-t border-border" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
-                                <Button
-                                    className="w-full cooking-next-btn is-primary touch-manipulation"
-                                    onClick={() => confirmCarbPick(carbModalNone ? null : carbModalType, carbModalNone ? null : carbModalVariant)}
-                                    disabled={!carbModalNone && !carbModalType}
-                                >
-                                    <ChefHat size={16} /> Start cooking
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                 {/* Side dishes sheet: multi-select of the recipes marked
                     usable-as-side (plus pairing history), with a servings
                     dropdown that defaults to the main's current servings. */}
                 {sideSheetOpen && (
-                    <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center sm:p-4 bg-black/70 backdrop-blur-sm" onClick={() => { setSideSheetOpen(false); finishFreshStart() }}>
+                    <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center sm:p-4 bg-black/70 backdrop-blur-sm" onClick={() => confirmSidePick(sideSheetSelected)}>
                         <div
                             className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-border bg-background shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh]"
                             onClick={(e) => e.stopPropagation()}
@@ -4004,63 +3900,24 @@ export default function RecipeDetail() {
                                 <h3 className="text-lg font-bold flex items-center gap-2"><Salad size={18} className="text-olive" /> Serve with a side dish?</h3>
                                 <p className="text-xs text-muted-foreground mt-1">Rounds out the meal — pick as many as you like. Steps slot into the cook automatically.</p>
                             </div>
-                            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-3 space-y-2">
+                            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-3 space-y-3">
                                 {sideSheetLoading && (
                                     <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 size={16} className="animate-spin" /> Loading suggestions…</div>
                                 )}
-                                {sideSuggestions.map((s: any, i: number) => {
-                                    const isSel = sideSheetSelected.has(String(s._id))
-                                    const meta = sideTempMeta[s.serveTemp] || sideTempMeta.hot
-                                    const servedCount = (() => {
-                                        const mainServes = displayedServings || recipeServings || 0
-                                        return Math.max(0, Math.round(mainServes * (Number(sideServingsFactor) || 1)))
-                                    })()
-                                    const totalMin = unitListForPseudo(s).reduce((a: number, u: any) => a + u.minutes, 0)
-                                        + (s.serveTemp === 'reheatable' ? (s.reheatMinutes > 0 ? s.reheatMinutes : 5) : 0)
-                                    return (
-                                        <button
-                                            key={String(s._id)}
-                                            className={`w-full px-4 py-3 rounded-xl border text-left transition-all touch-manipulation ${isSel ? 'bg-olive/10 border-olive/40' : 'bg-secondary border-border hover:border-accent'}`}
-                                            onClick={() => {
-                                                const next = new Set(sideSheetSelected)
-                                                if (next.has(String(s._id))) next.delete(String(s._id))
-                                                else next.add(String(s._id))
-                                                setSideSheetSelected(next)
-                                            }}
-                                        >
-                                            <div className="flex items-center justify-between gap-3">
-                                                <span className={`text-sm font-semibold ${isSel ? 'text-olive' : 'text-foreground'}`}>{s.name}</span>
-                                                <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0">
-                                                    <meta.icon size={12} className={meta.cls} /> {meta.label} · {totalMin > 0 ? formatDuration(totalMin) : 'quick'}
-                                                    {isSel && <Check size={15} className="text-olive" />}
-                                                </span>
-                                            </div>
-                                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                                {i === 0 && <span className="text-[10px] font-bold text-olive uppercase tracking-wider">recommended</span>}
-                                                {s.pairing && s.pairing.liked && <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-olive"><ThumbsUp size={10} /> liked with this dish</span>}
-                                                {s.pairing && !s.pairing.liked && <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground"><ThumbsDown size={10} /> wasn't a win last time</span>}
-                                                {s.sideCategory && s.sideCategory !== 'other' && <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.sideCategory}</span>}
-                                                {(s.serveTempSource === 'ai' || s.serveTempSource === 'heuristic') && <span className="text-[10px] text-muted-foreground/70">({s.serveTemp === 'reheatable' ? 'temp estimated' : 'estimated'})</span>}
-                                            </div>
-                                            {isSel && s.ingredients && s.ingredients.length > 0 && (
-                                                <div className="mt-2 flex flex-wrap gap-1.5">
-                                                    {s.ingredients.slice(0, 8).map((ing: any, ci: number) => (
-                                                        <span key={ci} className="cooking-chip">
-                                                            <span className="cooking-chip-name">{ing.name}</span>
-                                                            <span className="cooking-chip-qty">{(() => { try {
-                                                                if (!Number.isFinite(Number(ing.quantity))) return ''
-                                                                return renderFractions(displayQtyFactor(ing.quantity, ing.quantity_type, Number(sideServingsFactor) || 1))
-                                                            } catch { return '' } })()}</span>
-                                                        </span>
-                                                    ))}
-                                                    <span className="text-[10px] text-muted-foreground self-center">≈ {servedCount} serving{servedCount === 1 ? '' : 's'}</span>
-                                                </div>
-                                            )}
-                                        </button>
-                                    )
-                                })}
+                                {!sideSheetLoading && recommendedSides.length > 0 && (
+                                    <div className="space-y-2">
+                                        <div className="px-1 text-[10px] font-bold uppercase tracking-wider text-olive">Recommended · your staples</div>
+                                        {recommendedSides.map(renderSideCard)}
+                                    </div>
+                                )}
+                                {!sideSheetLoading && otherSides.length > 0 && (
+                                    <div className="space-y-2">
+                                        <div className="px-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">All sides</div>
+                                        {otherSides.map(renderSideCard)}
+                                    </div>
+                                )}
                                 {!sideSheetLoading && sideSuggestions.length === 0 && (
-                                    <p className="text-sm text-muted-foreground py-6 text-center">No side dishes marked yet — you can flag a recipe as a usable side from its page.</p>
+                                    <p className="text-sm text-muted-foreground py-6 text-center">No side dishes yet — flag a recipe as a usable side from its page.</p>
                                 )}
                             </div>
                             <div className="shrink-0 px-5 pt-3 pb-5 sm:pb-4 border-t border-border" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
@@ -4491,6 +4348,9 @@ export default function RecipeDetail() {
                                             <p className="cooking-wait-headline">
                                                 Wait <span className="cooking-wait-count">{waitSession?.status === 'paused' ? 'paused' : formatDuration(waitMins)}</span> to start the next step
                                             </p>
+                                            <p className="cooking-wait-rule">
+                                                <Bell size={14} /> Don't start yet — wait for the timer to ring
+                                            </p>
                                             <p className="cooking-wait-sub">
                                                 {headsup
                                                     ? <>Head back — {phase.name}{waitStartStr ? ` starts at ${waitStartStr}` : ''}</>
@@ -4636,6 +4496,12 @@ export default function RecipeDetail() {
                                             <p className="cooking-wait-headline">
                                                 Wait <span className="cooking-wait-count">{waitSession?.status === 'paused' ? 'paused' : formatDuration(waitMins)}</span> to start this side step
                                             </p>
+                                            {/* The rule of this card: it's a hard
+                                                gate. Don't work around the wait —
+                                                the timer decides when this starts. */}
+                                            <p className="cooking-wait-rule">
+                                                <Bell size={14} /> Don't start yet — wait for the timer to ring
+                                            </p>
                                             <p className="cooking-wait-sub">
                                                 {headsup
                                                     ? <>Head back — {text}{waitStartStr ? ` starts at ${waitStartStr}` : ''}</>
@@ -4718,7 +4584,18 @@ export default function RecipeDetail() {
 
                     // Timer attached to its step: pokes out underneath the step card,
                     // suggests/controls the timer that helps complete the step.
-                    const renderTimerTab = (timer: any, state: 'done' | 'current' | 'upcoming', variant?: 'wait') => {
+                    // Two-tap skip for a wait: first tap arms the button, second completes
+    // the wait timer. Only one timer can be armed at a time.
+    const confirmSkipWait = (timer: any) => {
+        if (skipWaitConfirmId === timer.id) {
+            setSkipWaitConfirmId(null)
+            completeTimer(timer)
+        } else {
+            setSkipWaitConfirmId(timer.id)
+        }
+    }
+
+    const renderTimerTab = (timer: any, state: 'done' | 'current' | 'upcoming', variant?: 'wait') => {
                         const status = getTimerStatus(timer.id)
                         const session = activeSession[timer.id]
                         const remaining = session ? getRemaining(session, nowMs) : timer.duration * 60
@@ -4765,11 +4642,15 @@ export default function RecipeDetail() {
                                     <div className="cooking-timer-actions">
                                         <button className="cooking-timer-btn" onClick={() => pauseResumeTimer(timer)}>{status === 'active' ? 'Pause' : 'Resume'}</button>
                                         <button className="cooking-timer-btn" onClick={() => addTimerSeconds(timer, 300)}>+5 min</button>
+                                        {/* Two-tap skip: first tap arms the
+                                            button (label + colour change),
+                                            second tap skips the wait. */}
                                         <button
-                                            className="cooking-timer-btn is-primary"
-                                            onClick={() => completeTimer(timer)}
+                                            className={`cooking-timer-btn ${skipWaitConfirmId === timer.id ? 'is-primary' : ''}`}
+                                            onClick={() => confirmSkipWait(timer)}
+                                            title={skipWaitConfirmId === timer.id ? 'Click once more to skip the wait' : 'Skips the scheduled start — takes two clicks'}
                                         >
-                                            Do it now
+                                            {skipWaitConfirmId === timer.id ? 'Tap again to skip' : 'Do it now'}
                                         </button>
                                     </div>
                                 </div>
@@ -5030,6 +4911,7 @@ export default function RecipeDetail() {
                     const removeCustomTimer = (timerId: string) => {
                         setCustomTimers(prev => prev.filter(t => t.id !== timerId))
                         setActiveSession(prev => { const n = { ...prev }; delete n[timerId]; return n })
+                        forgetScheduledEnd([timerId])
                     }
 
                     const renderTimersContent = () => {
@@ -5092,11 +4974,13 @@ export default function RecipeDetail() {
                                                         <button className="cooking-timer-btn" onClick={() => pauseResumeTimer(timer)}>{status === 'active' ? 'Pause' : 'Resume'}</button>
                                                         <button className="cooking-timer-btn" onClick={() => addTimerSeconds(timer, 300)}>+5 min</button>
                                                         {isWait ? (
+                                                            // Two-tap skip: arm first, confirm second.
                                                             <button
-                                                                className="cooking-timer-btn is-primary"
-                                                                onClick={() => completeTimer(timer)}
+                                                                className={`cooking-timer-btn ${skipWaitConfirmId === timer.id ? 'is-primary' : ''}`}
+                                                                onClick={() => confirmSkipWait(timer)}
+                                                                title={skipWaitConfirmId === timer.id ? 'Click once more to skip the wait' : 'Skips the scheduled start — takes two clicks'}
                                                             >
-                                                                Do it now
+                                                                {skipWaitConfirmId === timer.id ? 'Tap again to skip' : 'Do it now'}
                                                             </button>
                                                         ) : (
                                                             <button className="cooking-timer-btn is-primary" onClick={() => completeTimer(timer)}>Done ✓</button>
@@ -5151,11 +5035,13 @@ export default function RecipeDetail() {
                                             const mins = parseInt(customTimerMinutes)
                                             if (!customTimerName.trim() || !mins || mins <= 0) return
                                             const newId = `custom-${Date.now()}`
+                                            const endTime = Date.now() + mins * 60 * 1000
                                             setCustomTimers(prev => [...prev, { id: newId, name: customTimerName.trim(), duration: mins }])
                                             setActiveSession(prev => ({
                                                 ...prev,
-                                                [newId]: { endTime: Date.now() + mins * 60 * 1000, remaining: mins * 60, status: 'active', checkpointsHit: [] }
+                                                [newId]: { endTime, remaining: mins * 60, status: 'active', checkpointsHit: [] }
                                             }))
+                                            noteScheduledEnd(newId, endTime)
                                             setCustomTimerName("")
                                             setCustomTimerMinutes("")
                                         }}
@@ -5847,6 +5733,7 @@ export default function RecipeDetail() {
                                 onClick={() => {
                                     setResetConfirm(false)
                                     setActiveSession({})
+                                    scheduledEndRef.current = {}
                                     setCustomTimers([])
                                     setAlarmPopupClosed(new Set())
                                     setForcedView(null)
@@ -5858,27 +5745,14 @@ export default function RecipeDetail() {
                                     setCurrentFlow(0)
                                     setDoneFlow(new Set())
                                     setActiveSheet('none')
-                                    // The old carb decision dies with the session:
+                                    // The old picks die with the session:
                                     // prompt again like a fresh Start Cooking.
                                     setCarbChoice(null)
                                     setSidePicks([])
                                     setSideSuggestions([])
                                     setSideSheetSelected(new Set())
-                                    if (needsCarbChoice()) {
-                                        loadCarbData().then(hasCatalog => {
-                                            if (hasCatalog) {
-                                                setCarbModalNone(false)
-                                                setCarbModalOpen(true)
-                                            } else {
-                                                const fallback = fallbackCarbChoice()
-                                                if (fallback) setCarbChoice(fallback)
-                                            }
-                                            // Same fresh-start chain: sides, then cook.
-                                            sideGateAfterCarb()
-                                        })
-                                    } else {
-                                        sideGateAfterCarb()
-                                    }
+                                    // Same fresh-start chain: staples + sides, then cook.
+                                    sideGate()
                                 }}
                             >
                                 Reset All
@@ -5909,41 +5783,6 @@ export default function RecipeDetail() {
                                 onClick={() => { setReExtractConfirm(false); extractTimers(true) }}
                             >
                                 Re-extract
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Clear Residual Timers Prompt */}
-            {clearResidualPrompt.show && (
-                <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-card border border-border/40 rounded-2xl p-5 max-w-sm mx-4 shadow-xl">
-                        <h3 className="text-lg font-bold mb-2">Active Timers Found</h3>
-                        <p className="text-sm text-foreground/60 mb-4">
-                            You have active timers from another session. Would you like to clear them and start fresh?
-                        </p>
-                        <div className="flex gap-3">
-                            <Button
-                                variant="outline"
-                                className="flex-1 h-11"
-                                onClick={() => setClearResidualPrompt({ show: false, recipeName: '', recipeId: '' })}
-                            >
-                                Keep Them
-                            </Button>
-                            <Button
-                                variant="destructive"
-                                className="flex-1 h-11"
-                                onClick={() => {
-                                    const keys = Object.keys(localStorage).filter(k => k.startsWith('timer-session-'))
-                                    keys.forEach(k => localStorage.removeItem(k))
-                                    setActiveSession({})
-                                    setCustomTimers([])
-                                    setCookingActive(false)
-                                    setClearResidualPrompt({ show: false, recipeName: '', recipeId: '' })
-                                }}
-                            >
-                                Clear All
                             </Button>
                         </div>
                     </div>

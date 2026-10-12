@@ -446,7 +446,17 @@ export default function DishListDetail() {
                 </div>
             </div>
 
-            {list && <PasteModal isOpen={pasteOpen} onClose={() => setPasteOpen(false)} list={list} onDone={load} />}
+            {list && (
+                <PasteModal
+                    isOpen={pasteOpen}
+                    onClose={() => setPasteOpen(false)}
+                    list={list}
+                    onDone={load}
+                    items={items}
+                    onCountryAdded={() => load(true)}
+                    onEditDish={(item) => setEditItem(item)}
+                />
+            )}
 
             <ItemEditModal
                 isOpen={!!editItem}

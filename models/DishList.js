@@ -8,6 +8,10 @@ const DishListSchema = new mongoose.Schema(
         // pages; `manual` lists are user-built; `custom` is a pasted URL set.
         sourceType: { type: String, enum: ['tasteatlas', 'manual', 'custom'], default: 'manual' },
         sourceUrl: { type: String, required: false },
+        // Stable preset key so URL-less system lists can be seeded idempotently.
+        sourceKey: { type: String, required: false, index: true },
+        // Opens the Add dishes popup on the Country grid tab by default.
+        countryGrid: { type: Boolean, default: false },
         // Dietary criteria the user chose when building/searching the list,
         // e.g. ['vegetarian', 'pescetarian']. Used to shape recipe searches.
         dietaryFilters: { type: [String], default: [] },

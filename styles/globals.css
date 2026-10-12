@@ -1783,6 +1783,13 @@ a {
   color: var(--cooking-text);
 }
 
+/* Disabled timer buttons (never mid-wait actions): neutral and inert. */
+.cooking-timer-btn:disabled {
+  cursor: default;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
 .cooking-timer-btn.is-primary {
   background: var(--cooking-accent);
   border-color: transparent;
@@ -1902,6 +1909,32 @@ a {
 .cooking-wait-headline .cooking-wait-count {
   color: var(--cooking-wait);
   font-variant-numeric: tabular-nums;
+}
+
+/* The card's rule: this wait is a hard gate — don't start the side step
+   around the timer. Same calm-blue palette as the rest of the wait state,
+   but framed like an instruction so it can't read as optional. */
+.cooking-wait-rule {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 0.45rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--cooking-wait-border);
+  background: var(--cooking-wait-soft);
+  color: var(--cooking-wait);
+  border-radius: 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.cooking-wait-rule svg {
+  flex-shrink: 0;
 }
 
 .cooking-wait-sub {

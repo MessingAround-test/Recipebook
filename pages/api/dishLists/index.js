@@ -56,6 +56,7 @@ export default async function handler(req, res) {
                 sourceType: ['tasteatlas', 'manual', 'custom'].includes(req.body?.sourceType) ? req.body.sourceType : 'manual',
                 sourceUrl: typeof req.body?.sourceUrl === 'string' ? req.body.sourceUrl.trim() : undefined,
                 dietaryFilters: normalizeCriteria(req.body?.dietaryFilters),
+                countryGrid: req.body?.countryGrid === true,
                 createdBy: req.body?.createdBy,
                 isSystem: false
             })

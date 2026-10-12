@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
-import { X, Loader2, MapPin, CheckCircle2, AlertCircle } from 'lucide-react'
+import { X, Loader2, MapPin, CheckCircle2, AlertCircle, Upload, Trash2, ImageIcon } from 'lucide-react'
 import { DishListItem } from './types'
 import { COUNTRIES } from '../../lib/dishLists/countries'
 import { hasPoint } from '../../lib/dishLists/locationStatus'
+import { fileToBase64 } from '../../lib/recipeImage'
 
 interface ItemEditModalProps {
     isOpen: boolean
@@ -34,6 +35,11 @@ export function ItemEditModal({ isOpen, onClose, item, onSaved }: ItemEditModalP
     const [regionSearchFailed, setRegionSearchFailed] = useState(false)
     const [checking, setChecking] = useState(false)
     const [check, setCheck] = useState<CheckState>({ status: 'idle' })
+    const [imageUrl, setImageUrl] = useState('')
+    const [pendingImage, setPendingImage] = useState<string | null>(null)
+    const [removeImage, setRemoveImage] = useState(false)
+    const [imageStatus, setImageStatus] = useState('')
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     useEffect(() => {
         if (!isOpen || !item) return
@@ -50,6 +56,10 @@ export function ItemEditModal({ isOpen, onClose, item, onSaved }: ItemEditModalP
         setCheck(hasPoint(item.location)
             ? { status: 'ok', lat: item.location!.lat, lng: item.location!.lng }
             : { status: 'idle' })
+        setImageUrl('')
+        setPendingImage(null)
+        setRemoveImage(false)
+        setImageStatus('')
     }, [isOpen, item?._id])
 
     if (!isOpen || !item) return null
@@ -89,6 +99,21 @@ export function ItemEditModal({ isOpen, onClose, item, onSaved }: ItemEditModalP
         }
     }
 
+    const pickImage = async (e: any) => {
+        const file = e.target.files?.[0]
+        e.target.value = ''
+        if (!file) return
+        try {
+            setImageStatus('Reading image…')
+            const dataUrl = await fileToBase64(file, status => setImageStatus(status))
+            setPendingImage(dataUrl)
+            setRemoveImage(false)
+            setImageStatus('')
+        } catch {
+            setImageStatus('Could not read that file — try a different one.')
+        }
+    }
+
     const save = async () => {
         setSaving(true)
         try {
@@ -103,17 +128,21 @@ export function ItemEditModal({ isOpen, onClose, item, onSaved }: ItemEditModalP
             } else if (check.status === 'fail') {
                 location.regionSearchFailed = true
             }
+            const imageValue = pendingImage || imageUrl.trim()
+            const body: Record<string, unknown> = {
+                itemId: item._id,
+                name: form.name.trim() || item.name,
+                category: form.category.trim(),
+                description: form.description.trim(),
+                notes: form.notes.trim(),
+                location
+            }
+            if (imageValue) body.imageUrl = imageValue
+            else if (removeImage) body.removeImage = true
             const res = await fetch('/api/dishLists/items', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'edgetoken': localStorage.getItem('Token') || '' },
-                body: JSON.stringify({
-                    itemId: item._id,
-                    name: form.name.trim() || item.name,
-                    category: form.category.trim(),
-                    description: form.description.trim(),
-                    notes: form.notes.trim(),
-                    location
-                })
+                body: JSON.stringify(body)
             })
             const data = await res.json()
             if (data.success) {
@@ -215,6 +244,62 @@ export function ItemEditModal({ isOpen, onClose, item, onSaved }: ItemEditModalP
                         <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block ml-1 mb-2">Notes</label>
                         <Input value={form.notes} onChange={patch('notes')} placeholder="Your own notes" />
                     </div>
+
+                    <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block ml-1 mb-2">Image</label>
+                        <div className="flex items-start gap-3">
+                            <div className="w-24 h-24 rounded-xl bg-secondary border border-border overflow-hidden shrink-0 flex items-center justify-center">
+                                {pendingImage || (item.hasImage && !removeImage && item.image) ? (
+                                    <img
+                                        src={pendingImage || item.image || ''}
+                                        alt={item.name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <ImageIcon size={18} className="text-muted-foreground" />
+                                )}
+                            </div>
+                            <div className="flex-1 min-w-0 space-y-1.5">
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={pickImage}
+                                />
+                                <div className="flex flex-wrap gap-1.5">
+                                    <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="rounded-xl">
+                                        <Upload size={13} /> {pendingImage ? 'Replace' : 'Upload'}
+                                    </Button>
+                                    {item.hasImage && !pendingImage && !removeImage && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setRemoveImage(true)}
+                                            className="rounded-xl text-rose-500 hover:text-rose-600"
+                                        >
+                                            <Trash2 size={13} /> Remove
+                                        </Button>
+                                    )}
+                                </div>
+                                <Input
+                                    value={imageUrl}
+                                    onChange={e => { setImageUrl(e.target.value); if (e.target.value.trim()) { setPendingImage(null); setRemoveImage(false) } }}
+                                    placeholder="…or paste an image URL"
+                                    className="h-8 text-xs"
+                                    disabled={!!pendingImage}
+                                />
+                                {removeImage && (
+                                    <p className="text-[11px] text-amber-500">The image will be removed when you save.</p>
+                                )}
+                                {imageStatus && (
+                                    <p className="text-[11px] text-muted-foreground">{imageStatus}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
                     <Button onClick={save} disabled={saving} className="w-full h-11 rounded-xl">
                         {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : 'Save'}
                     </Button>

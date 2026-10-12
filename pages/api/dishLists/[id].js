@@ -54,6 +54,8 @@ export default async function handler(req, res) {
             if (req.body?.dietaryFilters !== undefined) update.dietaryFilters = normalizeCriteria(req.body.dietaryFilters)
             // Admins can mark a list as a system (official) list.
             if (typeof req.body?.isSystem === 'boolean') update.isSystem = req.body.isSystem
+            // Default tab for the Add dishes popup (Country grid vs paste).
+            if (typeof req.body?.countryGrid === 'boolean') update.countryGrid = req.body.countryGrid
             if (Object.keys(update).length === 0) {
                 return res.status(400).json({ success: false, message: 'No data provided to update' })
             }

@@ -4,12 +4,15 @@ import SidePairing from '../../models/SidePairing';
 import { verifyToken } from '../../lib/auth';
 import { logAPI } from '../../lib/logger';
 import { heuristicServeTemp } from '../../lib/serveTempServer';
+import { ensureStockRecipes } from '../../lib/stockRecipesServer';
 
 /** Side-dish suggestions for Start Cooking (GET ?recipeId=<main id>).
  *  Ranked: liked pairing history for this main > usable-as-side recipes that
- *  share the main's meal types > rating/timesCooked. The first card is the
- *  sheet's "Recommended". Serving temperature is filled from the recipe, the
- *  stored AI/heuristic analysis, or a keyword fallback. */
+ *  share the main's meal types > rating/timesCooked. The owner's stock
+ *  staples (rice, pasta, bread...) are seeded first and flagged via
+ *  `stockKey` so the sheet can show them as "Recommended". Serving
+ *  temperature is filled from the recipe, the stored AI/heuristic analysis,
+ *  or a keyword fallback. */
 export default async function handler(req, res) {
     logAPI(req);
     const decoded = await verifyToken(req, res);
@@ -29,13 +32,20 @@ export default async function handler(req, res) {
 
         const userData = await (await import('../../models/User')).default.findById(decoded.id).lean();
         if (!userData) return res.status(400).json({ success: false, message: 'user not found, please relog' });
+        const ownerEmail = decoded.role !== 'admin' ? userData.email : main.creator_email;
         if (decoded.role !== 'admin' && main.creator_email !== userData.email) {
             return res.status(403).json({ success: false, message: 'Forbidden: You do not own this recipe' });
         }
 
+        // Staples belong to the picker: make sure this owner has them before
+        // querying (a failure just means no staples this round, not a 500).
+        if (ownerEmail === userData.email) {
+            try { await ensureStockRecipes(userData); } catch (e) { console.error('stock recipe seed failed:', e); }
+        }
+
         const [both, pairings] = await Promise.all([
             Recipe.find({
-                creator_email: decoded.role !== 'admin' ? userData.email : main.creator_email,
+                creator_email: ownerEmail,
                 usableAsSide: true,
                 hidden: { $ne: true },
                 _id: { $ne: main._id }
@@ -64,6 +74,7 @@ export default async function handler(req, res) {
                 return {
                     _id: String(r._id),
                     name: r.name,
+                    stockKey: r.stockKey || null,
                     time: r.time || '',
                     image: r.hasImage || r.image
                         ? `/api/Recipe/${String(r._id)}/image?q=thumb&v=${r.imageVersion ?? 0}`

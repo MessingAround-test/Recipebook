@@ -6,6 +6,8 @@ export interface DishListSummary {
     sourceUrl?: string
     dietaryFilters: string[]
     isSystem?: boolean
+    /** Opens the Add dishes popup on the Country grid tab by default. */
+    countryGrid?: boolean
     counts?: { total: number; cooked: number; imported: number }
 }
 

@@ -7,6 +7,10 @@ export interface TasteAtlasPreset {
     url: string
     description: string
     dietaryFilters: string[]
+    /** Defaults to 'tasteatlas'. Manual presets (no URL) set 'manual'. */
+    sourceType?: 'tasteatlas' | 'manual' | 'custom'
+    /** Seeded lists from this preset open Add dishes on the Country grid tab. */
+    showCountryGrid?: boolean
 }
 
 export const TASTEATLAS_PRESETS: TasteAtlasPreset[] = [
@@ -37,6 +41,15 @@ export const TASTEATLAS_PRESETS: TasteAtlasPreset[] = [
         url: 'https://www.tasteatlas.com/best-rated-vegan-dishes-in-the-world',
         description: 'TasteAtlas — best-rated vegan dishes in the world.',
         dietaryFilters: ['vegan']
+    },
+    {
+        key: 'vegetarian-every-country',
+        name: 'Vegetarian Dish from Every Country',
+        url: '',
+        description: 'One vegetarian dish from every country — curated by hand.',
+        dietaryFilters: ['vegetarian'],
+        sourceType: 'manual',
+        showCountryGrid: true
     }
 ]
 
