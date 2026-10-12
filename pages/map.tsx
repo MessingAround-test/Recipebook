@@ -4,7 +4,7 @@ import { Layout } from '../components/Layout'
 import { Button } from '../components/ui/button'
 import { useFeatureGuard } from '../lib/useFeatureGuard'
 import { useIsAdmin } from '../lib/useIsAdmin'
-import { ArrowLeft, Loader2, MapPin, Plus, Minus, Compass, UtensilsCrossed, Maximize2, List, Wand2, ExternalLink, ChefHat, CookingPot } from 'lucide-react'
+import { ArrowLeft, Loader2, MapPin, Plus, Minus, Compass, UtensilsCrossed, Maximize2, List, Wand2, ExternalLink, ChefHat, CookingPot, Dices, X } from 'lucide-react'
 import { buildViewportTiles, projectToPercent, tileZoomForScale } from '../lib/dishLists/mercator'
 import { hasRegionArea, continentOf } from '../lib/dishLists/locationStatus'
 
@@ -49,6 +49,8 @@ interface View {
     ty: number
 }
 
+type RoulettePhase = 'off' | 'fitting' | 'spinning' | 'result'
+
 const MIN_SCALE = 1
 const MAX_SCALE = 32
 // Sentinel values for the source filters in the list dropdown (never real ids).
@@ -63,6 +65,28 @@ const clampView = (scale: number, tx: number, ty: number, size: number): View =>
     return { scale, tx: clamp(tx, min, 0), ty: clamp(ty, min, 0) }
 }
 
+const easeInOutCubic = (t: number): number =>
+    t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+
+/** Largest view that contains every point (with ~10% margin), clamped to sane zooms. */
+const fitViewFor = (pts: MapPoint[], size: number): View | null => {
+    if (!size || !pts.length) return null
+    const projected = pts.map(p => projectToPercent(p.lat, p.lng))
+    const minX = Math.min(...projected.map(p => p.x))
+    const maxX = Math.max(...projected.map(p => p.x))
+    const minY = Math.min(...projected.map(p => p.y))
+    const maxY = Math.max(...projected.map(p => p.y))
+    // Minimum span keeps tiny clusters/single pins from exploding the zoom.
+    const spanX = Math.max(maxX - minX, 1)
+    const spanY = Math.max(maxY - minY, 1)
+    const scale = clamp(Math.min(0.8 / (spanX / 100), 0.8 / (spanY / 100)), MIN_SCALE, 12)
+    const cx = (minX + maxX) / 2
+    const cy = (minY + maxY) / 2
+    const tx = size / 2 - (cx / 100) * size * scale
+    const ty = size / 2 - (cy / 100) * size * scale
+    return clampView(scale, tx, ty, size)
+}
+
 const thumbUrl = (p: MapPoint): string | undefined => {
     if (p.imageUrl) return p.imageUrl
     if (isRecipe(p)) return undefined
@@ -75,9 +99,25 @@ const recipeIdsOf = (p: MapPoint): string[] =>
 
 /**
  * Hierarchical clustering: continents → countries → regions → cities → individual pins.
- * The zoom scale determines the clustering level.
+ * The zoom scale determines the clustering level. With `forceDish` (roulette
+ * mode) every point gets its own pin regardless of zoom — the exact location
+ * is what gets highlighted, never a continent/country summary.
  */
-const buildMarkers = (points: MapPoint[], scale: number): Marker[] => {
+const buildMarkers = (points: MapPoint[], scale: number, forceDish = false): Marker[] => {
+    if (forceDish) {
+        return points.map(p => ({
+            key: `d:${p._id}`,
+            kind: 'dish' as const,
+            level: 'dish' as const,
+            label: p.name,
+            city: (p.city || p.region || '').trim() || undefined,
+            country: p.country,
+            points: [p],
+            lat: p.lat,
+            lng: p.lng
+        }))
+    }
+
     const level = clusterLevelForScale(scale)
 
     // At max zoom, show individual pins for dishes with a location
@@ -216,15 +256,27 @@ export default function WorldMap() {
     const [view, setView] = useState<View>({ scale: 1, tx: 0, ty: 0 })
     const [size, setSize] = useState(0)
 
+    // ---- Country roulette: fit → spin (highlight hops between exact pins) → result ----
+    const [roulettePhase, setRoulettePhase] = useState<RoulettePhase>('off')
+    const [rouletteRequested, setRouletteRequested] = useState(false)
+    const [rouletteBlocked, setRouletteBlocked] = useState(false)
+    const [rouletteCurrent, setRouletteCurrent] = useState<MapPoint | null>(null)
+
     const mapRef = useRef<HTMLDivElement | null>(null)
     const viewRef = useRef(view)
     const sizeRef = useRef(size)
     const pointersRef = useRef(new Map<number, { x: number; y: number }>())
     const gestureRef = useRef<any>({})
     const draggedRef = useRef(false)
+    const phaseRef = useRef<RoulettePhase>('off')
+    const spinPoolRef = useRef<MapPoint[]>([])
+    const rouletteCurrentRef = useRef<MapPoint | null>(null)
+    const rouletteListKeyRef = useRef<string>('')
 
     useEffect(() => { viewRef.current = view }, [view])
     useEffect(() => { sizeRef.current = size }, [size])
+    useEffect(() => { phaseRef.current = roulettePhase }, [roulettePhase])
+    useEffect(() => { rouletteCurrentRef.current = rouletteCurrent }, [rouletteCurrent])
 
     const token = () => localStorage.getItem('Token') || ''
 
@@ -280,6 +332,8 @@ export default function WorldMap() {
         const onWheel = (e: WheelEvent) => {
             if ((e.target as HTMLElement)?.closest?.('[data-no-zoom]')) return
             e.preventDefault()
+            // User takes over: cancel the roulette fit tween (effect cleanup stops the rAF).
+            if (phaseRef.current === 'fitting') setRoulettePhase('spinning')
             const rect = el.getBoundingClientRect()
             const px = e.clientX - rect.left
             const py = e.clientY - rect.top
@@ -320,6 +374,8 @@ export default function WorldMap() {
     // ---- Pointer gestures: one finger/mouse drags, two fingers pinch ----
     const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
         if ((e.target as HTMLElement)?.closest?.('[data-no-zoom]')) return
+        // User takes over: cancel the roulette fit tween.
+        if (phaseRef.current === 'fitting') setRoulettePhase('spinning')
         try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch { /* noop */ }
         pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
         draggedRef.current = false
@@ -385,17 +441,20 @@ export default function WorldMap() {
         return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]))
     }, [points])
 
-    const visible = useMemo(() => {
-        let result: MapPoint[]
-        if (listFilter === ALL_RECIPES) result = recipePoints
-        else if (listFilter === EVERYTHING) result = [...points, ...recipePoints]
-        else if (listFilter) result = points.filter(p => p.listId === listFilter)
-        else result = points
+    // List filter only (no cooked filter) — the roulette falls back to this
+    // when the cooked filter would leave nothing to spin.
+    const baseVisible = useMemo(() => {
+        if (listFilter === ALL_RECIPES) return recipePoints
+        if (listFilter === EVERYTHING) return [...points, ...recipePoints]
+        if (listFilter) return points.filter(p => p.listId === listFilter)
+        return points
+    }, [points, recipePoints, listFilter])
 
-        if (cookedFilter === 'cooked') return result.filter(p => p.cooked)
-        if (cookedFilter === 'uncooked') return result.filter(p => !p.cooked)
-        return result
-    }, [points, recipePoints, listFilter, cookedFilter])
+    const visible = useMemo(() => {
+        if (cookedFilter === 'cooked') return baseVisible.filter(p => p.cooked)
+        if (cookedFilter === 'uncooked') return baseVisible.filter(p => !p.cooked)
+        return baseVisible
+    }, [baseVisible, cookedFilter])
 
     // Header stats follow the active filter.
     const stats = useMemo(() => {
@@ -404,12 +463,156 @@ export default function WorldMap() {
         return { located, total }
     }, [listFilter, located, total, recipeLocated, recipeTotal])
 
-    const markers = useMemo(() => buildMarkers(visible, view.scale), [visible, view.scale])
+    // Roulette shows exact dish pins — clustering is bypassed entirely.
+    const rouletteActive = roulettePhase !== 'off'
+    const markers = useMemo(() => buildMarkers(visible, view.scale, rouletteActive), [visible, view.scale, rouletteActive])
     const markerByKey = useMemo(() => new Map(markers.map(m => [m.key, m])), [markers])
     const countryCount = useMemo(
         () => new Set(visible.map(p => (p.country || '').trim()).filter(Boolean)).size,
         [visible]
     )
+
+    // ---- Country roulette engine ----
+
+    // Deep link: /map?listId=X&roulette=1 arms the spin (fires once the list's data
+    // is in) and defaults the pool to uncooked dishes, like arriving from a dishlist.
+    useEffect(() => {
+        if (!router.isReady) return
+        const armed = router.query.roulette === '1' && typeof router.query.listId === 'string'
+        setRouletteRequested(armed)
+        if (armed) setCookedFilter('uncooked')
+    }, [router.isReady, router.query.roulette, router.query.listId])
+
+    /** Kick off a spin over whatever the current filters show (deep link or the
+     *  header dice button). If the uncooked filter leaves nothing, falls back to
+     *  the whole list (and flips the filter to "all" so the UI stays honest). */
+    const startRoulette = () => {
+        let pool = visible
+        let filterKey = cookedFilter
+        if (!pool.length && cookedFilter === 'uncooked' && baseVisible.length) {
+            pool = baseVisible
+            filterKey = 'all'
+            setCookedFilter('all')
+        }
+        if (!pool.length) { setRouletteBlocked(true); return }
+        setRouletteBlocked(false)
+        spinPoolRef.current = pool
+        rouletteListKeyRef.current = `${listFilter}|${filterKey}`
+        setRouletteCurrent(null)
+        setSelectedKey(null)
+        if (pool.length === 1) {
+            setRouletteCurrent(pool[0])
+            setRoulettePhase('result')
+        } else {
+            setRoulettePhase('fitting')
+        }
+    }
+
+    // Deep link: start once armed, loaded and the list filter has settled.
+    useEffect(() => {
+        if (!rouletteRequested || roulettePhase !== 'off') return
+        if (loading || !size || !listFilter || listFilter !== queryListId) return
+        startRoulette()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rouletteRequested, roulettePhase, loading, size, listFilter, queryListId, visible])
+
+    // Changing the list or cooked filter away from what's being spun ends the roulette.
+    useEffect(() => {
+        if (roulettePhase !== 'off' && `${listFilter}|${cookedFilter}` !== rouletteListKeyRef.current) exitRoulette()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [roulettePhase, listFilter, cookedFilter])
+
+    // Fit: tween the view so every pin is visible, then pause briefly before spinning.
+    // User gestures during the tween cancel it (see onWheel/onPointerDown).
+    useEffect(() => {
+        if (roulettePhase !== 'fitting') return
+        const target = fitViewFor(spinPoolRef.current, sizeRef.current)
+        if (!target) { setRoulettePhase('spinning'); return }
+        const from = { ...viewRef.current }
+        // Already framed (e.g. a re-roll): skip the tween, just pause briefly.
+        if (Math.abs(from.scale - target.scale) < 0.01 && Math.abs(from.tx - target.tx) < 2 && Math.abs(from.ty - target.ty) < 2) {
+            const quick = setTimeout(() => setRoulettePhase('spinning'), 200)
+            return () => clearTimeout(quick)
+        }
+        const dur = 700
+        let start: number | null = null
+        let rafId = 0
+        let settleTimer: ReturnType<typeof setTimeout> | undefined
+        const step = (ts: number) => {
+            if (start === null) start = ts
+            const t = Math.min(1, (ts - start) / dur)
+            const e = easeInOutCubic(t)
+            // Interpolate scale logarithmically so the zoom feels constant-speed.
+            const scale = Math.exp(Math.log(from.scale) + (Math.log(target.scale) - Math.log(from.scale)) * e)
+            setView({ scale, tx: from.tx + (target.tx - from.tx) * e, ty: from.ty + (target.ty - from.ty) * e })
+            if (t < 1) rafId = requestAnimationFrame(step)
+            else settleTimer = setTimeout(() => setRoulettePhase('spinning'), 400)
+        }
+        rafId = requestAnimationFrame(step)
+        return () => { cancelAnimationFrame(rafId); if (settleTimer) clearTimeout(settleTimer) }
+    }, [roulettePhase])
+
+    // Spin: highlight hops between exact pins with exponential ease-out timing,
+    // stops on a winner, then pauses a beat before the result popup.
+    useEffect(() => {
+        if (roulettePhase !== 'spinning') return
+        const pool = spinPoolRef.current
+        if (!pool.length) { setRoulettePhase('off'); return }
+        let cancelled = false
+        let tick = 0
+        let currentId = rouletteCurrentRef.current?._id ?? null
+        let timer: ReturnType<typeof setTimeout> | undefined
+        const delayOf = (k: number) => Math.min(850, 70 * Math.pow(1.15, k))
+        const pick = () => {
+            if (cancelled) return
+            let next = pool[Math.floor(Math.random() * pool.length)]
+            // Never repeat the pin we're currently on.
+            if (pool.length > 1 && currentId && next._id === currentId) {
+                next = pool[(pool.indexOf(next) + 1) % pool.length]
+            }
+            currentId = next._id
+            setRouletteCurrent(next)
+            const d = delayOf(tick)
+            tick += 1
+            if (d >= 849 && tick > 8) {
+                timer = setTimeout(() => { if (!cancelled) setRoulettePhase('result') }, 1000)
+            } else {
+                timer = setTimeout(pick, d)
+            }
+        }
+        timer = setTimeout(pick, 300)
+        return () => { cancelled = true; if (timer) clearTimeout(timer) }
+    }, [roulettePhase])
+
+    /** Stop mid-spin: settle on the highlighted pin (or a random one) immediately. */
+    const stopRouletteNow = () => {
+        const pool = spinPoolRef.current
+        const pick = rouletteCurrentRef.current ?? (pool.length ? pool[Math.floor(Math.random() * pool.length)] : null)
+        if (pick) setRouletteCurrent(pick)
+        setRoulettePhase(pick ? 'result' : 'off')
+    }
+
+    /** Re-spin from the result popup (re-fits in case the map was panned away). */
+    const reroll = () => {
+        setRouletteCurrent(null)
+        rouletteCurrentRef.current = null
+        setRoulettePhase('fitting')
+    }
+
+    /** Full exit: back to the normal clustered map; drop ?roulette= from the URL. */
+    const exitRoulette = () => {
+        setRoulettePhase('off')
+        setRouletteCurrent(null)
+        rouletteCurrentRef.current = null
+        spinPoolRef.current = []
+        rouletteListKeyRef.current = ''
+        setRouletteRequested(false)
+        setRouletteBlocked(false)
+        setSelectedKey(null)
+        const q: Record<string, string | string[]> = { ...router.query }
+        delete q.roulette
+        router.replace({ pathname: router.pathname, query: q }, undefined, { shallow: true })
+    }
 
     // Detail adapts to the zoom: continents → countries → regions.
     const tileZoom = tileZoomForScale(view.scale)
@@ -515,8 +718,10 @@ export default function WorldMap() {
 
     const selected = selectedKey ? markerByKey.get(selectedKey) || null : null
     const hovered = hoveredKey ? markerByKey.get(hoveredKey) || null : null
-    const showPopup = Boolean(selected && (!hovered || hovered.key === selected.key))
-    const preview = !showPopup && hovered ? hovered : null
+    // Roulette owns the highlight; the normal hover/click popups stay out of the way.
+    const rouletteKey = rouletteCurrent ? `d:${rouletteCurrent._id}` : null
+    const showPopup = !rouletteActive && Boolean(selected && (!hovered || hovered.key === selected.key))
+    const preview = !rouletteActive && !showPopup && hovered ? hovered : null
 
     return (
         <Layout title="World view" description="Where every dish comes from" hideMobileToolbar>
@@ -569,6 +774,17 @@ export default function WorldMap() {
                                 </button>
                             ))}
                         </div>
+
+                        <Button
+                            size="icon-sm"
+                            variant="secondary"
+                            onClick={startRoulette}
+                            disabled={loading || visible.length === 0 || rouletteActive}
+                            title={`Roulette — spin a random dish from the current filter (${visible.length} eligible)`}
+                            className="rounded-xl"
+                        >
+                            <Dices size={15} />
+                        </Button>
 
                         <div className="ml-auto flex items-center gap-1">
                             <Button size="icon-sm" variant="secondary" onClick={() => zoomButton(1 / 1.5)} disabled={view.scale <= MIN_SCALE} title="Zoom out">
@@ -633,17 +849,19 @@ export default function WorldMap() {
                                 const { x, y } = toScreen(marker.lat, marker.lng)
                                 if (x < -60 || y < -60 || x > size + 60 || y > size + 60) return null
                                 const count = marker.points.length
-                                const isActive = marker.key === selected?.key || marker.key === hovered?.key
+                                const isActive = marker.key === selected?.key || marker.key === hovered?.key || marker.key === rouletteKey
+                                const isDimmed = roulettePhase === 'spinning' && marker.key !== rouletteKey
+                                const isRoulettePin = rouletteActive && marker.key === rouletteKey
                                 const tone = markerTone(marker)
                                 return (
                                     <button
                                         key={marker.key}
                                         onPointerDown={(e) => e.stopPropagation()}
-                                        onClick={(e) => { e.stopPropagation(); setSelectedKey(marker.key) }}
+                                        onClick={(e) => { e.stopPropagation(); if (!rouletteActive) setSelectedKey(marker.key) }}
                                         onMouseEnter={() => setHoveredKey(marker.key)}
                                         onMouseLeave={() => setHoveredKey(k => (k === marker.key ? null : k))}
-                                        aria-label={marker.kind === 'dish' ? `${marker.label} — ${marker.city}` : `${marker.label} — ${count} dishes`}
-                                        className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
+                                        aria-label={marker.kind === 'dish' ? `${marker.label} — ${marker.city || marker.country || ''}` : `${marker.label} — ${count} dishes`}
+                                        className={`absolute z-10 -translate-x-1/2 -translate-y-1/2 transition-opacity ${isDimmed ? 'opacity-30' : ''}`}
                                         style={{ left: `${x}px`, top: `${y}px` }}
                                     >
                                         {count > 1 ? (
@@ -653,9 +871,119 @@ export default function WorldMap() {
                                         ) : (
                                             <span className={`block w-3 h-3 rounded-full border-2 border-white shadow-md transition-transform ${tone} ${isActive ? 'scale-150 ring-2 ring-accent' : 'hover:scale-150'}`} />
                                         )}
+                                        {isRoulettePin && (
+                                            <span className="absolute inset-0 -m-1 rounded-full ring-2 ring-accent animate-ping pointer-events-none" />
+                                        )}
                                     </button>
                                 )
                             })}
+
+                            {/* Roulette controls (fitting/spinning) */}
+                            {rouletteActive && (roulettePhase === 'fitting' || roulettePhase === 'spinning') && (
+                                <div
+                                    data-no-zoom
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="absolute top-2 left-2 z-40 flex items-center gap-3 pl-3 pr-1.5 py-2 rounded-xl bg-card border border-border shadow-xl"
+                                >
+                                    <Dices size={18} className={`text-accent shrink-0 ${roulettePhase === 'spinning' ? 'animate-pulse' : ''}`} />
+                                    <div className="min-w-0 max-w-[220px]">
+                                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                            {roulettePhase === 'spinning' ? 'Spinning…' : 'Getting ready…'}
+                                        </div>
+                                        <div className="text-sm font-black leading-tight text-accent truncate mt-0.5">
+                                            {roulettePhase === 'spinning' && rouletteCurrent
+                                                ? (rouletteCurrent.country || rouletteCurrent.name)
+                                                : ' '}
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={stopRouletteNow}
+                                        className="px-3 h-8 rounded-lg bg-secondary border border-border text-xs font-black text-foreground hover:bg-border transition-colors shrink-0"
+                                    >
+                                        Stop
+                                    </button>
+                                    <button
+                                        onClick={exitRoulette}
+                                        aria-label="Exit roulette"
+                                        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Nothing eligible to spin */}
+                            {rouletteBlocked && (
+                                <div
+                                    data-no-zoom
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="absolute top-2 left-2 z-40 flex items-center gap-2 pl-2.5 pr-1.5 py-1.5 rounded-xl bg-card/95 border border-border shadow-xl backdrop-blur-sm"
+                                >
+                                    <MapPin size={14} className="text-muted-foreground shrink-0" />
+                                    <span className="text-[11px] font-bold">No located dishes to spin</span>
+                                    <button
+                                        onClick={exitRoulette}
+                                        aria-label="Dismiss"
+                                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Roulette result — centred popup */}
+                            {rouletteActive && roulettePhase === 'result' && rouletteCurrent && (
+                                <div
+                                    className="absolute inset-0 z-30 flex items-center justify-center p-4 bg-black/25 pointer-events-none"
+                                    data-no-zoom
+                                >
+                                    <div
+                                        className="pointer-events-auto w-64 max-w-[80vw] rounded-2xl bg-card border border-border shadow-2xl p-3 animate-in fade-in-0 zoom-in-95 duration-200"
+                                        style={{ touchAction: 'auto' }}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-accent">
+                                                <Dices size={12} /> Roulette
+                                            </span>
+                                            <button
+                                                onClick={exitRoulette}
+                                                aria-label="Exit roulette"
+                                                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                        {thumbUrl(rouletteCurrent) && (
+                                            <img src={thumbUrl(rouletteCurrent) as string} alt="" className="w-full h-28 object-cover rounded-xl bg-secondary mb-2" />
+                                        )}
+                                        <h3 className="text-sm font-black leading-tight">{rouletteCurrent.name}</h3>
+                                        <p className="text-[11px] font-semibold text-muted-foreground inline-flex items-center gap-1 mt-0.5">
+                                            <MapPin size={11} /> {placeLine(rouletteCurrent)}
+                                        </p>
+                                        {rouletteCurrent.category && (
+                                            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mt-1">{rouletteCurrent.category}</p>
+                                        )}
+                                        <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/60">
+                                            <button
+                                                onClick={reroll}
+                                                className="inline-flex items-center gap-1 px-2 h-7 rounded-lg bg-accent text-accent-foreground text-[11px] font-bold hover:opacity-90 transition-opacity"
+                                            >
+                                                <Dices size={12} /> Roll again
+                                            </button>
+                                            <a
+                                                href={`/dishLists/items/${rouletteCurrent._id}`}
+                                                className="inline-flex items-center gap-1 px-2 h-7 rounded-lg bg-secondary text-[11px] font-bold hover:bg-border transition-colors"
+                                            >
+                                                <ExternalLink size={12} /> Open dish
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Hover preview */}
                             {preview && (() => {

@@ -4,7 +4,7 @@ import { Layout } from '../../components/Layout'
 import { Button } from '../../components/ui/button'
 import { useFeatureGuard } from '../../lib/useFeatureGuard'
 import { useIsAdmin } from '../../lib/useIsAdmin'
-import { Plus, Globe2, Loader2, UtensilsCrossed, Sparkles, Compass } from 'lucide-react'
+import { Plus, Globe2, Loader2, UtensilsCrossed, Sparkles, Compass, Dices } from 'lucide-react'
 import { NewListModal } from '../../components/dishLists/NewListModal'
 import { DishListSummary } from '../../components/dishLists/types'
 
@@ -77,37 +77,49 @@ export default function DishLists() {
                             const cooked = list.counts?.cooked || 0
                             const pct = total > 0 ? Math.round((cooked / total) * 100) : 0
                             return (
-                                <button
-                                    key={list._id}
-                                    onClick={() => Router.push(`/dishLists/${list._id}`)}
-                                    className="text-left rounded-2xl bg-card border border-border p-4 hover:border-accent hover:shadow-xl hover:shadow-accent/5 transition-all"
-                                >
-                                    <div className="flex items-start justify-between gap-2">
-                                        <h2 className="text-base font-bold leading-tight">{list.name}</h2>
+                                <div key={list._id} className="relative">
+                                    <button
+                                        onClick={() => Router.push(`/dishLists/${list._id}`)}
+                                        className="w-full text-left rounded-2xl bg-card border border-border p-4 pr-11 hover:border-accent hover:shadow-xl hover:shadow-accent/5 transition-all"
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <h2 className="text-base font-bold leading-tight">{list.name}</h2>
+                                            {list.dietaryFilters?.length > 0 && (
+                                                <Sparkles size={14} className="text-accent shrink-0 mt-0.5" />
+                                            )}
+                                        </div>
+                                        {list.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{list.description}</p>}
+
+                                        <div className="mt-4">
+                                            <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground mb-1.5">
+                                                <span className="inline-flex items-center gap-1"><UtensilsCrossed size={11} /> {cooked}/{total} cooked</span>
+                                                <span>{pct}%</span>
+                                            </div>
+                                            <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                                                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                                            </div>
+                                        </div>
+
                                         {list.dietaryFilters?.length > 0 && (
-                                            <Sparkles size={14} className="text-accent shrink-0 mt-0.5" />
+                                            <div className="flex flex-wrap gap-1 mt-3">
+                                                {list.dietaryFilters.map(f => (
+                                                    <span key={f} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/15 text-accent">{f.replace(/_/g, ' ')}</span>
+                                                ))}
+                                            </div>
                                         )}
-                                    </div>
-                                    {list.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{list.description}</p>}
-
-                                    <div className="mt-4">
-                                        <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground mb-1.5">
-                                            <span className="inline-flex items-center gap-1"><UtensilsCrossed size={11} /> {cooked}/{total} cooked</span>
-                                            <span>{pct}%</span>
-                                        </div>
-                                        <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                                            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                                        </div>
-                                    </div>
-
-                                    {list.dietaryFilters?.length > 0 && (
-                                        <div className="flex flex-wrap gap-1 mt-3">
-                                            {list.dietaryFilters.map(f => (
-                                                <span key={f} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/15 text-accent">{f.replace(/_/g, ' ')}</span>
-                                            ))}
-                                        </div>
-                                    )}
-                                </button>
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            Router.push(`/map?listId=${list._id}&roulette=1&from=/dishLists`)
+                                        }}
+                                        title="Country roulette"
+                                        aria-label={`Country roulette for ${list.name}`}
+                                        className="absolute top-3 right-3 p-2 rounded-xl bg-secondary/60 border border-border text-muted-foreground hover:text-accent hover:bg-secondary hover:border-accent transition-colors"
+                                    >
+                                        <Dices size={16} />
+                                    </button>
+                                </div>
                             )
                         })}
                     </div>

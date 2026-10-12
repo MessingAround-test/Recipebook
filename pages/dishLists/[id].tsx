@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { useFeatureGuard } from '../../lib/useFeatureGuard'
 import { useIsAdmin } from '../../lib/useIsAdmin'
-import { ArrowLeft, ClipboardPaste, Loader2, Search, Sparkles, MapPin, ExternalLink, ListChecks, Trash2, Compass, Lock } from 'lucide-react'
+import { ArrowLeft, ClipboardPaste, Loader2, Search, Sparkles, MapPin, ExternalLink, ListChecks, Trash2, Compass, Lock, Dices } from 'lucide-react'
 import { PasteModal } from '../../components/dishLists/PasteModal'
 import { ItemEditModal } from '../../components/dishLists/ItemEditModal'
 import { DishListTable } from '../../components/dishLists/DishListTable'
@@ -298,6 +298,14 @@ export default function DishListDetail() {
                                 )}
                             </p>
                         </div>
+                        <button
+                            onClick={() => Router.push(`/map?listId=${listId}&roulette=1&from=/dishLists/${listId}`)}
+                            title="Country roulette — spin for a dish"
+                            aria-label="Country roulette"
+                            className="p-2 rounded-lg text-muted-foreground hover:text-accent hover:bg-secondary transition-colors shrink-0"
+                        >
+                            <Dices size={17} />
+                        </button>
                         <button
                             onClick={() => Router.push(`/map?listId=${listId}&from=/dishLists/${listId}`)}
                             title="View this list on the world map"
