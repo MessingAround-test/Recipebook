@@ -18,9 +18,9 @@ const slugify = (value) =>
         .replace(/^-+|-+$/g, '')
 
 /**
- * Adds (or re-saves) a single dish by hand — used by the country fill-in grid.
- * Keyed on slug derived from country+name so re-submitting the same entry
- * updates it instead of creating a duplicate.
+ * Adds (or re-saves) a single dish by hand — used by the country fill-in grid
+ * and the Quick add form. Keyed on slug derived from country+name so
+ * re-submitting the same entry updates it instead of creating a duplicate.
  */
 export default async function handler(req, res) {
     logAPI(req)
@@ -51,12 +51,16 @@ export default async function handler(req, res) {
 
         const existing = await DishListItem.findOne({ listId, slug }).select('_id').lean()
         const set = { name, 'location.country': country }
+        const region = clean(req.body?.region)
+        const city = clean(req.body?.city)
         const category = clean(req.body?.category)
         const description = clean(req.body?.description)
         const notes = clean(req.body?.notes)
         const sourceUrl = clean(req.body?.sourceUrl)
         const recipeSourceUrl = clean(req.body?.recipeSourceUrl)
         const imageUrl = clean(req.body?.imageUrl)
+        if (region) set['location.region'] = region
+        if (city) set['location.city'] = city
         if (category) set.category = category
         if (description) set.description = description
         if (notes) set.notes = notes
@@ -108,7 +112,7 @@ export default async function handler(req, res) {
         // Failures are fine — the list's "Locations" button can retry later.
         if (!Number.isFinite(item?.location?.lat) || !Number.isFinite(item?.location?.lng)) {
             try {
-                const point = await geocodePlace({ country })
+                const point = await geocodePlace({ country, region, city })
                 if (point) {
                     await DishListItem.updateOne(
                         { _id: item._id },

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../ui/button'
-import { X, Loader2, ClipboardPaste, Link2, Globe2 } from 'lucide-react'
+import { X, Loader2, ClipboardPaste, Link2, Globe2, Plus } from 'lucide-react'
 import { CountryGrid } from './CountryGrid'
+import { QuickAddForm } from './QuickAddForm'
 import { DishListItem, DishListSummary } from './types'
 
 interface PasteModalProps {
@@ -34,16 +35,16 @@ const COPY_LIST_BOOKMARKLET = 'javascript:' + encodeURIComponent(
 )
 
 export function PasteModal({ isOpen, onClose, list, onDone, items, onCountryAdded, onEditDish }: PasteModalProps) {
-    const [mode, setMode] = useState<'html' | 'urls' | 'country'>('html')
+    const [mode, setMode] = useState<'simple' | 'country' | 'html' | 'urls'>('simple')
     const [html, setHtml] = useState('')
     const [urls, setUrls] = useState('')
     const [busy, setBusy] = useState(false)
     const [result, setResult] = useState<string | null>(null)
 
-    // Each time the popup opens: default to the Country grid tab when the
-    // list has it enabled, otherwise the usual paste mode.
+    // Each time the popup opens: start on the simple one-at-a-time form —
+    // the general-purpose way to add a single dish.
     useEffect(() => {
-        if (isOpen) setMode(list.countryGrid ? 'country' : 'html')
+        if (isOpen) setMode('simple')
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen])
 
@@ -86,22 +87,28 @@ export function PasteModal({ isOpen, onClose, list, onDone, items, onCountryAdde
                 </div>
 
                 <div className="p-5 space-y-4">
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={() => setMode('simple')}
+                            className={`flex-1 min-w-[7rem] inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-colors ${mode === 'simple' ? 'bg-accent text-accent-foreground border-accent' : 'bg-secondary border-border hover:border-accent'}`}>
+                            <Plus size={14} /> Quick add
+                        </button>
                         <button type="button" onClick={() => setMode('country')}
-                            className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border transition-colors ${mode === 'country' ? 'bg-accent text-accent-foreground border-accent' : 'bg-secondary border-border hover:border-accent'}`}>
+                            className={`flex-1 min-w-[7rem] inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-colors ${mode === 'country' ? 'bg-accent text-accent-foreground border-accent' : 'bg-secondary border-border hover:border-accent'}`}>
                             <Globe2 size={14} /> Country grid
                         </button>
                         <button type="button" onClick={() => setMode('html')}
-                            className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border transition-colors ${mode === 'html' ? 'bg-accent text-accent-foreground border-accent' : 'bg-secondary border-border hover:border-accent'}`}>
-                            <ClipboardPaste size={14} /> Paste page HTML
+                            className={`flex-1 min-w-[7rem] inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-colors ${mode === 'html' ? 'bg-accent text-accent-foreground border-accent' : 'bg-secondary border-border hover:border-accent'}`}>
+                            <ClipboardPaste size={14} /> Page HTML
                         </button>
                         <button type="button" onClick={() => setMode('urls')}
-                            className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border transition-colors ${mode === 'urls' ? 'bg-accent text-accent-foreground border-accent' : 'bg-secondary border-border hover:border-accent'}`}>
-                            <Link2 size={14} /> Paste dish URLs
+                            className={`flex-1 min-w-[7rem] inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-colors ${mode === 'urls' ? 'bg-accent text-accent-foreground border-accent' : 'bg-secondary border-border hover:border-accent'}`}>
+                            <Link2 size={14} /> URLs
                         </button>
                     </div>
 
-                    {mode === 'country' ? (
+                    {mode === 'simple' ? (
+                        <QuickAddForm listId={list._id} onAdded={onCountryAdded} />
+                    ) : mode === 'country' ? (
                         <CountryGrid
                             listId={list._id}
                             items={items}
