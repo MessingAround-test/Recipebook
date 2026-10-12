@@ -75,6 +75,41 @@ describe('buildItemUpdate location handling', () => {
     })
 })
 
+describe('buildItemUpdate name and category', () => {
+    test('admin can rename a dish (value is trimmed)', () => {
+        const { set } = buildItemUpdate({ name: '  Tonkotsu Ramen  ' })
+        expect(set.name).toBe('Tonkotsu Ramen')
+    })
+
+    test('an empty name never wipes the required field', () => {
+        const { set } = buildItemUpdate({ name: '   ' })
+        expect(set.name).toBeUndefined()
+    })
+
+    test('omitting name leaves it untouched', () => {
+        const { set } = buildItemUpdate({ notes: 'hi' })
+        expect(set.name).toBeUndefined()
+        expect(set.notes).toBe('hi')
+    })
+
+    test('category updates and a blank value clears it', () => {
+        expect(buildItemUpdate({ category: ' Noodles ' }).set.category).toBe('Noodles')
+        expect(buildItemUpdate({ category: '' }).set.category).toBe('')
+    })
+
+    test('non-admins cannot rename or re-categorize', () => {
+        const { set } = buildItemUpdate({ name: 'hacked', category: 'hacked' }, {}, { isAdmin: false })
+        expect(set).toEqual({})
+    })
+
+    test('slug is never part of an update (identity key)', () => {
+        const { set, unset } = buildItemUpdate({ name: 'New name', slug: 'new-slug' })
+        expect(set.slug).toBeUndefined()
+        expect(unset.slug).toBeUndefined()
+        expect(set.name).toBe('New name')
+    })
+})
+
 describe('buildItemUpdate role restrictions', () => {
     const existing = { country: 'Türkiye', region: 'Adana', city: 'Adana', lat: 37, lng: 35.3 }
 
