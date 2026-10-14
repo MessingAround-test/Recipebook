@@ -3,10 +3,12 @@ import Router, { useRouter } from 'next/router'
 import { Layout } from '../../../components/Layout'
 import { Button } from '../../../components/ui/button'
 import { useFeatureGuard } from '../../../lib/useFeatureGuard'
+import { useIsAdmin } from '../../../lib/useIsAdmin'
 import {
     ArrowLeft, Loader2, MapPin, Star, ExternalLink, Search, NotebookPen,
-    UtensilsCrossed, Check, Sparkles, ListChecks, ChevronRight, Wand2
+    UtensilsCrossed, Check, Sparkles, ListChecks, ChevronRight, Wand2, Pencil
 } from 'lucide-react'
+import { ItemEditModal } from '../../../components/dishLists/ItemEditModal'
 import { buildViewportTiles, projectToPercent, tileZoomForScale } from '../../../lib/dishLists/mercator'
 import { DishListItem } from '../../../components/dishLists/types'
 import { RecipeSourceCandidate } from '../../../components/dishLists/types'
@@ -69,6 +71,7 @@ function MiniMap({ lat, lng, className }: { lat: number; lng: number; className?
 
 export default function PreRecipe() {
     const isAuthed = useFeatureGuard('worldList')
+    const isAdmin = useIsAdmin()
     const router = useRouter()
     const itemId = typeof router.query.id === 'string' ? router.query.id : ''
 
@@ -76,6 +79,7 @@ export default function PreRecipe() {
     const [item, setItem] = useState<DishListItem | null>(null)
     const [list, setList] = useState<ListInfo | null>(null)
     const [recipes, setRecipes] = useState<LinkedRecipe[]>([])
+    const [editOpen, setEditOpen] = useState(false)
 
     const [results, setResults] = useState<RecipeSourceCandidate[]>([])
     const [searching, setSearching] = useState(false)
@@ -319,10 +323,15 @@ export default function PreRecipe() {
                     <button onClick={() => Router.push(`/dishLists/${item.listId}`)} className="p-2 -ml-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary">
                         <ArrowLeft size={18} />
                     </button>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Create recipe</p>
                         <h1 className="text-xl font-black tracking-tight truncate">{item.name}</h1>
                     </div>
+                    {isAdmin && (
+                        <button onClick={() => setEditOpen(true)} title="Edit dish" className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary">
+                            <Pencil size={18} />
+                        </button>
+                    )}
                 </div>
 
                 {/* Hero */}
@@ -604,6 +613,14 @@ export default function PreRecipe() {
                     </div>
                 </div>
             </div>
+
+            <ItemEditModal
+                isOpen={editOpen}
+                onClose={() => setEditOpen(false)}
+                item={item}
+                onSaved={(saved) => setItem(prev => prev ? { ...prev, ...saved } : prev)}
+                onDeleted={() => Router.push(`/dishLists/${item.listId}`)}
+            />
         </Layout>
     )
 }

@@ -471,6 +471,7 @@ export default function DishListDetail() {
                 onClose={() => setEditItem(null)}
                 item={editItem}
                 onSaved={(saved) => setItems(prev => prev.map(i => i._id === saved._id ? { ...i, ...saved } : i))}
+                onDeleted={(id) => setItems(prev => prev.filter(i => i._id !== id))}
             />
         </Layout>
     )

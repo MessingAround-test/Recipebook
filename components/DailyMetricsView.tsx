@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FiZap, FiTarget, FiActivity, FiSave, FiPlus, FiTrash2, FiClock } from 'react-icons/fi';
+import { useRouter } from 'next/router';
+import { FiZap, FiTarget, FiActivity, FiSave, FiPlus, FiTrash2, FiClock, FiChevronRight, FiBarChart2 } from 'react-icons/fi';
 import { Button } from './ui/button';
 
 const EXERCISE_ACTIVITIES = [
@@ -30,6 +31,7 @@ export default function DailyMetricsView({
     userWeight: number,
     onSave: (weight: number | null, exercise: number) => Promise<void> 
 }) {
+    const router = useRouter();
     const [weight, setWeight] = useState(initialWeight);
     const [exerciseKcal, setExerciseKcal] = useState(initialExerciseKcal);
     const [saving, setSaving] = useState(false);
@@ -57,6 +59,23 @@ export default function DailyMetricsView({
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
+            {/* Weight Training entry — opens the gym space */}
+            <button
+                onClick={() => router.push('/gym')}
+                className="w-full bg-card border border-border rounded-[2rem] p-6 md:p-8 shadow-sm text-left hover:border-olive/50 hover:bg-olive/[0.04] transition-all active:scale-[0.99] group"
+            >
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-olive/10 flex items-center justify-center text-olive shrink-0">
+                        <FiBarChart2 size={24} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Weight Training</h3>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold">Plans, workout logging & progress graphs</p>
+                    </div>
+                    <FiChevronRight size={20} className="text-muted-foreground group-hover:text-olive transition-colors shrink-0" />
+                </div>
+            </button>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Weight Section */}
                 <div className="bg-card border border-border rounded-[2rem] p-6 md:p-8 shadow-sm">

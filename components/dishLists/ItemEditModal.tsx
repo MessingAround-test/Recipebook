@@ -12,6 +12,7 @@ interface ItemEditModalProps {
     onClose: () => void
     item: DishListItem | null
     onSaved: (item: DishListItem) => void
+    onDeleted?: (id: string) => void
 }
 
 type CheckState = {
@@ -21,7 +22,7 @@ type CheckState = {
     lng?: number
 }
 
-export function ItemEditModal({ isOpen, onClose, item, onSaved }: ItemEditModalProps) {
+export function ItemEditModal({ isOpen, onClose, item, onSaved, onDeleted }: ItemEditModalProps) {
     const [form, setForm] = useState({
         name: '',
         category: '',
@@ -32,6 +33,7 @@ export function ItemEditModal({ isOpen, onClose, item, onSaved }: ItemEditModalP
         notes: ''
     })
     const [saving, setSaving] = useState(false)
+    const [deleting, setDeleting] = useState(false)
     const [regionSearchFailed, setRegionSearchFailed] = useState(false)
     const [checking, setChecking] = useState(false)
     const [check, setCheck] = useState<CheckState>({ status: 'idle' })
@@ -60,6 +62,7 @@ export function ItemEditModal({ isOpen, onClose, item, onSaved }: ItemEditModalP
         setPendingImage(null)
         setRemoveImage(false)
         setImageStatus('')
+        setDeleting(false)
     }, [isOpen, item?._id])
 
     if (!isOpen || !item) return null
@@ -157,6 +160,29 @@ export function ItemEditModal({ isOpen, onClose, item, onSaved }: ItemEditModalP
     }
 
     const checkFailed = check.status === 'fail'
+
+    const remove = async () => {
+        if (deleting || saving || !item) return
+        if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return
+        setDeleting(true)
+        try {
+            const res = await fetch(`/api/dishLists/items/${item._id}`, {
+                method: 'DELETE',
+                headers: { 'edgetoken': localStorage.getItem('Token') || '' }
+            })
+            const data = await res.json()
+            if (data.success) {
+                onDeleted?.(item._id)
+                onClose()
+            } else {
+                alert(data.message || 'Could not delete dish')
+                setDeleting(false)
+            }
+        } catch {
+            alert('Could not delete dish')
+            setDeleting(false)
+        }
+    }
     const inputWarn = checkFailed ? 'border-amber-500/60 focus-visible:border-amber-500/60 focus-visible:ring-amber-500/20' : ''
 
     return (
@@ -300,9 +326,20 @@ export function ItemEditModal({ isOpen, onClose, item, onSaved }: ItemEditModalP
                         </div>
                     </div>
 
-                    <Button onClick={save} disabled={saving} className="w-full h-11 rounded-xl">
-                        {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : 'Save'}
-                    </Button>
+                    <div className="space-y-2">
+                        <Button onClick={save} disabled={saving || deleting} className="w-full h-11 rounded-xl">
+                            {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : 'Save'}
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={remove}
+                            disabled={deleting || saving}
+                            className="w-full h-11 rounded-xl border-rose-500/30 text-rose-500 hover:text-rose-600 hover:border-rose-500/50 hover:bg-rose-500/10"
+                        >
+                            {deleting ? <><Loader2 size={16} className="animate-spin" /> Deleting…</> : <><Trash2 size={16} /> Delete dish</>}
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>

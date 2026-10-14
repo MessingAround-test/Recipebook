@@ -4,6 +4,8 @@ import { logAPI } from '../../../../lib/logger'
 import dbConnect from '../../../../lib/dbConnect'
 import DishList from '../../../../models/DishList'
 import DishListItem from '../../../../models/DishListItem'
+import DishListItemCooked from '../../../../models/DishListItemCooked'
+import DishListImage from '../../../../models/DishListImage'
 import Recipe from '../../../../models/Recipe'
 import User from '../../../../models/User'
 import { cookedItemIdsForUser } from '../../../../lib/dishLists/cookedState'
@@ -15,7 +17,7 @@ export default async function handler(req, res) {
     if (!decoded) return
     if (!(await requireFeature(req, res, decoded, 'worldList'))) return
 
-    if (req.method !== 'GET') {
+    if (req.method !== 'GET' && req.method !== 'DELETE') {
         return res.status(405).json({ success: false, message: 'Method Not Allowed' })
     }
 
@@ -26,6 +28,33 @@ export default async function handler(req, res) {
 
     try {
         await dbConnect()
+
+        if (req.method === 'DELETE') {
+            if (decoded.role !== 'admin') {
+                return res.status(403).json({ success: false, message: 'Forbidden: Admin access only' })
+            }
+            const item = await DishListItem.findById(id).lean()
+            if (!item) return res.status(404).json({ success: false, message: 'Item not found' })
+
+            // Imported recipes stay in the book — only strip the dangling
+            // back-reference so their "On list" badge doesn't point at a
+            // deleted dish (mirrors the whole-list cascade delete).
+            const recipeIds = Array.from(new Set(
+                [...(item.recipeIds || []), ...(item.recipeId ? [item.recipeId] : [])].map(String)
+            ))
+            if (recipeIds.length > 0) {
+                await Recipe.updateMany(
+                    { _id: { $in: recipeIds } },
+                    { $pull: { dishListRefs: { itemId: item._id } } }
+                ).catch(() => { })
+            }
+
+            await DishListImage.deleteMany({ itemId: item._id }).catch(() => { })
+            await DishListItemCooked.deleteMany({ itemId: item._id }).catch(() => { })
+            await DishListItem.findByIdAndDelete(item._id)
+            return res.status(200).json({ success: true, data: { _id: String(item._id), listId: String(item.listId) } })
+        }
+
         const item = await DishListItem.findById(id).lean()
         if (!item) return res.status(404).json({ success: false, message: 'Item not found' })
 

@@ -38,7 +38,7 @@ export const FEATURES: FeatureDef[] = [
         key: 'healthTracker',
         label: 'Health Tracker',
         description: 'Track daily intake, nutrients, symptoms and trends.',
-        paths: ['/dailyTracker'],
+        paths: ['/dailyTracker', '/gym'],
     },
     {
         key: 'weeklyPlanner',

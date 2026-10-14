@@ -3350,3 +3350,37 @@ a {
   }
 }
 
+/* ── Gym pages: readable native form controls ───────────────────────────────
+   The gym screens are the first to show visible input[type=date]/number and
+   select controls. Without an explicit color-scheme, Chromium paints those
+   widgets with its default light UA palette — white field backgrounds and
+   dark placeholder text — which swallowed the input text. Pin the UA scheme
+   to the active theme and force opaque themed colors so every field stays
+   readable in both themes. Scoped via .gym-page (pages/gym*). */
+.gym-page {
+  color-scheme: dark;
+}
+
+.light .gym-page {
+  color-scheme: light;
+}
+
+.gym-page input:not([type="checkbox"]):not([type="radio"]),
+.gym-page select,
+.gym-page textarea {
+  background-color: var(--card) !important;
+  color: var(--foreground) !important;
+}
+
+.gym-page input::placeholder,
+.gym-page textarea::placeholder {
+  color: var(--muted-foreground) !important;
+  opacity: 0.85;
+}
+
+.gym-page select option {
+  background-color: var(--card);
+  color: var(--card-foreground);
+}
+
+
