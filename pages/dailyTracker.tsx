@@ -43,7 +43,7 @@ export default function DailyTracker() {
     const [unifiedSearch, setUnifiedSearch] = useState("");
     const [recipes, setRecipes] = useState<any[]>([]);
     const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
-    const [servingsToLog, setServingsToLog] = useState<number>(1);
+    const [servingsToLog, setServingsToLog] = useState<number | string>(1);
     const [recipeWeight, setRecipeWeight] = useState<number | null>(null);
 
     // Action states
@@ -171,7 +171,8 @@ export default function DailyTracker() {
     };
 
     const handleLogRecipe = async () => {
-        if (!selectedRecipe) return;
+        const servingsQty = Number(servingsToLog);
+        if (!selectedRecipe || !(servingsQty > 0)) return;
         const token = localStorage.getItem('Token');
         try {
             const res = await fetch('/api/dailyLog', {
@@ -182,7 +183,7 @@ export default function DailyTracker() {
                     type: 'recipe',
                     name: selectedRecipe.name,
                     recipe_id: selectedRecipe._id,
-                    quantity: servingsToLog
+                    quantity: servingsQty
                 })
             });
             const data = await res.json();
@@ -621,7 +622,7 @@ export default function DailyTracker() {
                                 <div className="flex-1 space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Servings to Log</label>
                                     <div className="flex items-center gap-4">
-                                        <input type="number" value={servingsToLog} onChange={(e) => setServingsToLog(Number(e.target.value))} className="w-24 bg-input border border-border rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-olive/50" />
+                                        <input type="number" step="any" min="0" value={servingsToLog} onChange={(e) => setServingsToLog(e.target.value)} className="w-24 bg-input border border-border text-foreground rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-olive/50" />
                                         <div className="text-[10px] font-black text-muted-foreground uppercase">of {selectedRecipe.servings || 1} total</div>
                                     </div>
                                 </div>
@@ -632,7 +633,7 @@ export default function DailyTracker() {
                                     </div>
                                 )}
                             </div>
-                            <button onClick={handleLogRecipe} className="w-full bg-olive text-primary-foreground py-4 font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 min-h-[48px] hover:bg-olive/85 transition-all"><FiPlus /> Log {servingsToLog} Serving{servingsToLog !== 1 ? 's' : ''}</button>
+                            <button onClick={handleLogRecipe} disabled={!(Number(servingsToLog) > 0)} className="w-full bg-olive text-primary-foreground py-4 font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 min-h-[48px] hover:bg-olive/85 transition-all disabled:opacity-50 disabled:cursor-not-allowed"><FiPlus /> {Number(servingsToLog) > 0 ? `Log ${servingsToLog} Serving${Number(servingsToLog) !== 1 ? 's' : ''}` : 'Log Servings'}</button>
                             <div className="flex items-center gap-2 px-1"><FiZap size={10} className="text-olive" /><p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Recipe logging expands into constituent ingredients for accuracy.</p></div>
                         </div>
                     ) : null}

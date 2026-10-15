@@ -89,7 +89,7 @@ export default function Dashboard() {
     const [isLoggingOpen, setIsLoggingOpen] = useState(false)
     const [logSearch, setLogSearch] = useState('')
     const [logSelection, setLogSelection] = useState<any>(null)
-    const [servingsToLog, setServingsToLog] = useState(1)
+    const [servingsToLog, setServingsToLog] = useState<number | string>(1)
     const [ingredientQty, setIngredientQty] = useState(100)
     const [ingredientUnit, setIngredientUnit] = useState('gram')
     const [logging, setLogging] = useState(false)
@@ -495,7 +495,7 @@ export default function Dashboard() {
     }
 
     const handleLogRecipe = async () => {
-        if (!logSelection || logging) return
+        if (!logSelection || logging || !(Number(servingsToLog) > 0)) return
         setLogging(true)
         const token = localStorage.getItem('Token')
         try {
@@ -1008,18 +1008,19 @@ export default function Dashboard() {
                                         </div>
                                         <input
                                             type="number"
-                                            min={1}
+                                            step="any"
+                                            min="0"
                                             value={servingsToLog}
-                                            onChange={e => setServingsToLog(Math.max(Number(e.target.value) || 1, 1))}
-                                            className="w-20 bg-foreground/5 rounded-xl px-3 py-2.5 text-center text-lg font-black outline-none focus:ring-2 focus:ring-terracotta/40"
+                                            onChange={e => setServingsToLog(e.target.value)}
+                                            className="w-20 bg-input border border-border text-foreground rounded-xl px-3 py-2.5 text-center text-lg font-black outline-none focus:ring-2 focus:ring-terracotta/40"
                                         />
                                     </div>
                                     <button
                                         onClick={handleLogRecipe}
-                                        disabled={logging}
-                                        className="w-full py-3.5 rounded-xl bg-terracotta text-primary-foreground text-sm font-black hover:bg-terracotta/85 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-terracotta/20"
+                                        disabled={logging || !(Number(servingsToLog) > 0)}
+                                        className="w-full py-3.5 rounded-xl bg-terracotta text-primary-foreground text-sm font-black hover:bg-terracotta/85 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-terracotta/20"
                                     >
-                                        <FiPlus size={16} /> {logging ? 'Logging...' : `Log ${servingsToLog} Serving${servingsToLog !== 1 ? 's' : ''}`}
+                                        <FiPlus size={16} /> {logging ? 'Logging...' : Number(servingsToLog) > 0 ? `Log ${servingsToLog} Serving${Number(servingsToLog) !== 1 ? 's' : ''}` : 'Log Servings'}
                                     </button>
                                     <p className="text-[10px] text-muted-foreground text-center">Expands into constituent ingredients for accuracy.</p>
                                 </div>
