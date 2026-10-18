@@ -91,6 +91,7 @@ export default function ShopMode({ show, listName, items, onResolveLeaf, onReset
     const [showOthers, setShowOthers] = useState(false);
     const [busyLeafId, setBusyLeafId] = useState<string | null>(null);
     const [isResettingPass, setIsResettingPass] = useState(false);
+    const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
 
     useEffect(() => {
         if (show) {
@@ -104,6 +105,7 @@ export default function ShopMode({ show, listName, items, onResolveLeaf, onReset
             setCurrentSection(null);
             setChooserFromKey(null);
             setShowOthers(false);
+            setExpandedGroupId(null);
             setPassNumber(1);
             // Reset the flow too — staying on 'section' after a reopen would
             // render renderSection() with a null currentSection.
@@ -152,6 +154,7 @@ export default function ShopMode({ show, listName, items, onResolveLeaf, onReset
         setCurrentSection({ key: section.key, label: section.label });
         setShowOthers(false);
         setChooserFromKey(null);
+        setExpandedGroupId(null);
         setLocation('section');
         saveSessionSnapshot({ groupBy: groupBy!, location: 'section', pass: passNumber, sectionKey: section.key, sectionLabel: section.label });
     };
@@ -176,6 +179,7 @@ export default function ShopMode({ show, listName, items, onResolveLeaf, onReset
         setGroupBy(choice);
         setShowOthers(false);
         setChooserFromKey(null);
+        setExpandedGroupId(null);
 
         // One section: walk straight into it. Otherwise: the picker. No
         // session resume — every start is a fresh walk.
@@ -295,6 +299,7 @@ export default function ShopMode({ show, listName, items, onResolveLeaf, onReset
 
     const renderSubLeaf = (sub: any) => {
         const isBusy = busyLeafId === sub._id;
+        const subNote = noteForDisplay(sub.note, { isGroup: true });
         return (
             <div key={sub._id} className={`flex items-center gap-2.5 ${sub.complete ? 'opacity-50' : ''}`}>
                 <button
@@ -307,29 +312,31 @@ export default function ShopMode({ show, listName, items, onResolveLeaf, onReset
                 >
                     <Check size={15} strokeWidth={3} />
                 </button>
-                <div className="flex-1 min-w-0 text-[13px] text-foreground">
-                    <span className={sub.complete ? 'line-through' : ''}>{sub.name}</span>
-                    {sub.complete && <span className="text-[9px] font-black uppercase tracking-widest text-water/80 ml-1.5">Got</span>}
-                    {noteForDisplay(sub.note, { isGroup: true }) && (
-                        <div className="text-[10px] italic text-muted-foreground mt-0.5 truncate">[{noteForDisplay(sub.note, { isGroup: true })}]</div>
+                <div className="flex-1 min-w-0 text-[13px] text-foreground flex items-center gap-1.5">
+                    {subNote && (
+                        <span className={`italic text-muted-foreground truncate min-w-0 ${sub.complete ? 'line-through' : ''}`}>{subNote}</span>
                     )}
+                    {sub.complete && <span className="text-[9px] font-black uppercase tracking-widest text-water/80 shrink-0">Got</span>}
                 </div>
                 {!sub.complete && (
-                    <>
-                        <span className="shrink-0 text-sm font-bold text-foreground tabular-nums text-right leading-none">
-                            {renderFractions(leafQuantityDisplay(sub))}
-                        </span>
-                        <button
-                            type="button"
-                            disabled={isBusy}
-                            onClick={() => markHoldOff(sub)}
-                            title="Hold off — pick it up on a later pass"
-                            className="shrink-0 p-2 rounded-lg text-butter/60 hover:text-butter hover:bg-butter/10 transition-all active:scale-95"
-                            aria-label={`Hold off on ${sub.name}`}
-                        >
-                            <Undo2 size={14} />
-                        </button>
-                    </>
+                    <span className="shrink-0 text-sm font-bold text-foreground tabular-nums text-right leading-none">
+                        {renderFractions(leafQuantityDisplay(sub))}
+                    </span>
+                )}
+                {sub.compositionPercentage !== undefined && (
+                    <span className="shrink-0 font-mono text-xs opacity-70 tabular-nums">{sub.compositionPercentage}%</span>
+                )}
+                {!sub.complete && (
+                    <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => markHoldOff(sub)}
+                        title="Hold off — pick it up on a later pass"
+                        className="shrink-0 p-2 rounded-lg text-butter/60 hover:text-butter hover:bg-butter/10 transition-all active:scale-95"
+                        aria-label={`Hold off on ${sub.name}`}
+                    >
+                        <Undo2 size={14} />
+                    </button>
                 )}
             </div>
         );
@@ -339,6 +346,8 @@ export default function ShopMode({ show, listName, items, onResolveLeaf, onReset
         const entryLeaves: any[] = leafItems(entry);
         const outstandingSubs = entryLeaves.filter((sub: any) => !isResolved(sub));
         const totalQty = entry.totalString || leafQuantityDisplay(entry);
+        const isExpanded = expandedGroupId === entry._id;
+        const toggleExpanded = () => setExpandedGroupId(isExpanded ? null : entry._id);
         return (
             <div className="group rounded-xl bg-water/[0.04] px-3 py-2.5 flex flex-col gap-2 transition-colors hover:bg-water/[0.08]">
                 <div className="flex items-center gap-3">
@@ -352,17 +361,28 @@ export default function ShopMode({ show, listName, items, onResolveLeaf, onReset
                     >
                         <Check size={20} strokeWidth={3} />
                     </button>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={toggleExpanded}>
                         <div className="font-bold text-[15px] leading-tight text-foreground truncate">{entry.name}</div>
                         <div className="text-[11px] text-muted-foreground">{outstandingSubs.length} of {entryLeaves.length} left</div>
                     </div>
                     <span className="shrink-0 text-lg font-black text-foreground tabular-nums text-right leading-none">
                         {renderFractions(totalQty)}
                     </span>
+                    <button
+                        type="button"
+                        onClick={toggleExpanded}
+                        aria-label={isExpanded ? `Hide where ${entry.name} comes from` : `Show where ${entry.name} comes from`}
+                        title={isExpanded ? 'Hide split-up' : 'Show split-up'}
+                        className={`shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-all active:scale-95 ${isExpanded ? 'rotate-180' : ''}`}
+                    >
+                        <ChevronDown size={17} />
+                    </button>
                 </div>
-                <div className="flex flex-col gap-1.5 border-l-2 border-border/60 pl-3 ml-4">
-                    {sortRows(entryLeaves).map((sub: any) => renderSubLeaf(sub))}
-                </div>
+                {isExpanded && (
+                    <div className="flex flex-col gap-1.5 border-l-2 border-border/60 pl-3 ml-4">
+                        {sortRows(entryLeaves).map((sub: any) => renderSubLeaf(sub))}
+                    </div>
+                )}
             </div>
         );
     };
@@ -372,6 +392,7 @@ export default function ShopMode({ show, listName, items, onResolveLeaf, onReset
         setGroupBy(choice);
         setShowOthers(false);
         setChooserFromKey(null);
+        setExpandedGroupId(null);
 
         // Only one section left? Skip the picker and walk straight into it.
         const secs = buildSections(items, choice, getStoredOrder());
@@ -474,6 +495,7 @@ export default function ShopMode({ show, listName, items, onResolveLeaf, onReset
         const next = sections[(idx + dir + sections.length) % sections.length];
         setShowOthers(false);
         setChooserFromKey(null);
+        setExpandedGroupId(null);
         setCurrentSection({ key: next.key, label: next.label });
         saveSessionSnapshot({ groupBy: groupBy!, location: 'section', pass: passNumber, sectionKey: next.key, sectionLabel: next.label });
     };

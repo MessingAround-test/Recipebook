@@ -21,7 +21,7 @@
 // Dependency-light by design: no React, no mongoose.
 
 import { PLANNING_BUCKET_ORDER } from './pantryPlanning';
-import { normalizeToGrams, getShorthandForMeasure, resolveUnitKey, pluralizeName } from './conversion';
+import { normalizeToGrams, getShorthandForMeasure, resolveUnitKey } from './conversion';
 import { formatQuantityDisplay } from './fractionFormat';
 
 export const SHOP_MODE_GROUPING_NONE = 'none';
@@ -108,7 +108,7 @@ export function leafQuantityDisplay(item) {
 
 /**
  * Display total of what's left TO BUY for a grouped entry, formatted like the
- * server's aggregation (GramedIngredients: "81g or 1.3 carrots").
+ * server's aggregation (GroupedIngredients: "81g or 1.3x").
  *
  * When part of the group is already ticked off (e.g. "I have 1/3 carrot at
  * home" was ticked), those sub-item quantities should no longer appear in the
@@ -116,7 +116,7 @@ export function leafQuantityDisplay(item) {
  *
  * Mirror of pages/api/ShoppingList/GroupedIngredients.js: normalize each
  * sub-item's grams (with the group's gramsPerEach), sum incomplete ones, and
- * build "Xg or Y.0 name" when both gram-weight and counts are known.
+ * build "Xg or Y.0x" when both gram-weight and counts are known.
  *
  * Returns null when there is nothing to subtract from: no complete
  * sub-items, or nothing remaining after they're all ticked (the caller keeps
@@ -164,10 +164,10 @@ export function remainingGroupDisplay(group) {
     if (remainingGrams > 0) {
         totalString = `${remainingGrams.toFixed(0)}${getShorthandForMeasure('gram')}`;
         if (remainingEach > 0 && gramsPerEach > 0) {
-            totalString += ` or ${remainingEach.toFixed(1)} ${pluralizeName(group.name, remainingEach)}`;
+            totalString += ` or ${remainingEach.toFixed(1)}x`;
         }
     } else if (remainingEach > 0) {
-        totalString = `${remainingEach.toFixed(1)} ${pluralizeName(group.name, remainingEach)}`;
+        totalString = `${remainingEach.toFixed(1)}x`;
     }
 
     if (!totalString) return null;

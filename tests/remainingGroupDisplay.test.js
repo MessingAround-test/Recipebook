@@ -15,7 +15,7 @@ const sub = (quantity, quantity_type, complete = false) => ({
 describe('remainingGroupDisplay', () => {
     test('subtracts ticked sub-items from the header total', () => {
         // User's example: 1/3 carrot already at home (ticked), 1 carrot to buy.
-        // Full total is 81g or 1.3 carrots; remaining is 1 carrot.
+        // Full total is 81g or 1.3x; remaining is 1 carrot.
         const group = {
             ...CARROT,
             items: [
@@ -24,7 +24,7 @@ describe('remainingGroupDisplay', () => {
             ],
         };
         const result = remainingGroupDisplay(group);
-        expect(result.totalString).toBe('60g or 1.0 carrot');
+        expect(result.totalString).toBe('60g or 1.0x');
         expect(result.quantity_type).toBe('gram');
     });
 
@@ -66,8 +66,8 @@ describe('remainingGroupDisplay', () => {
         expect(remainingGroupDisplay(group).totalString).toBe('1000g');
     });
 
-    test('counts gram + each remainders together and pluralizes', () => {
-        // 1 carrot ticked, 60g remains -> 60g or 1.0 carrot (60g per carrot)
+    test('counts gram + each remainders together and appends the count', () => {
+        // 1 carrot ticked, 60g remains -> 60g or 1.0x (60g per carrot)
         const group = {
             ...CARROT,
             items: [
@@ -75,7 +75,7 @@ describe('remainingGroupDisplay', () => {
                 { _id: 'c', name: 'carrot', quantity: 60, quantity_type: 'gram', quantity_unit: 'gram', complete: false },
             ],
         };
-        expect(remainingGroupDisplay(group).totalString).toBe('60g or 1.0 carrot');
+        expect(remainingGroupDisplay(group).totalString).toBe('60g or 1.0x');
     });
 
     test('held-off (cantFind) items still count as needing purchase', () => {
@@ -86,7 +86,7 @@ describe('remainingGroupDisplay', () => {
                 { ...sub(1, 'x', false), cantFind: true },
             ],
         };
-        expect(remainingGroupDisplay(group).totalString).toBe('60g or 1.0 carrot');
+        expect(remainingGroupDisplay(group).totalString).toBe('60g or 1.0x');
     });
 
     test('each-only group without a grams factor falls back to counts', () => {
@@ -101,7 +101,7 @@ describe('remainingGroupDisplay', () => {
             ],
         };
         const result = remainingGroupDisplay(group);
-        expect(result.totalString).toBe('2.0 widgets');
+        expect(result.totalString).toBe('2.0x');
         expect(result.quantity_type).toBe('each');
     });
 
@@ -111,7 +111,7 @@ describe('remainingGroupDisplay', () => {
             items: [sub(0.5, 'x', true), sub(1.5, 'x', false)],
         };
         const result = remainingGroupDisplay(group);
-        expect(result.totalString).toBe('90g or 1.5 carrots');
+        expect(result.totalString).toBe('90g or 1.5x');
     });
 
     test('ignores non-group entries', () => {
