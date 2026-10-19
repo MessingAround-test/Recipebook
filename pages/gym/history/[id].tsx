@@ -151,6 +151,12 @@ export default function GymSessionHistoryPage() {
                                     <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Duration</div>
                                 </div>
                             )}
+                            {!!session.estimated_kcal && (
+                                <div>
+                                    <div className="text-xl font-black text-butter">~{session.estimated_kcal}</div>
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Est. kcal</div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

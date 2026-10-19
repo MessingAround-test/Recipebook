@@ -5,7 +5,7 @@ import WorkoutPlan from '../../../models/WorkoutPlan';
 import Exercise from '../../../models/Exercise';
 import { verifyToken, requireFeature } from '../../../lib/auth';
 import { logAPI } from '../../../lib/logger';
-import { validateSessionDate, todayLocalISO } from '../../../lib/gym';
+import { validateSessionDate, todayLocalISO, sanitizeWorkoutSettings } from '../../../lib/gym';
 
 function isValidObjectId(v) {
     return mongoose.Types.ObjectId.isValid(String(v));
@@ -43,17 +43,23 @@ export default async function handler(req, res) {
         }
 
         case 'POST': {
-            const { plan_id, exercise_ids, date } = req.body || {};
+            const { plan_id, exercise_ids, date, rest_seconds, order_mode } = req.body || {};
 
             const sessionDate = date || todayLocalISO();
             const dateError = validateSessionDate(sessionDate);
             if (dateError) return res.status(400).json({ success: false, message: dateError });
+
+            // Quick-start may override the settings; plan runs use the plan's values.
+            const settings = sanitizeWorkoutSettings({ rest_seconds, order_mode });
+            if (typeof settings === 'string') return res.status(400).json({ success: false, message: settings });
 
             try {
                 let exercises = [];
                 let planDoc = null;
                 let planName = '';
                 let planIdOut = null;
+                let sessionRest = settings.rest_seconds;
+                let sessionOrder = settings.order_mode;
 
                 if (plan_id) {
                     if (!isValidObjectId(plan_id)) return res.status(400).json({ success: false, message: 'Invalid plan id' });
@@ -61,6 +67,9 @@ export default async function handler(req, res) {
                     if (!planDoc) return res.status(404).json({ success: false, message: 'Plan not found' });
                     planName = planDoc.name;
                     planIdOut = planDoc._id;
+                    // Plans carry their own settings; explicit body values still win.
+                    if (rest_seconds === undefined) sessionRest = planDoc.rest_seconds ?? null;
+                    if (order_mode === undefined) sessionOrder = planDoc.order_mode || 'sequential';
 
                     const ids = planDoc.items.map(i => i.exercise_id);
                     const exDocs = await Exercise.find({ user_id: userId, _id: { $in: ids } }).lean();
@@ -111,6 +120,8 @@ export default async function handler(req, res) {
                     date: sessionDate,
                     status: 'active',
                     started_at: new Date(),
+                    rest_seconds: sessionRest,
+                    order_mode: sessionOrder,
                     exercises
                 });
                 return res.status(200).json({ success: true, session });

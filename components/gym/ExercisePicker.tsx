@@ -1,7 +1,9 @@
-// Multi-select exercise picker for Quick Start. Modal overlay with search and
-// checkboxes; confirms via onStart with the chosen ids (order preserved).
+// Multi-select exercise picker for Quick Start. Modal overlay with search,
+// checkboxes, workout options (break timer / order) and confirms via onStart
+// with the chosen ids + settings (order preserved).
 import React, { useState, useMemo, useEffect } from 'react';
 import { FiX, FiSearch, FiPlay, FiPlus } from 'react-icons/fi';
+import WorkoutOptions, { WorkoutSettings } from './WorkoutOptions';
 
 interface ExerciseDoc {
     _id: string;
@@ -17,7 +19,7 @@ interface Props {
     busy?: boolean;
     onClose: () => void;
     onCreateExercise: (name: string) => Promise<ExerciseDoc | null>;
-    onStart: (exerciseIds: string[]) => void;
+    onStart: (exerciseIds: string[], settings: WorkoutSettings) => void;
 }
 
 export default function ExercisePicker({ open, exercises, date, busy, onClose, onCreateExercise, onStart }: Props) {
@@ -25,8 +27,14 @@ export default function ExercisePicker({ open, exercises, date, busy, onClose, o
     const [query, setQuery] = useState('');
     const [newName, setNewName] = useState('');
     const [creating, setCreating] = useState(false);
+    const [settings, setSettings] = useState<WorkoutSettings>({ rest_seconds: null, order_mode: 'sequential' });
 
-    useEffect(() => { if (open) { setSelected([]); setQuery(''); setNewName(''); } }, [open]);
+    useEffect(() => {
+        if (open) {
+            setSelected([]); setQuery(''); setNewName('');
+            setSettings({ rest_seconds: null, order_mode: 'sequential' });
+        }
+    }, [open]);
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
@@ -96,8 +104,12 @@ export default function ExercisePicker({ open, exercises, date, busy, onClose, o
                     <button onClick={create} disabled={creating || !newName.trim()} className="p-2.5 rounded-xl bg-foreground/5 hover:bg-foreground/10 text-muted-foreground disabled:opacity-40"><FiPlus size={16} /></button>
                 </div>
 
+                <div className="mt-3">
+                    <WorkoutOptions settings={settings} onChange={setSettings} />
+                </div>
+
                 <button
-                    onClick={() => onStart(selected)}
+                    onClick={() => onStart(selected, settings)}
                     disabled={busy || !selected.length}
                     className="mt-4 w-full py-3.5 rounded-xl bg-olive text-primary-foreground text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 disabled:opacity-40 hover:bg-olive/85 transition-all active:scale-95"
                 >

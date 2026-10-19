@@ -3,10 +3,11 @@
 // must line up and back-dated sessions must reject future dates).
 import {
     estimateE1RM, setVolume, totalVolume, totalTimedSeconds, topWeight, bestE1RM, topDuration,
+    estimateSessionMET, estimateSessionKcal,
     formatDurationSec, formatSetDisplay, formatPlanTarget, modeLabel,
     resolvePrefillWeight, resolvePrefillReps,
     validateSessionDate, todayLocalISO, toLocalISODate,
-    sanitizePlanItem, STARTER_PLANS, STARTER_EXERCISES,
+    sanitizePlanItem, sanitizeWorkoutSettings, STARTER_PLANS, STARTER_EXERCISES,
     LoggedSetT,
 } from '../lib/gym';
 
@@ -207,6 +208,49 @@ describe('sanitizePlanItem', () => {
     it('treats blank weight as null', () => {
         const out = sanitizePlanItem({ exercise_id: 'a', target_sets: 3, rep_mode: 'reps', target_reps: 8, target_weight_kg: '' });
         expect(typeof out === 'object' && out.target_weight_kg).toBeNull();
+    });
+});
+
+describe('estimateSessionMET / estimateSessionKcal', () => {
+    it('uses a moderate MET by default and bumps for heavy work', () => {
+        expect(estimateSessionMET(0, 0)).toBe(5);
+        expect(estimateSessionMET(60, 2000)).toBe(5);
+        expect(estimateSessionMET(80, 0)).toBe(6);
+        expect(estimateSessionMET(0, 5000)).toBe(6);
+        expect(estimateSessionMET(120, 0)).toBe(7);
+        expect(estimateSessionMET(0, 10000)).toBe(7);
+    });
+
+    it('estimates kcal from duration and body weight (MET × kg × hours)', () => {
+        expect(estimateSessionKcal(60, 70)).toBe(350);        // 5 × 70 × 1h
+        expect(estimateSessionKcal(30, 70)).toBe(175);        // half hour
+        expect(estimateSessionKcal(60, 80, 100, 0)).toBe(480); // MET 6
+        expect(estimateSessionKcal(60, 80, 130, 0)).toBe(560); // MET 7
+    });
+
+    it('falls back to 70kg and guards bad input', () => {
+        expect(estimateSessionKcal(60, 0)).toBe(350);
+        expect(estimateSessionKcal(0, 70)).toBe(0);
+        expect(estimateSessionKcal(-10, 70)).toBe(0);
+    });
+});
+
+describe('sanitizeWorkoutSettings', () => {
+    it('accepts null rest and valid rest seconds', () => {
+        expect(sanitizeWorkoutSettings({ rest_seconds: null })).toEqual({ rest_seconds: null, order_mode: 'sequential' });
+        expect(sanitizeWorkoutSettings({ rest_seconds: 90 })).toEqual({ rest_seconds: 90, order_mode: 'sequential' });
+        expect(sanitizeWorkoutSettings({ rest_seconds: '120' })).toEqual({ rest_seconds: 120, order_mode: 'sequential' });
+    });
+
+    it('rejects out-of-range rest and bad order modes', () => {
+        expect(sanitizeWorkoutSettings({ rest_seconds: 99999 })).toBe('Rest must be between 0 and 1800 seconds');
+        expect(sanitizeWorkoutSettings({ rest_seconds: -5 })).toBe('Rest must be between 0 and 1800 seconds');
+        expect(sanitizeWorkoutSettings({ rest_seconds: 'abc' })).toBe('Rest must be between 0 and 1800 seconds');
+        expect(sanitizeWorkoutSettings({ order_mode: 'nope' })).toBe('Invalid order mode');
+    });
+
+    it('validates circuit mode', () => {
+        expect(sanitizeWorkoutSettings({ rest_seconds: null, order_mode: 'circuit' })).toEqual({ rest_seconds: null, order_mode: 'circuit' });
     });
 });
 

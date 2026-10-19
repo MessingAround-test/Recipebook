@@ -1,8 +1,9 @@
 import dbConnect from '../../../lib/dbConnect';
 import WorkoutSession from '../../../models/WorkoutSession';
+import DailyLog from '../../../models/DailyLog';
 import { verifyToken, requireFeature } from '../../../lib/auth';
 import { logAPI } from '../../../lib/logger';
-import { validateSessionDate } from '../../../lib/gym';
+import { validateSessionDate, estimateSessionKcal, totalVolume, topWeight } from '../../../lib/gym';
 
 /** Hydrate each exercise with sets from the most recent prior completed session. */
 async function hydratePreviousSets(userId, session) {
@@ -158,9 +159,29 @@ export default async function handler(req, res) {
                     }
 
                     case 'complete': {
+                        const completedAt = new Date();
                         session.status = 'completed';
-                        session.completed_at = new Date();
+                        session.completed_at = completedAt;
+
+                        // Rough calorie estimate from wall-clock duration + work
+                        // intensity; rolls into the day's exercise kcal total.
+                        const durationMin = Math.max(0, (completedAt - new Date(session.started_at)) / 60000);
+                        const allSets = session.exercises.flatMap(e => e.sets || []);
+                        const latestWeight = await DailyLog.findOne({ user_id: userId, weight_kg: { $gt: 0 } })
+                            .sort({ date: -1 }).lean();
+                        const bodyWeight = latestWeight?.weight_kg || 70;
+                        const kcal = estimateSessionKcal(durationMin, bodyWeight, topWeight(allSets), totalVolume(allSets));
+                        session.estimated_kcal = kcal;
+
                         await session.save();
+
+                        if (kcal > 0) {
+                            await DailyLog.findOneAndUpdate(
+                                { user_id: userId, date: session.date },
+                                { $inc: { exercise_kcal: kcal } },
+                                { upsert: true, setDefaultsOnInsert: true }
+                            ).catch(err => console.error('Failed to log workout kcal to DailyLog:', err));
+                        }
                         return res.status(200).json({ success: true, session });
                     }
 

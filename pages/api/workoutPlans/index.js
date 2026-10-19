@@ -5,7 +5,7 @@ import Exercise from '../../../models/Exercise';
 import WorkoutSession from '../../../models/WorkoutSession';
 import { verifyToken, requireFeature } from '../../../lib/auth';
 import { logAPI } from '../../../lib/logger';
-import { sanitizePlanItem, STARTER_EXERCISES, STARTER_PLANS } from '../../../lib/gym';
+import { sanitizePlanItem, sanitizeWorkoutSettings, STARTER_EXERCISES, STARTER_PLANS } from '../../../lib/gym';
 
 /** Create the per-user exercise catalog + Push/Pull/Legs plans. Idempotent per user. */
 async function seedStarterData(userId) {
@@ -68,9 +68,12 @@ export default async function handler(req, res) {
             }
 
         case 'POST': {
-            const { name, description, items } = req.body || {};
+            const { name, description, items, rest_seconds, order_mode } = req.body || {};
             const cleanName = (name || '').toString().trim();
             if (!cleanName) return res.status(400).json({ success: false, message: 'Plan name is required' });
+
+            const settings = sanitizeWorkoutSettings({ rest_seconds, order_mode });
+            if (typeof settings === 'string') return res.status(400).json({ success: false, message: settings });
 
             const rawItems = Array.isArray(items) ? items : [];
             if (!rawItems.length) return res.status(400).json({ success: false, message: 'Plan needs at least one exercise' });
@@ -95,7 +98,9 @@ export default async function handler(req, res) {
                     user_id: userId,
                     name: cleanName,
                     description: (description || '').toString(),
-                    items: sanitized
+                    items: sanitized,
+                    rest_seconds: settings.rest_seconds,
+                    order_mode: settings.order_mode
                 });
                 return res.status(200).json({ success: true, plan });
             } catch (err) {

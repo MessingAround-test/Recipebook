@@ -33,6 +33,10 @@ const WorkoutSessionSchema = new mongoose.Schema({
     status: { type: String, enum: ['active', 'completed', 'abandoned'], default: 'active' },
     started_at: { type: Date, default: Date.now },
     completed_at: { type: Date, default: null },
+    // null = no auto break timer; number = seconds of rest between logged sets.
+    rest_seconds: { type: Number, default: null, min: 0, max: 1800 },
+    order_mode: { type: String, enum: ['sequential', 'circuit'], default: 'sequential' },
+    estimated_kcal: { type: Number, default: null },
     exercises: [SessionExerciseSchema]
 }, {
     timestamps: true

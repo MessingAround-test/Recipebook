@@ -93,8 +93,13 @@ export default function GymPage() {
         if (id) router.push(`/gym/session/${id}`);
     };
 
-    const handleQuickStart = async (exerciseIds: string[], date: string) => {
-        const id = await startSession({ exercise_ids: exerciseIds, date });
+    const handleQuickStart = async (exerciseIds: string[], date: string, settings?: { rest_seconds: number | null; order_mode: 'sequential' | 'circuit' }) => {
+        const id = await startSession({
+            exercise_ids: exerciseIds,
+            date,
+            rest_seconds: settings?.rest_seconds ?? null,
+            order_mode: settings?.order_mode ?? 'sequential',
+        });
         if (id) router.push(`/gym/session/${id}`);
     };
 
@@ -106,13 +111,19 @@ export default function GymPage() {
         return data.exercise;
     };
 
-    const handleSavePlan = async (payload: { id?: string; name: string; description: string; items: any[] }): Promise<boolean> => {
+    const handleSavePlan = async (payload: { id?: string; name: string; description: string; items: any[]; rest_seconds: number | null; order_mode: 'sequential' | 'circuit' }): Promise<boolean> => {
         setBusy(true);
         try {
             const res = await fetch(payload.id ? `/api/workoutPlans/${payload.id}` : '/api/workoutPlans', {
                 method: payload.id ? 'PUT' : 'POST',
                 headers: authHeaders(),
-                body: JSON.stringify({ name: payload.name, description: payload.description, items: payload.items }),
+                body: JSON.stringify({
+                    name: payload.name,
+                    description: payload.description,
+                    items: payload.items,
+                    rest_seconds: payload.rest_seconds,
+                    order_mode: payload.order_mode,
+                }),
             });
             const data = await res.json();
             if (!data.success) { alert(data.message || 'Could not save plan'); return false; }

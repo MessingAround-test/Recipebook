@@ -15,6 +15,9 @@ const WorkoutPlanSchema = new mongoose.Schema({
     name: { type: String, required: true, trim: true },
     description: { type: String, default: '' },
     items: [PlanItemSchema],
+    // null = no auto break timer; number = seconds of rest between logged sets.
+    rest_seconds: { type: Number, default: null, min: 0, max: 1800 },
+    order_mode: { type: String, enum: ['sequential', 'circuit'], default: 'sequential' },
     is_archived: { type: Boolean, default: false }
 }, {
     timestamps: true

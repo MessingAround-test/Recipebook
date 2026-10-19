@@ -3,7 +3,7 @@ import WorkoutPlan from '../../../models/WorkoutPlan';
 import Exercise from '../../../models/Exercise';
 import { verifyToken, requireFeature } from '../../../lib/auth';
 import { logAPI } from '../../../lib/logger';
-import { sanitizePlanItem } from '../../../lib/gym';
+import { sanitizePlanItem, sanitizeWorkoutSettings } from '../../../lib/gym';
 
 export default async function handler(req, res) {
     const decoded = await verifyToken(req, res);
@@ -27,10 +27,20 @@ export default async function handler(req, res) {
             }
 
         case 'PUT': {
-            const { name, description, items, is_archived } = req.body || {};
+            const { name, description, items, is_archived, rest_seconds, order_mode } = req.body || {};
             try {
                 const plan = await WorkoutPlan.findOne({ _id: id, user_id: userId });
                 if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
+
+                if (rest_seconds !== undefined || order_mode !== undefined) {
+                    const settings = sanitizeWorkoutSettings({
+                        rest_seconds: rest_seconds !== undefined ? rest_seconds : plan.rest_seconds,
+                        order_mode: order_mode !== undefined ? order_mode : plan.order_mode
+                    });
+                    if (typeof settings === 'string') return res.status(400).json({ success: false, message: settings });
+                    plan.rest_seconds = settings.rest_seconds;
+                    plan.order_mode = settings.order_mode;
+                }
 
                 if (name !== undefined) {
                     const cleanName = (name || '').toString().trim();

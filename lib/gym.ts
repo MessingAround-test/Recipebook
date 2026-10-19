@@ -90,6 +90,37 @@ export function topDuration(sets: LoggedSetT[] | undefined | null): number {
     return Math.max(0, ...sets.map(s => Number(s.actual_duration_sec) || 0));
 }
 
+// ── Calories ─────────────────────────────────────────────────────────────────
+
+/**
+ * Rough MET for a weight-training session. Intentionally vague — based on how
+ * heavy the work was (top single weight and total tonnage), not per-exercise
+ * MET tables. Bodyweight / timed work stays at the moderate base.
+ */
+export function estimateSessionMET(topWeightKg: number, totalVolumeKg: number): number {
+    const w = Number(topWeightKg) || 0;
+    const v = Number(totalVolumeKg) || 0;
+    if (w >= 120 || v >= 10000) return 7;
+    if (w >= 80 || v >= 5000) return 6;
+    return 5;
+}
+
+/**
+ * Estimated calories for a completed session: MET × body weight × wall-clock
+ * hours. A vague estimate — good enough to roll into daily exercise kcal.
+ */
+export function estimateSessionKcal(
+    durationMinutes: number,
+    bodyWeightKg: number,
+    topWeightKg: number = 0,
+    totalVolumeKg: number = 0
+): number {
+    const hours = (Number(durationMinutes) || 0) / 60;
+    const weight = Number(bodyWeightKg) || 70;
+    if (hours <= 0 || weight <= 0) return 0;
+    return Math.round(estimateSessionMET(topWeightKg, totalVolumeKg) * weight * hours);
+}
+
 // ── Formatting ───────────────────────────────────────────────────────────────
 
 /** 45 → "45s", 90 → "1m 30s", 3600 → "1h". */
@@ -327,4 +358,32 @@ export function sanitizePlanItem(raw: any): PlanItemT | string {
         target_duration_sec,
         target_weight_kg,
     };
+}
+
+// ── Session settings (break timer + running order) ───────────────────────────
+
+export type OrderMode = 'sequential' | 'circuit';
+
+/**
+ * Normalize the per-workout settings: rest_seconds (null = break timer off,
+ * 0–1800s otherwise) and order_mode ('sequential' | 'circuit'). Returns the
+ * normalized object or an error string.
+ */
+export function sanitizeWorkoutSettings(raw: any): { rest_seconds: number | null; order_mode: OrderMode } | string {
+    const input = raw && typeof raw === 'object' ? raw : {};
+
+    let rest_seconds: number | null = null;
+    if (input.rest_seconds != null && input.rest_seconds !== '') {
+        const n = Number(input.rest_seconds);
+        if (!Number.isFinite(n) || n < 0 || n > 1800) return 'Rest must be between 0 and 1800 seconds';
+        rest_seconds = Math.round(n);
+    }
+
+    let order_mode: OrderMode = 'sequential';
+    if (input.order_mode != null && input.order_mode !== '') {
+        if (input.order_mode !== 'sequential' && input.order_mode !== 'circuit') return 'Invalid order mode';
+        order_mode = input.order_mode;
+    }
+
+    return { rest_seconds, order_mode };
 }

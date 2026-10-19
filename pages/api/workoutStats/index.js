@@ -7,6 +7,8 @@ import { logAPI } from '../../../lib/logger';
 import { estimateE1RM, setVolume } from '../../../lib/gym';
 
 /**
+ * GET ?withData=1 — distinct exercise ids that have at least one logged set in
+ * a completed session (drives the progress-page dropdown filter).
  * GET ?exerciseId=... — per-date progression points for one exercise plus PRs.
  * Only completed sessions count. All maths is done here (same helpers as client).
  */
@@ -25,7 +27,23 @@ export default async function handler(req, res) {
         return res.status(405).end(`Method ${method} Not Allowed`);
     }
 
-    const { exerciseId } = req.query;
+    const { exerciseId, withData } = req.query;
+
+    if (withData) {
+        try {
+            const rows = await WorkoutSession.aggregate([
+                { $match: { user_id: new mongoose.Types.ObjectId(String(userId)), status: 'completed' } },
+                { $unwind: '$exercises' },
+                { $match: { 'exercises.sets.0': { $exists: true } } },
+                { $project: { exercise_id: '$exercises.exercise_id' } },
+                { $group: { _id: '$exercise_id' } }
+            ]);
+            return res.status(200).json({ success: true, exerciseIds: rows.map(r => String(r._id)) });
+        } catch (err) {
+            return res.status(500).json({ success: false, message: err.message });
+        }
+    }
+
     if (!exerciseId || !mongoose.Types.ObjectId.isValid(String(exerciseId))) {
         return res.status(400).json({ success: false, message: 'exerciseId is required' });
     }

@@ -13,6 +13,7 @@ interface SessionDoc {
     exercises: any[];
     started_at?: string;
     completed_at?: string | null;
+    estimated_kcal?: number | null;
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -78,6 +79,7 @@ export default function GymHistoryView({ sessions }: { sessions: SessionDoc[] })
                                             {vol > 0 && <span className="text-olive">{vol.toLocaleString()} kg vol</span>}
                                             {timed > 0 && <span className="text-water">{formatDurationSec(timed)} timed</span>}
                                             {minutes != null && <span>{minutes} min</span>}
+                                            {!!s.estimated_kcal && <span className="text-butter">~{s.estimated_kcal} kcal</span>}
                                         </div>
                                     </div>
                                     <FiChevronRight size={16} className="text-muted-foreground shrink-0" />

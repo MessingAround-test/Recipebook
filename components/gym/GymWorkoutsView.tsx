@@ -32,7 +32,7 @@ interface Props {
     lastPerformed: Record<string, string>;
     busy?: boolean;
     onStartPlan: (planId: string, date: string) => void;
-    onQuickStart: (exerciseIds: string[], date: string) => void;
+    onQuickStart: (exerciseIds: string[], date: string, settings?: { rest_seconds: number | null; order_mode: 'sequential' | 'circuit' }) => void;
     onCreateExercise: (name: string) => Promise<ExerciseDoc | null>;
 }
 
@@ -165,7 +165,7 @@ export default function GymWorkoutsView({ plans, sessions, exercises, lastPerfor
                 busy={busy}
                 onClose={() => setPickerOpen(false)}
                 onCreateExercise={onCreateExercise}
-                onStart={(ids) => { setPickerOpen(false); onQuickStart(ids, quickDate); }}
+                onStart={(ids, settings) => { setPickerOpen(false); onQuickStart(ids, quickDate, settings); }}
             />
         </div>
     );

@@ -80,11 +80,22 @@ export default function GymSessionPage() {
     const handleLogSet = async (payload: any) => {
         const updated = await put({ action: 'logSet', exercise_index: exIndex, set: payload });
         if (updated) {
-            restTimer.start(90);
-            // If that was the last set, jump to the next exercise with sets remaining.
+            if (Number(updated.rest_seconds) > 0) restTimer.start(Number(updated.rest_seconds));
             const ex = updated.exercises[exIndex];
-            if (ex && ex.sets.length >= ex.target_sets) {
-                const nextIdx = updated.exercises.findIndex((e: any, i: number) => i > exIndex && e.sets.length < e.target_sets);
+            const isCircuit = updated.order_mode === 'circuit';
+            if (ex && (isCircuit || ex.sets.length >= ex.target_sets)) {
+                // Sequential: jump forward when the exercise is finished.
+                // Circuit: jump after every set — next incomplete, wrapping to the first.
+                const n = updated.exercises.length;
+                let nextIdx = -1;
+                if (isCircuit) {
+                    for (let step = 1; step <= n; step++) {
+                        const i = (exIndex + step) % n;
+                        if (updated.exercises[i].sets.length < updated.exercises[i].target_sets) { nextIdx = i; break; }
+                    }
+                } else {
+                    nextIdx = updated.exercises.findIndex((e: any, i: number) => i > exIndex && e.sets.length < e.target_sets);
+                }
                 if (nextIdx >= 0) setExIndex(nextIdx);
             }
         }
@@ -147,6 +158,8 @@ export default function GymSessionPage() {
     const totalSets = exercises.reduce((a: number, e: any) => a + e.sets.length, 0);
     const vol = totalVolume(exercises.flatMap((e: any) => e.sets));
     const timed = totalTimedSeconds(exercises.flatMap((e: any) => e.sets));
+    const allDone = exercises.length > 0 && exercises.every((e: any) => e.sets.length >= e.target_sets);
+    const restOn = Number(session.rest_seconds) > 0;
     const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
     const ss = String(elapsed % 60).padStart(2, '0');
 
@@ -191,8 +204,22 @@ export default function GymSessionPage() {
                     })}
                 </div>
 
-                {/* Current exercise */}
-                {current && (
+                {/* Current exercise (or the complete-workout panel once all sets are done) */}
+                {allDone ? (
+                    <div className="bg-olive/[0.06] border border-olive/30 rounded-3xl p-8 text-center space-y-4">
+                        <div className="text-sm font-black uppercase tracking-widest text-olive">All exercises done</div>
+                        <p className="text-xs font-bold text-muted-foreground">
+                            {totalSets} sets logged{vol > 0 ? ` · ${vol.toLocaleString()} kg vol` : ''}{timed > 0 ? ` · ${formatDurationSec(timed)}` : ''} — complete the workout to save it to history.
+                        </p>
+                        <button
+                            onClick={handleFinish}
+                            disabled={busy}
+                            className="px-10 py-4 rounded-2xl bg-olive text-primary-foreground text-xs font-black uppercase tracking-[0.25em] flex items-center gap-2 mx-auto disabled:opacity-40 hover:bg-olive/85 transition-all active:scale-95 shadow-lg shadow-olive/25"
+                        >
+                            <FiCheck size={18} /> Complete workout
+                        </button>
+                    </div>
+                ) : current && (
                     <SetLogger
                         exercise={current}
                         exerciseIndex={exIndex}
@@ -208,10 +235,12 @@ export default function GymSessionPage() {
                     />
                 )}
 
-                {/* Rest timer */}
-                <div className="mt-4">
-                    <RestTimer timer={restTimer} />
-                </div>
+                {/* Rest timer (only when the workout was set up with a break timer) */}
+                {restOn && (
+                    <div className="mt-4">
+                        <RestTimer timer={restTimer} />
+                    </div>
+                )}
 
                 <button onClick={handleAbandon} className="mt-6 w-full text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-berry transition-colors py-2">
                     Abandon workout

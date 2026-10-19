@@ -1,5 +1,7 @@
 // Progress tab: pick an exercise and chart its progression over time — top
-// weight, estimated 1RM, volume, or (for timed work) duration metrics.
+// weight, estimated 1RM, volume, or (for timed work) duration metrics. Only
+// exercises with logged records are listed; duration metrics/cards are hidden
+// when the exercise has no timed data.
 import React, { useState, useEffect, useMemo } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
@@ -29,6 +31,8 @@ const METRIC_LABELS: Record<Metric, string> = {
     total_duration_sec: 'Total time',
 };
 
+const DURATION_METRICS: Metric[] = ['top_duration_sec', 'total_duration_sec'];
+
 const isDurationMetric = (m: Metric) => m === 'top_duration_sec' || m === 'total_duration_sec';
 
 export default function GymProgressView({ exercises }: { exercises: ExerciseDoc[] }) {
@@ -39,11 +43,30 @@ export default function GymProgressView({ exercises }: { exercises: ExerciseDoc[
     const [exercise, setExercise] = useState<ExerciseDoc | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [recordedIds, setRecordedIds] = useState<string[] | null>(null);
 
-    // Default selection: first exercise.
+    // Which exercises actually have logged records (incl. custom ones).
     useEffect(() => {
-        if (!exerciseId && exercises.length) setExerciseId(exercises[0]._id);
-    }, [exercises, exerciseId]);
+        const token = localStorage.getItem('Token');
+        fetch('/api/workoutStats?withData=1', { headers: { edgetoken: token || '' } })
+            .then(r => r.json())
+            .then(data => { if (data.success) setRecordedIds(data.exerciseIds || []); })
+            .catch(() => setRecordedIds([]));
+    }, []);
+
+    const recordedExercises = useMemo(() => {
+        if (recordedIds == null) return exercises;
+        const set = new Set(recordedIds);
+        return exercises.filter(e => set.has(e._id));
+    }, [exercises, recordedIds]);
+
+    const hasTimed = points.some(p => p.top_duration_sec > 0);
+    const hasWeightData = points.some(p => p.top_weight_kg > 0 || p.best_e1rm > 0);
+
+    // Default selection: first exercise with records.
+    useEffect(() => {
+        if (!exerciseId && recordedExercises.length) setExerciseId(recordedExercises[0]._id);
+    }, [recordedExercises, exerciseId]);
 
     useEffect(() => {
         if (!exerciseId) return;
@@ -57,11 +80,13 @@ export default function GymProgressView({ exercises }: { exercises: ExerciseDoc[
                     setPoints(data.points || []);
                     setPrs(data.prs || null);
                     setExercise(data.exercise || null);
-                    // Sensible default metric for purely timed exercises.
-                    const hasTimed = (data.points || []).some((p: any) => p.top_duration_sec > 0);
-                    const hasWeight = (data.points || []).some((p: any) => p.top_weight_kg > 0);
-                    if (hasTimed && !hasWeight) setMetric('top_duration_sec');
-                    else setMetric(m => (isDurationMetric(m) && !hasTimed ? 'top_weight_kg' : m));
+                    // Sensible default metric for purely timed exercises; hide
+                    // duration metrics when there's no timed data to chart.
+                    const pts = data.points || [];
+                    const timed = pts.some((p: any) => p.top_duration_sec > 0);
+                    const weighted = pts.some((p: any) => p.top_weight_kg > 0);
+                    if (timed && !weighted) setMetric('top_duration_sec');
+                    else setMetric(m => (isDurationMetric(m) && !timed ? 'top_weight_kg' : m));
                 } else {
                     setError(data.message || 'Failed to load stats');
                 }
@@ -69,6 +94,10 @@ export default function GymProgressView({ exercises }: { exercises: ExerciseDoc[
             .catch(e => setError(e.message))
             .finally(() => setLoading(false));
     }, [exerciseId]);
+
+    const visibleMetrics = (Object.keys(METRIC_LABELS) as Metric[]).filter(m =>
+        !isDurationMetric(m) || hasTimed
+    );
 
     const chartData = useMemo(() => ({
         labels: points.map(p => {
@@ -125,15 +154,19 @@ export default function GymProgressView({ exercises }: { exercises: ExerciseDoc[
         return <p className="text-sm text-muted-foreground bg-card border border-border rounded-2xl p-6 text-center">No exercises yet — start a workout first.</p>;
     }
 
+    if (recordedIds != null && !recordedExercises.length) {
+        return <p className="text-sm text-muted-foreground bg-card border border-border rounded-2xl p-6 text-center">No completed workouts with logged sets yet — finish a workout to see progress.</p>;
+    }
+
     return (
         <div className="space-y-4">
             {/* Controls */}
             <div className="flex flex-wrap items-center gap-3">
                 <select value={exerciseId} onChange={e => setExerciseId(e.target.value)} className="bg-card border border-border rounded-xl px-4 py-2.5 text-sm font-bold text-foreground min-w-[220px]">
-                    {exercises.map(e => <option key={e._id} value={e._id}>{e.name}</option>)}
+                    {recordedExercises.map(e => <option key={e._id} value={e._id}>{e.name}</option>)}
                 </select>
                 <div className="flex gap-1 bg-muted/30 p-1 rounded-xl border border-border">
-                    {(Object.keys(METRIC_LABELS) as Metric[]).map(m => (
+                    {visibleMetrics.map(m => (
                         <button key={m} onClick={() => setMetric(m)} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${metric === m ? 'bg-olive text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
                             {METRIC_LABELS[m]}
                         </button>
@@ -143,19 +176,21 @@ export default function GymProgressView({ exercises }: { exercises: ExerciseDoc[
 
             {/* Summary cards */}
             {prs && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className={`grid gap-3 ${hasTimed ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'}`}>
                     <div className="bg-foreground/5 border border-border rounded-2xl p-4">
                         <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1 flex items-center gap-1"><FiAward size={11} /> Top weight</div>
-                        <div className="text-2xl font-black text-olive">{prs.top_weight_kg > 0 ? `${prs.top_weight_kg} kg` : '—'}</div>
+                        <div className="text-2xl font-black text-olive">{hasWeightData && prs.top_weight_kg > 0 ? `${prs.top_weight_kg} kg` : '—'}</div>
                     </div>
                     <div className="bg-foreground/5 border border-border rounded-2xl p-4">
                         <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1 flex items-center gap-1"><FiTrendingUp size={11} /> Best est. 1RM</div>
                         <div className="text-2xl font-black">{prs.best_e1rm > 0 ? `${prs.best_e1rm} kg` : '—'}</div>
                     </div>
-                    <div className="bg-foreground/5 border border-border rounded-2xl p-4">
-                        <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Longest set</div>
-                        <div className="text-2xl font-black text-water">{prs.top_duration_sec > 0 ? formatDurationSec(prs.top_duration_sec) : '—'}</div>
-                    </div>
+                    {hasTimed && (
+                        <div className="bg-foreground/5 border border-border rounded-2xl p-4">
+                            <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Longest set</div>
+                            <div className="text-2xl font-black text-water">{prs.top_duration_sec > 0 ? formatDurationSec(prs.top_duration_sec) : '—'}</div>
+                        </div>
+                    )}
                     <div className="bg-foreground/5 border border-border rounded-2xl p-4">
                         <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1 flex items-center gap-1"><FiActivity size={11} /> Sessions</div>
                         <div className="text-2xl font-black">{points.length}</div>

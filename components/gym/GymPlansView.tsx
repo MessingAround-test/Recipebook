@@ -1,12 +1,14 @@
 // Plans tab: list workout plans and edit them inline — per-exercise sets,
 // rep mode (reps / to failure / timed), optional target weight, reorder,
-// remove, plus quick-create of custom exercises.
+// remove, workout options (break timer + order), plus quick-create of custom
+// exercises.
 import React, { useState } from 'react';
 import { FiPlus, FiTrash2, FiChevronUp, FiChevronDown, FiEdit3, FiSave, FiX } from 'react-icons/fi';
 import { Dumbbell } from 'lucide-react';
 import { RepMode, modeLabel, formatPlanTarget, sanitizePlanItem } from '../../lib/gym';
+import WorkoutOptions, { WorkoutSettings } from './WorkoutOptions';
 
-interface PlanDoc { _id: string; name: string; description?: string; items: any[]; }
+interface PlanDoc { _id: string; name: string; description?: string; items: any[]; rest_seconds?: number | null; order_mode?: 'sequential' | 'circuit'; }
 interface ExerciseDoc { _id: string; name: string; muscle_group?: string; is_custom?: boolean; }
 
 interface DraftItem {
@@ -22,7 +24,7 @@ interface Props {
     plans: PlanDoc[];
     exercises: ExerciseDoc[];
     busy?: boolean;
-    onSavePlan: (payload: { id?: string; name: string; description: string; items: DraftItem[] }) => Promise<boolean>;
+    onSavePlan: (payload: { id?: string; name: string; description: string; items: DraftItem[]; rest_seconds: number | null; order_mode: 'sequential' | 'circuit' }) => Promise<boolean>;
     onDeletePlan: (id: string) => Promise<void>;
     onCreateExercise: (name: string) => Promise<ExerciseDoc | null>;
 }
@@ -44,6 +46,7 @@ export default function GymPlansView({ plans, exercises, busy, onSavePlan, onDel
     const [draftName, setDraftName] = useState('');
     const [draftDesc, setDraftDesc] = useState('');
     const [items, setItems] = useState<DraftItem[]>([]);
+    const [draftSettings, setDraftSettings] = useState<WorkoutSettings>({ rest_seconds: null, order_mode: 'sequential' });
     const [newExName, setNewExName] = useState('');
     const [error, setError] = useState('');
 
@@ -51,6 +54,7 @@ export default function GymPlansView({ plans, exercises, busy, onSavePlan, onDel
         setCreating(true); setEditingId(null);
         setDraftName(''); setDraftDesc('');
         setItems([{ exercise_id: exercises[0]?._id || '', target_sets: '3', rep_mode: 'reps', target_reps: '8', target_duration_sec: '', target_weight_kg: '' }]);
+        setDraftSettings({ rest_seconds: null, order_mode: 'sequential' });
         setError('');
     };
 
@@ -58,6 +62,7 @@ export default function GymPlansView({ plans, exercises, busy, onSavePlan, onDel
         setEditingId(plan._id); setCreating(false);
         setDraftName(plan.name); setDraftDesc(plan.description || '');
         setItems(toDraftItems(plan.items));
+        setDraftSettings({ rest_seconds: plan.rest_seconds ?? null, order_mode: plan.order_mode || 'sequential' });
         setError('');
     };
 
@@ -93,7 +98,14 @@ export default function GymPlansView({ plans, exercises, busy, onSavePlan, onDel
         setError('');
         if (!draftName.trim()) { setError('Plan name is required'); return; }
         if (!items.length) { setError('Add at least one exercise'); return; }
-        const ok = await onSavePlan({ id: editingId || undefined, name: draftName.trim(), description: draftDesc, items });
+        const ok = await onSavePlan({
+            id: editingId || undefined,
+            name: draftName.trim(),
+            description: draftDesc,
+            items,
+            rest_seconds: draftSettings.rest_seconds,
+            order_mode: draftSettings.order_mode,
+        });
         if (ok) closeEditor();
         else setError('Could not save plan — check the fields');
     };
@@ -131,6 +143,8 @@ export default function GymPlansView({ plans, exercises, busy, onSavePlan, onDel
                         <input value={draftName} onChange={e => setDraftName(e.target.value)} placeholder="Plan name (e.g. Push Day)" className="bg-input border border-border rounded-xl px-4 py-2.5 text-sm font-bold text-foreground" />
                         <input value={draftDesc} onChange={e => setDraftDesc(e.target.value)} placeholder="Short description" className="md:col-span-2 bg-input border border-border rounded-xl px-4 py-2.5 text-sm font-bold text-foreground" />
                     </div>
+
+                    <WorkoutOptions settings={draftSettings} onChange={setDraftSettings} />
 
                     <div className="space-y-2">
                         {items.map((it, idx) => (
@@ -203,6 +217,14 @@ export default function GymPlansView({ plans, exercises, busy, onSavePlan, onDel
                                 </li>
                             ))}
                         </ul>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                            <span className="px-2 py-0.5 rounded-md bg-foreground/5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                {plan.rest_seconds != null ? `${plan.rest_seconds}s rest` : 'No rest timer'}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-foreground/5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                {plan.order_mode === 'circuit' ? 'Circuit' : 'Sequential'}
+                            </span>
+                        </div>
                     </div>
                 ))}
             </div>
