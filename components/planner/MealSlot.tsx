@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FiPlus, FiCoffee, FiCheck, FiX } from 'react-icons/fi';
 import { usePlanner } from '../planner/PlannerContext';
+import { getRequiredServings, getSlotPlannedPeople } from '../../lib/mealCoverage';
 import RecipeCard from './RecipeCard';
 
 interface MealSlotProps {
@@ -13,9 +14,11 @@ interface MealSlotProps {
 /**
  * Meal slot: label, always-visible "+" (tap to fill) and cards. Pantry
  * pinning folds into the same "+" flow so no extra chrome per slot.
+ * When the servings-per-meal view is on, the header gains a − N + stepper
+ * for how many people need this meal, plus an under/over coverage badge.
  */
 export default function MealSlot({ date, meal, compact = false, timeline = false }: MealSlotProps) {
-    const { plan, analysis, handleDragOver, handleDrop, openModal, togglePantryPlacement } = usePlanner();
+    const { plan, analysis, handleDragOver, handleDrop, openModal, togglePantryPlacement, coverageView, setMealCoverage } = usePlanner();
     const [pantryOpen, setPantryOpen] = useState(false);
 
     const mealRecipes = plan.plannedRecipes.filter(r => r.mealType === meal && r.day === date);
@@ -24,7 +27,54 @@ export default function MealSlot({ date, meal, compact = false, timeline = false
     const placements = plan.pantryPlacements?.[slotKey] || [];
     const pinnedItems = placements.map(i => plan.everydayItems[i]).filter(Boolean);
 
+    const required = getRequiredServings(plan, date, meal);
+    const plannedPeople = getSlotPlannedPeople(plan, date, meal);
+    const underBy = coverageView && plannedPeople > 0 && plannedPeople < required ? required - plannedPeople : 0;
+    const overBy = coverageView && plannedPeople > required ? plannedPeople - required : 0;
+
     const analysisDataFor = (r) => analysis?.recipeAnalysis?.find(a => (a.id === r.id || a.id === r._id));
+
+    const coverageStepper = () => {
+        if (!coverageView || date === 'Undecided') return null;
+        return (
+            <div className="flex items-center gap-0.5 mr-1 shrink-0 rounded-lg bg-black/30 border border-white/10 px-1 py-0.5">
+                <button
+                    onClick={(e) => { e.stopPropagation(); setMealCoverage(date, meal, required - 1); }}
+                    disabled={required <= 1}
+                    title={`Servings needed for ${meal}`}
+                    className="w-4 h-4 flex items-center justify-center rounded bg-white/5 hover:bg-white/10 disabled:opacity-30 text-[10px] font-black leading-none"
+                >
+                    −
+                </button>
+                <span className="w-4 text-center text-[10px] font-black text-emerald-300" title="People eating this meal">{required}</span>
+                <button
+                    onClick={(e) => { e.stopPropagation(); setMealCoverage(date, meal, required + 1); }}
+                    className="w-4 h-4 flex items-center justify-center rounded bg-white/5 hover:bg-white/10 text-[10px] font-black leading-none"
+                >
+                    +
+                </button>
+            </div>
+        );
+    };
+
+    const coverageBadge = () => {
+        if (!coverageView) return null;
+        if (underBy > 0) {
+            return (
+                <div className="mb-1.5 rounded-md border border-rose-500/30 bg-rose-500/10 px-1.5 py-1 text-[9px] font-black uppercase tracking-wider text-rose-300 leading-tight">
+                    Need {required} · have {plannedPeople} — scale up?
+                </div>
+            );
+        }
+        if (overBy > 0) {
+            return (
+                <div className="mb-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-1 text-[9px] font-black uppercase tracking-wider text-amber-300 leading-tight">
+                    Over by {overBy}
+                </div>
+            );
+        }
+        return null;
+    };
 
     const headerButtons = (size: number, open: boolean) => (
         <div className="flex items-center gap-0.5">
@@ -100,16 +150,21 @@ export default function MealSlot({ date, meal, compact = false, timeline = false
             {!timeline && (
                 <div className="flex items-center justify-between mb-2">
                     <h3 className={`text-xs font-bold uppercase tracking-wider ${meal === 'Snack' ? 'text-amber-400/80' : 'text-muted-foreground'}`}>{meal}</h3>
-                    {headerButtons(14, pantryOpen)}
+                    <div className="flex items-center">
+                        {coverageStepper()}
+                        {headerButtons(14, pantryOpen)}
+                    </div>
                 </div>
             )}
 
             {timeline && (
-                <div className="flex items-center justify-end mb-1.5">
+                <div className={`flex items-center mb-1.5 ${coverageView && date !== 'Undecided' ? 'justify-between' : 'justify-end'}`}>
+                    {coverageStepper()}
                     {headerButtons(12, pantryOpen)}
                 </div>
             )}
 
+            {coverageBadge()}
             {pantryPicker()}
             {pinnedChips()}
 

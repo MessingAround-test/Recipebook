@@ -48,6 +48,11 @@ export async function fetchAnalysis(plan: Plan): Promise<any> {
     });
 }
 
+// Prior weeks that carry a per-meal servings coverage pattern (for reuse).
+export async function fetchCoverageHistory(before: string): Promise<any> {
+    return authedFetch(`/api/weeklyPlan/history?before=${encodeURIComponent(before)}`);
+}
+
 export async function postExport(startDate: string, cutoffDay?: string | null, cutoffMeal?: string | null): Promise<any> {
     return authedFetch('/api/weeklyPlan/export', {
         method: 'POST',

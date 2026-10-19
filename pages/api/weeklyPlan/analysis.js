@@ -9,6 +9,8 @@ import { normalizeToGrams } from '../../../lib/conversion';
 import { mergeHealthScoreConfig, getNutrientWeight } from '../../../lib/healthScore';
 import { buildNutrientCoverage, computeProjectedScore } from '../../../lib/planCoverage';
 import { computeRecipeNutrientTotals, computePlainIngredientNutrients, escapeRegExp } from '../../../lib/planNutrition';
+import { getDayAnchorServings, hasMealCoverage } from '../../../lib/mealCoverage';
+import { getDateRange } from '../../../lib/dateUtils';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -161,7 +163,18 @@ export default async function handler(req, res) {
 
         deficiencies.sort((a, b) => a.pct - b.pct);
 
-        const people = plan.defaultServings || 1;
+        // Per-person math uses the plan-wide "people in the house" by default.
+        // When a per-meal servings coverage pattern is set, each day instead
+        // counts its "anchor" — the fewest people eating any meal that day (the
+        // person present the entire time). A full 2-person weekend day counts
+        // 2; a split 1/1/2/1 day counts 1. Plans without coverage are
+        // completely unaffected.
+        let people = plan.defaultServings || 1;
+        if (hasMealCoverage(plan) && plan.startDate) {
+            const anchorDays = getDateRange(plan.startDate, numDays);
+            const personDays = anchorDays.reduce((sum, d) => sum + getDayAnchorServings(plan, d), 0);
+            if (personDays > 0) people = personDays / numDays;
+        }
         const nutrientCoverage = buildNutrientCoverage({
             totals,
             targets,

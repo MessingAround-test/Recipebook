@@ -53,7 +53,10 @@ const WeeklyPlanSchema = new mongoose.Schema({
     everydayItems: [EverydayItemSchema],
     // Visual-only placements of pantry pool items into meal slots.
     // Keyed by `${day}|${mealType}`, value is an array of everydayItems indexes.
-    pantryPlacements: { type: mongoose.Schema.Types.Mixed, default: {} }
+    pantryPlacements: { type: mongoose.Schema.Types.Mixed, default: {} },
+    // Per-day, per-meal servings required ("who's eating"): { "YYYY-MM-DD": { Breakfast: 1, Dinner: 2 } }.
+    // Missing days/meals fall back to defaultServings. Never applied to the pantry pool.
+    mealCoverage: { type: mongoose.Schema.Types.Mixed }
 }, { 
     timestamps: true 
 });

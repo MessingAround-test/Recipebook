@@ -2,16 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFeatureGuard } from '../../lib/useFeatureGuard';
 import { CURRENT_PLAN_VERSION } from '../../lib/planVersion';
 import { getDateRange, addDays, todayStr, daysBetween, parseFlexibleDate } from '../../lib/dateUtils';
-import { fetchPlan, postPlan, postPlanKeepAlive, fetchAnalysis, postExport, fetchRecipes, suggestForDay, generateRecipeForDay } from './dataLayer';
+import { getRequiredServings, computeBlockServings, applyCoverageByIndex } from '../../lib/mealCoverage';
+import { fetchPlan, postPlan, postPlanKeepAlive, fetchAnalysis, postExport, fetchRecipes, suggestForDay, generateRecipeForDay, fetchCoverageHistory } from './dataLayer';
 import { Plan, PlanAnalysis, Recipe, SaveStatus, BrowseTarget, DaySuggestion, DaySuggestionResponse, GeneratedRecipe, PlannedRecipeItem } from './types';
 import { MAX_DAYS } from './types';
 import { makeKey, newTempId } from './utils';
 import { saveRecipe } from '../../lib/recipeExtraction';
 
-const emptyPlan = (): Plan => ({ defaultServings: 2, plannedRecipes: [], everydayItems: [], numDays: 7, pantryPlacements: {} });
+const emptyPlan = (): Plan => ({ defaultServings: 2, plannedRecipes: [], everydayItems: [], numDays: 7, pantryPlacements: {}, mealCoverage: {} });
 
 const VIEW_MODE_KEY = 'plannerViewMode';
 const RAIL_TAB_KEY = 'plannerRailTab';
+const COVERAGE_VIEW_KEY = 'plannerCoverageView';
+const COVERAGE_BANNER_KEY = 'coverageReuseBannerDismissed';
 export type ViewMode = 'grid' | 'day';
 export type RailTab = 'library' | 'pantry' | 'diet';
 
@@ -40,6 +43,13 @@ function initialRailTab(): RailTab {
         if (stored === 'library' || stored === 'pantry' || stored === 'diet') return stored;
     } catch { /* ignore */ }
     return 'library';
+}
+
+function initialCoverageView(): boolean {
+    try {
+        return localStorage.getItem(COVERAGE_VIEW_KEY) === '1';
+    } catch { /* ignore */ }
+    return false;
 }
 
 export function usePlan() {
@@ -96,6 +106,22 @@ export function usePlan() {
         setRailTabState(t);
         try { localStorage.setItem(RAIL_TAB_KEY, t); } catch { /* ignore */ }
     }, []);
+
+    // Per-meal servings ("who's eating") editing mode. Toggling only affects
+    // the UI — coverage always drives add-time sizing when set.
+    const [coverageView, setCoverageViewState] = useState<boolean>(initialCoverageView);
+    const setCoverageView = useCallback((on: boolean) => {
+        setCoverageViewState(on);
+        try { localStorage.setItem(COVERAGE_VIEW_KEY, on ? '1' : '0'); } catch { /* ignore */ }
+    }, []);
+
+    // Reuse-another-week's-servings-pattern modal + history
+    const [showReuseCoverage, setShowReuseCoverage] = useState(false);
+    const [coverageHistory, setCoverageHistory] = useState<{ startDate: string; numDays?: number; mealCoverage: Record<string, any> }[]>([]);
+    const [coverageHistoryLoading, setCoverageHistoryLoading] = useState(false);
+    // Dismissible banner offered when a brand-new week is opened and a prior
+    // week carries a servings pattern.
+    const [reuseBanner, setReuseBanner] = useState(false);
 
     // Mobile tab routing: plan (day flow), or one of the sheet tabs.
     // 'week' is desktop-only. Keep synced with viewMode so both persist paths agree.
@@ -175,6 +201,7 @@ export function usePlan() {
         plannedRecipes: plan.plannedRecipes,
         everydayItems: plan.everydayItems,
         pantryPlacements: plan.pantryPlacements || {},
+        mealCoverage: plan.mealCoverage || {},
         numDays
     }), [plan, numDays]);
 
@@ -186,7 +213,7 @@ export function usePlan() {
             setAllRecipes(recipes);
 
             if (planData.success && planData.plan && planData.plan.version === CURRENT_PLAN_VERSION) {
-                const loaded = { ...planData.plan, pantryPlacements: planData.plan.pantryPlacements || {} };
+                const loaded = { ...planData.plan, pantryPlacements: planData.plan.pantryPlacements || {}, mealCoverage: planData.plan.mealCoverage || {} };
                 setPlan(loaded);
                 if (!planData.created && planData.plan.numDays) {
                     setNumDays(planData.plan.numDays);
@@ -197,12 +224,28 @@ export function usePlan() {
                     plannedRecipes: loaded.plannedRecipes,
                     everydayItems: loaded.everydayItems,
                     pantryPlacements: loaded.pantryPlacements,
+                    mealCoverage: loaded.mealCoverage,
                     numDays: loaded.numDays || 7
                 });
+
+                // Brand-new week: offer (dismissible) to reuse a prior week's
+                // servings pattern — timing only, never meals.
+                setReuseBanner(false);
+                if (planData.created) {
+                    try {
+                        let dismissed = false;
+                        try { dismissed = sessionStorage.getItem(COVERAGE_BANNER_KEY) === '1'; } catch { /* ignore */ }
+                        if (!dismissed) {
+                            const hist = await fetchCoverageHistory(startDate);
+                            if (hist.success && (hist.weeks || []).length > 0) setReuseBanner(true);
+                        }
+                    } catch { /* ignore */ }
+                }
             } else {
                 setPlan(emptyPlan());
                 loadedStartRef.current = startDate;
-                lastSavedRef.current = JSON.stringify({ defaultServings: 2, plannedRecipes: [], everydayItems: [], pantryPlacements: {}, numDays: 7 });
+                lastSavedRef.current = JSON.stringify({ defaultServings: 2, plannedRecipes: [], everydayItems: [], pantryPlacements: {}, mealCoverage: {}, numDays: 7 });
+                setReuseBanner(false);
             }
         } catch (err) {
             console.error(err);
@@ -491,6 +534,68 @@ export function usePlan() {
         });
     }, []);
 
+    // --- Per-meal servings coverage ---
+    // How many people actually need each meal on each day. The pantry pool is
+    // never covered — it stays a shared weekly total.
+    const setMealCoverage = useCallback((day: string, meal: string, servings: number) => {
+        const n = Math.max(1, Math.round(Number(servings) || 1));
+        immediateSaveRef.current = true;
+        setPlan(prev => {
+            const coverage = { ...(prev.mealCoverage || {}) };
+            const meals = { ...(coverage[day] || {}) };
+            meals[meal] = n;
+            coverage[day] = meals;
+            return { ...prev, mealCoverage: coverage };
+        });
+    }, []);
+
+    const loadCoverageHistory = useCallback(async () => {
+        setCoverageHistoryLoading(true);
+        try {
+            const hist = await fetchCoverageHistory(startDate);
+            setCoverageHistory(hist.success ? (hist.weeks || []) : []);
+        } catch (err) {
+            console.error(err);
+            setCoverageHistory([]);
+        }
+        setCoverageHistoryLoading(false);
+    }, [startDate]);
+
+    const openReuseCoverage = useCallback(() => {
+        setShowReuseCoverage(true);
+        loadCoverageHistory();
+    }, [loadCoverageHistory]);
+
+    const closeReuseCoverage = useCallback(() => {
+        setShowReuseCoverage(false);
+    }, []);
+
+    // Copies a prior week's coverage pattern onto the visible days by position
+    // (day 0 → day 0). Full overwrite: every day gets all four meals — the
+    // source's value or the standard defaultServings — replacing any existing
+    // coverage mods. Only mealCoverage is touched; meals & pantry stay.
+    const applyMealCoverage = useCallback((source: { startDate: string; numDays?: number; mealCoverage: Record<string, any> }) => {
+        if (!source || !source.startDate || !source.mealCoverage) return;
+        immediateSaveRef.current = true;
+        setPlan(prev => ({
+            ...prev,
+            mealCoverage: applyCoverageByIndex(
+                source.mealCoverage,
+                source.startDate,
+                source.numDays || 7,
+                dates,
+                prev.defaultServings || 2
+            )
+        }));
+        setShowReuseCoverage(false);
+        setReuseBanner(false);
+    }, [dates]);
+
+    const dismissReuseBanner = useCallback(() => {
+        setReuseBanner(false);
+        try { sessionStorage.setItem(COVERAGE_BANNER_KEY, '1'); } catch { /* ignore */ }
+    }, []);
+
     // --- Modal helpers ---
     const openModal = useCallback((onlySnacks = false, target: BrowseTarget | null = null, initialSearch = '') => {
         setModalOnlySnacks(onlySnacks);
@@ -528,27 +633,31 @@ export function usePlan() {
     }, []);
 
     // --- Recipe additions (with auto-split) ---
-    // Shared block builder: a primary block for the target slot at the plan's
-    // default servings, plus an auto-split leftover block into the Recipe Pool
-    // when the recipe serves more than that. Used by the Browse modal and the
-    // day quiz so both paths behave identically.
+    // Shared block builder: a cook block for the target slot sized to the
+    // servings that meal actually needs (meal coverage, else the plan's
+    // default), plus an auto-split leftover block into the Recipe Pool when
+    // the recipe yields more than that. When the recipe yields less than
+    // needed the block keeps its yield and the slot is flagged (scale-up).
+    // Used by the Browse modal and the day quiz so both paths behave identically.
     const buildRecipeBlocks = useCallback((recipe: Recipe, targetDay: string, targetMeal: string): PlannedRecipeItem[] => {
         const serves = recipe.servings || 1;
+        const required = getRequiredServings(plan, targetDay, targetMeal);
+        const { primary, leftover } = computeBlockServings(serves, required);
         const blocks: PlannedRecipeItem[] = [{
             recipe_id: recipe._id,
             recipe_name: recipe.name,
-            servings: plan.defaultServings,
+            servings: primary,
             day: targetDay,
             mealType: targetMeal,
             carbType: recipe.carbType || 'Uncategorized',
             isLeftover: false,
             id: newTempId()
         }];
-        if (serves > plan.defaultServings) {
+        if (leftover > 0) {
             blocks.push({
                 recipe_id: recipe._id,
                 recipe_name: `${recipe.name} (Leftovers)`,
-                servings: serves - plan.defaultServings,
+                servings: leftover,
                 day: 'Undecided',
                 mealType: 'Lunch',
                 carbType: recipe.carbType || 'Uncategorized',
@@ -557,7 +666,7 @@ export function usePlan() {
             });
         }
         return blocks;
-    }, [plan.defaultServings]);
+    }, [plan]);
 
     const confirmModalRecipes = useCallback(() => {
         if (browseTarget?.pantry) {
@@ -597,7 +706,7 @@ export function usePlan() {
             plannedRecipes: [...prev.plannedRecipes, ...newRecipes]
         }));
         setShowRecipeModal(false);
-    }, [modalSelectedRecipeIds, allRecipes, plan.defaultServings, browseTarget, newEverydayQty, numDays, buildRecipeBlocks]);
+    }, [modalSelectedRecipeIds, allRecipes, browseTarget, newEverydayQty, numDays, buildRecipeBlocks]);
 
     const removePlannedRecipe = useCallback((idToRemove: string) => {
         setPlan(prev => ({
@@ -854,7 +963,7 @@ export function usePlan() {
                     {
                         recipe_id: r._id,
                         recipe_name: r.name,
-                        servings: prev.defaultServings,
+                        servings: getRequiredServings(prev, suggestDay, sugg.mealSlot || 'Snack'),
                         day: suggestDay,
                         mealType: sugg.mealSlot || 'Snack',
                         carbType: r.carbType || 'Uncategorized',
@@ -935,7 +1044,7 @@ export function usePlan() {
                     {
                         recipe_id: saved._id,
                         recipe_name: saved.name,
-                        servings: prev.defaultServings,
+                        servings: getRequiredServings(prev, suggestDay, generatedRecipe.suggestedSlot || 'Snack'),
                         day: suggestDay,
                         mealType: generatedRecipe.suggestedSlot || 'Snack',
                         carbType: saved.carbType || generatedRecipe.carbType || 'Uncategorized',
@@ -1082,6 +1191,17 @@ export function usePlan() {
         setViewMode,
         railTab,
         setRailTab,
+        coverageView,
+        setCoverageView,
+        setMealCoverage,
+        showReuseCoverage,
+        openReuseCoverage,
+        closeReuseCoverage,
+        applyMealCoverage,
+        coverageHistory,
+        coverageHistoryLoading,
+        reuseBanner,
+        dismissReuseBanner,
         plannerTab,
         setPlannerTab,
         selectedDay,

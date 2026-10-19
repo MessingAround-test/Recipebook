@@ -30,6 +30,9 @@ export interface Plan {
     numDays?: number;
     // Visual-only pantry pool placements: `${day}|${mealType}` -> everydayItems indexes
     pantryPlacements?: Record<string, number[]>;
+    // Per-day, per-meal servings required ("who's eating"). Missing days/meals
+    // fall back to defaultServings. Never applied to the pantry pool.
+    mealCoverage?: Record<string, Partial<Record<MealType, number>>>;
 }
 
 export interface Recipe {

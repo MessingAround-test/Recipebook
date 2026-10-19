@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiChevronLeft, FiChevronRight, FiShoppingCart, FiGrid, FiSmartphone } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiShoppingCart, FiGrid, FiSmartphone, FiUsers, FiCopy } from 'react-icons/fi';
 import { usePlanner } from '../planner/PlannerContext';
 import { todayStr, getMondayOf, addDays, formatRangeLabel, formatShortDate } from '../../lib/dateUtils';
 
@@ -21,6 +21,9 @@ export default function PlanHeader() {
         handleExport,
         viewMode,
         setViewMode,
+        coverageView,
+        setCoverageView,
+        openReuseCoverage,
         draftStart, setDraftStart,
         draftEnd, setDraftEnd,
         rangeError, setRangeError,
@@ -68,6 +71,16 @@ export default function PlanHeader() {
                         {saveBadge.icon} {saveBadge.text}
                     </span>
                 )}
+
+                {/* Per-meal servings coverage editing (who's eating each meal) */}
+                <button
+                    onClick={() => setCoverageView(!coverageView)}
+                    title={coverageView ? 'Hide per-meal servings' : 'Set servings per meal'}
+                    aria-pressed={coverageView}
+                    className={`shrink-0 p-2 rounded-lg transition-colors ${coverageView ? 'bg-emerald-500/20 text-emerald-300' : 'text-muted-foreground hover:text-emerald-400 hover:bg-white/10'}`}
+                >
+                    <FiUsers size={16} />
+                </button>
 
                 {/* Desktop: Day flow vs Week grid */}
                 <div className="hidden xl:flex p-1 rounded-xl bg-black/30 border border-white/10 shrink-0">
@@ -166,6 +179,31 @@ export default function PlanHeader() {
                                 <button onClick={() => setPlan(pl => ({ ...pl, defaultServings: pl.defaultServings + 1 }))} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 font-black">+</button>
                             </div>
                         </div>
+
+                        {/* Per-meal servings coverage toggle */}
+                        <div className="flex items-center justify-between py-2 border-t border-white/10">
+                            <div>
+                                <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">Servings per meal</span>
+                                <span className="block text-[10px] text-muted-foreground/70 mt-0.5">Who's eating each meal that day</span>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={coverageView}
+                                onClick={() => setCoverageView(!coverageView)}
+                                className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${coverageView ? 'bg-emerald-500' : 'bg-border'}`}
+                            >
+                                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${coverageView ? 'translate-x-5' : ''}`} />
+                            </button>
+                        </div>
+
+                        {/* Reuse a prior week's servings pattern (timing only) */}
+                        <button
+                            onClick={() => { setSheetOpen(false); openReuseCoverage(); }}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 mt-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-muted-foreground hover:text-white hover:bg-white/10 transition-colors"
+                        >
+                            <FiCopy size={13} /> Copy servings pattern from a past week…
+                        </button>
                     </div>
                 </div>
             )}

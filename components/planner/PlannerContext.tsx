@@ -81,6 +81,17 @@ export interface PlannerApi {
     setViewMode: (mode: ViewMode) => void;
     railTab: RailTab;
     setRailTab: (t: RailTab) => void;
+    coverageView: boolean;
+    setCoverageView: (on: boolean) => void;
+    setMealCoverage: (day: string, meal: string, servings: number) => void;
+    showReuseCoverage: boolean;
+    openReuseCoverage: () => void;
+    closeReuseCoverage: () => void;
+    applyMealCoverage: (source: { startDate: string; numDays?: number; mealCoverage: Record<string, any> }) => void;
+    coverageHistory: { startDate: string; numDays?: number; mealCoverage: Record<string, any> }[];
+    coverageHistoryLoading: boolean;
+    reuseBanner: boolean;
+    dismissReuseBanner: () => void;
     plannerTab: PlannerTab;
     setPlannerTab: (t: PlannerTab) => void;
     selectedDay: string;

@@ -44,7 +44,9 @@ export default function DayDietTab({ day }: { day: string }) {
             fetch('/api/weeklyPlan/dayCoverage', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...(token ? { edgetoken: token } : {}) },
-                body: JSON.stringify({ plan, day })
+                // useMealAnchor: divide by the day's per-meal servings anchor
+                // (fewest people eating any meal) rather than the plan-wide default.
+                body: JSON.stringify({ plan, day, useMealAnchor: true })
             })
                 .then(r => r.json())
                 .then(d => { if (!cancelled && d.success) setData(d); })

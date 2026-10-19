@@ -4,10 +4,16 @@ import { verifyToken, requireFeature } from '../../../lib/auth';
 import { logAPI } from '../../../lib/logger';
 import { calculateDailyIntake, NUTRIENT_LABELS } from '../../../lib/dailyIntake';
 import { computeDayNutrients } from '../../../lib/planNutrition';
+import { getDayAnchorServings } from '../../../lib/mealCoverage';
 
 // Estimated nutrient coverage for a single day of the plan, based purely on
 // what's already planned (no AI recommendations). Mirrors the coverage panel
 // used by the planner's day-fill popup, without the "what to add" suggestions.
+//
+// Pass useMealAnchor: true (the weekly planner does) to divide by the day's
+// per-meal servings anchor — the fewest people eating any meal that day —
+// instead of the plan-wide defaultServings. Other callers (homepage estimate)
+// omit the flag and keep the legacy behaviour.
 
 export default async function handler(req, res) {
     logAPI(req);
@@ -39,7 +45,9 @@ export default async function handler(req, res) {
             daily_exercise_kj: user.daily_exercise_kj
         };
         const targets = calculateDailyIntake(profile);
-        const people = plan.defaultServings || 1;
+        const people = req.body.useMealAnchor
+            ? getDayAnchorServings(plan, day)
+            : (plan.defaultServings || 1);
 
         const dayData = await computeDayNutrients({ plan, day, targets, people, numDays: plan.numDays });
         const { coverage, plannedMeals } = dayData;

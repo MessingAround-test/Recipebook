@@ -12,6 +12,38 @@ import DaySuggestModal from '../components/planner/DaySuggestModal';
 import ExportModal from '../components/planner/ExportModal';
 import DayQuizModal from '../components/planner/DayQuizModal';
 import PlaceIntoMealModal from '../components/planner/PlaceIntoMealModal';
+import ReuseCoverageModal from '../components/planner/ReuseCoverageModal';
+import { FiUsers, FiX } from 'react-icons/fi';
+
+/**
+ * One-line offer on a brand-new week: reuse a prior week's per-meal servings
+ * pattern (who eats which meal). Dismissible; never touches meals or pantry.
+ */
+function CoverageReuseBanner() {
+    const { reuseBanner, dismissReuseBanner, openReuseCoverage } = usePlanner();
+    if (!reuseBanner) return null;
+    return (
+        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-xs">
+            <FiUsers size={14} className="text-emerald-400 shrink-0" />
+            <span className="flex-1 font-bold text-emerald-200">
+                Reuse a past week's servings pattern? (who eats which meal — not the meals)
+            </span>
+            <button
+                onClick={openReuseCoverage}
+                className="shrink-0 px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500/40 text-emerald-300 text-[10px] font-black uppercase tracking-widest transition-colors"
+            >
+                Review
+            </button>
+            <button
+                onClick={dismissReuseBanner}
+                aria-label="Dismiss"
+                className="shrink-0 p-1 text-emerald-400/60 hover:text-white transition-colors"
+            >
+                <FiX size={14} />
+            </button>
+        </div>
+    );
+}
 
 function PlannerContent() {
     const api = usePlan();
@@ -34,6 +66,7 @@ function PlannerContent() {
                     ) : (
                         <>
                             <PlanHeader />
+                            <CoverageReuseBanner />
                             <MainArea />
                         </>
                     )}
@@ -46,6 +79,7 @@ function PlannerContent() {
                 <ExportModal />
                 <DayQuizModal />
                 <PlaceIntoMealModal />
+                <ReuseCoverageModal />
             </Layout>
         </PlannerContext.Provider>
     );

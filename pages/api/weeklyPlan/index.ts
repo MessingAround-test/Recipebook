@@ -56,7 +56,7 @@ export default async function handler(req, res) {
                     // Stale plan (old data shape): discard it and start fresh
                     plan = await WeeklyPlan.findOneAndUpdate(
                         { user_id: userId, startDate: plan.startDate },
-                        { plannedRecipes: [], everydayItems: [], numDays: 7, pantryPlacements: {}, version: CURRENT_PLAN_VERSION },
+                        { plannedRecipes: [], everydayItems: [], numDays: 7, pantryPlacements: {}, mealCoverage: {}, version: CURRENT_PLAN_VERSION },
                         { new: true }
                     );
                     created = true;
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
             }
 
         case 'POST':
-            const { startDate: postStartDate, plannedRecipes, everydayItems, defaultServings, numDays, pantryPlacements } = req.body;
+            const { startDate: postStartDate, plannedRecipes, everydayItems, defaultServings, numDays, pantryPlacements, mealCoverage } = req.body;
             if (!postStartDate) return res.status(400).json({ success: false, message: "startDate is required" });
 
             try {
@@ -79,6 +79,7 @@ export default async function handler(req, res) {
                         defaultServings: defaultServings || 2,
                         numDays: numDays || 7,
                         pantryPlacements: pantryPlacements || {},
+                        mealCoverage: mealCoverage || {},
                         version: CURRENT_PLAN_VERSION
                     },
                     { upsert: true, new: true }
